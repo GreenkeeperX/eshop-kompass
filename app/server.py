@@ -69,6 +69,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, state())
             elif path == "/api/status":
                 self._send(200, dict(sync.status, last_sync=store.load_data().get("last_sync")))
+            elif path == "/api/kaufplan":
+                ui = store.load_ui()
+                self._send(200, planner.purchase_plan(store.load_data(), store.load_settings(),
+                                                      ui["targets"], include_good=ui["plan_good"]))
             elif path == "/api/diag":
                 self._send(200, {"lines": sync.diagnose()})
             elif path == "/api/export":

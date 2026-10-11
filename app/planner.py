@@ -166,6 +166,7 @@ class Context:
         rates = data["fx"]["rates"]
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
+        self._payers = {}
         self.countries = {}
         for code in countries.ORDER:
             cfg = settings["countries"][code]
@@ -389,13 +390,26 @@ class Context:
             out["mark"] = "sale"
         return out
 
+    def alone(self, c, local):
+        """Was der Titel kostet, wenn er allein gekauft wird: mit den Karten,
+        die dafür nötig sind, und ihrem Rest. None, wenn das dem Anteilspreis gleicht."""
+        if c["unit"] is None:
+            return None
+        if c["code"] not in self._payers:
+            self._payers[c["code"]] = make_payer(self, c)[0]
+        r = self._payers[c["code"]](local)
+        if r["estimated"] or abs(r["cost"] - self.est(c, local)) < 0.005:
+            return None
+        return {"eur": _r(r["cost"]), "rest": None if r["rest"] is None else r["rest"] / 100,
+                "cards": [{"face": f / 100, "count": n} for f, n in r["cards"]]}
+
     def cell(self, c, slug, o):
         """Ein Angebot, wie es Tabellen und Karten anzeigen."""
         return {"local": o["local"] / 100, "regular": o["regular"] / 100, "sale": o["sale"],
                 "net": o.get("net", o["local"]) / 100,
                 "pct": round(100 * (1 - o["local"] / o["regular"])) if o["regular"] else 0,
                 "end": o["end"], "eur": _r(self.est(c, o["local"])), "est": c["estimated"],
-                "lang": o.get("lang"), "nsuid": o.get("nsuid"),
+                "lang": o.get("lang"), "nsuid": o.get("nsuid"), "alone": self.alone(c, o["local"]),
                 **self.low(c["code"], slug, o), **self.mark(c, slug, o)}
 
     # ---- Titel
@@ -843,3 +857,91 @@ def price_levels(data, settings, now=None):
             "sale": sum(1 for s in common if c["offers"][s]["sale"]),
         }
     return out
+
+
+# ---------------------------------------------------------------- Kaufplan
+
+def purchase_plan(data, settings, targets=None, include_good=False, now=None):
+    """Ein Gesamtvorschlag: welche Titel jetzt in welchem Land, in welcher Reihenfolge.
+
+    Kandidaten sind die Titel mit dem Urteil "kaufen" oder "nur schwer"
+    (wahlweise auch "gutes Angebot"). Jeder Titel geht in das Land, in dem er am wenigsten kostet.
+    Ein Land, dessen Paket die Mindestersparnis seiner Wechselstufe gegenüber
+    Deutschland nicht schafft, fällt heraus, seine Titel wandern ins
+    nächstbeste Land. Das wiederholt sich, bis alle Länder ihre Schwelle
+    erreichen. Karten, Rest und Steuer stecken in den Paketen.
+    """
+    ctx = Context(data, settings, now)
+    verdicts = ("buy", "hard", "good") if include_good else ("buy", "hard")
+    rows = radar(data, settings, targets, now)
+    wanted = [r["slug"] for r in rows if r["verdict"] in verdicts]
+    reasons = {r["slug"]: r["reason"] for r in rows}
+    # Der Preis, auf dem das Urteil beruht: Teurer darf der Titel im Plan nicht werden
+    deal_price = {}
+    for r in rows:
+        b = r["hard"] if r["verdict"] == "hard" else r["easy"]
+        if b and b.get("eur") is not None:
+            deal_price[r["slug"]] = max(b["eur"], r["target"] or 0)
+    ref_code, current = countries.REFERENCE, settings.get("current_country") or ""
+    allowed = [code for code, c in ctx.countries.items() if c["unit"] is not None]
+    dropped = []
+
+    def assign():
+        """Jeder Titel ins günstigste noch erlaubte Land. Ist er dort teurer als
+        der Preis, der ihn zum Angebot machte, wartet er besser: Das Angebot
+        lohnte nur in einem Land, dessen Wechsel sich nicht rechnet."""
+        groups, nowhere, later = {}, [], []
+        for slug in wanted:
+            best = None
+            for code in allowed:
+                o = ctx.countries[code]["offers"].get(slug)
+                if o and (best is None or ctx.est(ctx.countries[code], o["local"]) < best[0] - 0.005):
+                    best = (ctx.est(ctx.countries[code], o["local"]), code, o)
+            if not best:
+                nowhere.append(slug)
+            elif best[0] <= deal_price.get(slug, 0) + 0.01:
+                groups.setdefault(best[1], []).append(slug)
+            else:
+                later.append(slug)
+        return groups, nowhere, later
+
+    while True:
+        groups, nowhere, later = assign()
+        plans_by = {code: plan_country(ctx, code, basket=slugs) for code, slugs in groups.items()}
+        weak = [(p["saving"] - p.get("threshold", 0), code) for code, p in plans_by.items()
+                if code not in (ref_code, current) and not p.get("worth")]
+        if not weak:
+            break
+        _, code = min(weak)
+        p = plans_by[code]
+        dropped.append({"code": code, "name": p["name"], "tier_name": p["tier_name"],
+                        "titles": [i["short"] for i in p["items"]],
+                        "saving": p["saving"], "threshold": p.get("threshold")})
+        allowed.remove(code)
+
+    def first_end(p):
+        ends = [i["end"] for i in p["items"] if i.get("end")]
+        return min(ends) if ends else "9999"
+
+    steps = []
+    for code, p in plans_by.items():
+        c = ctx.countries[code]
+        p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
+        # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
+        # deutschen Schritt (dort ist die Ersparnis dann 0)
+        p["de_now"] = _r(sum(ctx.ref[i["slug"]] if i["slug"] in ctx.ref
+                             else ctx.est(c, c["offers"][i["slug"]]["local"]) for i in p["items"]))
+        steps.append(p)
+    # Erst das Land, in dem das Konto steht, dann nach Wechselstufe. Amerika
+    # zuletzt: Ein Rest dort blockiert jeden weiteren Wechsel. Innerhalb einer
+    # Stufe zuerst, wo ein Angebot am frühesten endet.
+    steps.sort(key=lambda p: (not p["current"], p["tier"] if not p["is_ref"] else 1,
+                              first_end(p), p["name"]))
+    total = sum(p["cost"] for p in steps if p["cost"] is not None)
+    ref_total = sum(p["de_now"] for p in steps)
+    return {"steps": steps, "dropped": dropped, "nowhere": [ctx.title(s) for s in nowhere],
+            "later": [{"slug": s, "title": ctx.title(s), "reason": reasons.get(s, "")} for s in later],
+            "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
+            "ref_total": _r(ref_total), "saving": _r(ref_total - total),
+            "include_good": include_good,
+            "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}

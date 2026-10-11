@@ -645,6 +645,46 @@ class PlanTest(unittest.TestCase):
         self.assertTrue(row["good-job"]["cells"]["NO"]["na"])
         self.assertNotIn("JP", row["good-job"]["cells"])
 
+    def test_alone_bought(self):
+        ctx = planner.Context(self.data, self.settings, NOW)
+        br = ctx.countries["BR"]
+        # Hades allein: 33,59 BRL brauchen 15+25 für 7,80 €, 6,41 BRL bleiben übrig
+        a = ctx.alone(br, br["offers"]["hades"]["local"])
+        self.assertEqual(a, {"eur": 7.8, "rest": 6.41,
+                             "cards": [{"face": 25.0, "count": 1}, {"face": 15.0, "count": 1}]})
+        # Ohne Karten gleicht der Einzelpreis dem Anteilspreis: kein Hinweis
+        de = ctx.countries["DE"]
+        self.assertIsNone(ctx.alone(de, de["offers"]["hades"]["local"]))
+        cell = planner.matrix(self.data, self.settings, now=NOW)
+        hades = {r["slug"]: r for r in cell["rows"]}["hades"]["cells"]["BR"]
+        self.assertEqual(hades["alone"]["eur"], 7.8)
+
+    def test_purchase_plan_drops_weak_countries(self):
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        steps = [(s["code"], [i["slug"] for i in s["items"]]) for s in plan["steps"]]
+        # Brasilien spart 19,18 € und verfehlt die Schwelle von 20 € der Stufe schwer.
+        # Hades wandert nach Japan, VS Foscari lohnte nur dort und wartet.
+        self.assertEqual(steps, [("DE", ["spiritfarer"]), ("JP", ["hades"])])
+        self.assertEqual([d["code"] for d in plan["dropped"]], ["BR"])
+        self.assertAlmostEqual(plan["dropped"][0]["saving"], 19.18)
+        self.assertEqual([x["slug"] for x in plan["later"]], ["vs-foscari"])
+        self.assertAlmostEqual(plan["cost"], 14.27)
+        self.assertAlmostEqual(plan["ref_total"], 31.23)
+        self.assertAlmostEqual(plan["saving"], 16.96)
+        self.assertEqual(plan["count"], 2)
+
+    def test_purchase_plan_keeps_country_above_threshold(self):
+        self.settings["tier_min_saving"]["3"] = 15
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        steps = [(s["code"], [i["slug"] for i in s["items"]]) for s in plan["steps"]]
+        self.assertEqual(steps, [("DE", ["spiritfarer"]), ("BR", ["hades", "vs-foscari"])])
+        self.assertEqual(plan["dropped"], [])
+        self.assertAlmostEqual(plan["cost"], 14.04)
+        self.assertAlmostEqual(plan["saving"], 19.18)
+        # Gute Angebote gibt es im Beispiel nicht, der Schalter ändert nichts
+        self.assertEqual(planner.purchase_plan(self.data, self.settings, include_good=True,
+                                               now=NOW)["count"], 3)
+
 
 class StoreTest(unittest.TestCase):
     def test_ui_state_and_settings_validation(self):

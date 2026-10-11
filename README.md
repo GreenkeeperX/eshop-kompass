@@ -29,6 +29,16 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
   - nur schwer: stark nur in einem Land der Stufe schwer,
   - warten: im Angebot, war aber schon deutlich günstiger.
   Die beiden Euro-Grenzen sind unter Einstellungen änderbar.
+- Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst.
+  Kandidaten sind die Titel mit dem Urteil "kaufen" oder "nur schwer",
+  per Schalter auch "gutes Angebot". Jeder Titel geht ins Land, wo er am
+  wenigsten kostet. Ein Land bleibt nur im Plan, wenn sein Paket die
+  Mindestersparnis seiner Wechselstufe schafft; sonst wandern seine Titel ins
+  nächstbeste Land. Ist ein Titel dort teurer als der Preis, der ihn zum
+  Angebot machte, steht er unter "Lieber warten". Reihenfolge: zuerst das
+  Land, in dem dein Konto steht, dann leicht, mittel, schwer, innerhalb einer
+  Stufe nach Angebotsende. "Als Korb vergleichen" übernimmt die Titel in den
+  gemeinsamen Korb.
 - Pakete, Angebote je Land: Länderkarten als dichtes Raster oder große Liste.
   Je Land die Wishlist-Angebote mit Kosten, Karten, Rest, Angebotsende und
   Vorschlägen zum Dazunehmen (+) oder Weglassen (−).
@@ -45,6 +55,11 @@ Guthabenkarte mit bekanntem Preis eingetragen, gerechnet wird mit Kurs plus
 pauschalem Aufschlag.
 Auch Kartenzahlung ist eine Näherung (Mittelkurs plus Fremdwährungsgebühr),
 die Bank rechnet mit ihrem eigenen Kurs.
+
+Bei Guthabenkarten ist der Europreis ein Anteil: Preis je Guthabeneinheit der
+günstigsten Karte mal Shop-Preis. Kaufst du einen Titel allein, brauchst du
+meist mehr Guthaben, als er kostet. Was das kostet, steht im Tooltip als
+"allein gekauft" mit Karten und Rest.
 
 Unter der Vergleichstabelle steht, was der Korb kostet, wenn jeder Titel im
 günstigsten Land mit Kartenzahlung gekauft wird. Dort kostet der Wechsel
