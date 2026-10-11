@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.4.1"
+VERSION = "0.5"
 
 # Kennungen, mit denen das Tool anfragt. Zuerst die ehrliche eigene, sonst eine
 # gewöhnliche Browser-Kennung. Bot-Sperren werden nicht umgangen.
@@ -313,6 +313,56 @@ def fetch_prices(country, nsuids, lang="en", fetch=fetch, pause=None):
         if pause:
             pause()
     return out
+
+
+# ------------------------------------------------------------------ Sprachen
+
+SOLR_URL = "https://search.nintendo-europe.com/en/select"
+JP_STORE_URL = "https://store-jp.nintendo.com/item/software/D{nsuid}"
+_JP_LANG_RE = re.compile(r"対応言語(.{0,600})", re.S)
+_JP_WORD_RE = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]+語")
+
+
+def parse_langs_eu(payload):
+    """Antwort der Nintendo-Europa-Suche -> {nsuid: "english, german, …"}."""
+    out = {}
+    for doc in (payload.get("response") or {}).get("docs", []):
+        lang = doc.get("language_availability")
+        if isinstance(lang, list):
+            lang = ", ".join(lang)
+        if not lang:
+            continue
+        for n in doc.get("nsuid_txt") or []:
+            out[str(n)] = lang
+    return out
+
+
+def fetch_langs_eu(nsuids, fetch=fetch, pause=None):
+    """Sprachen der europäischen Fassungen, 40 Titel je Abruf."""
+    out = {}
+    nsuids = list(dict.fromkeys(nsuids))
+    for i in range(0, len(nsuids), 40):
+        q = urllib.parse.urlencode({
+            "q": "*", "fq": "nsuid_txt:(" + " OR ".join(nsuids[i:i + 40]) + ")",
+            "fl": "nsuid_txt,language_availability", "rows": 200, "wt": "json"})
+        out.update(parse_langs_eu(json.loads(fetch(f"{SOLR_URL}?{q}"))))
+        if pause:
+            pause()
+    return out
+
+
+def parse_langs_jp(page_html):
+    """Sprachen von einer Produktseite des japanischen Stores (対応言語)."""
+    m = _JP_LANG_RE.search(page_html or "")
+    if not m:
+        return None
+    text = html.unescape(_TAG_RE.sub(" ", m.group(1)))
+    words = [w for w in _JP_WORD_RE.findall(text) if w != "対応言語"]
+    return ", ".join(dict.fromkeys(words)) or None
+
+
+def fetch_langs_jp(nsuid, fetch=fetch):
+    return parse_langs_jp(fetch(JP_STORE_URL.format(nsuid=nsuid)))
 
 
 # ------------------------------------------------------------ Wechselkurse

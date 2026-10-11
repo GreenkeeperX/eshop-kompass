@@ -12,6 +12,8 @@ NINTENDO_PAUSE = 0.3
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
 LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu prüfen
 LOWS_VERSION = 2                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
+LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu prüfen
+PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None}
@@ -179,10 +181,13 @@ def _track(data, history, code, table, stamp):
 
 
 def sync_prices(data, settings, fetch, sleep, history=None):
-    enabled = [c for c in countries.ORDER if settings["countries"][c]["enabled"]]
+    # Abgeschaltete Länder laufen mit, solange die IDs ihrer Region bekannt sind:
+    # ein Abruf je Land, dafür zeigt die Länderliste ihr Preisniveau.
+    enabled = list(countries.ORDER)
     _step("Preise abrufen", len(enabled))
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     history = {} if history is None else history
+    quiet = []
     for code in enabled:
         fam = countries.BY_CODE[code]["family"]
         by_nsuid = {}
@@ -190,7 +195,9 @@ def sync_prices(data, settings, fetch, sleep, history=None):
             if it.get("active"):
                 for n in it["ids"].get(fam, []):
                     by_nsuid[n] = slug
-        if not by_nsuid:
+        active = settings["countries"][code]["enabled"]
+        failed = data.setdefault("price_fail", {})
+        if not by_nsuid or (not active and time.time() - failed.get(code, 0) < PRICE_FAIL_PAUSE):
             status["done"] += 1
             continue
         try:
@@ -198,7 +205,11 @@ def sync_prices(data, settings, fetch, sleep, history=None):
                                        lang=countries.BY_CODE[code]["lang"],
                                        pause=lambda: sleep(NINTENDO_PAUSE))
         except Exception as e:  # ein Land darf ausfallen, alte Preise bleiben
-            _log(f"{code}: Preisabruf fehlgeschlagen ({e})")
+            if active:
+                _log(f"{code}: Preisabruf fehlgeschlagen ({e})")
+            else:
+                quiet.append(code)
+                failed[code] = time.time()    # abgeschaltetes Land: eine Woche Ruhe
             status["done"] += 1
             continue
         table = {}
@@ -213,8 +224,71 @@ def sync_prices(data, settings, fetch, sleep, history=None):
         data["prices"][code] = table
         _track(data, history, code, table, stamp)
         buyable = sum(1 for p in table.values() if p["status"] == "onsale")
-        _log(f"{code}: {buyable} von {len(table)} Titeln kaufbar")
+        if settings["countries"][code]["enabled"]:
+            _log(f"{code}: {buyable} von {len(table)} Titeln kaufbar")
         status["done"] += 1
+    if quiet:
+        _log("Ohne Preise (abgeschaltete Länder): " + ", ".join(quiet))
+
+
+def sync_langs(data, settings, fetch, sleep, now=None):
+    """Sprachen je Region von Nintendo: Europa in einem Abruf, Japan je Titel."""
+    now = now or time.time()
+    items = {s: it for s, it in data["items"].items() if it.get("active")}
+
+    def due(it, fam):
+        if (it.get("langs") or {}).get(fam):
+            return False
+        return now - (it.get("langs_checked") or {}).get(fam, 0) > LANG_RECHECK_SECONDS
+
+    eu = {it["ids"]["EU"][0]: s for s, it in items.items()
+          if it["ids"].get("EU") and due(it, "EU")}
+    if eu:
+        _step("Sprachen abrufen")
+        try:
+            found = sources.fetch_langs_eu(list(eu), fetch=fetch)
+        except Exception as e:
+            _log(f"Sprachen Europa nicht abrufbar ({e})")
+            found = None
+        if found is not None:
+            for nsuid, slug in eu.items():
+                it = items[slug]
+                it.setdefault("langs_checked", {})["EU"] = now
+                if nsuid in found:
+                    it.setdefault("langs", {})["EU"] = found[nsuid]
+            _log(f"Sprachen Europa: {len(found)} von {len(eu)} Titeln")
+
+    if settings["countries"]["JP"]["enabled"]:
+        # DLC übernimmt die Sprache des Hauptspiels, eigene Seiten braucht es dafür nicht
+        todo = [(s, it["ids"]["JP"][0]) for s, it in items.items()
+                if it["ids"].get("JP") and due(it, "JP") and not it.get("parent")]
+        got = fails = 0
+        if todo:
+            _step("Sprachen Japan abrufen", len(todo))
+        for slug, nsuid in todo:
+            it = items[slug]
+            try:
+                langs = sources.fetch_langs_jp(nsuid, fetch=fetch)
+            except sources.FetchError as e:
+                if e.status == 404:
+                    langs = None           # keine Seite: als geprüft vermerken
+                else:
+                    fails += 1
+                    if e.status in (403, 429) or fails >= 5:
+                        _log(f"Sprachen Japan unterbrochen ({e})")
+                        break
+                    status["done"] += 1
+                    sleep(DEKU_PAUSE)
+                    continue
+            it.setdefault("langs_checked", {})["JP"] = now
+            if langs:
+                it.setdefault("langs", {})["JP"] = langs
+                got += 1
+            status["done"] += 1
+            sleep(DEKU_PAUSE)
+        if todo:
+            _log(f"Sprachen Japan: {got} von {len(todo)} Titeln")
+    store.save_data(data)
 
 
 def sync_lows(data, settings, fetch, sleep, now=None):
@@ -299,6 +373,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         store.save_history(history)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
+        sync_langs(data, settings, fetch, sleep)
         if data.get("lows_v") != LOWS_VERSION:
             # Frühere Versionen lasen teils den Händler- statt den digitalen
             # Tiefstpreis. Von DekuDeals übernommene Werte neu laden.
@@ -355,6 +430,19 @@ def diagnose():
               f"https://www.dekudeals.com/items/{slug}?country=de", ua, item_info)
     probe("Nintendo-Preise", sources.NINTENDO_PRICE_URL + "?country=DE&lang=de&ids=70010000000126",
           None, lambda t: t[:160])
+    probe("Sprachen Europa", sources.SOLR_URL + "?q=*&fq=nsuid_txt:70010000005306"
+          "&fl=nsuid_txt,language_availability&wt=json", None, lambda t: t[:200].replace("\n", " "))
+    probe("Sprachen Japan", sources.JP_STORE_URL.format(nsuid="70010000033130"), None,
+          lambda t: f"{len(t)} Zeichen, Sprachen: {sources.parse_langs_jp(t)}")
+
+    # Wie liefert DekuDeals den Preisverlauf? Grundlage für die Kurven im Tool.
+    r = sources.request(f"https://www.dekudeals.com/items/{slug}?country=de",
+                        sources._deku_ua, timeout=20)
+    text = r["text"]
+    tags = sources.re.findall(r"<script\b[^>]*(?:id|type)=[^>]*>", text)[:12]
+    lines.append("Verlauf, Skript-Marken: " + (" ".join(t[:90] for t in tags) or "keine"))
+    for m in list(sources.re.finditer(r"(?i)price[_ -]?history|chart[_-]?data|plotly|dygraph|highcharts", text))[:6]:
+        lines.append("Verlauf, Fundstelle: " + text[max(0, m.start() - 60):m.start() + 160].replace("\n", " "))
     probe("Wechselkurse", sources.FX_URL, None, lambda t: t[:80])
     return lines
 

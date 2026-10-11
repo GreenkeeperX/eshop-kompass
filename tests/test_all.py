@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.parse
 import sys
 import tempfile
 import unittest
@@ -168,6 +169,21 @@ class SourcesTest(unittest.TestCase):
 
 
 class CardsTest(unittest.TestCase):
+    def test_card_list_formats(self):
+        cards = planner.parse_card_list(
+            "100 = 16,00 | https://shop/100\n"
+            "x 40 = 8 | https://shop/40\n"
+            "1.000 = 46\n"
+            "¥5,000=31 https://shop/5000\n"
+            "x 60 = 0 | https://shop/60\n"          # ohne Preis und nicht vorrätig: entfällt
+            "30=5 50=8")
+        self.assertEqual([(c["face"], c["cost"], c["stock"]) for c in cards],
+                         [(3000, 5.0, True), (4000, 8.0, False), (5000, 8.0, True),
+                          (10000, 16.0, True), (100000, 46.0, True), (500000, 31.0, True)])
+        self.assertEqual(cards[3]["url"], "https://shop/100")
+        self.assertEqual(cards[5]["url"], "https://shop/5000")
+        self.assertEqual(planner.parse_cards("x 40=8\n50=8"), [(5000, 8.0)])
+
     def test_parse(self):
         self.assertEqual(planner.parse_cards("1000, 3000;5000=29,50\n"),
                          [(100000, None), (300000, None), (500000, 29.5)])
@@ -267,7 +283,8 @@ class PlanTest(unittest.TestCase):
         self.assertEqual([i["slug"] for i in br["items"]], ["hades", "vs-foscari"])
         self.assertAlmostEqual(br["total"], 37.59)
         # 37,59 BRL: 15+25 = 40 für 7,80 € ist günstiger als 50 für 9,50 €
-        self.assertEqual(br["cards"], [{"face": 25.0, "count": 1}, {"face": 15.0, "count": 1}])
+        self.assertEqual(br["cards"], [{"face": 25.0, "count": 1, "url": ""},
+                                       {"face": 15.0, "count": 1, "url": ""}])
         self.assertAlmostEqual(br["cost"], 7.80)
         self.assertAlmostEqual(br["rest"], 2.41)
         self.assertAlmostEqual(br["saving"], round(24.99 + 1.99 - 7.80, 2))
@@ -344,7 +361,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]["trims"], [])
 
     def test_current_country_needs_no_threshold(self):
-        self.settings["min_saving_eur"] = 50
+        self.settings["tier_min_saving"]["1"] = 50
         self.assertFalse(self.by(planner.plans(self.data, self.settings, now=NOW))["NO"]["worth"])
         self.settings["current_country"] = "NO"
         no = self.by(planner.plans(self.data, self.settings, now=NOW))["NO"]
@@ -370,12 +387,132 @@ class PlanTest(unittest.TestCase):
         self.assertTrue(cell["BR"]["at_low"])
         self.assertIsNone(cell["NO"]["low"])
 
+    def test_cards_with_links_and_stock(self):
+        self.settings["countries"]["BR"]["cards"] = (
+            "15 = 3,00 | https://shop/15\n25=4.80 https://shop/25\nx 50 = 9,50 | https://shop/50")
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        # die 50er ist nicht vorrätig: 37,59 BRL -> 15 + 25
+        self.assertEqual(br["cards"], [{"face": 25.0, "count": 1, "url": "https://shop/25"},
+                                       {"face": 15.0, "count": 1, "url": "https://shop/15"}])
+        self.assertEqual(br["via"], "giftcard")
+
+    def test_pay_auto_takes_cheaper(self):
+        no = self.settings["countries"]["NO"]
+        no["pay"] = "auto"
+        no["cards"] = "100=8.00 250=24"            # 100 NOK für 8 € statt 9,50 € per Karte
+        plan = self.by(planner.plans(self.data, self.settings, now=NOW))["NO"]
+        self.assertEqual((plan["via"], plan["cost"], plan["rest"]), ("giftcard", 8.0, 0.0))
+        no["cards"] = "100=11.00"                  # teurer als die Kartenzahlung
+        plan = self.by(planner.plans(self.data, self.settings, now=NOW))["NO"]
+        self.assertEqual(plan["via"], "card")
+        self.assertAlmostEqual(plan["cost"], round(100 / 10.7155 * 1.0175, 2))
+
+    def test_tax_is_added(self):
+        self.settings["countries"]["BR"]["tax_pct"] = 10
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        hades = [i for i in br["items"] if i["slug"] == "hades"][0]
+        self.assertAlmostEqual(hades["local"], 36.95)      # 33,59 + 10 %
+        self.assertEqual(hades["pct"], 60)
+        self.assertAlmostEqual(br["total"], 36.95 + 4.40)
+        self.data["lows"] = {"BR": {"hades": {"low": 33.59}}}
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        self.assertTrue([i for i in br["items"] if i["slug"] == "hades"][0]["at_low"])
+
+    def test_tier_threshold(self):
+        self.settings["tier_min_saving"]["3"] = 25
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        self.assertEqual((br["tier"], br["tier_name"], br["threshold"]), (3, "schwer", 25.0))
+        self.assertFalse(br["worth"])                      # 19,18 € Ersparnis reichen nicht
+        self.settings["tier_min_saving"]["3"] = 15
+        self.assertTrue(self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]["worth"])
+
+    def test_language_rule(self):
+        items = self.data["items"]
+        items["hades"]["langs"] = {"EU": "english, german", "JP": "日本語, 英語"}
+        by = self.by(planner.plans(self.data, self.settings, now=NOW))
+        self.assertEqual(by["JP"]["items"], [])            # Japan ohne Deutsch fällt weg
+        cell = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]["JP"]
+        self.assertTrue(cell["nolang"])
+        self.assertIn("ungeprüfter Sprache", " ".join(by["BR"]["warnings"]))   # Amerika unbekannt
+        self.assertEqual(by["NO"]["warnings"], [])         # Europa ist dasselbe Produkt
+        items["hades"]["langs"]["JP"] = "日本語, ドイツ語"
+        self.assertEqual(len(self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]["items"]), 1)
+        items["hades"]["langs"] = {"EU": "english, french", "JP": "日本語"}
+        by = self.by(planner.plans(self.data, self.settings, now=NOW))
+        self.assertEqual(len(by["JP"]["items"]), 1)        # auch in DE kein Deutsch: egal
+        self.settings["lang_rule"] = "warn"
+        items["hades"]["langs"] = {"EU": "german", "JP": "日本語"}
+        by = self.by(planner.plans(self.data, self.settings, now=NOW))
+        self.assertIn("ohne deutsche Fassung", " ".join(by["JP"]["warnings"]))
+
+    def test_best_price_marks(self):
+        # Hades: BR 33,59 (Tief 33,59), NO 100 (Tief 80), JP 1400, DE 24,99
+        self.data["lows"] = {"BR": {"hades": {"low": 33.59}}, "NO": {"hades": {"low": 80.0}}}
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertEqual(cells["BR"]["mark"], "best")          # Bestpreis über alle Länder
+        self.assertEqual(cells["BR"]["champ_code"], "BR")
+        self.assertEqual(cells["NO"]["mark"], "sale")          # Angebot, aber über dem Tief
+        self.assertGreater(cells["NO"]["gap"], 20)
+        self.assertEqual(cells["DE"]["mark"], "")              # kein Angebot
+        # Unter den leichten Ländern (ohne Brasilien) hält Japan den Bestpreis: 1400 ¥ = 8,29 €
+        self.data["lows"]["NO"]["hades"]["low"] = 100.0
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertEqual(cells["JP"]["mark"], "best_easy")
+        self.assertEqual(cells["NO"]["mark"], "low")           # Landestief, aber 15 % über Japan
+
+    def test_radar(self):
+        self.data["lows"] = {"NO": {"hades": {"low": 100.0}}}
+        rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
+        hades = rows["hades"]
+        self.assertEqual((hades["easy"]["code"], hades["hard"]["code"]), ("JP", "BR"))
+        self.assertEqual(hades["champ"]["code"], "BR")
+        self.assertEqual(hades["champ_easy"]["code"], "JP")
+        self.assertEqual(hades["verdict"], "buy")
+        self.assertEqual(rows["good-job"]["verdict"], "none")
+        self.assertEqual(rows["good-job"]["easy"]["code"], "DE")      # nur DE und BR, leicht ist DE
+        self.assertEqual(rows["spiritfarer"]["easy"]["code"], "DE")   # in DE im Angebot
+        # Zielpreis: Nidhogg 2 kostet in DE 14,99 €, Ziel 15 € gilt als erreicht
+        rows = planner.radar(self.data, self.settings, {"nidhogg-2": 15}, now=NOW)
+        self.assertEqual(rows[0]["verdict"], "buy")
+        self.assertIn("nidhogg-2", [r["slug"] for r in rows if r["reason"] == "Zielpreis erreicht"])
+
+    def test_price_levels_include_inactive(self):
+        self.settings["countries"]["BR"]["enabled"] = False
+        levels = planner.price_levels(self.data, self.settings, now=NOW)
+        self.assertIn("BR", levels)                          # abgeschaltet, trotzdem bewertet
+        self.assertLess(levels["BR"]["level"], 0)
+        self.assertEqual(levels["BR"]["titles"], 5)
+        self.assertNotIn("JP", levels)                       # nur ein gemeinsamer Titel
+
     def test_matrix(self):
         m = planner.matrix(self.data, self.settings, now=NOW)
         row = {r["slug"]: r for r in m["rows"]}
         self.assertEqual(row["hades"]["best"], "BR")
         self.assertTrue(row["good-job"]["cells"]["NO"]["na"])
         self.assertNotIn("JP", row["good-job"]["cells"])
+
+
+class StoreTest(unittest.TestCase):
+    def test_ui_state_and_settings_validation(self):
+        ui = store.save_ui({"basket": ["a", "b"], "targets": {"a": "8,5", "b": "7.5", "c": 0},
+                            "hidden": ["NZ"], "sort": "quatsch", "dense": 0,
+                            "overrides": {"BR": {"add": ["x"], "remove": None}}})
+        self.assertEqual(ui["basket"], ["a", "b"])
+        self.assertEqual(ui["targets"], {"b": 7.5})          # nur gültige Zahlen
+        self.assertEqual((ui["sort"], ui["dense"], ui["hidden"]), ("saving", False, ["NZ"]))
+        self.assertEqual(ui["overrides"], {"BR": {"add": ["x"], "remove": []}})
+        self.assertIsNone(store.save_ui({"basket": []})["basket"])
+        s = store.save_settings({"countries": {"US": {"tier": "9", "tax_pct": "7.5", "pay": "auto",
+                                                      "cards": "50=41"}},
+                                 "lang_rule": "nein", "tier_min_saving": {"3": "25", "9": 1}})
+        us = s["countries"]["US"]
+        self.assertEqual((us["tier"], us["tax_pct"], us["pay"]), (3, 7.5, "auto"))
+        self.assertTrue(us["cards_checked"])
+        self.assertEqual(s["lang_rule"], "exclude")
+        self.assertEqual(s["tier_min_saving"], {"1": 3.0, "2": 8.0, "3": 25.0})
+        # nur genannte Felder ändern sich: so liest die Sicherung auch Teil-Dateien ein
+        s = store.save_settings({"countries": {"US": {"balance": 3}}})
+        self.assertEqual((s["countries"]["US"]["cards"], s["countries"]["US"]["balance"]), ("50=41", 3.0))
 
 
 class SyncTest(unittest.TestCase):
@@ -399,12 +536,20 @@ class SyncTest(unittest.TestCase):
                 return "<title>Nur physisch | Deku Deals</title>"
             if "er-api" in url:
                 return '{"result":"success","rates":{"BRL":5.6,"JPY":177},"time_last_update_utc":"t"}'
+            if "search.nintendo-europe.com" in url:
+                self.assertIn("70050000042405", urllib.parse.unquote(url))
+                return ('{"response":{"docs":[{"nsuid_txt":["70050000042405"],'
+                        '"language_availability":"english, german"}]}}')
             if "country=BR" in url:
                 return BR_JSON
             if "country=DE" in url:
                 self.assertIn("70050000042405", url)
                 return ('{"prices":[{"title_id":70050000042405,"sales_status":"onsale",'
                         '"regular_price":{"currency":"EUR","raw_value":"1.99"}}]}')
+            if "api.ec.nintendo.com" in url:
+                if "country=CL" in url:
+                    raise sources.FetchError(url, 500)     # abgeschaltetes Land fällt aus
+                return '{"prices":[]}'                     # übrige Länder: nichts im Angebot
             raise AssertionError("unerwarteter Abruf " + url)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
         self.assertTrue(sync.status["ok"], sync.status["log"])
@@ -424,10 +569,17 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(len(hist["DE"]["vs-foscari"]), 1)
         self.assertNotIn("JP", data["prices"])  # keine japanische ID, kein Abruf
         self.assertFalse(any("country=JP" in u for u in calls))
+        self.assertEqual(it["langs"], {"EU": "english, german"})
+        price_calls = [u for u in calls if "api.ec.nintendo.com" in u]
+        # Preise für alle Länder mit bekannten IDs (Europa und Amerika), nicht für Japan und Asien
+        self.assertEqual(len(price_calls), 19)
+        self.assertIn("CL", data["price_fail"])
+        self.assertFalse(any("Preisabruf fehlgeschlagen" in l for l in sync.status["log"]))
         n = len(calls)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
-        # zweiter Lauf sucht weder IDs noch Tiefstpreise: Wishlist (2), Kurse (1), Preise (2)
-        self.assertEqual(len(calls) - n, 5)
+        # zweiter Lauf sucht weder IDs, Sprachen noch Tiefstpreise:
+        # Wishlist (2), Kurse (1), Preise (19 Länder minus das ruhende Chile)
+        self.assertEqual(len(calls) - n, 2 + 1 + 18)
         self.assertEqual(len(store.load_history()["BR"]["vs-foscari"]), 1)  # kein Preiswechsel
 
     def test_low_is_lowered_by_own_tracking(self):

@@ -12,8 +12,12 @@ STATIC = os.path.join(os.path.dirname(__file__), "static")
 def state():
     settings = store.load_settings()
     data = store.load_data()
+    ui = store.load_ui()
     return {
         "settings": settings,
+        "ui": ui,
+        "radar": planner.radar(data, settings, ui["targets"]),
+        "levels": planner.price_levels(data, settings),
         "countries": [dict(countries.BY_CODE[c], family_name=countries.FAMILIES[
             countries.BY_CODE[c]["family"]]) for c in countries.ORDER],
         "status": sync.status,
@@ -56,9 +60,12 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/state":
                 self._send(200, state())
             elif path == "/api/status":
-                self._send(200, sync.status)
+                self._send(200, dict(sync.status, last_sync=store.load_data().get("last_sync")))
             elif path == "/api/diag":
                 self._send(200, {"lines": sync.diagnose()})
+            elif path == "/api/export":
+                self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
+                                 "settings": store.load_settings(), "ui": store.load_ui()})
             else:
                 self._send(404, {"error": "nicht gefunden"})
         except Exception as e:
@@ -76,6 +83,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"plans": res})
             elif path == "/api/settings":
                 self._send(200, {"settings": store.save_settings(body)})
+            elif path == "/api/ui":
+                self._send(200, {"ui": store.save_ui(body)})
+            elif path == "/api/import":
+                # Sicherung einlesen: nur bekannte Felder, fehlende bleiben wie sie sind
+                if isinstance(body.get("settings"), dict):
+                    store.save_settings(body["settings"])
+                if isinstance(body.get("ui"), dict):
+                    store.save_ui(body["ui"])
+                self._send(200, {"ok": True})
             elif path == "/api/sync":
                 self._send(200, {"started": sync.start_sync()})
             else:

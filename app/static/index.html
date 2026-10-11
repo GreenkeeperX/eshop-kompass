@@ -8,12 +8,12 @@
 :root{
   --bg:#f4f2ec; --card:#fffdf8; --ink:#1d2320; --muted:#667069; --line:#dcd8cc;
   --accent:#0d6b4f; --warn:#8a5a00; --warn-bg:#fbefd2;
-  --sale:#b3261e; --best:#e3f3ea; --chip:#ece9df;
+  --sale:#b3261e; --best:#e3f3ea; --chip:#ece9df; --gold:#d99a00; --gold-ink:#2b2000;
 }
 @media (prefers-color-scheme: dark){:root{
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#5fd0a5; --warn:#f0c36a; --warn-bg:#3a2e12;
-  --sale:#ff8a80; --best:#183328; --chip:#262c29;
+  --sale:#ff8a80; --best:#183328; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -29,7 +29,10 @@ button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
 button.link{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline}
 button:disabled{opacity:.5;cursor:default}
-nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px;overflow-x:auto}
+nav button{white-space:nowrap}
+a.btn{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--ink);text-decoration:none}
+a.btn:hover{border-color:var(--accent)}
 nav button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:6px 12px;color:var(--muted)}
 nav button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
 .banner{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:9px 12px;margin-bottom:10px}
@@ -40,7 +43,12 @@ td{padding:6px 8px;border-top:1px solid var(--line);text-align:right;white-space
 th:first-child,td:first-child{text-align:left}
 .scroll{overflow-x:auto}
 .pct{color:var(--sale);font-size:11px;margin-left:3px}
-.pct.low{background:var(--accent);color:var(--card);border-radius:4px;padding:0 2px;font-weight:600}
+.pct.m-low{background:var(--accent);color:var(--card);border-radius:4px;padding:0 2px;font-weight:600}
+.pct.m-best{background:var(--gold);color:var(--gold-ink);border-radius:4px;padding:0 2px;font-weight:700}
+.pct.m-best_easy{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--ink);border-radius:4px;padding:0 2px;font-weight:600}
+.gap{color:var(--muted);font-size:11px;margin-left:3px}
+.warnc{color:var(--warn)}
+.today{color:var(--sale);font-weight:700}
 .ok{color:var(--accent);font-weight:600}
 .bad{color:var(--warn);font-weight:600}
 .over{color:var(--sale)}
@@ -84,7 +92,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .tt{display:flex;gap:5px;align-items:flex-start}
 .tt input{margin:2px 0 0;flex:none}
 .tt .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.pc col.c-l{width:90px}.pc col.c-b{width:44px}.pc col.c-e{width:44px}.pc col.c-d{width:44px}
+.pc col.c-l{width:88px}.pc col.c-b{width:52px}.pc col.c-e{width:44px}.pc col.c-d{width:44px}
 .pc .c-t{display:none}
 .soon{color:var(--warn);font-weight:600}
 .sugg{display:flex;flex-direction:column;gap:2px;margin-top:5px}
@@ -171,6 +179,38 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 @media (max-width:640px){.cmp td:first-child,.cmp th:first-child{min-width:130px;max-width:150px}}
 @media (max-width:640px){.list .pc .c-t,.list .pc col.c-t{display:none}.list .pc col.c-l{width:100px}
   .list .pc col.c-b{width:50px}.list .pc col.c-e{width:56px}.list .pc col.c-d{width:56px}}
+
+/* Radar */
+.radar{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
+.radar th,.radar td{padding:4px 9px;vertical-align:top}
+.radar thead th{position:sticky;top:0;background:var(--card);z-index:1}
+.radar td:first-child{white-space:normal;min-width:200px;max-width:300px}
+.radar td small{display:block;color:var(--muted);font-size:11px}
+.radar td.na{color:var(--muted)}
+.radar tr.v-none td{opacity:.62}
+.tgt{width:62px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px;text-align:right;font-size:12px}
+.vd{display:inline-block;border-radius:999px;padding:0 8px;font-size:11.5px;white-space:nowrap}
+.vd.buy{background:var(--accent);color:var(--card);font-weight:700}
+.vd.good{background:var(--best);color:var(--accent);font-weight:600}
+.vd.hard{background:var(--warn-bg);color:var(--warn)}
+.vd.wait,.vd.none{background:var(--chip);color:var(--muted)}
+.kb{border:1px solid var(--line);background:none;border-radius:6px;padding:0 7px;font-size:12px}
+.kb.on{background:var(--accent);border-color:var(--accent);color:var(--card)}
+a.tl{color:inherit;text-decoration:none}
+a.tl:hover{text-decoration:underline}
+a.mini{color:var(--muted);font-size:10px;margin-left:5px;text-decoration:none;border:1px solid var(--line);border-radius:3px;padding:0 3px}
+.pc .hide{border:0;background:none;color:var(--muted);padding:0 0 0 6px;font-size:13px}
+.bar .srt{font-size:12px}
+.toast button{margin-left:10px;border:0;background:none;color:inherit;text-decoration:underline;padding:0;font-weight:700}
+.cardsbox{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+.cardsbox label{display:grid;gap:3px;font-size:13px}
+.cardsbox textarea{font:12px/1.4 ui-monospace,monospace;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:74px;resize:vertical;width:100%}
+.cardsbox small{color:var(--muted)}
+.saved{color:var(--accent);font-size:13px;margin-left:8px}
+h3.sec{margin:22px 0 8px;font-size:14px}
+.lvl-neg{color:var(--accent);font-weight:600}
+.lvl-pos{color:var(--muted)}
+.set td input[type=number].sm{width:64px}
 </style>
 </head>
 <body>
@@ -185,26 +225,12 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 </div>
 <script>
 "use strict";
-const S = {state:null, plans:[], overrides:{}, basket:null, dense:true, tab:"plans", filter:"", onlySale:false, timer:null, step:""};
-const TABS = [["plans","Pakete"],["matrix","Preisvergleich"],["settings","Einstellungen"]];
+const S = {state:null, plans:[], ui:null, tab:"radar", filter:"", onlySale:false, rq:"", rOnly:false,
+           timer:null, step:"", lastSync:null};
+const TABS = [["radar","Radar"],["plans","Pakete"],["matrix","Preisvergleich"],["settings","Einstellungen"]];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-function loadLocal(){
-  try{
-    S.overrides = JSON.parse(localStorage.getItem("ek.overrides") || "{}");
-    S.basket = JSON.parse(localStorage.getItem("ek.basket") || "null");
-    S.dense = localStorage.getItem("ek.dense") !== "0";
-  }catch(e){ S.overrides = {}; S.basket = null; }
-  if(!Array.isArray(S.basket) || !S.basket.length) S.basket = null;
-}
-function saveLocal(){
-  try{
-    localStorage.setItem("ek.overrides", JSON.stringify(S.overrides));
-    localStorage.setItem("ek.basket", JSON.stringify(S.basket));
-    localStorage.setItem("ek.dense", S.dense ? "1" : "0");
-  }catch(e){}
-}
 async function api(path, body){
   const r = await fetch(path, body === undefined ? {} :
     {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
@@ -212,6 +238,8 @@ async function api(path, body){
   if(!r.ok) throw new Error(j.error || r.status);
   return j;
 }
+
+/* ---------- Zahlen, Zeiten, Links ---------- */
 const DIGITS = {};
 function digits(cur){
   if(!(cur in DIGITS)){
@@ -235,33 +263,70 @@ function endCell(iso, prefix){
   if(!iso) return "";
   const d = new Date(iso);
   if(isNaN(d)) return "";
-  const soon = d - Date.now() < 48 * 3600 * 1000;
   const full = d.toLocaleString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
-  return `<span class="${soon ? "soon" : ""}" title="Angebot endet ${esc(full)}">${prefix || ""}${d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})}</span>`;
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(d) - day(new Date())) / 86400000);
+  let text = d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}), cls = "";
+  if(diff <= 0){ text = "heute"; cls = "today"; }
+  else if(diff === 1){ text = "morgen"; cls = "soon"; }
+  else if(diff === 2){ cls = "soon"; }
+  return `<span class="${cls}" title="Angebot endet ${esc(full)}">${diff <= 1 ? "" : (prefix || "")}${text}</span>`;
 }
-function stamp(iso){
+function ago(iso){
   if(!iso) return "noch nie";
-  return new Date(iso).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+  if(min < 2) return "gerade eben";
+  if(min < 90) return `vor ${min} Min.`;
+  if(min < 48 * 60) return `vor ${Math.round(min / 60)} Std.`;
+  return `vor ${Math.round(min / 1440)} Tagen`;
 }
-function toast(msg){
+const clock = d => d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+function toast(msg, undo){
+  document.querySelectorAll(".toast").forEach(t => t.remove());
   const t = document.createElement("div");
-  t.className = "toast"; t.textContent = msg; document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2600);
+  t.className = "toast"; t.textContent = msg;
+  if(undo){
+    const b = document.createElement("button");
+    b.textContent = "Rückgängig";
+    b.onclick = () => { t.remove(); undo(); };
+    t.appendChild(b);
+  }
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), undo ? 7000 : 2600);
 }
-/* Rabatt-Marke: grün = Tiefstpreis erreicht, rot = Angebot darüber */
-function pctTag(x, cur){
-  if(!x.sale) return "";
-  let tip = "Tiefstpreis noch nicht geladen";
-  if(x.at_low) tip = "Tiefstpreis";
-  else if(x.low !== null && x.low !== undefined) tip = `Tiefstpreis war ${money(x.low, cur)} (−${x.low_pct} %)`;
-  return `<span class="pct ${x.at_low ? "low" : ""}" title="${esc(tip)}">−${x.pct}%</span>`;
-}
+const country = code => S.state.countries.find(c => c.code === code) || {name: code, lang: "en"};
 const deku = (slug, code) => `https://www.dekudeals.com/items/${encodeURIComponent(slug)}?country=${(code || "de").toLowerCase()}`;
-/* Preis als Link zum Preisverlauf bei DekuDeals, im passenden Land */
-function priceLink(slug, code, text, low, cur){
-  const tip = "Preisverlauf bei DekuDeals öffnen" + (low !== null && low !== undefined ? ` · Tiefstpreis ${money(low, cur)}` : "");
+const epSearch = title => `https://eshop-prices.com/games?q=${encodeURIComponent(title)}&currency=EUR`;
+function shopUrl(code, nsuid){   // Produktseite im eShop des Landes
+  if(!nsuid) return null;
+  const kind = String(nsuid).startsWith("7001") ? "titles" : String(nsuid).startsWith("7007") ? "bundles" : null;
+  return kind ? `https://ec.nintendo.com/${code}/${country(code).lang}/${kind}/${nsuid}` : null;
+}
+/* Landespreis verlinkt den Verlauf bei DekuDeals, der Europreis die eShop-Seite */
+function priceLink(slug, code, text, x, cur){
+  const tip = "Preisverlauf bei DekuDeals öffnen" + (x && x.low !== null && x.low !== undefined ? ` · Landestief ${money(x.low, cur)}` : "");
   return `<a class="pl" href="${deku(slug, code)}" target="_blank" rel="noopener" title="${esc(tip)}">${text}</a>`;
 }
+function buyLink(code, x, text){
+  const url = shopUrl(code, x.nsuid);
+  return url ? `<a class="pl" href="${url}" target="_blank" rel="noopener" title="Im eShop ${esc(country(code).name)} öffnen">${text}</a>` : text;
+}
+
+/* ---------- Deal-Güte ---------- */
+const MARK = {best:"Bestpreis über alle Länder", best_easy:"Bestpreis der leichten Länder", low:"Tiefstpreis dieses Landes", sale:"Angebot über dem Tiefstpreis"};
+function markTip(x, cur){
+  return [MARK[x.mark] || "kein Angebot",
+    x.gap ? `${x.gap} % über Bestpreis` : "",
+    x.champ !== null && x.champ !== undefined ? `Bestpreis ${eur(x.champ)} in ${country(x.champ_code).name}` : "",
+    x.low !== null && x.low !== undefined ? `Landestief ${money(x.low, cur)}` : "Landestief noch nicht geladen"].filter(Boolean).join(" · ");
+}
+function pctTag(x, cur){
+  if(!x.sale) return "";
+  const star = x.mark === "best" ? "★" : x.mark === "best_easy" ? "☆" : "";
+  return `<span class="pct m-${x.mark}" title="${esc(markTip(x, cur))}">${star}−${x.pct}%</span>`;
+}
+const gapTag = x => x.sale && x.gap > 0 ? `<span class="gap" title="über dem Bestpreis">+${x.gap} %</span>` : "";
+const LEGEND = `<span class="legend hint"><span class="pct m-best">★−50%</span>Bestpreis<span class="pct m-best_easy">☆−50%</span>Bestpreis leicht<span class="pct m-low">−50%</span>Landestief<span class="pct m-sale">−50%</span>Angebot darüber</span>`;
 function chipsFor(p){
   const out = [];
   for(const w of p.warnings){
@@ -269,29 +334,56 @@ function chipsFor(p){
     else if(w.startsWith("Keine Guthabenkarten")) out.push(`<span class="chip w" title="${esc(w)}">Karten fehlen</span>`);
     else if(w.startsWith("DLC braucht")) out.push(`<span class="chip" title="${esc(w)}">DLC: Region ${esc(p.family)}</span>`);
     else if(/ohne deutschen Vergleichspreis/.test(w)) out.push(`<span class="chip" title="${esc(w)}">${parseInt(w)} ohne DE-Preis</span>`);
+    else if(/ungeprüfter Sprache/.test(w)) out.push(`<span class="chip" title="Für diese Region liegt noch keine Sprachangabe von Nintendo vor">${parseInt(w)}× Sprache ungeprüft</span>`);
     else out.push(`<span class="chip w">${esc(w)}</span>`);
   }
+  if(p.tax) out.push(`<span class="chip" title="Der Shop zeigt Preise ohne Steuer, hier sind ${p.tax} % aufgeschlagen">inkl. ${String(p.tax).replace(".", ",")} % Steuer</span>`);
   if(p.note && !p.is_ref) out.push(`<span class="chip">${esc(p.note)}</span>`);
   return out;
 }
-const planBody = () => ({overrides:S.overrides, must:[], basket:S.basket || []});
 
+/* ---------- Zustand ---------- */
+const planBody = () => ({overrides:S.ui.overrides, must:[], basket:S.ui.basket || []});
+function saveUi(){ return api("/api/ui", S.ui).catch(err => toast("Nicht gespeichert: " + err.message)); }
+function migrateLocal(){   // frühere Versionen merkten sich den Korb im Browser
+  try{
+    const b = JSON.parse(localStorage.getItem("ek.basket") || "null");
+    const o = JSON.parse(localStorage.getItem("ek.overrides") || "null");
+    const empty = !S.ui.basket && !Object.keys(S.ui.overrides).length;
+    if(empty && ((Array.isArray(b) && b.length) || (o && Object.keys(o).length))){
+      if(Array.isArray(b) && b.length) S.ui.basket = b;
+      if(o) S.ui.overrides = o;
+      saveUi();
+    }
+    localStorage.removeItem("ek.basket"); localStorage.removeItem("ek.overrides"); localStorage.removeItem("ek.dense");
+  }catch(e){}
+}
 async function refresh(){
   S.state = await api("/api/state");
-  if(S.basket){   // Titel, die nicht mehr auf der Wishlist stehen, fallen aus dem Korb
+  S.ui = S.state.ui;
+  S.lastSync = S.state.last_sync;
+  migrateLocal();
+  if(S.ui.basket){   // Titel, die nicht mehr auf der Wishlist stehen, fallen aus dem Korb
     const known = new Set(S.state.matrix.rows.map(r => r.slug));
-    S.basket = S.basket.filter(s => known.has(s));
-    if(!S.basket.length) S.basket = null;
+    S.ui.basket = S.ui.basket.filter(s => known.has(s));
+    if(!S.ui.basket.length) S.ui.basket = null;
   }
   S.plans = (await api("/api/plans", planBody())).plans;
   render();
   watch();
 }
 async function replan(){
-  if(S.basket && !S.basket.length) S.basket = null;
-  saveLocal();
+  if(S.ui.basket && !S.ui.basket.length) S.ui.basket = null;
+  saveUi();
   S.plans = (await api("/api/plans", planBody())).plans;
   render();
+}
+/* Änderung mit Rückweg: merkt sich den Stand davor */
+async function change(label, fn){
+  const before = JSON.stringify(S.ui);
+  fn();
+  await replan();
+  toast(label, async () => { S.ui = JSON.parse(before); await replan(); });
 }
 function watch(){
   if(S.timer || !S.state.status.running) return;
@@ -301,84 +393,166 @@ function watch(){
     S.step = st.step;
     S.state.status = st;
     if(!st.running){ clearInterval(S.timer); S.timer = null; await refresh(); toast(st.ok ? "Abgleich fertig" : "Abgleich fehlgeschlagen"); }
-    else if(stepChanged && st.step.startsWith("Tiefstpreise")){ await refresh(); }   // Preise sind da
+    else if(stepChanged && /^(Sprachen|Tiefstpreise)/.test(st.step)){ await refresh(); }   // Preise sind da
     else renderHead();
   }, 2000);
 }
+/* Offene Seite hält sich selbst aktuell */
+setInterval(async () => {
+  if(!S.state || S.timer || document.hidden) return;
+  try{
+    const st = await api("/api/status");
+    if(st.running){ S.state.status = st; renderHead(); watch(); }
+    else if(st.last_sync !== S.lastSync && S.tab !== "settings") await refresh();
+    else renderHead();
+  }catch(e){}
+}, 60000);
 
 function renderHead(){
-  const st = S.state.status;
-  let meta = `Stand ${stamp(S.state.last_sync)} · ${S.state.item_count} Titel · v${S.state.version}`;
-  if(st.running) meta = `${st.step}${st.total ? ` (${st.done}/${st.total})` : ""} …`;
-  $("meta").textContent = meta;
+  const st = S.state.status, hours = S.state.settings.refresh_hours || 6;
+  const m = $("meta");
+  if(st.running){
+    m.textContent = `${st.step}${st.total ? ` (${st.done}/${st.total})` : ""} …`;
+  } else {
+    const last = S.state.last_sync ? new Date(S.state.last_sync) : null;
+    const stale = last && Date.now() - last > 2 * hours * 3600000;
+    const next = last ? new Date(+last + hours * 3600000) : null;
+    m.innerHTML = `<span class="${stale ? "warnc" : ""}" title="${last ? esc(last.toLocaleString("de-DE")) : ""}">Stand ${ago(S.state.last_sync)}</span>` +
+      (next ? ` · nächster Abgleich ${next < new Date() ? "in Kürze" : "ca. " + clock(next)}` : "") +
+      ` · ${S.state.item_count} Titel · v${esc(S.state.version)}`;
+  }
   $("syncBtn").disabled = st.running;
   $("nav").innerHTML = TABS.map(([k,l]) =>
     `<button data-act="tab" data-tab="${k}" class="${S.tab===k?"on":""}">${l}</button>`).join("");
+}
+function banners(){
+  let h = "";
+  const st = S.state.status;
+  if(!S.state.settings.wishlist_url)
+    h += `<div class="banner">Trage unter Einstellungen deinen DekuDeals-Wishlist-Link ein und klicke auf Aktualisieren.</div>`;
+  else if(!S.state.last_sync && !st.running)
+    h += `<div class="banner">Noch kein Abgleich. Der erste Lauf sucht die Titel-IDs und dauert einige Minuten.</div>`;
+  if(st.ok === false){
+    const last = (st.log || []).filter(l => !/Abbruch|^\s/.test(l.slice(9))).pop() || "";
+    const why = (st.log || []).filter(l => /Abbruch/.test(l)).pop() || last;
+    h += `<div class="banner">Letzter Abgleich fehlgeschlagen: ${esc(why.replace(/^\S+ (Abbruch: )?/, ""))}.
+      <button class="link" data-act="showlog">Protokoll öffnen</button></div>`;
+  }
+  return h;
 }
 function render(){
   renderHead();
   const m = $("main");
   m.className = S.tab === "settings" ? "narrow" : "";
-  if(S.tab === "plans") m.innerHTML = viewPlans();
+  if(S.tab === "radar") m.innerHTML = banners() + viewRadar();
+  else if(S.tab === "plans") m.innerHTML = banners() + (S.ui.basket ? viewCompare() : viewCards());
   else if(S.tab === "matrix") m.innerHTML = viewMatrix();
   else m.innerHTML = viewSettings();
 }
 const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || {title:slug, slug};
+const inBasket = slug => (S.ui.basket || []).includes(slug);
 
-/* ---------- Pakete ---------- */
-function viewPlans(){
-  let h = "";
-  if(!S.state.settings.wishlist_url)
-    h += `<div class="banner">Trage unter Einstellungen deinen DekuDeals-Wishlist-Link ein und klicke auf Aktualisieren.</div>`;
-  else if(!S.state.last_sync && !S.state.status.running)
-    h += `<div class="banner">Noch kein Abgleich. Der erste Lauf sucht die Titel-IDs und dauert einige Minuten.</div>`;
-  if(S.state.status.ok === false)
-    h += `<div class="banner">Letzter Abgleich fehlgeschlagen. Das Protokoll steht unter Einstellungen.</div>`;
-  return h + (S.basket ? viewCompare() : viewCards());
+/* ---------- Radar: ein Titel je Zeile ---------- */
+const VERDICT = {buy:"kaufen", good:"gutes Angebot", hard:"nur schwer", wait:"warten", none:"kein Angebot"};
+function bestCell(b, slug){
+  if(!b) return `<td class="na">–</td>`;
+  const second = [esc(b.name), b.currency === "EUR" ? null : priceLink(slug, b.code, money(b.local, b.currency), b, b.currency),
+                  b.end ? endCell(b.end, "bis ") : null].filter(Boolean).join(" · ");
+  return `<td><b>${buyLink(b.code, b, eur(b.eur))}</b>${pctTag(b, b.currency)}${gapTag(b)}<small>${second}</small></td>`;
 }
-const LEGEND = `<span class="legend hint"><span class="pct low">−50%</span>Tiefstpreis<span class="pct">−50%</span>Angebot über Tiefstpreis · Klick auf einen Preis öffnet den Verlauf bei DekuDeals</span>`;
+function viewRadar(){
+  const q = S.rq.toLowerCase();
+  const rows = S.state.radar.filter(r => (!q || r.title.toLowerCase().includes(q)) && (!S.rOnly || r.verdict !== "none"));
+  const n = v => S.state.radar.filter(r => r.verdict === v).length;
+  let h = `<div class="tools"><input type="search" id="rq" placeholder="Titel filtern" value="${esc(S.rq)}">
+    <label><input type="checkbox" data-act="ronly" ${S.rOnly ? "checked" : ""}> nur Angebote</label>${LEGEND}
+    <span class="hint">${n("buy")}× kaufen · ${n("good")}× gut · ${n("hard")}× nur schwer · ${n("wait")}× warten</span></div>
+    <div class="radar scroll"><table><thead><tr><th>Titel</th><th title="Bester Preis jetzt in Ländern der Stufen leicht und mittel">Jetzt, leicht</th>
+    <th title="Bester Preis jetzt in Ländern der Stufe schwer">Jetzt, schwer</th><th title="Niedrigster Preis, den es je gab, zum heutigen Kurs">Bestpreis</th>
+    <th>DE jetzt</th><th title="Dein Wunschpreis in Euro">Ziel €</th><th>Urteil</th><th>Korb</th></tr></thead><tbody>`;
+  h += rows.map(r => {
+    let champ = `<td class="na">–</td>`;
+    if(r.champ){
+      const differs = r.champ_easy && r.champ_easy.code !== r.champ.code;
+      champ = `<td>${eur(r.champ.eur)}<small>${esc(r.champ.name)}${differs ? ` · leicht ${eur(r.champ_easy.eur)} ${esc(r.champ_easy.name)}` : ""}</small></td>`;
+    }
+    const hit = r.target !== null && r.easy && r.easy.eur <= r.target + 0.005;
+    return `<tr class="v-${r.verdict}"><td>${r.dlc_of ? `<span class="dlc" title="DLC zu ${esc(r.dlc_of)}">DLC</span>` : ""}<a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen">${esc(r.title)}</a><a class="mini" href="${epSearch(r.title)}" target="_blank" rel="noopener" title="Bei eShop-Prices suchen">eP</a>${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+      ${bestCell(r.easy, r.slug)}${bestCell(r.hard, r.slug)}${champ}
+      <td>${r.de === null ? `<span class="na">–</span>` : eur(r.de)}</td>
+      <td><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="–">${hit ? ` <span class="ok">✓</span>` : ""}</td>
+      <td><span class="vd ${r.verdict}" title="${esc(r.reason)}">${VERDICT[r.verdict]}</span>${r.verdict !== "none" ? `<small>${esc(r.reason)}</small>` : ""}</td>
+      <td><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
+  }).join("");
+  h += `</tbody></table></div>`;
+  if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="tab" data-tab="plans">Korb in allen Ländern vergleichen</button></p>`;
+  return h;
+}
 
-/* Angebote je Land: Karten */
+/* ---------- Pakete: Angebote je Land ---------- */
+function sortPlans(list){
+  const endOf = p => Math.min(Infinity, ...p.items.filter(i => i.end).map(i => +new Date(i.end)));
+  const sav = (a, b) => (b.saving ?? -1e9) - (a.saving ?? -1e9);
+  const by = {saving: sav, rest: (a, b) => (a.rest_eur ?? 1e9) - (b.rest_eur ?? 1e9) || sav(a, b),
+              end: (a, b) => endOf(a) - endOf(b) || sav(a, b), tier: (a, b) => a.tier - b.tier || sav(a, b)}[S.ui.sort] || sav;
+  return list.filter(p => !p.is_ref).sort(by).concat(list.filter(p => p.is_ref));
+}
+function hiddenLine(){
+  if(!S.ui.hidden.length) return "";
+  return `<p class="restline">Ausgeblendet: ` + S.ui.hidden.map(c =>
+    `${esc(country(c).name)} <button class="link" data-act="unhide" data-c="${c}">einblenden</button>`).join(" · ") + `</p>`;
+}
 function viewCards(){
+  const opt = (v, l) => `<option value="${v}" ${S.ui.sort === v ? "selected" : ""}>${l}</option>`;
   let h = `<div class="bar"><b>Angebote je Land</b>
-    <span class="seg"><button data-act="dense" data-v="1" class="${S.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.dense ? "" : "on"}">Liste</button></span>
+    <span class="seg"><button data-act="dense" data-v="1" class="${S.ui.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.ui.dense ? "" : "on"}">Liste</button></span>
+    <select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("saving","nach Ersparnis")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
     ${LEGEND}<span class="sp"></span>
     <span class="hint">„Korb für alle“ vergleicht einen Korb in allen Ländern.</span></div>`;
   const cards = [], empty = [];
-  for(const p of S.plans) (!p.items.length && !p.fillers.length ? empty : cards).push(p);
-  h += `<div class="grid ${S.dense ? "" : "list"}">${cards.map(planCard).join("")}</div>`;
+  for(const p of sortPlans(S.plans)){
+    if(S.ui.hidden.includes(p.code) && !p.is_ref) continue;
+    (!p.items.length && !p.fillers.length ? empty : cards).push(p);
+  }
+  h += `<div class="grid ${S.ui.dense ? "" : "list"}">${cards.map(planCard).join("")}</div>`;
   if(empty.length)
     h += `<p class="restline">Ohne passendes Angebot: ` + empty.map(p =>
       `${esc(p.name)} <small>(${p.rate ? p.available + " kaufbar" : "noch keine Preise"})</small>`).join(" · ") + `</p>`;
-  return h;
+  return h + hiddenLine();
+}
+function cardsHtml(p){
+  return p.cards.map(c => {
+    const t = `${c.count}× ${num(c.face, p.currency)}`;
+    return c.url ? `<a class="pl" href="${esc(c.url)}" target="_blank" rel="noopener" title="Karte kaufen">${t}</a>` : t;
+  }).join(" + ");
 }
 function planCard(p){
   const has = p.items.length > 0, cur = p.currency;
-  const sub = [p.current ? "aktuelles Land" : null,
-    p.is_ref ? "Vergleichsbasis" : (p.pay === "card" ? "Karte" : "Guthabenkarte"),
+  const payName = p.is_ref ? "Vergleichsbasis" : {card:"Karte", giftcard:"Guthabenkarte", auto:"Karte oder Guthaben"}[p.pay];
+  const sub = [p.current ? "aktuelles Land" : null, payName, p.is_ref ? null : "Wechsel " + p.tier_name,
     p.family, `${p.available} kaufbar`].filter(Boolean).join(" · ");
   let save = "";
   if(has && p.saving !== null){
     const sign = p.saving >= 0 ? "−" : "+";
     save = `<span class="save ${p.saving < 0 ? "neg" : (p.worth ? "" : "low")}" title="${p.is_ref ? "gegenüber Normalpreis" : "gegenüber Deutschland"}">${sign}${eur(Math.abs(p.saving))}<small>${Math.abs(p.saving_pct)} %</small></span>`;
   }
-  let h = `<article class="pc ${p.current ? "cur" : ""}"><header><h2>${esc(p.name)}</h2>${save}</header><p class="sub">${esc(sub)}</p>`;
+  let h = `<article class="pc ${p.current ? "cur" : ""}"><header><h2>${esc(p.name)}</h2><span>${save}${p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</span></header><p class="sub">${esc(sub)}</p>`;
 
   if(has){
     const parts = [`${cur === "EUR" ? "" : money(p.total, cur) + " → "}<b>${p.estimated ? "ca. " : ""}${eur(p.cost)}</b> statt ${eur(p.ref_total)}${p.is_ref ? " normal" : ""}`];
-    if(p.cards.length) parts.push(p.cards.map(c => `${c.count}× ${num(c.face, cur)}`).join(" + "));
+    if(p.cards.length) parts.push(cardsHtml(p));
     if(!p.is_ref) parts.push(restHtml(p));
-    if(!p.worth && p.saving >= 0) parts.push(`<small title="Ersparnis liegt unter deiner Schwelle für einen Länderwechsel">unter Schwelle</small>`);
-    const lows = p.items.filter(i => i.at_low).length;
-    if(lows) parts.push(`<small title="${lows} von ${p.items.length} Titeln zum Tiefstpreis">${lows}× Tiefstpreis</small>`);
+    if(!p.worth && p.saving >= 0) parts.push(`<small title="Für Länder der Stufe ${esc(p.tier_name)} lohnt der Wechsel bei dir erst ab ${eur(p.threshold)} Ersparnis">unter Schwelle ${eur(p.threshold)}</small>`);
+    const stars = p.items.filter(i => i.mark === "best" || i.mark === "best_easy").length;
+    if(stars) parts.push(`<small title="${stars} von ${p.items.length} Titeln zum Bestpreis">${stars}× Bestpreis</small>`);
     h += `<p class="line">${parts.join("<i>·</i>")}</p>`;
     h += `<table><colgroup><col><col class="c-l"><col class="c-t"><col class="c-b"><col class="c-e"><col class="c-d"></colgroup>
-      <thead><tr><th>Titel</th><th>${esc(cur || "")}</th><th class="c-t">Tiefst</th><th>bis</th><th>€</th><th>${p.is_ref ? "normal" : "DE €"}</th></tr></thead><tbody>` +
+      <thead><tr><th>Titel</th><th>${esc(cur || "")}</th><th class="c-t">Bestpreis €</th><th>bis</th><th>€</th><th>${p.is_ref ? "normal" : "DE €"}</th></tr></thead><tbody>` +
     p.items.map(i => {
       const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of})` : "");
       return `<tr><td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}"><span class="nm">${i.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(i.short)}</span></label></td>
-      <td>${priceLink(i.slug, p.code, num(i.local, cur), i.low, cur)}${pctTag(i, cur)}</td><td class="c-t">${i.low === null ? "–" : num(i.low, cur)}</td>
-      <td>${endCell(i.end)}</td><td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als in Deutschland"` : ""}>${num(i.eur)}</td><td>${num(i.ref)}</td></tr>`;
+      <td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}${pctTag(i, cur)}</td><td class="c-t">${i.champ === null ? "–" : num(i.champ)}${gapTag(i)}</td>
+      <td>${endCell(i.end)}</td><td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als in Deutschland"` : ""}>${buyLink(p.code, i, num(i.eur))}</td><td>${num(i.ref)}</td></tr>`;
     }).join("") + `</tbody></table>`;
   } else {
     h += `<p class="line"><small>Kein Wishlist-Titel im Angebot.</small></p>`;
@@ -390,7 +564,7 @@ function planCard(p){
     .concat(p.fillers.map(f =>
       `<button data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: ${esc(money(f.local, cur))}, Aufpreis ${eur(f.extra)} statt ${eur(f.ref)} in Deutschland">
         <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)} statt ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>−${eur(f.gain)}</b></button>`));
-  if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.dense ? 3 : 99).join("")}</div>`;
+  if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.ui.dense ? 3 : 99).join("")}</div>`;
 
   const chips = chipsFor(p);
   if(chips.length) h += `<div class="chips">${chips.join("")}</div>`;
@@ -399,7 +573,7 @@ function planCard(p){
     const inPlan = new Set(p.items.map(i => i.slug));
     const opts = p.is_ref ? "" : S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug))
       .map(r => `<option value="${esc(r.slug)}">${esc(r.title)} · ${num(r.cells[p.code].local, cur)}</option>`).join("");
-    const ov = S.overrides[p.code];
+    const ov = S.ui.overrides[p.code];
     const changed = ov && ((ov.add||[]).length || (ov.remove||[]).length);
     if(has || opts || changed)
       h += `<div class="foot">${has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb in allen Ländern vergleichen">Korb für alle</button>` : ""}
@@ -416,60 +590,68 @@ function restHtml(p, bare){
   return `<span class="${blocked ? "bad" : ""}">${pre}${money(p.rest, p.currency)}</span> <small>${eur(p.rest_eur)}</small>`;
 }
 
-/* Gemeinsamer Korb: Vergleichstabelle */
+/* ---------- Pakete: gemeinsamer Korb als Vergleichstabelle ---------- */
 function viewCompare(){
-  const inB = new Set(S.basket);
+  const inB = new Set(S.ui.basket);
   const opts = S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids)
     .map(r => `<option value="${esc(r.slug)}">${esc(r.title)}</option>`).join("");
-  const usable = S.plans.filter(p => p.rate && p.items.length);
+  const shown = S.plans.filter(p => p.is_ref || !S.ui.hidden.includes(p.code));
+  const usable = shown.filter(p => p.rate && p.items.length);
   const cols = usable.filter(p => p.is_ref).concat(usable.filter(p => !p.is_ref));
-  const none = S.plans.filter(p => !usable.includes(p));
+  const none = shown.filter(p => !usable.includes(p));
   const complete = cols.filter(p => !p.missing.length && p.cost !== null);
   const win = complete.length > 1 ? complete.reduce((a, b) => b.cost < a.cost ? b : a) : null;
+  const easy = complete.filter(p => p.tier <= 2);
+  const winEasy = easy.length ? easy.reduce((a, b) => b.cost < a.cost ? b : a) : null;
   const de = cols.find(p => p.is_ref);
 
   let verdict = `<span class="hint">Kein Land bietet den ganzen Korb, deshalb ist nichts hervorgehoben.</span>`;
   if(win){
     const diff = de && !win.is_ref && !de.missing.length ? ` · ${eur(de.cost - win.cost)} unter Deutschland` : "";
-    verdict = `<span>Günstigstes Land für diesen Korb: <b>${esc(win.name)}</b>, ${win.estimated ? "ca. " : ""}${eur(win.cost)}${diff}</span>`;
+    verdict = `<span>Günstigstes Land: <b>${esc(win.name)}</b>, ${win.estimated ? "ca. " : ""}${eur(win.cost)}${diff}` +
+      (winEasy && winEasy.code !== win.code ? ` · leicht erreichbar: <b>${esc(winEasy.name)}</b>, ${eur(winEasy.cost)}` : "") + `</span>`;
   } else if(complete.length === 1){
     verdict = `<span class="hint">Nur ${esc(complete[0].name)} bietet den ganzen Korb.</span>`;
   }
   let h = `<div class="bar on"><b>Gemeinsamer Korb</b>${verdict}<span class="sp"></span>${LEGEND}
     <select data-act="bpick"><option value="">Titel hinzufügen …</option>${opts}</select>
     <button data-act="unshare">Zurück zu Angeboten je Land</button></div>`;
-  if(!cols.length) return h + `<p class="restline">Kein Titel aus dem Korb ist in einem aktiven Land kaufbar.</p>`;
+  if(!cols.length) return h + `<p class="restline">Kein Titel aus dem Korb ist in einem aktiven Land kaufbar.</p>` + hiddenLine();
 
   const cls = p => (win && p.code === win.code ? "win " : "") + (p.missing.length ? "incomplete " : "");
-  h += `<div class="cmp scroll"><table><thead><tr><th>${S.basket.length} Titel</th>` + cols.map(p =>
+  h += `<div class="cmp scroll"><table><thead><tr><th>${S.ui.basket.length} Titel</th>` + cols.map(p =>
     `<th class="${cls(p)}">${win && p.code === win.code ? `<span class="tagwin">günstigstes</span><br>` : ""}${esc(p.name)}
-      <small>${p.is_ref ? "Vergleichsbasis" : (p.pay === "card" ? "Karte" : "Guthabenkarte")}${p.current ? " · aktuelles Land" : ""}${p.missing.length ? ` · ${p.items.length} von ${S.basket.length}` : ""}</small></th>`).join("") + `</tr></thead><tbody>`;
+      <small>${p.is_ref ? "Vergleichsbasis" : "Wechsel " + esc(p.tier_name)}${p.current ? " · aktuelles Land" : ""}${p.missing.length ? ` · ${p.items.length} von ${S.ui.basket.length}` : ""}</small></th>`).join("") + `</tr></thead><tbody>`;
 
-  for(const slug of S.basket){
+  for(const slug of S.ui.basket){
     const r = rowOf(slug);
     const cells = cols.map(p => p.items.find(i => i.slug === slug) || null);
     const eurs = cells.filter(Boolean).map(i => i.eur).filter(v => v !== null);
     const best = eurs.length > 1 ? Math.min(...eurs) : null;
-    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r.title)}</td>` +
+    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${esc(r.title)}</a></td>` +
       cols.map((p, k) => {
         const i = cells[k];
-        if(!i) return `<td class="na ${cls(p)}">–<small>nicht kaufbar</small></td>`;
-        const second = [p.currency === "EUR" ? null : num(i.local, p.currency), i.end ? endCell(i.end, "bis ") : null].filter(Boolean).join(" · ");
+        if(!i){
+          const m = p.missing.find(x => x.slug === slug);
+          return `<td class="na ${cls(p)}">–<small>${m && m.nolang ? "keine deutsche Fassung" : "nicht kaufbar"}</small></td>`;
+        }
+        const second = [p.currency === "EUR" ? null : priceLink(slug, p.code, num(i.local, p.currency), i, p.currency), i.end ? endCell(i.end, "bis ") : null].filter(Boolean).join(" · ");
         return `<td class="${cls(p)}${i.eur === best ? "rb" : ""}">
-          <b class="${i.over ? "over" : ""}">${priceLink(slug, p.code, num(i.eur), i.low, p.currency)}</b>${pctTag(i, p.currency)}<small>${second || "&nbsp;"}</small></td>`;
+          <b class="${i.over ? "over" : ""}">${buyLink(p.code, i, num(i.eur))}</b>${pctTag(i, p.currency)}${gapTag(i)}<small>${second || "&nbsp;"}</small></td>`;
       }).join("") + `</tr>`;
   }
   const row = (label, fn, extra) => `<tr class="${extra || ""}"><td>${label}</td>${cols.map(p => `<td class="${cls(p)}">${fn(p)}</td>`).join("")}</tr>`;
   h += `</tbody><tfoot>` +
     row("Summe", p => money(p.total, p.currency), "sumtop") +
-    row("Karten", p => p.cards.length ? p.cards.map(c => `${c.count}× ${num(c.face, p.currency)}`).join(" + ") : (p.pay === "card" || p.is_ref ? "exakter Betrag" : "–")) +
+    row("Karten", p => p.cards.length ? cardsHtml(p) : (p.via === "card" || p.is_ref ? "exakter Betrag" : "–")) +
     row("Du zahlst", p => `${p.estimated ? "ca. " : ""}${eur(p.cost)}`, "pay") +
     row("Rest", p => p.is_ref ? `<span class="ok">0</span>` : restHtml(p, true)) +
     row("Gegenüber Deutschland", p => {
       if(p.is_ref) return "Basis";
       if(p.saving === null) return "–";
       const s = `<b class="${p.saving < 0 ? "over" : "ok"}">${p.saving >= 0 ? "−" : "+"}${eur(Math.abs(p.saving))}</b>`;
-      return s + (p.missing.length ? `<small>für ${p.items.length} von ${S.basket.length} Titeln</small>` : `<small>${Math.abs(p.saving_pct)} %</small>`);
+      return s + (p.missing.length ? `<small>für ${p.items.length} von ${S.ui.basket.length} Titeln</small>` :
+        `<small>${Math.abs(p.saving_pct)} %${!p.worth && p.saving >= 0 ? " · unter Schwelle" : ""}</small>`);
     }) +
     row("Passt dazu", p => {
       const f = p.fillers[0];
@@ -480,80 +662,124 @@ function viewCompare(){
     `</tfoot></table></div>`;
   if(none.length)
     h += `<p class="restline">Korb dort nicht kaufbar: ` + none.map(p => esc(p.name)).join(" · ") + `</p>`;
-  return h;
+  return h + hiddenLine();
 }
 
 /* ---------- Preisvergleich ---------- */
 function viewMatrix(){
-  const mx = S.state.matrix, q = S.filter.toLowerCase(), inB = new Set(S.basket || []);
+  const mx = S.state.matrix, q = S.filter.toLowerCase();
   const rows = mx.rows.filter(r => (!q || r.title.toLowerCase().includes(q)) &&
     (!S.onlySale || Object.values(r.cells).some(c => c.sale)));
   let h = `<div class="tools"><input type="search" id="q" placeholder="Titel filtern" value="${esc(S.filter)}">
     <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>${LEGEND}
-    <span class="hint">Preise in Euro inklusive Gebühr oder Kartenaufschlag. ★ legt den Titel in den gemeinsamen Korb.</span></div>
+    <span class="hint">Preise in Euro beim üblichen Zahlweg des Landes. ★ legt den Titel in den gemeinsamen Korb.</span></div>
     <div class="matrix scroll"><table><thead><tr><th>Titel</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
-  h += rows.map(r => `<tr><td><button class="star ${inB.has(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button>${esc(r.title)}${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
+  h += rows.map(r => `<tr><td><button class="star ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button><a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     mx.cols.map(c => {
       const x = r.cells[c.code];
       if(!x) return `<td class="na"></td>`;
-      if(x.na) return `<td class="na">–</td>`;
-      return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(money(x.local, c.currency))}">${priceLink(r.slug, c.code, eur(x.eur), x.low, c.currency)}${pctTag(x, c.currency)}</td>`;
+      if(x.na) return `<td class="na" ${x.nolang ? `title="Hier gibt es keine deutsche Fassung"` : ""}>${x.nolang ? "kein DE" : "–"}</td>`;
+      return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(money(x.local, c.currency))}">${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}</td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
 }
 
-/* ---------- Einstellungen ---------- */
+/* ---------- Einstellungen: jede Änderung wird sofort gespeichert ---------- */
+function cardInfo(text){
+  let n = 0, out = 0;
+  for(const line of (text || "").split(/[\n;]+/)){
+    const t = line.trim();
+    if(!t) continue;
+    const off = /^(?:[x#!\-]\s+|\(aus\))/i.test(t);
+    const body = t.replace(/^(?:[x#!\-]\s+|\(aus\)\s*)/i, "").replace(/https?:\/\/\S+/g, "").replace(/\s*=\s*/g, "=");
+    const parts = (t.includes("|") || /https?:/i.test(t)) ? [body.split("|")[0]] : body.split(/\s+/);
+    for(const p of parts) if(/\d/.test(p)){ n++; if(off) out++; }
+  }
+  return n ? `${n} ${n === 1 ? "Karte" : "Karten"} erkannt${out ? `, ${out} nicht vorrätig` : ""}` : "keine Karten eingetragen";
+}
 function viewSettings(){
-  const s = S.state.settings, st = S.state.status;
+  const s = S.state.settings, st = S.state.status, lv = S.state.levels;
+  const sel = (v, cur, l) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${l}</option>`;
   let h = `<form class="set" id="setForm"><div class="fields">
     <label class="f" style="grid-column:1/-1">DekuDeals-Wishlist-Link<input name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label>
     <label class="f">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
-      S.state.countries.map(c => `<option value="${c.code}" ${s.current_country === c.code ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
+      S.state.countries.map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label>
     <label class="f">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label>
     <label class="f">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label>
-    <label class="f">Länderwechsel lohnt ab Ersparnis (€)<input name="min_saving_eur" type="number" step="0.5" min="0" value="${s.min_saving_eur}"></label>
     <label class="f">Abgleich alle … Stunden<input name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label>
+    <label class="f">Wechsel lohnt ab Ersparnis, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label>
+    <label class="f">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label>
+    <label class="f">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label>
+    <label class="f">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label>
     </div>
-    <p class="hint">Guthabenkarten: Werte in Landeswährung, durch Leerzeichen getrennt. Mit „=“ hängst du deinen Kaufpreis in Euro an, zum Beispiel <code>1000 3000 5000=29,50</code>. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag.</p>
-    <div class="scroll"><table><thead><tr><th>Land</th><th>Aktiv</th><th>Bezahlen</th><th>Guthabenkarten</th><th>Guthaben</th><th>Rest blockiert Wechsel</th></tr></thead><tbody>`;
+    <p class="hint">Änderungen werden sofort gespeichert.<span class="saved" id="saved"></span></p>
+    <h3 class="sec">Länder</h3>
+    <p class="hint">Das Preisniveau vergleicht deine Wishlist mit Deutschland, auch für abgeschaltete Länder. Neu eingeschaltete Länder brauchen einen Abgleich.</p>
+    <div class="scroll"><table><thead><tr><th>Land</th><th>Aktiv</th><th>Wechsel</th><th>Bezahlen</th><th>Steuer %</th><th>Guthaben</th><th>Rest blockiert</th><th>Preisniveau</th></tr></thead><tbody>`;
   h += S.state.countries.map(c => {
-    const x = s.countries[c.code], ref = c.code === "DE";
+    const x = s.countries[c.code], ref = c.code === "DE", l = lv[c.code];
+    const level = ref ? "Basis" : !l ? "–" : `<span class="${l.level < 0 ? "lvl-neg" : "lvl-pos"}" title="gemessen an ${l.titles} gemeinsamen Titeln">${l.level > 0 ? "+" : ""}${l.level} %</span> <small class="hint">${l.cheaper} günstiger, ${l.sale} im Angebot</small>`;
     return `<tr data-code="${c.code}"><td>${esc(c.name)}<span class="code">${c.code}</span></td>
       <td><input type="checkbox" data-k="enabled" ${x.enabled ? "checked" : ""} ${ref ? "disabled" : ""}></td>
-      <td>${ref ? "" : `<select data-k="pay"><option value="card" ${x.pay==="card"?"selected":""}>Karte</option><option value="giftcard" ${x.pay==="giftcard"?"selected":""}>Guthabenkarte</option></select>`}</td>
-      <td class="cards">${ref ? "" : `<input type="text" data-k="cards" value="${esc(x.cards)}" placeholder="z. B. 1000 3000 5000">`}</td>
+      <td>${ref ? "" : `<select data-k="tier">${sel(1, x.tier, "leicht")}${sel(2, x.tier, "mittel")}${sel(3, x.tier, "schwer")}</select>`}</td>
+      <td>${ref ? "" : `<select data-k="pay">${sel("card", x.pay, "Karte")}${sel("giftcard", x.pay, "Guthabenkarte")}${sel("auto", x.pay, "das Günstigere")}</select>`}</td>
+      <td>${ref ? "" : `<input class="sm" type="number" data-k="tax_pct" step="0.5" min="0" max="50" value="${x.tax_pct || 0}">`}</td>
       <td>${ref ? "" : `<input type="number" data-k="balance" step="0.01" min="0" value="${x.balance || 0}">`}</td>
-      <td>${ref ? "" : `<input type="checkbox" data-k="rest_blocks" ${x.rest_blocks ? "checked" : ""}>`}</td></tr>`;
+      <td>${ref ? "" : `<input type="checkbox" data-k="rest_blocks" ${x.rest_blocks ? "checked" : ""}>`}</td>
+      <td style="white-space:nowrap">${level}</td></tr>`;
   }).join("");
-  h += `</tbody></table></div><div><button class="primary" type="submit">Speichern</button></div></form>
-    <h3 style="margin:22px 0 8px;font-size:14px">Letzter Abgleich</h3>
-    <p class="hint" style="margin-bottom:8px">Wechselkurse vom ${esc(S.state.fx_updated || "–")} ·
+  h += `</tbody></table></div>
+    <h3 class="sec">Guthabenkarten</h3>
+    <p class="hint">Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag.</p>
+    <div class="cardsbox">`;
+  h += S.state.countries.filter(c => c.code !== "DE" && (s.countries[c.code].enabled || s.countries[c.code].cards)).map(c => {
+    const x = s.countries[c.code];
+    const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000;
+    return `<label>${esc(c.name)}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>
+      <small><span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</small></label>`;
+  }).join("");
+  h += `</div></form>
+    <h3 class="sec">Sicherung</h3>
+    <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise und Körbe. Preise und Verlauf holt das Tool selbst neu.</p>
+    <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
+      <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p>
+    <h3 class="sec">Letzter Abgleich</h3>
+    <p class="hint" style="margin-bottom:8px">Wechselkurse vom ${esc(S.state.fx_updated || "–")}, sie werden bei jedem Abgleich aktualisiert ·
       <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
     <pre class="log" id="log">${esc((st.log || []).join("\n") || "Noch kein Protokoll.")}</pre>`;
   return h;
 }
-async function saveSettings(form){
-  const body = {countries:{}};
-  for(const k of ["wishlist_url","current_country","card_fee_pct","gift_markup_pct","min_saving_eur","refresh_hours"])
+function settingsBody(form){
+  const body = {countries:{}, tier_min_saving:{}};
+  for(const k of ["wishlist_url","current_country","card_fee_pct","gift_markup_pct","refresh_hours","lang_rule"])
     body[k] = form.elements[k].value;
+  for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;
   form.querySelectorAll("tr[data-code]").forEach(tr => {
     const c = {};
-    tr.querySelectorAll("[data-k]").forEach(el => {
-      c[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value;
-    });
+    tr.querySelectorAll("[data-k]").forEach(el => { c[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value; });
     body.countries[tr.dataset.code] = c;
   });
+  form.querySelectorAll("textarea[data-cards]").forEach(el => {
+    (body.countries[el.dataset.cards] = body.countries[el.dataset.cards] || {}).cards = el.value;
+  });
+  return body;
+}
+async function saveSettings(form, rerender){
   const active = () => JSON.stringify(Object.entries(S.state.settings.countries).filter(e => e[1].enabled).map(e => e[0]));
   const before = active();
-  await api("/api/settings", body);
-  await refresh();
-  toast(before === active() ? "Gespeichert" : "Gespeichert. Für neue Länder bitte aktualisieren.");
+  await api("/api/settings", settingsBody(form));
+  const fresh = await api("/api/state");
+  S.state = fresh; S.ui = fresh.ui;
+  S.plans = (await api("/api/plans", planBody())).plans;
+  if(rerender || before !== active()) render(); else renderHead();
+  const el = $("saved");
+  if(el){ el.textContent = before !== active() ? "Gespeichert. Für neue Länder bitte aktualisieren." : "Gespeichert ✓"; setTimeout(() => { if($("saved")) $("saved").textContent = ""; }, 3000); }
 }
 
 /* ---------- Ereignisse ---------- */
-function ov(code){ return S.overrides[code] || (S.overrides[code] = {add:[], remove:[]}); }
+function ov(code){ return S.ui.overrides[code] || (S.ui.overrides[code] = {add:[], remove:[]}); }
 function addTo(code, slugs){
-  if(S.basket){ for(const s of slugs) if(!S.basket.includes(s)) S.basket.push(s); return; }
+  if(S.ui.basket){ for(const s of slugs) if(!S.ui.basket.includes(s)) S.ui.basket.push(s); return; }
   const o = ov(code);
   for(const s of slugs){
     o.remove = o.remove.filter(x => x !== s);
@@ -561,7 +787,7 @@ function addTo(code, slugs){
   }
 }
 function dropFrom(code, s){
-  if(S.basket){ S.basket = S.basket.filter(x => x !== s); return; }
+  if(S.ui.basket){ S.ui.basket = S.ui.basket.filter(x => x !== s); return; }
   const o = ov(code);
   o.add = o.add.filter(x => x !== s);
   if(!o.remove.includes(s)) o.remove.push(s);
@@ -571,52 +797,69 @@ document.addEventListener("click", async e => {
   if(!el) return;
   const a = el.dataset.act, d = el.dataset;
   try{
-    if(a === "tab"){ S.tab = d.tab; render(); }
-    else if(a === "sync"){ await api("/api/sync", {}); S.state.status.running = true; S.state.status.step = "Abgleich startet"; renderHead(); watch(); }
-    else if(a === "dense"){ S.dense = d.v === "1"; saveLocal(); render(); }
+    if(a === "tab"){ S.tab = d.tab; render(); window.scrollTo(0, 0); }
+    else if(a === "showlog"){ S.tab = "settings"; render(); const l = $("log"); if(l) l.scrollIntoView({block:"center"}); }
+    else if(a === "sync"){ await api("/api/sync", {}); S.state.status.running = true; S.state.status.ok = null; S.state.status.step = "Abgleich startet"; render(); watch(); }
+    else if(a === "dense"){ S.ui.dense = d.v === "1"; saveUi(); render(); }
+    else if(a === "add"){ addTo(d.c, d.s.split(",")); await replan(); }
+    else if(a === "trim"){ const name = rowOf(d.s).title; await change(`${name} entfernt`, () => dropFrom(d.c, d.s)); }
+    else if(a === "reset"){ await change("Auswahl zurückgesetzt", () => { delete S.ui.overrides[d.c]; }); }
+    else if(a === "hide"){ await change(`${country(d.c).name} ausgeblendet`, () => { if(!S.ui.hidden.includes(d.c)) S.ui.hidden.push(d.c); }); }
+    else if(a === "unhide"){ S.ui.hidden = S.ui.hidden.filter(c => c !== d.c); await replan(); }
+    else if(a === "share"){
+      const slugs = S.plans.find(p => p.code === d.c).items.map(i => i.slug);
+      await change("Korb gilt jetzt für alle Länder", () => { S.ui.basket = slugs; });
+      window.scrollTo(0, 0);
+    }
+    else if(a === "unshare"){ await change("Gemeinsamer Korb aufgelöst", () => { S.ui.basket = null; }); }
+    else if(a === "bdrop"){ const name = rowOf(d.s).title; await change(`${name} entfernt`, () => dropFrom(null, d.s)); }
+    else if(a === "star"){
+      const b = S.ui.basket || [];
+      S.ui.basket = b.includes(d.s) ? b.filter(x => x !== d.s) : b.concat(d.s);
+      await replan();
+    }
+    else if(a === "pickfile"){ $("impFile").click(); }
     else if(a === "diag"){
       $("log").textContent = "Teste DekuDeals, Nintendo und Wechselkurse …";
       const r = await api("/api/diag");
       $("log").textContent = r.lines.join("\n");
-    }
-    else if(a === "add"){ addTo(d.c, d.s.split(",")); await replan(); }
-    else if(a === "trim"){ dropFrom(d.c, d.s); await replan(); }
-    else if(a === "reset"){ delete S.overrides[d.c]; await replan(); }
-    else if(a === "share"){
-      S.basket = S.plans.find(p => p.code === d.c).items.map(i => i.slug);
-      await replan(); window.scrollTo(0, 0);
-    }
-    else if(a === "unshare"){ S.basket = null; await replan(); }
-    else if(a === "bdrop"){ dropFrom(null, d.s); await replan(); }
-    else if(a === "star"){
-      const b = S.basket || [];
-      S.basket = b.includes(d.s) ? b.filter(x => x !== d.s) : b.concat(d.s);
-      await replan();
     }
   }catch(err){ toast("Fehler: " + err.message); }
 });
 document.addEventListener("change", async e => {
   const el = e.target, a = el.dataset.act;
   try{
-    if(a === "drop"){ dropFrom(el.dataset.c, el.dataset.s); await replan(); }
+    if(el.id === "impFile" && el.files[0]){
+      const data = JSON.parse(await el.files[0].text());
+      await api("/api/import", data);
+      await refresh();
+      toast("Sicherung eingelesen");
+    }
+    else if(el.closest("#setForm")){ await saveSettings($("setForm"), !!el.dataset.cards || el.dataset.k === "pay" || el.dataset.k === "tax_pct"); }
+    else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
+    else if(a === "sort"){ S.ui.sort = el.value; saveUi(); render(); }
     else if(a === "onlysale"){ S.onlySale = el.checked; render(); }
+    else if(a === "ronly"){ S.rOnly = el.checked; render(); }
+    else if(a === "target"){
+      const v = parseFloat(el.value);
+      if(v > 0) S.ui.targets[el.dataset.s] = v; else delete S.ui.targets[el.dataset.s];
+      await saveUi();
+      await refresh();
+    }
   }catch(err){ toast("Fehler: " + err.message); }
 });
 document.addEventListener("input", e => {
-  if(e.target.id !== "q") return;
-  S.filter = e.target.value;
-  const pos = e.target.selectionStart;
+  const el = e.target;
+  if(el.dataset.cards){ const i = document.querySelector(`[data-info="${el.dataset.cards}"]`); if(i) i.textContent = cardInfo(el.value); return; }
+  if(el.id !== "q" && el.id !== "rq") return;
+  if(el.id === "q") S.filter = el.value; else S.rq = el.value;
+  const pos = el.selectionStart, id = el.id;
   render();
-  const q = $("q"); q.focus(); q.setSelectionRange(pos, pos);
+  const q = $(id); q.focus(); q.setSelectionRange(pos, pos);
 });
-document.addEventListener("submit", e => {
-  if(e.target.id !== "setForm") return;
-  e.preventDefault();
-  saveSettings(e.target).catch(err => toast("Fehler: " + err.message));
-});
+document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });
 
-loadLocal();
 refresh().catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });
 </script>
 </body>
