@@ -71,18 +71,48 @@ class SourcesTest(unittest.TestCase):
         self.assertEqual(len(calls), 3)
         self.assertIn("/wishlist/abc123xyz?page=1", calls[0])
 
-    def test_tolerant_links(self):
-        page = ("<a href='/items/one-game'>x</a> <a href=/items/two-game>y</a>"
-                '<div data-url="https:\\/\\/www.dekudeals.com\\/items\\/three-game"></div>'
+    def test_wishlist_links(self):
+        page = ("<a class='x' href='/items/one-game'>x</a> <a href=/items/two-game>y</a>"
                 '<a href="https://www.dekudeals.com/items/four-game?x=1">z</a>'
+                '<a href="/items/one-game#prices">nochmal</a>'
+                '<form action="/items/98765/wishlist"></form>'          # kein Verweis
+                '<a href="/items/98765/add_to_wishlist">+</a>'          # Unterpfad
+                '<div data-path="/items/data-only"></div>'
                 '<a href="/collections/items/not-this">n</a>')
-        self.assertEqual(sources.parse_wishlist_page(page),
-                         ["one-game", "two-game", "three-game", "four-game"])
+        self.assertEqual(sources.parse_wishlist_page(page), ["one-game", "two-game", "four-game"])
+        # Seite ohne erkennbare Verweise: lockere Suche als Ersatz
+        self.assertEqual(sources.parse_wishlist_page('<div data-url="https:\\/\\/www.dekudeals.com\\/items\\/three-game"></div>'),
+                         ["three-game"])
         item = ("<title>Spiel | Deku Deals</title><h4>DLC for <a class=x href='/items/base-game'>"
                 "Base Game</a></h4><a href='https://ec.nintendo.com/JP/ja/titles/70010000033130'>e</a>")
         info = sources.parse_item_page(item)
         self.assertEqual((info["parent"], info["parent_title"], info["nsuids"]),
                          ("base-game", "Base Game", ["70010000033130"]))
+
+    def test_low_prefers_digital(self):
+        both = ("<h3>Price history</h3><table><tr><td>All time low</td></tr>"
+                "<tr><td>Physical</td><td>€27,19</td><td>(-55%)</td></tr>"
+                "<tr><td>Digital</td><td>€39,99</td><td>(-33%)</td></tr></table>"
+                "<div>Time range 6m 1y 2y All</div><div>Format All Digital Physical</div>")
+        self.assertEqual(sources.parse_low(both), 39.99)
+        us = "All time low Digital: $6.24 (-75%) Physical: $17.49 (-50%) Time range"
+        self.assertEqual(sources.parse_low(us), 6.24)
+        self.assertIsNone(sources.parse_low("All time low <b>Physical</b> €27,19 (-55%) Time range"))
+        self.assertEqual(sources.parse_low("All time low | ¥700 | (-75%) Time range 6m"), 700.0)
+        self.assertIsNone(sources.parse_low("<p>nichts</p>"))
+
+    def test_alias_merge(self):
+        data = {"items": {
+            "hades": {"title": "Hades", "active": True, "order": 0, "ids": {"EU": ["1"], "AM": ["2"]}},
+            "12345": {"title": "Hades", "active": True, "order": 1, "ids": {"AM": ["2"], "EU": ["1"]}},
+            "other": {"title": "Other", "active": True, "order": 2, "ids": {"EU": ["3"]}},
+            "no-id-a": {"title": "A", "active": True, "order": 3, "ids": {"EU": []}},
+            "no-id-b": {"title": "B", "active": True, "order": 4, "ids": {}},
+        }}
+        self.assertEqual(sync.merge_aliases(data), 1)
+        self.assertFalse(data["items"]["12345"]["active"])
+        self.assertEqual(data["items"]["12345"]["alias_of"], "hades")
+        self.assertTrue(all(data["items"][s]["active"] for s in ("hades", "other", "no-id-a", "no-id-b")))
 
     def test_user_agent_fallback_and_diagnosis(self):
         sources._deku_ua = None

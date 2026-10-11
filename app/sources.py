@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.4"
+VERSION = "0.4.1"
 
 # Kennungen, mit denen das Tool anfragt. Zuerst die ehrliche eigene, sonst eine
 # gewöhnliche Browser-Kennung. Bot-Sperren werden nicht umgangen.
@@ -88,8 +88,14 @@ def fetch(url, timeout=25, ua=None):
 # ---------------------------------------------------------------- DekuDeals
 
 _WISHLIST_RE = re.compile(r"dekudeals\.com/wishlist/([A-Za-z0-9]+)")
+# Titel-Links: nur echte Verweise (<a href>), deren Pfad nach dem Kürzel endet.
+# So zählen Unterpfade wie /items/123/add nicht als eigener Titel.
 _ITEM_LINK_RE = re.compile(
-    r"""(?:(?<=["'=(\s>])|(?<=dekudeals\.com))/items/([A-Za-z0-9][A-Za-z0-9_\-]*)""")
+    r"""<a\b[^>]*?\bhref\s*=\s*["']?(?:https?://(?:www\.)?dekudeals\.com)?"""
+    r"""/items/([A-Za-z0-9][A-Za-z0-9_\-]*)(?=["'?#\s>])""", re.I)
+# Ersatz, falls die Seite ihre Verweise anders schreibt
+_ITEM_LOOSE_RE = re.compile(
+    r"""(?:(?<=["'=(\s>])|(?<=dekudeals\.com))/items/([A-Za-z0-9][A-Za-z0-9_\-]*)(?=["'?#\s>)]|$)""")
 _URL_RE = re.compile(r"""https?://[^\s"'<>]+""")
 _NSUID_RE = re.compile(r"(?<!\d)(7\d{13})(?!\d)")
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
@@ -146,7 +152,7 @@ def deku_get(url, ok, fetch=fetch):
     raise last
 
 
-_LOW_RE = re.compile(r"All[\s\-]*time low(.{0,400})", re.S | re.I)
+_LOW_RE = re.compile(r"All[\s\-]*time low(.{0,1500})", re.S | re.I)
 _TAG_RE = re.compile(r"<[^>]+>")
 _AMOUNT_RE = re.compile(
     r"(?<![\d.,])(?:\d{1,3}(?:[.,\u00a0\u202f ]\d{3})+|\d+)(?:[.,]\d{1,2})?(?!\d)")
@@ -165,6 +171,25 @@ def parse_amount(text):
     return float(re.sub(r"[.,]", "", raw))
 
 
+def parse_low(page_html):
+    """Digitaler Tiefstpreis einer Artikelseite.
+
+    Wo DekuDeals auch Händler führt, stehen zwei Werte auf der Seite
+    (Physical und Digital). Für den eShop-Vergleich zählt nur der digitale.
+    """
+    m = _LOW_RE.search(page_html or "")
+    if not m:
+        return None
+    text = html.unescape(_TAG_RE.sub(" ", m.group(1)))
+    text = re.split(r"Time range", text, maxsplit=1, flags=re.I)[0]
+    digital = re.search(r"digital", text, re.I)
+    if digital:
+        return parse_amount(text[digital.end():digital.end() + 60])
+    if re.search(r"physical", text, re.I):
+        return None                       # nur ein Händler-Tiefstpreis bekannt
+    return parse_amount(text)
+
+
 def wishlist_id(url_or_id):
     m = _WISHLIST_RE.search(url_or_id or "")
     if m:
@@ -177,7 +202,8 @@ def wishlist_id(url_or_id):
 def parse_wishlist_page(page_html):
     """Slugs der Titel auf einer Wishlist-Seite, in Reihenfolge, ohne Dubletten."""
     seen, out = set(), []
-    for slug in _ITEM_LINK_RE.findall(_norm(page_html)):
+    text = _norm(page_html)
+    for slug in _ITEM_LINK_RE.findall(text) or _ITEM_LOOSE_RE.findall(text):
         if slug not in seen:
             seen.add(slug)
             out.append(slug)
@@ -225,10 +251,7 @@ def parse_item_page(page_html):
         for n in _NSUID_RE.findall(href):
             if n not in nsuids:
                 nsuids.append(n)
-    low = None
-    m = _LOW_RE.search(page_html)
-    if m:
-        low = parse_amount(html.unescape(_TAG_RE.sub(" ", m.group(1))))
+    low = parse_low(page_html)
     return {"title": title, "parent": parent, "parent_title": parent_title,
             "nsuids": nsuids, "low": low}
 

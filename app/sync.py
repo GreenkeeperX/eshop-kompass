@@ -11,6 +11,7 @@ DEKU_PAUSE = 1.0                      # Sekunden zwischen DekuDeals-Abrufen
 NINTENDO_PAUSE = 0.3
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
 LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu prüfen
+LOWS_VERSION = 2                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None}
@@ -55,6 +56,7 @@ def sync_wishlist(data, settings, fetch, sleep):
         it = items.setdefault(slug, {"title": slug, "parent": None, "ids": {},
                                      "ids_checked": {}})
         it["active"] = True
+        it.pop("alias_of", None)
         it["order"] = pos
     _log(f"Wishlist: {len(slugs)} Titel")
     return slugs
@@ -110,7 +112,38 @@ def sync_ids(data, settings, fetch, sleep, now=None):
         status["done"] += 1
         if status["done"] % 10 == 0:
             store.save_data(data)
+    merge_aliases(data)
+    missing = [it["title"] for it in data["items"].values()
+               if it.get("active") and not any(it["ids"].values())]
+    if missing:
+        _log(f"Ohne eShop-ID ({len(missing)}): " + ", ".join(missing[:12])
+             + (" …" if len(missing) > 12 else ""))
     store.save_data(data)
+
+
+def merge_aliases(data):
+    """Führt Einträge zusammen, die auf denselben Titel zeigen.
+
+    DekuDeals kennt für manche Titel mehrere Adressen. Haben zwei aktive
+    Einträge dieselben eShop-IDs, bleibt der mit der früheren Position.
+    """
+    seen, dropped = {}, 0
+    active = sorted((s for s, it in data["items"].items() if it.get("active")),
+                    key=lambda s: data["items"][s].get("order", 0))
+    for slug in active:
+        ids = data["items"][slug]["ids"]
+        key = tuple(sorted((fam, tuple(sorted(v))) for fam, v in ids.items() if v))
+        if not key:
+            continue
+        if key in seen:
+            data["items"][slug]["active"] = False
+            data["items"][slug]["alias_of"] = seen[key]
+            dropped += 1
+        else:
+            seen[key] = slug
+    if dropped:
+        _log(f"{dropped} doppelte Einträge zusammengeführt")
+    return dropped
 
 
 def _store_low(data, settings, code, slug, low, now):
@@ -249,6 +282,8 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         data = store.load_data()
         if not settings["wishlist_url"]:
             raise RuntimeError("Kein Wishlist-Link in den Einstellungen")
+        if not data.get("last_sync") and not data.get("lows"):
+            data["lows_v"] = LOWS_VERSION      # frische Installation, nichts neu zu laden
         _step("Wishlist lesen")
         sync_wishlist(data, settings, fetch, sleep)
         store.save_data(data)
@@ -264,6 +299,14 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         store.save_history(history)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
+        if data.get("lows_v") != LOWS_VERSION:
+            # Frühere Versionen lasen teils den Händler- statt den digitalen
+            # Tiefstpreis. Von DekuDeals übernommene Werte neu laden.
+            for table in data.get("lows", {}).values():
+                for slug in [s for s, e in table.items() if e.get("src") == "deku"]:
+                    del table[slug]
+            data["lows_v"] = LOWS_VERSION
+            _log("Tiefstpreise werden neu geladen (nur digitale Preise)")
         sync_lows(data, settings, fetch, sleep)
         status["ok"] = True
         _step("Fertig")
