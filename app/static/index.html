@@ -218,6 +218,22 @@ h3.sec{margin:22px 0 8px;font-size:14px}
 .set td input[type=number].sm{width:64px}
 .set td select[data-k=tier]{width:92px}
 .set td select[data-k=pay]{width:156px}
+dialog.vl{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:16px 18px;width:min(920px,calc(100vw - 32px));max-height:calc(100vh - 40px)}
+dialog.vl::backdrop{background:rgba(0,0,0,.35)}
+dialog.vl header{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+dialog.vl h2{margin:0;font-size:18px;flex:1}
+.vl svg{width:100%;height:auto;display:block;margin:8px 0}
+.vl svg text{fill:var(--muted);font-size:11px}
+.vl svg .grid{stroke:var(--line);stroke-width:1}
+.vl svg .ln{fill:none;stroke-width:2}
+.vl svg .ref{stroke-width:1.5;stroke-dasharray:5 4}
+.vl .lg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.vl .lg button{font-size:12px;padding:2px 8px;border-radius:999px}
+.vl .lg button.off{opacity:.45}
+.vl .lg i{display:inline-block;width:10px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.vl table td:first-child,.vl table th:first-child{text-align:left}
+.vl td small{display:block;color:var(--muted);font-size:11px}
+button.mini{color:var(--muted);font-size:10px;margin-left:5px;border:1px solid var(--line);border-radius:3px;padding:0 3px;background:none;line-height:1.3}
 </style>
 </head>
 <body>
@@ -230,6 +246,7 @@ h3.sec{margin:22px 0 8px;font-size:14px}
   <nav id="nav"></nav>
   <main id="main"></main>
 </div>
+<dialog class="vl" id="verlauf"></dialog>
 <script>
 "use strict";
 const S = {state:null, plans:[], ui:null, tab:"radar", filter:"", onlySale:false, rq:"", rOnly:false,
@@ -565,7 +582,7 @@ function viewRadar(){
       champ = `<td title="${esc(tip)}">${ce.est || (r.easy && r.easy.est) ? APPROX : ""}${main}<small>${second}</small></td>`;
     }
     const hit = r.target !== null && r.easy && r.easy.eur <= r.target + 0.005;
-    return `<tr class="v-${r.verdict}"><td>${r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : ""}<a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen">${esc(r.title)}</a><a class="mini" href="${epSearch(r.title)}" target="_blank" rel="noopener" title="Bei eShop-Prices suchen">eP</a>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+    return `<tr class="v-${r.verdict}"><td>${r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : ""}<a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen">${esc(r.title)}</a><a class="mini" href="${epSearch(r.title)}" target="_blank" rel="noopener" title="Bei eShop-Prices suchen">eP</a><button class="mini" data-act="verlauf" data-s="${esc(r.slug)}" title="Preisverlauf aus der eigenen Aufzeichnung">Verlauf</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
       ${bestCell(r.easy, r.slug, false)}${bestCell(r.hard, r.slug, true)}${champ}
       <td>${r.de === null ? `<span class="na">–</span>` : eur(r.de)}</td>
       <td><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="–">${hit ? ` <span class="ok">✓</span>` : ""}</td>
@@ -808,7 +825,7 @@ function viewMatrix(){
     <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>${LEGEND}
     <span class="hint">Europreise enthalten Steuer, Kurs und deinen Zahlweg, der Tooltip zeigt die Rechnung. ★ legt den Titel in den gemeinsamen Korb.</span></div>
     <div class="matrix scroll"><table><thead><tr><th>Titel</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
-  h += rows.map(r => `<tr><td><button class="star ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button><a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
+  h += rows.map(r => `<tr><td><button class="star ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button><a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener">${esc(r.title)}</a><button class="mini" data-act="verlauf" data-s="${esc(r.slug)}" title="Preisverlauf aus der eigenen Aufzeichnung">Verlauf</button>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     mx.cols.map(c => {
       const x = r.cells[c.code];
       if(!x) return `<td class="na"></td>`;
@@ -816,6 +833,70 @@ function viewMatrix(){
       return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(compose(c.code, x))}">${ax(x)}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
+}
+
+/* ---------- Preisverlauf aus der eigenen Aufzeichnung ---------- */
+const LINE_COLORS = ["#0d6b4f", "#c2410c", "#2563eb", "#9333ea", "#b45309", "#0891b2", "#be185d", "#4d7c0f", "#64748b", "#a16207", "#7c3aed"];
+const dmy = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit", year:"numeric"}); };
+const dm = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"}); };
+async function openVerlauf(slug){
+  const v = await api("/api/verlauf?slug=" + encodeURIComponent(slug));
+  // Sichtbar: Deutschland und jedes Land, in dem es ein Angebot gab
+  S.vl = {data: v, show: new Set(v.countries.filter(c => c.code === "DE" || c.sale_count).map(c => c.code))};
+  drawVerlauf();
+  const d = $("verlauf");
+  if(!d.open) d.showModal();
+}
+function drawVerlauf(){
+  const v = S.vl.data, d = $("verlauf");
+  const color = code => code === "DE" ? "var(--ink)" : LINE_COLORS[v.countries.findIndex(c => c.code === code) % LINE_COLORS.length];
+  let h = `<header><h2>${esc(v.title)}</h2><button data-act="vlclose">Schließen</button></header>`;
+  if(!v.countries.length){
+    d.innerHTML = h + `<p class="hint">Noch keine Aufzeichnung für diesen Titel. Jeder Abgleich hält fest, wenn sich ein Preis ändert.</p>`;
+    return;
+  }
+  const days = Math.max(0, (new Date(v.now) - new Date(v.since)) / 864e5);
+  h += `<p class="hint">Aufgezeichnet seit ${dmy(v.since)} (${Math.round(days)} ${Math.round(days) === 1 ? "Tag" : "Tage"}). Europreise zum heutigen Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar sind. Die Aufzeichnung kennt nur Zeiten, in denen das Tool lief.${days < 30 ? " Noch wenig Daten: Die Kurven werden mit jedem Abgleich aussagekräftiger." : ""}</p>`;
+  h += `<div class="lg">` + v.countries.map(c => `<button class="${S.vl.show.has(c.code) ? "" : "off"}" data-act="vltoggle" data-c="${c.code}" title="ein- oder ausblenden"><i style="background:${color(c.code)}"></i>${esc(c.name)}</button>`).join("") + `</div>`;
+  h += chartSvg(v, color);
+  h += `<div class="scroll"><table><thead><tr><th>Land</th><th>jetzt</th><th>normal</th><th title="Niedrigster aufgezeichneter Preis">tiefster</th><th title="Wie oft der Titel unter dem heutigen Normalpreis lag">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der aufgezeichneten Zeit im Angebot">im Angebot</th><th>zuletzt</th></tr></thead><tbody>` +
+    v.countries.map(c => {
+      const a = c.est ? APPROX : "", last = c.sales[c.sales.length - 1];
+      const lastTxt = !last ? "–" : last.end ? `${dm(last.start)}–${dm(last.end)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>` : `läuft seit ${dm(last.start)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>`;
+      return `<tr><td>${esc(c.name)}</td><td>${c.now_eur === null ? "–" : a + eur(c.now_eur)}</td><td>${a}${eur(c.regular_eur)}</td>
+        <td>${a}${eur(c.low_eur)}<small>${c.currency === "EUR" ? "" : money(c.low, c.currency) + " · "}${dm(c.low_at)}</small></td>
+        <td>${c.sale_count}</td><td>${c.typical_days === null ? "–" : String(c.typical_days).replace(".", ",") + " T."}</td><td>${c.on_sale_pct} %</td><td>${lastTxt}</td></tr>`;
+    }).join("") + `</tbody></table></div>`;
+  d.innerHTML = h;
+}
+function chartSvg(v, color){
+  // Breite nach Bildschirm, damit die Schrift auch auf dem Handy lesbar bleibt
+  const W = Math.max(320, Math.min(860, window.innerWidth - 70)), H = W < 600 ? 220 : 260, L = 44, R = 10, T = 12, B = 26;
+  const shown = v.countries.filter(c => S.vl.show.has(c.code));
+  const t0 = +new Date(v.since), t1 = Math.max(+new Date(v.now), t0 + 864e5);
+  const refs = [];
+  if(v.champ_easy) refs.push({y: v.champ_easy.eur, label: "Bestpreis leicht", col: "var(--gold)"});
+  if(v.target !== null && v.target !== undefined) refs.push({y: v.target, label: "Ziel", col: "var(--accent)"});
+  const top = Math.max(1, ...shown.map(c => Math.max(c.regular_eur, ...c.points.map(p => p[2]))), ...refs.map(r => r.y)) * 1.08;
+  const x = t => L + (W - L - R) * (t - t0) / (t1 - t0), y = e => T + (H - T - B) * (1 - e / top);
+  let g = "";
+  const step = top > 40 ? 10 : top > 16 ? 5 : top > 6 ? 2 : 1;
+  for(let e = 0; e <= top; e += step) g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(e)}" y2="${y(e)}"/><text x="${L - 6}" y="${y(e) + 4}" text-anchor="end">${e} €</text>`;
+  const ticks = W < 600 ? 3 : 5;
+  for(let i = 0; i <= ticks; i++){
+    const t = t0 + (t1 - t0) * i / ticks;
+    g += `<text x="${x(t)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === ticks ? "end" : "middle"}">${dm(new Date(t).toISOString())}</text>`;
+  }
+  for(const r of refs) g += `<line class="ref" x1="${L}" x2="${W - R}" y1="${y(r.y)}" y2="${y(r.y)}" style="stroke:${r.col}"><title>${esc(r.label)}: ${eur(r.y)}</title></line><text x="${W - R}" y="${y(r.y) - 4}" text-anchor="end" style="fill:${r.col}">${esc(r.label)} ${eur(r.y)}</text>`;
+  for(const c of shown){
+    const pts = c.points, col = color(c.code);
+    let p = `M${x(+new Date(pts[0][0]))},${y(pts[0][2])}`;
+    for(let i = 1; i < pts.length; i++) p += `H${x(+new Date(pts[i][0]))}V${y(pts[i][2])}`;
+    p += `H${x(t1)}`;
+    g += `<path class="ln" d="${p}" style="stroke:${col}"${c.code === "DE" ? ` stroke-dasharray="6 4"` : ""}/>`;
+    g += pts.map(q => `<circle cx="${x(+new Date(q[0]))}" cy="${y(q[2])}" r="3.5" style="fill:${col}"><title>${esc(c.name)} ${dmy(q[0])}: ${c.currency === "EUR" ? "" : money(q[1], c.currency) + ", "}${c.est ? "ca. " : ""}${eur(q[2])}</title></circle>`).join("");
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Preisverlauf in Euro">${g}</svg>`;
 }
 
 /* ---------- Einstellungen: jede Änderung wird sofort gespeichert ---------- */
@@ -939,6 +1020,9 @@ document.addEventListener("click", async e => {
   const a = el.dataset.act, d = el.dataset;
   try{
     if(a === "tab"){ S.tab = d.tab; render(); window.scrollTo(0, 0); }
+    else if(a === "verlauf"){ await openVerlauf(d.s); }
+    else if(a === "vlclose"){ $("verlauf").close(); }
+    else if(a === "vltoggle"){ const sh = S.vl.show; sh.has(d.c) ? sh.delete(d.c) : sh.add(d.c); drawVerlauf(); }
     else if(a === "showlog"){ S.tab = "settings"; render(); const l = $("log"); if(l) l.scrollIntoView({block:"center"}); }
     else if(a === "sync"){ await api("/api/sync", {}); S.state.status.running = true; S.state.status.ok = null; S.state.status.step = "Abgleich startet"; render(); watch(); }
     else if(a === "dense"){ S.ui.dense = d.v === "1"; saveUi(); render(); }
@@ -1007,6 +1091,10 @@ document.addEventListener("input", e => {
   const pos = el.selectionStart, id = el.id;
   render();
   const q = $(id); q.focus(); q.setSelectionRange(pos, pos);
+});
+$("verlauf").addEventListener("click", e => {   // Klick neben das Fenster schließt es
+  const d = e.currentTarget, r = d.getBoundingClientRect();
+  if(e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) d.close();
 });
 document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });
 

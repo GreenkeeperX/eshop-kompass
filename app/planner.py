@@ -945,3 +945,74 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None):
             "ref_total": _r(ref_total), "saving": _r(ref_total - total),
             "include_good": include_good,
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
+
+
+def price_history(data, settings, history, slug, now=None):
+    """Preisverlauf eines Titels aus der eigenen Aufzeichnung, je Land.
+
+    Die Aufzeichnung hält nur Preiswechsel fest (Zeitpunkt, Preis ohne Steuer).
+    Europreise rechnen mit dem heutigen Kurs und Zahlweg, damit Länder und
+    Zeitpunkte vergleichbar bleiben. Ein Angebot ist jede Strecke unter dem
+    heutigen Normalpreis; Lücken, in denen das Tool nicht lief, sieht die
+    Aufzeichnung nicht.
+    """
+    ctx = Context(data, settings, now)
+    now = ctx.now
+    out = {"slug": slug, "title": ctx.title(slug), "now": now.isoformat(timespec="seconds"),
+           "since": None, "countries": []}
+    champ = ctx.champ_easy.get(slug)
+    out["champ_easy"] = None if not champ else {"eur": _r(champ[0]), "code": champ[1], "est": champ[2]}
+    for code, c in ctx.countries.items():
+        series = (history.get(code) or {}).get(slug) or []
+        points = [(t, _parse_dt(t), v) for t, v in series if _parse_dt(t) and v is not None]
+        if not points or c["unit"] is None:
+            continue
+        points.sort(key=lambda p: p[1])
+        o = c["offers"].get(slug)
+        # Normalpreis ohne Steuer: heute bekannt oder der höchste aufgezeichnete
+        regular = o["regular_net"] / 100 if o else max(v for _, _, v in points)
+        gross = 1 + c["tax"] / 100
+
+        def eur(v):
+            return _r(ctx.est(c, round(v * 100 * gross)))
+        sales, run = [], None
+        for i, (t, dt, v) in enumerate(points):
+            if v < regular - 1e-9:
+                if run is None:
+                    run = {"start": t, "end": None, "low": v}
+                run["low"] = min(run["low"], v)
+            elif run is not None:
+                run["end"] = t
+                sales.append(run)
+                run = None
+        if run is not None:
+            sales.append(run)
+        first = points[0][1]
+        span = max((now - first).total_seconds(), 1)
+        on_sale = 0.0
+        for s in sales:
+            end = _parse_dt(s["end"]) if s["end"] else now
+            on_sale += max((end - _parse_dt(s["start"])).total_seconds(), 0)
+        done = [(_parse_dt(s["end"]) - _parse_dt(s["start"])).total_seconds() / 86400
+                for s in sales if s["end"]]
+        low_t, _, low_v = min(points, key=lambda p: (p[2], p[1]))
+        for s in sales:
+            s.update(low_eur=eur(s["low"]), pct=round(100 * (1 - s["low"] / regular)) if regular else 0)
+        out["countries"].append({
+            "code": code, "name": c["meta"]["name"], "currency": c["currency"],
+            "tier": c["tier"], "est": c["estimated"], "regular": _r(regular * gross),
+            "regular_eur": eur(regular),
+            "points": [[t, _r(v * gross), eur(v)] for t, _, v in points],
+            "now_eur": _r(ctx.est(c, o["local"])) if o else None,
+            "low": _r(low_v * gross), "low_eur": eur(low_v), "low_at": low_t,
+            "deku_low_eur": (lambda lv: None if lv is None else eur(lv))(
+                (ctx.lows.get(code, {}).get(slug) or {}).get("low")),
+            "sales": sales, "sale_count": len(sales),
+            "on_sale_pct": round(100 * on_sale / span),
+            "typical_days": round(sorted(done)[len(done) // 2], 1) if done else None,
+            "days": round(span / 86400, 1),
+        })
+        if out["since"] is None or points[0][0] < out["since"]:
+            out["since"] = points[0][0]
+    out["countries"].sort(key=lambda x: (x["code"] != countries.REFERENCE, x["low_eur"]))
+    return out

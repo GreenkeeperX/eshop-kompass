@@ -2,6 +2,7 @@
 import json
 import os
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import countries, planner, sources, store, sync
@@ -73,6 +74,13 @@ class Handler(BaseHTTPRequestHandler):
                 ui = store.load_ui()
                 self._send(200, planner.purchase_plan(store.load_data(), store.load_settings(),
                                                       ui["targets"], include_good=ui["plan_good"]))
+            elif path == "/api/verlauf":
+                q = urllib.parse.parse_qs(self.path.partition("?")[2])
+                slug = (q.get("slug") or [""])[0]
+                out = planner.price_history(store.load_data(), store.load_settings(),
+                                            store.load_history(), slug)
+                out["target"] = store.load_ui()["targets"].get(slug)
+                self._send(200, out)
             elif path == "/api/diag":
                 self._send(200, {"lines": sync.diagnose()})
             elif path == "/api/export":

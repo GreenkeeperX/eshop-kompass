@@ -121,6 +121,15 @@ von der DekuDeals-Artikelseite nach (ein Abruf alle 2,5 Sekunden, Angebote
 zuerst) und führt ihn danach selbst fort, auch dort, wo DekuDeals keinen Wert
 hat. Jeder Preiswechsel landet zusätzlich in `data/history.json`.
 
+"Verlauf" neben jedem Titel (Radar, Preisvergleich) zeigt diese Aufzeichnung
+als Kurve je Land und dazu: Preis jetzt, Normalpreis, tiefster
+aufgezeichneter Preis mit Datum, Zahl der Angebote, typische Dauer, Anteil der
+Zeit im Angebot und das letzte Angebot. Europreise rechnen mit dem heutigen
+Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar bleiben. Ein
+Angebot ist jede Strecke unter dem heutigen Normalpreis. Die Aufzeichnung
+kennt nur Zeiten, in denen das Tool lief; in den ersten Wochen sind die
+Kurven entsprechend kurz.
+
 ## Abrufen
 
 Das Tool fragt immer mit seiner eigenen Kennung an (`eshop-kompass/<Version>`),

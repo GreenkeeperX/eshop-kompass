@@ -673,6 +673,32 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(plan["saving"], 16.96)
         self.assertEqual(plan["count"], 2)
 
+    def test_price_history_from_own_records(self):
+        h = {"BR": {"hades": [["2026-09-01T00:00:00+00:00", 83.99],
+                              ["2026-09-10T00:00:00+00:00", 41.99],
+                              ["2026-09-20T00:00:00+00:00", 83.99],
+                              ["2026-10-01T00:00:00+00:00", 33.59]]},
+             "DE": {"hades": [["2026-09-01T00:00:00+00:00", 24.99]]},
+             "SE": {"hades": [["2026-09-01T00:00:00+00:00", 249]]}}   # abgeschaltet
+        v = planner.price_history(self.data, self.settings, h, "hades", now=NOW)
+        self.assertEqual(v["since"], "2026-09-01T00:00:00+00:00")
+        self.assertEqual([c["code"] for c in v["countries"]], ["DE", "BR"])
+        br = v["countries"][1]
+        # Zwei Angebote: eins abgeschlossen (10 Tage), eins läuft noch
+        self.assertEqual(br["sale_count"], 2)
+        self.assertEqual([s["end"] for s in br["sales"]], ["2026-09-20T00:00:00+00:00", None])
+        self.assertEqual([s["pct"] for s in br["sales"]], [50, 60])
+        self.assertEqual(br["typical_days"], 10.0)
+        self.assertEqual(br["low"], 33.59)
+        self.assertEqual(br["low_eur"], 6.38)    # zum heutigen Kurs mit der 15er-Karte
+        self.assertEqual(br["points"][1][2], 7.98)
+        self.assertEqual(br["on_sale_pct"], round(100 * (10 + 10.7083) / 40.7083))
+        de = v["countries"][0]
+        self.assertEqual((de["sale_count"], de["on_sale_pct"], de["typical_days"]), (0, 0, None))
+        # Ohne Aufzeichnung: leere Liste, kein Fehler
+        self.assertEqual(planner.price_history(self.data, self.settings, {}, "hades", now=NOW)
+                         ["countries"], [])
+
     def test_purchase_plan_keeps_country_above_threshold(self):
         self.settings["tier_min_saving"]["3"] = 15
         plan = planner.purchase_plan(self.data, self.settings, now=NOW)
@@ -778,6 +804,15 @@ class SafetyTest(unittest.TestCase):
             self.assertEqual(post("application/json; charset=utf-8"), 200)
             self.assertEqual(store.load_settings()["wishlist_url"], "x")
             store.save_settings({"wishlist_url": before})
+            # Lesende Schnittstellen antworten mit JSON, auch ohne Aufzeichnung
+            for path in ("/api/kaufplan", "/api/verlauf?slug=gibt-es-nicht"):
+                c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+                c.request("GET", path)
+                r = c.getresponse()
+                body = json.loads(r.read())
+                c.close()
+                self.assertEqual(r.status, 200, path)
+                self.assertIsInstance(body, dict)
         finally:
             srv.shutdown()
             srv.server_close()
