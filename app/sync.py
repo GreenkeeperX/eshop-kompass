@@ -1,0 +1,347 @@
+"""Abgleich: Wishlist -> Titel-IDs je Region -> Preise je Land -> Wechselkurse."""
+import threading
+import time
+import traceback
+from datetime import datetime, timezone
+
+from . import countries, planner, sources, store
+
+ID_RECHECK_SECONDS = 14 * 24 * 3600   # fehlende IDs alle zwei Wochen neu suchen
+DEKU_PAUSE = 1.0                      # Sekunden zwischen DekuDeals-Abrufen
+NINTENDO_PAUSE = 0.3
+LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
+LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu prüfen
+
+status = {"running": False, "step": "", "done": 0, "total": 0,
+          "log": [], "started": None, "finished": None, "ok": None}
+_lock = threading.Lock()
+
+
+def _log(msg):
+    stamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    status["log"].append(f"{stamp} {msg}")
+    del status["log"][:-200]
+
+
+def _step(text, total=0):
+    status.update(step=text, done=0, total=total)
+    _log(text)
+
+
+def needed_families(settings):
+    fams = []
+    for code, c in settings["countries"].items():
+        if c["enabled"]:
+            fam = countries.BY_CODE[code]["family"]
+            if fam not in fams:
+                fams.append(fam)
+    return fams
+
+
+def sync_wishlist(data, settings, fetch, sleep):
+    try:
+        slugs = sources.fetch_wishlist(settings["wishlist_url"], fetch=fetch,
+                                       pause=lambda: sleep(DEKU_PAUSE))
+    except sources.FetchError:
+        for line in sources.attempts:      # was DekuDeals je Kennung geantwortet hat
+            _log("  " + line)
+        raise RuntimeError("Wishlist nicht lesbar, Einzelheiten stehen darüber")
+    if not slugs:
+        raise RuntimeError("Wishlist ist leer")
+    items = data["items"]
+    for it in items.values():
+        it["active"] = False
+    for pos, slug in enumerate(slugs):
+        it = items.setdefault(slug, {"title": slug, "parent": None, "ids": {},
+                                     "ids_checked": {}})
+        it["active"] = True
+        it["order"] = pos
+    _log(f"Wishlist: {len(slugs)} Titel")
+    return slugs
+
+
+def sync_ids(data, settings, fetch, sleep, now=None):
+    """Sucht fehlende Nintendo-IDs je Region über die DekuDeals-Artikelseiten."""
+    now = now or time.time()
+    fams = needed_families(settings)
+    todo = []
+    for slug, it in data["items"].items():
+        if not it.get("active"):
+            continue
+        for fam in fams:
+            if it["ids"].get(fam):
+                continue
+            if now - it["ids_checked"].get(fam, 0) < ID_RECHECK_SECONDS:
+                continue
+            todo.append((slug, fam))
+    _step("Titel-IDs suchen", len(todo))
+    misses = 0
+    for slug, fam in todo:
+        it = data["items"][slug]
+        found, reached = [], False
+        for lookup in countries.FAMILY_LOOKUP[fam]:
+            try:
+                info = sources.fetch_item(slug, lookup, fetch=fetch)
+            except sources.FetchError as e:
+                _log(f"{slug} ({lookup}): {e}")
+                misses += 1
+                if misses >= 6:            # nicht hundertfach gegen eine Sperre anrennen
+                    for line in sources.attempts:
+                        _log("  " + line)
+                    store.save_data(data)
+                    raise RuntimeError("Artikelseiten bei DekuDeals nicht lesbar")
+                sleep(DEKU_PAUSE)
+                continue
+            reached, misses = True, 0
+            if info["title"]:
+                it["title"] = info["title"]
+            if info["parent"]:
+                it["parent"] = info["parent"]
+                if info["parent_title"]:
+                    it["parent_title"] = info["parent_title"]
+            _store_low(data, settings, lookup.upper(), slug, info["low"], now)
+            sleep(DEKU_PAUSE)
+            if info["nsuids"]:
+                found = info["nsuids"]
+                break
+        it["ids"][fam] = found
+        if reached:  # bei Netzfehlern beim nächsten Abgleich erneut versuchen
+            it["ids_checked"][fam] = now
+        status["done"] += 1
+        if status["done"] % 10 == 0:
+            store.save_data(data)
+    store.save_data(data)
+
+
+def _store_low(data, settings, code, slug, low, now):
+    """Merkt sich den Tiefstpreis von DekuDeals für ein aktives Land."""
+    cfg = settings["countries"].get(code)
+    if not cfg or not cfg["enabled"]:
+        return
+    entry = {"checked": now}
+    if low and low > 0:
+        entry.update(low=low, src="deku")
+    data.setdefault("lows", {}).setdefault(code, {})[slug] = entry
+
+
+def _track(data, history, code, table, stamp):
+    """Zeichnet Preiswechsel auf und senkt den Tiefstpreis, wenn er unterboten wird."""
+    now = datetime.now(timezone.utc)
+    lows = data.setdefault("lows", {}).setdefault(code, {})
+    hist = history.setdefault(code, {})
+    for slug, p in table.items():
+        o = planner.offer(p, now)
+        if not o:
+            continue
+        cur, regular = o["local"] / 100, o["regular"] / 100
+        series = hist.setdefault(slug, [])
+        if not series or series[-1][1] != cur:
+            series.append([stamp, cur])
+        e = lows.get(slug)
+        if e and "low" in e:
+            if e["low"] > regular * 1.001:   # unplausibel, z. B. anderes Format
+                del e["low"]
+            elif cur < e["low"] - 1e-9:
+                e.update(low=cur, src="own", since=stamp)
+
+
+def sync_prices(data, settings, fetch, sleep, history=None):
+    enabled = [c for c in countries.ORDER if settings["countries"][c]["enabled"]]
+    _step("Preise abrufen", len(enabled))
+    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    history = {} if history is None else history
+    for code in enabled:
+        fam = countries.BY_CODE[code]["family"]
+        by_nsuid = {}
+        for slug, it in data["items"].items():
+            if it.get("active"):
+                for n in it["ids"].get(fam, []):
+                    by_nsuid[n] = slug
+        if not by_nsuid:
+            status["done"] += 1
+            continue
+        try:
+            res = sources.fetch_prices(code, list(by_nsuid), fetch=fetch,
+                                       lang=countries.BY_CODE[code]["lang"],
+                                       pause=lambda: sleep(NINTENDO_PAUSE))
+        except Exception as e:  # ein Land darf ausfallen, alte Preise bleiben
+            _log(f"{code}: Preisabruf fehlgeschlagen ({e})")
+            status["done"] += 1
+            continue
+        table = {}
+        for nsuid, p in res.items():
+            slug = by_nsuid.get(nsuid)
+            if not slug:
+                continue
+            p = dict(p, nsuid=nsuid, fetched=stamp)
+            cur = table.get(slug)
+            if cur is None or _better(p, cur):
+                table[slug] = p
+        data["prices"][code] = table
+        _track(data, history, code, table, stamp)
+        buyable = sum(1 for p in table.values() if p["status"] == "onsale")
+        _log(f"{code}: {buyable} von {len(table)} Titeln kaufbar")
+        status["done"] += 1
+
+
+def sync_lows(data, settings, fetch, sleep, now=None):
+    """Lädt fehlende Tiefstpreise von DekuDeals nach, Angebote zuerst."""
+    now = now or time.time()
+    lows = data.setdefault("lows", {})
+    todo = []
+    for code in countries.ORDER:
+        if not settings["countries"][code]["enabled"]:
+            continue
+        for slug, p in data["prices"].get(code, {}).items():
+            if p.get("status") != "onsale" or not data["items"].get(slug, {}).get("active"):
+                continue
+            e = lows.get(code, {}).get(slug)
+            if e and ("low" in e or now - e.get("checked", 0) < LOW_RECHECK_SECONDS):
+                continue
+            todo.append((0 if "discount" in p else 1, code, slug))
+    todo.sort()
+    if not todo:
+        return
+    _step("Tiefstpreise nachladen", len(todo))
+    fails = 0
+    for _, code, slug in todo:
+        try:
+            info = sources.fetch_item(slug, code.lower(), fetch=fetch)
+        except sources.FetchError as e:
+            if e.status in (403, 429) or fails >= 4:
+                _log(f"Tiefstpreise unterbrochen ({e}), Rest beim nächsten Abgleich")
+                break
+            fails += 1
+            sleep(LOW_PAUSE)
+            continue
+        low = info["low"]
+        p = data["prices"][code][slug]
+        if low and low > p.get("regular", 0) * 1.001:
+            low = None                       # unplausibel
+        cur = p.get("discount", p.get("regular"))
+        if low and cur is not None and cur < low:
+            low = cur
+        _store_low(data, settings, code, slug, low, now)
+        status["done"] += 1
+        if status["done"] % 20 == 0:
+            store.save_data(data)
+        sleep(LOW_PAUSE)
+    store.save_data(data)
+    known = sum(1 for c in lows.values() for e in c.values() if "low" in e)
+    _log(f"Tiefstpreise bekannt: {known}")
+
+
+def _better(new, cur):
+    """Bei mehreren Versionen eines Titels gewinnt die günstigste kaufbare."""
+    if (new["status"] == "onsale") != (cur["status"] == "onsale"):
+        return new["status"] == "onsale"
+    return new.get("discount", new.get("regular", 9e18)) < \
+        cur.get("discount", cur.get("regular", 9e18))
+
+
+def run_sync(fetch=sources.fetch, sleep=time.sleep):
+    if not _lock.acquire(blocking=False):
+        return False
+    status.update(running=True, ok=None, log=[], finished=None,
+                  started=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    try:
+        settings = store.load_settings()
+        data = store.load_data()
+        if not settings["wishlist_url"]:
+            raise RuntimeError("Kein Wishlist-Link in den Einstellungen")
+        _step("Wishlist lesen")
+        sync_wishlist(data, settings, fetch, sleep)
+        store.save_data(data)
+        sync_ids(data, settings, fetch, sleep)
+        _step("Wechselkurse abrufen")
+        try:
+            rates, updated = sources.fetch_fx(fetch=fetch)
+            data["fx"] = {"rates": rates, "updated": updated}
+        except Exception as e:
+            _log(f"Wechselkurse nicht aktualisiert ({e})")
+        history = store.load_history()
+        sync_prices(data, settings, fetch, sleep, history)
+        store.save_history(history)
+        data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        store.save_data(data)      # ab hier ist die Oberfläche aktuell
+        sync_lows(data, settings, fetch, sleep)
+        status["ok"] = True
+        _step("Fertig")
+    except Exception as e:
+        status["ok"] = False
+        _log(f"Abbruch: {e}")
+        traceback.print_exc()
+    finally:
+        status.update(running=False,
+                      finished=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+        _lock.release()
+    return True
+
+
+def diagnose():
+    """Prüft alle Datenquellen einzeln und beschreibt, was zurückkommt."""
+    settings = store.load_settings()
+    data = store.load_data()
+    lines = [f"eShop-Kompass {sources.VERSION}"]
+
+    def probe(name, url, ua, extra=None):
+        r = sources.request(url, ua, timeout=20)
+        if r["error"]:
+            lines.append(f"{name}: keine Verbindung ({r['error']})")
+            return r
+        info = extra(r["text"]) if extra else f"{len(r['text'])} Zeichen"
+        lines.append(f"{name}: HTTP {r['status']}, Server {r['server'] or '?'}, "
+                     f"Kodierung {r['enc'] or 'keine'}, {info}")
+        return r
+
+    try:
+        wid = sources.wishlist_id(settings["wishlist_url"])
+        for label, ua in sources.UAS:
+            probe(f"Wishlist ({label})", f"https://www.dekudeals.com/wishlist/{wid}?page=1",
+                  ua, sources.describe)
+    except ValueError as e:
+        lines.append(f"Wishlist: {e}")
+    slug = next((s for s, it in data["items"].items() if it.get("active")), "hades")
+
+    def item_info(text):
+        info = sources.parse_item_page(text)
+        return (f"Titel „{(info['title'] or '')[:50]}“, IDs {info['nsuids']}, "
+                f"Tiefstpreis {info['low']}")
+    for label, ua in sources.UAS:
+        probe(f"Artikelseite {slug} ({label})",
+              f"https://www.dekudeals.com/items/{slug}?country=de", ua, item_info)
+    probe("Nintendo-Preise", sources.NINTENDO_PRICE_URL + "?country=DE&lang=de&ids=70010000000126",
+          None, lambda t: t[:160])
+    probe("Wechselkurse", sources.FX_URL, None, lambda t: t[:80])
+    return lines
+
+
+def start_sync():
+    if status["running"]:
+        return False
+    threading.Thread(target=run_sync, daemon=True).start()
+    return True
+
+
+def scheduler():
+    """Läuft im Hintergrund und gleicht nach Ablauf des Intervalls ab."""
+    time.sleep(5)
+    while True:
+        try:
+            settings = store.load_settings()
+            data = store.load_data()
+            due = True
+            if data.get("last_sync"):
+                last = datetime.fromisoformat(data["last_sync"])
+                age = (datetime.now(timezone.utc) - last).total_seconds()
+                due = age >= max(1.0, settings["refresh_hours"]) * 3600
+            if status["ok"] is False and status["finished"]:
+                # nach einem Fehlschlag frühestens nach einer Stunde erneut
+                last_try = datetime.fromisoformat(status["finished"])
+                if (datetime.now(timezone.utc) - last_try).total_seconds() < 3600:
+                    due = False
+            if due and settings["wishlist_url"] and not status["running"]:
+                run_sync()
+        except Exception:
+            traceback.print_exc()
+        time.sleep(300)

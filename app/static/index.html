@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eShop-Kompass</title>
+<style>
+:root{
+  --bg:#f4f2ec; --card:#fffdf8; --ink:#1d2320; --muted:#667069; --line:#dcd8cc;
+  --accent:#0d6b4f; --warn:#8a5a00; --warn-bg:#fbefd2;
+  --sale:#b3261e; --best:#e3f3ea; --chip:#ece9df;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
+  --accent:#5fd0a5; --warn:#f0c36a; --warn-bg:#3a2e12;
+  --sale:#ff8a80; --best:#183328; --chip:#262c29;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{padding:0 16px 60px}
+.narrow{max-width:1100px}
+header.top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:14px 0 6px}
+header.top h1{font-size:19px;margin:0;letter-spacing:-.01em}
+header.top .meta{color:var(--muted);font-size:13px;flex:1;min-width:200px}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+button.link{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline}
+button:disabled{opacity:.5;cursor:default}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px}
+nav button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:6px 12px;color:var(--muted)}
+nav button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:9px 12px;margin-bottom:10px}
+.hint{color:var(--muted);font-size:13px;margin:0}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500;text-align:right;padding:6px 8px}
+td{padding:6px 8px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+.scroll{overflow-x:auto}
+.pct{color:var(--sale);font-size:11px;margin-left:3px}
+.pct.low{background:var(--accent);color:var(--card);border-radius:4px;padding:0 2px;font-weight:600}
+.ok{color:var(--accent);font-weight:600}
+.bad{color:var(--warn);font-weight:600}
+.over{color:var(--sale)}
+.dlc{font-size:9px;border:1px solid var(--line);border-radius:3px;padding:0 3px;margin-right:4px;color:var(--muted);vertical-align:1px}
+a.pl{color:inherit;text-decoration:none}
+a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.chip{font-size:11px;border-radius:999px;padding:0 7px;background:var(--chip);color:var(--muted);white-space:nowrap}
+.chip.w{background:var(--warn-bg);color:var(--warn)}
+
+/* Leiste über den Paketen */
+.bar{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:center;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:6px 10px;margin-bottom:10px;font-size:13px}
+.bar.on{border-color:var(--accent)}
+.bar .sp{flex:1}
+.bar select{max-width:230px;font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:2px 4px}
+.bar button{padding:2px 9px;font-size:12px;border-radius:6px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:none;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--bg);font-weight:600}
+.legend .pct{margin:0 3px 0 8px}
+
+/* Länderkarten: Raster (dicht) und Liste (groß) */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:10px;align-items:start}
+.pc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px 8px;font-size:13px;line-height:1.35;min-width:0}
+.pc.cur{border-color:var(--accent)}
+.pc>header{display:flex;align-items:baseline;justify-content:space-between;gap:7px}
+.pc h2{font-size:15px;margin:0;white-space:nowrap}
+.pc .sub{color:var(--muted);font-size:11.5px;margin:0}
+.pc .save{font-size:17px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pc .save small{font-size:11px;font-weight:500;margin-left:2px}
+.pc .save.low{color:var(--muted)}
+.pc .save.neg{color:var(--sale)}
+.pc .line{margin:1px 0 5px;font-variant-numeric:tabular-nums}
+.pc .line i{font-style:normal;color:var(--muted);margin:0 5px}
+.pc .line small{color:var(--muted)}
+.pc table{table-layout:fixed}
+.pc th{padding:1px 3px;font-size:10px}
+.pc td{padding:2px 3px;font-size:12.5px;vertical-align:top}
+.pc td.t{white-space:normal;font-size:13px;line-height:1.25}
+.tt{display:flex;gap:5px;align-items:flex-start}
+.tt input{margin:2px 0 0;flex:none}
+.tt .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.pc col.c-l{width:90px}.pc col.c-b{width:44px}.pc col.c-e{width:44px}.pc col.c-d{width:44px}
+.pc .c-t{display:none}
+.soon{color:var(--warn);font-weight:600}
+.sugg{display:flex;flex-direction:column;gap:2px;margin-top:5px}
+.sugg button{display:flex;gap:7px;align-items:baseline;text-align:left;border:0;background:var(--bg);border-radius:6px;
+  padding:2px 7px;font-size:12px;width:100%;font-variant-numeric:tabular-nums}
+.sugg button:hover{outline:1px solid var(--accent)}
+.sugg .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:60px}
+.sugg small{color:var(--muted);white-space:nowrap}
+.sugg b{color:var(--accent);white-space:nowrap}
+.foot{display:flex;gap:6px;align-items:center;margin-top:6px}
+.foot button{padding:1px 8px;font-size:12px;border-radius:6px;white-space:nowrap}
+.foot select{flex:1;min-width:0;font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px}
+.restline{margin:10px 2px 0;color:var(--muted);font-size:13px}
+
+.grid.list{grid-template-columns:1fr;max-width:1000px;gap:12px}
+.list .pc{font-size:14.5px;padding:14px 18px 12px}
+.list .pc h2{font-size:18px}
+.list .pc .sub{font-size:12.5px}
+.list .pc .save{font-size:23px}
+.list .pc .save small{font-size:12px}
+.list .pc .line{margin:4px 0 8px}
+.list .pc td{font-size:14px;padding:5px 6px}
+.list .pc th{font-size:11px;padding:3px 6px}
+.list .pc td.t{font-size:14.5px}
+.list .tt .nm{display:block}
+.list .pc col.c-l{width:140px}.list .pc col.c-b{width:70px}.list .pc col.c-e{width:80px}.list .pc col.c-d{width:80px}
+.list .pc .c-t{display:table-cell}
+.list .pc col.c-t{display:table-column;width:110px}
+.list .pct{font-size:12px}
+.list .sugg button{font-size:13.5px;padding:5px 10px}
+.list .foot button,.list .foot select{font-size:13px;padding:3px 9px}
+.list .chip{font-size:12px}
+
+/* Vergleichstabelle für den gemeinsamen Korb */
+.cmp{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
+.cmp table{width:auto;min-width:100%}
+.cmp th,.cmp td{padding:4px 8px;vertical-align:top;min-width:96px}
+.cmp tfoot td{white-space:normal}
+.cmp tfoot tr.pay td,.cmp tfoot tr.sumtop td{white-space:nowrap}
+.cmp thead th{font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:700;vertical-align:bottom}
+.cmp thead th small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+.cmp td:first-child,.cmp th:first-child{position:sticky;left:0;background:var(--card);min-width:210px;max-width:260px;white-space:normal;z-index:1}
+.cmp td small{display:block;color:var(--muted);font-size:11px}
+.cmp td.na{color:var(--muted)}
+.cmp .win{background:var(--best)}
+.cmp thead th.win{box-shadow:inset 0 3px 0 var(--accent)}
+.cmp .rb b{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
+.cmp tr.sumtop td{border-top:2px solid var(--line)}
+.cmp tr.pay td{font-size:15px;font-weight:700}
+.cmp tfoot td:first-child{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+.cmp .incomplete{opacity:.6}
+.cmp .x{border:0;background:none;padding:0 6px 0 0;color:var(--muted)}
+.cmp .fl{border:0;background:var(--bg);border-radius:6px;padding:1px 6px;font-size:11.5px;white-space:normal;text-align:right}
+.cmp .fl b{color:var(--accent);white-space:nowrap}
+.cmp .chips{justify-content:flex-end;margin:0}
+.tagwin{display:inline-block;background:var(--accent);color:var(--card);border-radius:4px;padding:0 5px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+
+/* Preisvergleich */
+.tools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.tools input[type=search]{flex:1;min-width:180px;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.matrix{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
+.matrix td,.matrix th{padding:3px 8px}
+.matrix th{position:sticky;top:0;background:var(--card)}
+.matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);max-width:280px;white-space:normal}
+.matrix td.best{background:var(--best);font-weight:600}
+.matrix td.na{color:var(--muted)}
+.star{border:0;background:none;padding:0 6px 0 0;font-size:15px;color:var(--muted)}
+.star.on{color:var(--accent)}
+
+/* Einstellungen */
+form.set{display:grid;gap:16px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+label.f input,label.f select,.set td input[type=text],.set td input[type=number],.set td select{
+  background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--ink);width:100%}
+.set td{text-align:left;vertical-align:middle;padding:4px 8px}
+.set th{text-align:left}
+.set td input[type=number]{width:90px}
+.set td.cards{min-width:230px}
+.code{color:var(--muted);font-size:12px;margin-left:4px}
+pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:240px;overflow:auto;font-size:12px;margin:0}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:5}
+@media (max-width:420px){.grid{grid-template-columns:1fr}}
+@media (max-width:640px){.cmp td:first-child,.cmp th:first-child{min-width:130px;max-width:150px}}
+@media (max-width:640px){.list .pc .c-t,.list .pc col.c-t{display:none}.list .pc col.c-l{width:100px}
+  .list .pc col.c-b{width:50px}.list .pc col.c-e{width:56px}.list .pc col.c-d{width:56px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>eShop-Kompass</h1>
+    <div class="meta" id="meta"></div>
+    <button class="primary" id="syncBtn" data-act="sync">Aktualisieren</button>
+  </header>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<script>
+"use strict";
+const S = {state:null, plans:[], overrides:{}, basket:null, dense:true, tab:"plans", filter:"", onlySale:false, timer:null, step:""};
+const TABS = [["plans","Pakete"],["matrix","Preisvergleich"],["settings","Einstellungen"]];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function loadLocal(){
+  try{
+    S.overrides = JSON.parse(localStorage.getItem("ek.overrides") || "{}");
+    S.basket = JSON.parse(localStorage.getItem("ek.basket") || "null");
+    S.dense = localStorage.getItem("ek.dense") !== "0";
+  }catch(e){ S.overrides = {}; S.basket = null; }
+  if(!Array.isArray(S.basket) || !S.basket.length) S.basket = null;
+}
+function saveLocal(){
+  try{
+    localStorage.setItem("ek.overrides", JSON.stringify(S.overrides));
+    localStorage.setItem("ek.basket", JSON.stringify(S.basket));
+    localStorage.setItem("ek.dense", S.dense ? "1" : "0");
+  }catch(e){}
+}
+async function api(path, body){
+  const r = await fetch(path, body === undefined ? {} :
+    {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  const j = await r.json();
+  if(!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+const DIGITS = {};
+function digits(cur){
+  if(!(cur in DIGITS)){
+    try{ DIGITS[cur] = new Intl.NumberFormat("de-DE",{style:"currency",currency:cur}).resolvedOptions().maximumFractionDigits; }
+    catch(e){ DIGITS[cur] = 2; }
+  }
+  return DIGITS[cur];
+}
+function money(n, cur){
+  if(n === null || n === undefined) return "–";
+  try{ return new Intl.NumberFormat("de-DE",{style:"currency",currency:cur||"EUR"}).format(n); }
+  catch(e){ return n.toFixed(2).replace(".",",") + " " + (cur||""); }
+}
+function num(n, cur){   // Zahl ohne Währungszeichen, für enge Spalten
+  if(n === null || n === undefined) return "–";
+  const d = cur ? digits(cur) : 2;
+  return n.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d});
+}
+const eur = n => money(n, "EUR");
+function endCell(iso, prefix){
+  if(!iso) return "";
+  const d = new Date(iso);
+  if(isNaN(d)) return "";
+  const soon = d - Date.now() < 48 * 3600 * 1000;
+  const full = d.toLocaleString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  return `<span class="${soon ? "soon" : ""}" title="Angebot endet ${esc(full)}">${prefix || ""}${d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})}</span>`;
+}
+function stamp(iso){
+  if(!iso) return "noch nie";
+  return new Date(iso).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+function toast(msg){
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+/* Rabatt-Marke: grün = Tiefstpreis erreicht, rot = Angebot darüber */
+function pctTag(x, cur){
+  if(!x.sale) return "";
+  let tip = "Tiefstpreis noch nicht geladen";
+  if(x.at_low) tip = "Tiefstpreis";
+  else if(x.low !== null && x.low !== undefined) tip = `Tiefstpreis war ${money(x.low, cur)} (−${x.low_pct} %)`;
+  return `<span class="pct ${x.at_low ? "low" : ""}" title="${esc(tip)}">−${x.pct}%</span>`;
+}
+const deku = (slug, code) => `https://www.dekudeals.com/items/${encodeURIComponent(slug)}?country=${(code || "de").toLowerCase()}`;
+/* Preis als Link zum Preisverlauf bei DekuDeals, im passenden Land */
+function priceLink(slug, code, text, low, cur){
+  const tip = "Preisverlauf bei DekuDeals öffnen" + (low !== null && low !== undefined ? ` · Tiefstpreis ${money(low, cur)}` : "");
+  return `<a class="pl" href="${deku(slug, code)}" target="_blank" rel="noopener" title="${esc(tip)}">${text}</a>`;
+}
+function chipsFor(p){
+  const out = [];
+  for(const w of p.warnings){
+    if(w.startsWith("Rest blockiert")) out.push(`<span class="chip w" title="${esc(w)}, bis das Guthaben 0 ist">Rest blockiert Wechsel</span>`);
+    else if(w.startsWith("Keine Guthabenkarten")) out.push(`<span class="chip w" title="${esc(w)}">Karten fehlen</span>`);
+    else if(w.startsWith("DLC braucht")) out.push(`<span class="chip" title="${esc(w)}">DLC: Region ${esc(p.family)}</span>`);
+    else if(/ohne deutschen Vergleichspreis/.test(w)) out.push(`<span class="chip" title="${esc(w)}">${parseInt(w)} ohne DE-Preis</span>`);
+    else out.push(`<span class="chip w">${esc(w)}</span>`);
+  }
+  if(p.note && !p.is_ref) out.push(`<span class="chip">${esc(p.note)}</span>`);
+  return out;
+}
+const planBody = () => ({overrides:S.overrides, must:[], basket:S.basket || []});
+
+async function refresh(){
+  S.state = await api("/api/state");
+  if(S.basket){   // Titel, die nicht mehr auf der Wishlist stehen, fallen aus dem Korb
+    const known = new Set(S.state.matrix.rows.map(r => r.slug));
+    S.basket = S.basket.filter(s => known.has(s));
+    if(!S.basket.length) S.basket = null;
+  }
+  S.plans = (await api("/api/plans", planBody())).plans;
+  render();
+  watch();
+}
+async function replan(){
+  if(S.basket && !S.basket.length) S.basket = null;
+  saveLocal();
+  S.plans = (await api("/api/plans", planBody())).plans;
+  render();
+}
+function watch(){
+  if(S.timer || !S.state.status.running) return;
+  S.timer = setInterval(async () => {
+    const st = await api("/api/status");
+    const stepChanged = st.step !== S.step;
+    S.step = st.step;
+    S.state.status = st;
+    if(!st.running){ clearInterval(S.timer); S.timer = null; await refresh(); toast(st.ok ? "Abgleich fertig" : "Abgleich fehlgeschlagen"); }
+    else if(stepChanged && st.step.startsWith("Tiefstpreise")){ await refresh(); }   // Preise sind da
+    else renderHead();
+  }, 2000);
+}
+
+function renderHead(){
+  const st = S.state.status;
+  let meta = `Stand ${stamp(S.state.last_sync)} · ${S.state.item_count} Titel · v${S.state.version}`;
+  if(st.running) meta = `${st.step}${st.total ? ` (${st.done}/${st.total})` : ""} …`;
+  $("meta").textContent = meta;
+  $("syncBtn").disabled = st.running;
+  $("nav").innerHTML = TABS.map(([k,l]) =>
+    `<button data-act="tab" data-tab="${k}" class="${S.tab===k?"on":""}">${l}</button>`).join("");
+}
+function render(){
+  renderHead();
+  const m = $("main");
+  m.className = S.tab === "settings" ? "narrow" : "";
+  if(S.tab === "plans") m.innerHTML = viewPlans();
+  else if(S.tab === "matrix") m.innerHTML = viewMatrix();
+  else m.innerHTML = viewSettings();
+}
+const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || {title:slug, slug};
+
+/* ---------- Pakete ---------- */
+function viewPlans(){
+  let h = "";
+  if(!S.state.settings.wishlist_url)
+    h += `<div class="banner">Trage unter Einstellungen deinen DekuDeals-Wishlist-Link ein und klicke auf Aktualisieren.</div>`;
+  else if(!S.state.last_sync && !S.state.status.running)
+    h += `<div class="banner">Noch kein Abgleich. Der erste Lauf sucht die Titel-IDs und dauert einige Minuten.</div>`;
+  if(S.state.status.ok === false)
+    h += `<div class="banner">Letzter Abgleich fehlgeschlagen. Das Protokoll steht unter Einstellungen.</div>`;
+  return h + (S.basket ? viewCompare() : viewCards());
+}
+const LEGEND = `<span class="legend hint"><span class="pct low">−50%</span>Tiefstpreis<span class="pct">−50%</span>Angebot über Tiefstpreis · Klick auf einen Preis öffnet den Verlauf bei DekuDeals</span>`;
+
+/* Angebote je Land: Karten */
+function viewCards(){
+  let h = `<div class="bar"><b>Angebote je Land</b>
+    <span class="seg"><button data-act="dense" data-v="1" class="${S.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.dense ? "" : "on"}">Liste</button></span>
+    ${LEGEND}<span class="sp"></span>
+    <span class="hint">„Korb für alle“ vergleicht einen Korb in allen Ländern.</span></div>`;
+  const cards = [], empty = [];
+  for(const p of S.plans) (!p.items.length && !p.fillers.length ? empty : cards).push(p);
+  h += `<div class="grid ${S.dense ? "" : "list"}">${cards.map(planCard).join("")}</div>`;
+  if(empty.length)
+    h += `<p class="restline">Ohne passendes Angebot: ` + empty.map(p =>
+      `${esc(p.name)} <small>(${p.rate ? p.available + " kaufbar" : "noch keine Preise"})</small>`).join(" · ") + `</p>`;
+  return h;
+}
+function planCard(p){
+  const has = p.items.length > 0, cur = p.currency;
+  const sub = [p.current ? "aktuelles Land" : null,
+    p.is_ref ? "Vergleichsbasis" : (p.pay === "card" ? "Karte" : "Guthabenkarte"),
+    p.family, `${p.available} kaufbar`].filter(Boolean).join(" · ");
+  let save = "";
+  if(has && p.saving !== null){
+    const sign = p.saving >= 0 ? "−" : "+";
+    save = `<span class="save ${p.saving < 0 ? "neg" : (p.worth ? "" : "low")}" title="${p.is_ref ? "gegenüber Normalpreis" : "gegenüber Deutschland"}">${sign}${eur(Math.abs(p.saving))}<small>${Math.abs(p.saving_pct)} %</small></span>`;
+  }
+  let h = `<article class="pc ${p.current ? "cur" : ""}"><header><h2>${esc(p.name)}</h2>${save}</header><p class="sub">${esc(sub)}</p>`;
+
+  if(has){
+    const parts = [`${cur === "EUR" ? "" : money(p.total, cur) + " → "}<b>${p.estimated ? "ca. " : ""}${eur(p.cost)}</b> statt ${eur(p.ref_total)}${p.is_ref ? " normal" : ""}`];
+    if(p.cards.length) parts.push(p.cards.map(c => `${c.count}× ${num(c.face, cur)}`).join(" + "));
+    if(!p.is_ref) parts.push(restHtml(p));
+    if(!p.worth && p.saving >= 0) parts.push(`<small title="Ersparnis liegt unter deiner Schwelle für einen Länderwechsel">unter Schwelle</small>`);
+    const lows = p.items.filter(i => i.at_low).length;
+    if(lows) parts.push(`<small title="${lows} von ${p.items.length} Titeln zum Tiefstpreis">${lows}× Tiefstpreis</small>`);
+    h += `<p class="line">${parts.join("<i>·</i>")}</p>`;
+    h += `<table><colgroup><col><col class="c-l"><col class="c-t"><col class="c-b"><col class="c-e"><col class="c-d"></colgroup>
+      <thead><tr><th>Titel</th><th>${esc(cur || "")}</th><th class="c-t">Tiefst</th><th>bis</th><th>€</th><th>${p.is_ref ? "normal" : "DE €"}</th></tr></thead><tbody>` +
+    p.items.map(i => {
+      const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of})` : "");
+      return `<tr><td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}"><span class="nm">${i.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(i.short)}</span></label></td>
+      <td>${priceLink(i.slug, p.code, num(i.local, cur), i.low, cur)}${pctTag(i, cur)}</td><td class="c-t">${i.low === null ? "–" : num(i.low, cur)}</td>
+      <td>${endCell(i.end)}</td><td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als in Deutschland"` : ""}>${num(i.eur)}</td><td>${num(i.ref)}</td></tr>`;
+    }).join("") + `</tbody></table>`;
+  } else {
+    h += `<p class="line"><small>Kein Wishlist-Titel im Angebot.</small></p>`;
+  }
+
+  const sugg = p.trims.map(t =>
+      `<button data-act="trim" data-c="${p.code}" data-s="${esc(t.slug)}" title="Ohne diesen Titel kostet das Paket ${eur(t.marginal)} weniger, in Deutschland kostet er ${eur(t.ref)}">
+        <span class="n">− ${esc(t.short)} weglassen</span><small>hier ${num(t.marginal)} statt ${num(t.ref)}${t.rest === null ? "" : ` · Rest ${num(t.rest, cur)}`}</small><b>−${eur(t.gain)}</b></button>`)
+    .concat(p.fillers.map(f =>
+      `<button data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: ${esc(money(f.local, cur))}, Aufpreis ${eur(f.extra)} statt ${eur(f.ref)} in Deutschland">
+        <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)} statt ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>−${eur(f.gain)}</b></button>`));
+  if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.dense ? 3 : 99).join("")}</div>`;
+
+  const chips = chipsFor(p);
+  if(chips.length) h += `<div class="chips">${chips.join("")}</div>`;
+
+  if(p.rate){
+    const inPlan = new Set(p.items.map(i => i.slug));
+    const opts = p.is_ref ? "" : S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug))
+      .map(r => `<option value="${esc(r.slug)}">${esc(r.title)} · ${num(r.cells[p.code].local, cur)}</option>`).join("");
+    const ov = S.overrides[p.code];
+    const changed = ov && ((ov.add||[]).length || (ov.remove||[]).length);
+    if(has || opts || changed)
+      h += `<div class="foot">${has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb in allen Ländern vergleichen">Korb für alle</button>` : ""}
+        ${opts ? `<select data-act="pick" data-c="${p.code}"><option value="">Titel hinzufügen …</option>${opts}</select>` : ""}
+        ${changed ? `<button class="link" data-act="reset" data-c="${p.code}">zurücksetzen</button>` : ""}</div>`;
+  }
+  return h + `</article>`;
+}
+function restHtml(p, bare){
+  const pre = bare ? "" : "Rest ";
+  if(p.rest === null) return `<span class="bad">${bare ? "unbekannt" : "Rest unbekannt"}</span>`;
+  if(p.rest === 0) return `<span class="ok">${pre}0</span>`;
+  const blocked = p.warnings.some(w => w.startsWith("Rest blockiert"));
+  return `<span class="${blocked ? "bad" : ""}">${pre}${money(p.rest, p.currency)}</span> <small>${eur(p.rest_eur)}</small>`;
+}
+
+/* Gemeinsamer Korb: Vergleichstabelle */
+function viewCompare(){
+  const inB = new Set(S.basket);
+  const opts = S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids)
+    .map(r => `<option value="${esc(r.slug)}">${esc(r.title)}</option>`).join("");
+  const usable = S.plans.filter(p => p.rate && p.items.length);
+  const cols = usable.filter(p => p.is_ref).concat(usable.filter(p => !p.is_ref));
+  const none = S.plans.filter(p => !usable.includes(p));
+  const complete = cols.filter(p => !p.missing.length && p.cost !== null);
+  const win = complete.length > 1 ? complete.reduce((a, b) => b.cost < a.cost ? b : a) : null;
+  const de = cols.find(p => p.is_ref);
+
+  let verdict = `<span class="hint">Kein Land bietet den ganzen Korb, deshalb ist nichts hervorgehoben.</span>`;
+  if(win){
+    const diff = de && !win.is_ref && !de.missing.length ? ` · ${eur(de.cost - win.cost)} unter Deutschland` : "";
+    verdict = `<span>Günstigstes Land für diesen Korb: <b>${esc(win.name)}</b>, ${win.estimated ? "ca. " : ""}${eur(win.cost)}${diff}</span>`;
+  } else if(complete.length === 1){
+    verdict = `<span class="hint">Nur ${esc(complete[0].name)} bietet den ganzen Korb.</span>`;
+  }
+  let h = `<div class="bar on"><b>Gemeinsamer Korb</b>${verdict}<span class="sp"></span>${LEGEND}
+    <select data-act="bpick"><option value="">Titel hinzufügen …</option>${opts}</select>
+    <button data-act="unshare">Zurück zu Angeboten je Land</button></div>`;
+  if(!cols.length) return h + `<p class="restline">Kein Titel aus dem Korb ist in einem aktiven Land kaufbar.</p>`;
+
+  const cls = p => (win && p.code === win.code ? "win " : "") + (p.missing.length ? "incomplete " : "");
+  h += `<div class="cmp scroll"><table><thead><tr><th>${S.basket.length} Titel</th>` + cols.map(p =>
+    `<th class="${cls(p)}">${win && p.code === win.code ? `<span class="tagwin">günstigstes</span><br>` : ""}${esc(p.name)}
+      <small>${p.is_ref ? "Vergleichsbasis" : (p.pay === "card" ? "Karte" : "Guthabenkarte")}${p.current ? " · aktuelles Land" : ""}${p.missing.length ? ` · ${p.items.length} von ${S.basket.length}` : ""}</small></th>`).join("") + `</tr></thead><tbody>`;
+
+  for(const slug of S.basket){
+    const r = rowOf(slug);
+    const cells = cols.map(p => p.items.find(i => i.slug === slug) || null);
+    const eurs = cells.filter(Boolean).map(i => i.eur).filter(v => v !== null);
+    const best = eurs.length > 1 ? Math.min(...eurs) : null;
+    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r.title)}</td>` +
+      cols.map((p, k) => {
+        const i = cells[k];
+        if(!i) return `<td class="na ${cls(p)}">–<small>nicht kaufbar</small></td>`;
+        const second = [p.currency === "EUR" ? null : num(i.local, p.currency), i.end ? endCell(i.end, "bis ") : null].filter(Boolean).join(" · ");
+        return `<td class="${cls(p)}${i.eur === best ? "rb" : ""}">
+          <b class="${i.over ? "over" : ""}">${priceLink(slug, p.code, num(i.eur), i.low, p.currency)}</b>${pctTag(i, p.currency)}<small>${second || "&nbsp;"}</small></td>`;
+      }).join("") + `</tr>`;
+  }
+  const row = (label, fn, extra) => `<tr class="${extra || ""}"><td>${label}</td>${cols.map(p => `<td class="${cls(p)}">${fn(p)}</td>`).join("")}</tr>`;
+  h += `</tbody><tfoot>` +
+    row("Summe", p => money(p.total, p.currency), "sumtop") +
+    row("Karten", p => p.cards.length ? p.cards.map(c => `${c.count}× ${num(c.face, p.currency)}`).join(" + ") : (p.pay === "card" || p.is_ref ? "exakter Betrag" : "–")) +
+    row("Du zahlst", p => `${p.estimated ? "ca. " : ""}${eur(p.cost)}`, "pay") +
+    row("Rest", p => p.is_ref ? `<span class="ok">0</span>` : restHtml(p, true)) +
+    row("Gegenüber Deutschland", p => {
+      if(p.is_ref) return "Basis";
+      if(p.saving === null) return "–";
+      const s = `<b class="${p.saving < 0 ? "over" : "ok"}">${p.saving >= 0 ? "−" : "+"}${eur(Math.abs(p.saving))}</b>`;
+      return s + (p.missing.length ? `<small>für ${p.items.length} von ${S.basket.length} Titeln</small>` : `<small>${Math.abs(p.saving_pct)} %</small>`);
+    }) +
+    row("Passt dazu", p => {
+      const f = p.fillers[0];
+      if(!f) return "";
+      return `<button class="fl" data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: Aufpreis ${eur(f.extra)} statt ${eur(f.ref)} in Deutschland. Kommt für alle Länder in den Korb.">+ ${f.shorts.map(esc).join(" + ")} <b>−${eur(f.gain)}</b></button>`;
+    }) +
+    row("Hinweise", p => { const c = chipsFor(p); return c.length ? `<div class="chips">${c.join("")}</div>` : ""; }) +
+    `</tfoot></table></div>`;
+  if(none.length)
+    h += `<p class="restline">Korb dort nicht kaufbar: ` + none.map(p => esc(p.name)).join(" · ") + `</p>`;
+  return h;
+}
+
+/* ---------- Preisvergleich ---------- */
+function viewMatrix(){
+  const mx = S.state.matrix, q = S.filter.toLowerCase(), inB = new Set(S.basket || []);
+  const rows = mx.rows.filter(r => (!q || r.title.toLowerCase().includes(q)) &&
+    (!S.onlySale || Object.values(r.cells).some(c => c.sale)));
+  let h = `<div class="tools"><input type="search" id="q" placeholder="Titel filtern" value="${esc(S.filter)}">
+    <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>${LEGEND}
+    <span class="hint">Preise in Euro inklusive Gebühr oder Kartenaufschlag. ★ legt den Titel in den gemeinsamen Korb.</span></div>
+    <div class="matrix scroll"><table><thead><tr><th>Titel</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
+  h += rows.map(r => `<tr><td><button class="star ${inB.has(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button>${esc(r.title)}${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
+    mx.cols.map(c => {
+      const x = r.cells[c.code];
+      if(!x) return `<td class="na"></td>`;
+      if(x.na) return `<td class="na">–</td>`;
+      return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(money(x.local, c.currency))}">${priceLink(r.slug, c.code, eur(x.eur), x.low, c.currency)}${pctTag(x, c.currency)}</td>`;
+    }).join("") + `</tr>`).join("");
+  return h + `</tbody></table></div>`;
+}
+
+/* ---------- Einstellungen ---------- */
+function viewSettings(){
+  const s = S.state.settings, st = S.state.status;
+  let h = `<form class="set" id="setForm"><div class="fields">
+    <label class="f" style="grid-column:1/-1">DekuDeals-Wishlist-Link<input name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label>
+    <label class="f">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
+      S.state.countries.map(c => `<option value="${c.code}" ${s.current_country === c.code ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
+    <label class="f">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label>
+    <label class="f">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label>
+    <label class="f">Länderwechsel lohnt ab Ersparnis (€)<input name="min_saving_eur" type="number" step="0.5" min="0" value="${s.min_saving_eur}"></label>
+    <label class="f">Abgleich alle … Stunden<input name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label>
+    </div>
+    <p class="hint">Guthabenkarten: Werte in Landeswährung, durch Leerzeichen getrennt. Mit „=“ hängst du deinen Kaufpreis in Euro an, zum Beispiel <code>1000 3000 5000=29,50</code>. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag.</p>
+    <div class="scroll"><table><thead><tr><th>Land</th><th>Aktiv</th><th>Bezahlen</th><th>Guthabenkarten</th><th>Guthaben</th><th>Rest blockiert Wechsel</th></tr></thead><tbody>`;
+  h += S.state.countries.map(c => {
+    const x = s.countries[c.code], ref = c.code === "DE";
+    return `<tr data-code="${c.code}"><td>${esc(c.name)}<span class="code">${c.code}</span></td>
+      <td><input type="checkbox" data-k="enabled" ${x.enabled ? "checked" : ""} ${ref ? "disabled" : ""}></td>
+      <td>${ref ? "" : `<select data-k="pay"><option value="card" ${x.pay==="card"?"selected":""}>Karte</option><option value="giftcard" ${x.pay==="giftcard"?"selected":""}>Guthabenkarte</option></select>`}</td>
+      <td class="cards">${ref ? "" : `<input type="text" data-k="cards" value="${esc(x.cards)}" placeholder="z. B. 1000 3000 5000">`}</td>
+      <td>${ref ? "" : `<input type="number" data-k="balance" step="0.01" min="0" value="${x.balance || 0}">`}</td>
+      <td>${ref ? "" : `<input type="checkbox" data-k="rest_blocks" ${x.rest_blocks ? "checked" : ""}>`}</td></tr>`;
+  }).join("");
+  h += `</tbody></table></div><div><button class="primary" type="submit">Speichern</button></div></form>
+    <h3 style="margin:22px 0 8px;font-size:14px">Letzter Abgleich</h3>
+    <p class="hint" style="margin-bottom:8px">Wechselkurse vom ${esc(S.state.fx_updated || "–")} ·
+      <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
+    <pre class="log" id="log">${esc((st.log || []).join("\n") || "Noch kein Protokoll.")}</pre>`;
+  return h;
+}
+async function saveSettings(form){
+  const body = {countries:{}};
+  for(const k of ["wishlist_url","current_country","card_fee_pct","gift_markup_pct","min_saving_eur","refresh_hours"])
+    body[k] = form.elements[k].value;
+  form.querySelectorAll("tr[data-code]").forEach(tr => {
+    const c = {};
+    tr.querySelectorAll("[data-k]").forEach(el => {
+      c[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value;
+    });
+    body.countries[tr.dataset.code] = c;
+  });
+  const active = () => JSON.stringify(Object.entries(S.state.settings.countries).filter(e => e[1].enabled).map(e => e[0]));
+  const before = active();
+  await api("/api/settings", body);
+  await refresh();
+  toast(before === active() ? "Gespeichert" : "Gespeichert. Für neue Länder bitte aktualisieren.");
+}
+
+/* ---------- Ereignisse ---------- */
+function ov(code){ return S.overrides[code] || (S.overrides[code] = {add:[], remove:[]}); }
+function addTo(code, slugs){
+  if(S.basket){ for(const s of slugs) if(!S.basket.includes(s)) S.basket.push(s); return; }
+  const o = ov(code);
+  for(const s of slugs){
+    o.remove = o.remove.filter(x => x !== s);
+    if(!o.add.includes(s)) o.add.push(s);
+  }
+}
+function dropFrom(code, s){
+  if(S.basket){ S.basket = S.basket.filter(x => x !== s); return; }
+  const o = ov(code);
+  o.add = o.add.filter(x => x !== s);
+  if(!o.remove.includes(s)) o.remove.push(s);
+}
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]");
+  if(!el) return;
+  const a = el.dataset.act, d = el.dataset;
+  try{
+    if(a === "tab"){ S.tab = d.tab; render(); }
+    else if(a === "sync"){ await api("/api/sync", {}); S.state.status.running = true; S.state.status.step = "Abgleich startet"; renderHead(); watch(); }
+    else if(a === "dense"){ S.dense = d.v === "1"; saveLocal(); render(); }
+    else if(a === "diag"){
+      $("log").textContent = "Teste DekuDeals, Nintendo und Wechselkurse …";
+      const r = await api("/api/diag");
+      $("log").textContent = r.lines.join("\n");
+    }
+    else if(a === "add"){ addTo(d.c, d.s.split(",")); await replan(); }
+    else if(a === "trim"){ dropFrom(d.c, d.s); await replan(); }
+    else if(a === "reset"){ delete S.overrides[d.c]; await replan(); }
+    else if(a === "share"){
+      S.basket = S.plans.find(p => p.code === d.c).items.map(i => i.slug);
+      await replan(); window.scrollTo(0, 0);
+    }
+    else if(a === "unshare"){ S.basket = null; await replan(); }
+    else if(a === "bdrop"){ dropFrom(null, d.s); await replan(); }
+    else if(a === "star"){
+      const b = S.basket || [];
+      S.basket = b.includes(d.s) ? b.filter(x => x !== d.s) : b.concat(d.s);
+      await replan();
+    }
+  }catch(err){ toast("Fehler: " + err.message); }
+});
+document.addEventListener("change", async e => {
+  const el = e.target, a = el.dataset.act;
+  try{
+    if(a === "drop"){ dropFrom(el.dataset.c, el.dataset.s); await replan(); }
+    else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
+    else if(a === "onlysale"){ S.onlySale = el.checked; render(); }
+  }catch(err){ toast("Fehler: " + err.message); }
+});
+document.addEventListener("input", e => {
+  if(e.target.id !== "q") return;
+  S.filter = e.target.value;
+  const pos = e.target.selectionStart;
+  render();
+  const q = $("q"); q.focus(); q.setSelectionRange(pos, pos);
+});
+document.addEventListener("submit", e => {
+  if(e.target.id !== "setForm") return;
+  e.preventDefault();
+  saveSettings(e.target).catch(err => toast("Fehler: " + err.message));
+});
+
+loadLocal();
+refresh().catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });
+</script>
+</body>
+</html>

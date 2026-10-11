@@ -1,0 +1,26 @@
+# Beispiel für den Betrieb mit dem fertigen Image.
+# OWNER durch den GitHub-Benutzernamen ersetzen (klein geschrieben).
+services:
+  eshop-kompass:
+    image: ghcr.io/OWNER/eshop-kompass:latest
+    container_name: eshop-kompass
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    ports:
+      - "8787:8787"
+    environment:
+      # Startwert, später in der Oberfläche unter Einstellungen änderbar
+      WISHLIST_URL: "https://www.dekudeals.com/wishlist/DEINE-ID"
+    volumes:
+      - eshop-daten:/data
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+volumes:
+  eshop-daten:
