@@ -18,6 +18,8 @@ def state():
         "ui": ui,
         "radar": planner.radar(data, settings, ui["targets"]),
         "levels": planner.price_levels(data, settings),
+        "pay": planner.pay_info(data, settings),
+        "owned_count": len(data.get("owned") or []),
         "countries": [dict(countries.BY_CODE[c], family_name=countries.FAMILIES[
             countries.BY_CODE[c]["family"]]) for c in countries.ORDER],
         "status": sync.status,
@@ -76,11 +78,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body = self._body()
             if path == "/api/plans":
-                res = planner.plans(store.load_data(), store.load_settings(),
-                                    overrides=body.get("overrides") or {},
-                                    must=body.get("must") or [],
-                                    basket=body.get("basket") or [])
-                self._send(200, {"plans": res})
+                res, split = planner.plans(store.load_data(), store.load_settings(),
+                                           overrides=body.get("overrides") or {},
+                                           must=body.get("must") or [],
+                                           basket=body.get("basket") or [], with_mix=True)
+                self._send(200, {"plans": res, "mix": split})
             elif path == "/api/settings":
                 self._send(200, {"settings": store.save_settings(body)})
             elif path == "/api/ui":

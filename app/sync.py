@@ -64,6 +64,22 @@ def sync_wishlist(data, settings, fetch, sleep):
     return slugs
 
 
+def sync_collection(data, settings, fetch, sleep):
+    """Liest die DekuDeals-Sammlung, damit Besitz und Hauptspiele bekannt sind.
+    Fehlt sie oder ist sie nicht öffentlich, läuft der Abgleich ohne weiter."""
+    source = settings.get("collection_url") or settings["wishlist_url"]
+    try:
+        owned = sources.fetch_wishlist(source, fetch=fetch, kind="collection",
+                                       pause=lambda: sleep(DEKU_PAUSE))
+    except (sources.FetchError, ValueError) as e:
+        _log(f"Sammlung nicht lesbar ({str(e)[:80]})")
+        return
+    data["owned"] = owned
+    both = [it["title"] for s, it in data["items"].items() if it.get("active") and s in set(owned)]
+    _log(f"Sammlung: {len(owned)} Titel" +
+         (f", davon noch auf der Wishlist: {', '.join(both[:8])}" if both else ""))
+
+
 def sync_ids(data, settings, fetch, sleep, now=None):
     """Sucht fehlende Nintendo-IDs je Region über die DekuDeals-Artikelseiten."""
     now = now or time.time()
@@ -360,6 +376,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             data["lows_v"] = LOWS_VERSION      # frische Installation, nichts neu zu laden
         _step("Wishlist lesen")
         sync_wishlist(data, settings, fetch, sleep)
+        sync_collection(data, settings, fetch, sleep)
         store.save_data(data)
         sync_ids(data, settings, fetch, sleep)
         _step("Wechselkurse abrufen")
@@ -443,6 +460,23 @@ def diagnose():
     lines.append("Verlauf, Skript-Marken: " + (" ".join(t[:90] for t in tags) or "keine"))
     for m in list(sources.re.finditer(r"(?i)price[_ -]?history|chart[_-]?data|plotly|dygraph|highcharts", text))[:6]:
         lines.append("Verlauf, Fundstelle: " + text[max(0, m.start() - 60):m.start() + 160].replace("\n", " "))
+    # Wie zeigt DekuDeals Komplettfassungen, DLC und Upgrade-Pakete? Grundlage für später.
+    seen = set()
+    for m in sources.re.finditer(r"(?i)included in|dlc for|>\s*dlc\s*<|upgrade pack|switch 2 edition", text):
+        key = m.group(0).lower().strip("<> \n")
+        if key in seen:
+            continue
+        seen.add(key)
+        lines.append(f"Pakete, Fundstelle „{key}“: "
+                     + text[max(0, m.start() - 80):m.start() + 260].replace("\n", " "))
+    if not seen:
+        lines.append("Pakete: auf dieser Artikelseite keine Fundstelle")
+    try:
+        cid = sources.wishlist_id(settings.get("collection_url") or settings["wishlist_url"])
+        probe("Sammlung", f"https://www.dekudeals.com/collection/{cid}?page=1",
+              sources._deku_ua, sources.describe)
+    except ValueError as e:
+        lines.append(f"Sammlung: {e}")
     probe("Wechselkurse", sources.FX_URL, None, lambda t: t[:80])
     return lines
 

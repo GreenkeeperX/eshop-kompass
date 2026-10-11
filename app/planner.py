@@ -156,6 +156,7 @@ class Context:
         self.items = {s: it for s, it in data["items"].items() if it.get("active")}
         self.order = sorted(self.items, key=lambda s: self.items[s].get("order", 0))
         self.lows = data.get("lows", {})
+        self.owned = set(data.get("owned") or [])
         rates = data["fx"]["rates"]
         self.countries = {}
         for code in countries.ORDER:
@@ -193,16 +194,29 @@ class Context:
 
     # ---- Europreis je Währungseinheit
 
+    def markup(self, c):
+        """Aufschlag in Prozent für Guthabenkarten ohne eigenen Preis."""
+        own = c["cfg"].get("markup_pct")
+        return float(self.settings["gift_markup_pct"] if own in ("", None) else own)
+
+    def _gift(self, c):
+        """Günstigste vorrätige Karte: (Euro je Hundertstel, Karte oder None)."""
+        est = 1 / 100 / c["rate"] * (1 + self.markup(c) / 100)
+        best, card = est, None
+        for x in c["cards"]:
+            if not x["stock"]:
+                continue
+            unit = x["cost"] / x["face"] if x["cost"] is not None else est
+            if card is None or unit < best - 1e-12:
+                best, card = unit, x
+        return best, card
+
     def _units(self, c):
         """(Kartenzahlung, Guthabenkarte) in Euro je Hundertstel Landeswährung."""
         mid = 1 / 100 / c["rate"]
         if c["code"] == countries.REFERENCE or c["currency"] == "EUR":
             return mid, mid
-        est = mid * (1 + self.settings["gift_markup_pct"] / 100)
-        stocked = [x for x in c["cards"] if x["stock"]]
-        gift = min(((x["cost"] / x["face"]) if x["cost"] is not None else est
-                    for x in stocked), default=est)
-        return mid * (1 + self.settings["card_fee_pct"] / 100), gift
+        return mid * (1 + self.settings["card_fee_pct"] / 100), self._gift(c)[0]
 
     def _unit(self, c):
         if not c["rate"]:
@@ -210,6 +224,26 @@ class Context:
         card, gift = self._units(c)
         pay = c["cfg"]["pay"]
         return card if pay == "card" else gift if pay == "giftcard" else min(card, gift)
+
+    def how(self, c):
+        """Woraus sich der Europreis eines Landes zusammensetzt, für die Anzeige."""
+        if c["unit"] is None:
+            return None
+        mid = 1 / 100 / c["rate"]
+        card_unit, gift_unit = self._units(c)
+        pay = c["cfg"]["pay"]
+        gift = pay == "giftcard" or (pay == "auto" and gift_unit < card_unit)
+        out = {"currency": c["currency"], "rate": c["rate"], "tax": c["tax"],
+               "via": "giftcard" if gift else "card", "unit": c["unit"] * 100,
+               "vs_mid": round(100 * (c["unit"] / mid - 1), 1),
+               "fee": self.settings["card_fee_pct"], "markup": self.markup(c), "card": None}
+        if c["currency"] == "EUR":
+            out["via"] = "eur"
+        elif gift:
+            card = self._gift(c)[1]
+            if card and card["cost"] is not None:
+                out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"]}
+        return out
 
     def est(self, c, local):
         """Europreis eines Bruttobetrags in Landeswährung beim üblichen Zahlweg."""
@@ -303,12 +337,19 @@ class Context:
     def cell(self, c, slug, o):
         """Ein Angebot, wie es Tabellen und Karten anzeigen."""
         return {"local": o["local"] / 100, "regular": o["regular"] / 100, "sale": o["sale"],
+                "net": o.get("net", o["local"]) / 100,
                 "pct": round(100 * (1 - o["local"] / o["regular"])) if o["regular"] else 0,
                 "end": o["end"], "eur": _r(self.est(c, o["local"])),
                 "lang": o.get("lang"), "nsuid": o.get("nsuid"),
                 **self.low(c["code"], slug, o), **self.mark(c, slug, o)}
 
     # ---- Titel
+
+    def owned_flags(self, slug):
+        """Steht der Titel schon in der Sammlung? Bei DLC: das Hauptspiel?"""
+        parent = (self.items.get(slug) or {}).get("parent")
+        return {"owned": slug in self.owned,
+                "parent_owned": (parent in self.owned) if parent and self.owned else None}
 
     def title(self, slug):
         it = self.items.get(slug)
@@ -342,7 +383,7 @@ def make_payer(ctx, c):
     stocked = [(x["face"], x["cost"]) for x in c["cards"] if x["stock"]]
     solver = None
     if stocked and mode in ("giftcard", "auto"):
-        solver = CardSolver(stocked, c["rate"], ctx.settings["gift_markup_pct"])
+        solver = CardSolver(stocked, c["rate"], ctx.markup(c))
     urls = {x["face"]: x["url"] for x in c["cards"]}
 
     def by_card(need, left):
@@ -357,7 +398,7 @@ def make_payer(ctx, c):
                         "estimated": False, "via": "giftcard"}
             except ValueError:
                 pass
-        mid = 1 / 100 / c["rate"] * (1 + ctx.settings["gift_markup_pct"] / 100)
+        mid = 1 / 100 / c["rate"] * (1 + ctx.markup(c) / 100)
         return {"cost": need * mid, "cards": [], "rest": None, "estimated": True,
                 "via": "giftcard"}
 
@@ -437,6 +478,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
         out["items"].append({
             "slug": slug, "title": it["title"], "short": ctx.short(slug),
             "ref": _r(r), "dlc_of": ctx.parent_title(slug), "forced": slug in must,
+            **ctx.owned_flags(slug),
             "over": bool(not is_ref and r is not None and ctx.est(c, o["local"]) > r + 0.005),
             **ctx.cell(c, slug, o),
         })
@@ -538,13 +580,48 @@ def _r(x):
     return None if x is None else round(x + 0.0, 2)
 
 
-def plans(data, settings, overrides=None, must=(), basket=None, now=None):
+def mix(ctx, basket):
+    """Korb auf mehrere Länder mit Kartenzahlung verteilen.
+
+    Nur dort kostet der Wechsel nichts und es bleibt kein Rest: Stufe leicht,
+    bezahlt per Karte. Jeder Titel geht in das Land, in dem er am wenigsten kostet.
+    """
+    eligible = [c for c in ctx.countries.values()
+                if c["unit"] is not None and c["tier"] == 1
+                and (c["cfg"]["pay"] == "card" or c["code"] == countries.REFERENCE)]
+    parts, total = {}, 0.0
+    for slug in basket:
+        best = None
+        for c in eligible:
+            o = c["offers"].get(slug)
+            if o and (best is None or ctx.est(c, o["local"]) < best[0] - 0.005):
+                best = (ctx.est(c, o["local"]), c)
+        if best is None:
+            return None                      # ein Titel fehlt überall: kein Mix
+        eur, c = best
+        part = parts.setdefault(c["code"], {"code": c["code"], "name": c["meta"]["name"],
+                                            "titles": [], "cost": 0.0})
+        part["titles"].append(ctx.short(slug))
+        part["cost"] += eur
+        total += eur
+    for p in parts.values():
+        p["cost"] = _r(p["cost"])
+    return {"cost": _r(total), "parts": sorted(parts.values(), key=lambda p: -p["cost"])}
+
+
+def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_mix=False):
     ctx = Context(data, settings, now)
     overrides = overrides or {}
     must = [s for s in must if s in ctx.items]
     basket = [s for s in dict.fromkeys(basket or []) if s in ctx.items]
     res = [plan_country(ctx, code, overrides.get(code), must, basket)
            for code in ctx.countries]
+    if with_mix:
+        ref = [p for p in res if p["is_ref"]]
+        rest = sorted((p for p in res if not p["is_ref"]),
+                      key=lambda p: (bool(p.get("must_missing")), len(p["missing"]),
+                                     p["saving"] is None, -(p["saving"] or 0), -p["available"]))
+        return rest + ref, (mix(ctx, basket) if basket else None)
     ref = [p for p in res if p["is_ref"]]
     rest = [p for p in res if not p["is_ref"]]
     # vollständige Körbe zuerst, dann nach Ersparnis
@@ -576,7 +653,7 @@ def matrix(data, settings, now=None):
             if eur is not None and (best is None or eur < cells[best]["eur"]):
                 best = code
         rows.append({"slug": slug, "title": it["title"], "cells": cells, "best": best,
-                     "dlc_of": ctx.parent_title(slug),
+                     "dlc_of": ctx.parent_title(slug), **ctx.owned_flags(slug),
                      "no_ids": not any(it.get("ids", {}).values())})
     return {"cols": cols, "rows": rows}
 
@@ -637,6 +714,7 @@ def radar(data, settings, targets=None, now=None):
                 b.pop("raw")
         it = ctx.items[slug]
         rows.append({"slug": slug, "title": it["title"], "dlc_of": ctx.parent_title(slug),
+                     **ctx.owned_flags(slug),
                      "easy": easy, "hard": hard, "de": _r(ctx.ref.get(slug)),
                      "champ": champ(champ_all), "champ_easy": champ(champ_easy),
                      "gap_easy": gap_easy, "target": target, "verdict": verdict,
@@ -644,6 +722,12 @@ def radar(data, settings, targets=None, now=None):
     rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]),
                              r["gap_easy"] if r["gap_easy"] is not None else 999))
     return rows
+
+
+def pay_info(data, settings, now=None):
+    """Zahlweg und eigener Kurs je Land, auch für abgeschaltete Länder."""
+    ctx = Context(data, settings, now, include_all=True)
+    return {code: ctx.how(c) for code, c in ctx.countries.items() if c["unit"] is not None}
 
 
 def price_levels(data, settings, now=None):

@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.5"
+VERSION = "0.6"
 
 # Kennungen, mit denen das Tool anfragt. Zuerst die ehrliche eigene, sonst eine
 # gewöhnliche Browser-Kennung. Bot-Sperren werden nicht umgangen.
@@ -87,7 +87,7 @@ def fetch(url, timeout=25, ua=None):
 
 # ---------------------------------------------------------------- DekuDeals
 
-_WISHLIST_RE = re.compile(r"dekudeals\.com/wishlist/([A-Za-z0-9]+)")
+_WISHLIST_RE = re.compile(r"dekudeals\.com/(?:wishlist|collection)/([A-Za-z0-9]+)")
 # Titel-Links: nur echte Verweise (<a href>), deren Pfad nach dem Kürzel endet.
 # So zählen Unterpfade wie /items/123/add nicht als eigener Titel.
 _ITEM_LINK_RE = re.compile(
@@ -210,12 +210,12 @@ def parse_wishlist_page(page_html):
     return out
 
 
-def fetch_wishlist(url_or_id, fetch=fetch, max_pages=30, pause=None):
-    """Alle Slugs der Wishlist über alle Seiten."""
+def fetch_wishlist(url_or_id, fetch=fetch, max_pages=30, pause=None, kind="wishlist"):
+    """Alle Slugs einer DekuDeals-Liste (Wishlist oder Sammlung) über alle Seiten."""
     wid = wishlist_id(url_or_id)
     slugs, seen = [], set()
     for page in range(1, max_pages + 1):
-        url = f"https://www.dekudeals.com/wishlist/{wid}?page={page}"
+        url = f"https://www.dekudeals.com/{kind}/{wid}?page={page}"
         # Seite 1 muss Titel enthalten, Folgeseiten dürfen leer sein
         ok = (lambda t: bool(parse_wishlist_page(t))) if page == 1 else (lambda t: True)
         try:

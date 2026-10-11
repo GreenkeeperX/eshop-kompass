@@ -484,6 +484,51 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(levels["BR"]["titles"], 5)
         self.assertNotIn("JP", levels)                       # nur ein gemeinsamer Titel
 
+    def test_price_composition_and_own_markup(self):
+        info = planner.pay_info(self.data, self.settings, now=NOW)
+        self.assertEqual((info["NO"]["via"], info["NO"]["vs_mid"]), ("card", 1.8))   # Kartengebühr
+        self.assertEqual(info["DE"]["via"], "eur")
+        br = info["BR"]                 # beste Karte: 50 BRL für 9,50 €
+        self.assertEqual((br["via"], br["card"]["face"], br["card"]["cost"]), ("giftcard", 50.0, 9.5))
+        self.assertAlmostEqual(br["vs_mid"], round(100 * (9.5 / (50 / 5.6086) - 1), 1))
+        # Japan ohne Kartenliste: voreingestellt Nennwert plus Kartengebühr,
+        # ohne eigenen Wert gilt der allgemeine Aufschlag
+        self.assertEqual((info["JP"]["card"], info["JP"]["vs_mid"]), (None, 1.8))
+        self.settings["countries"]["JP"]["markup_pct"] = ""
+        self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["JP"]["vs_mid"], 5.0)
+        self.settings["countries"]["JP"]["markup_pct"] = 1.75
+        jp = self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]
+        self.assertAlmostEqual(jp["cost"], round(1400 / 177.3267 * 1.0175, 2))
+        # Karten ohne Preis nutzen denselben Aufschlag: 1400 ¥ -> 2x 1000 ¥ zum Nennwert
+        self.settings["countries"]["JP"]["cards"] = "1000\n3000"
+        jp = self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]
+        self.assertAlmostEqual(jp["cost"], round(2000 / 177.3267 * 1.0175, 2))
+        self.assertEqual(jp["rest"], 600.0)
+
+    def test_split_basket_over_card_countries(self):
+        basket = ["hades", "spiritfarer", "nidhogg-2"]
+        _, split = planner.plans(self.data, self.settings, basket=basket, now=NOW, with_mix=True)
+        # Hades in Norwegen (9,50 €), Spiritfarer in DE (6,24 €), Nidhogg 2 nur in DE (14,99 €)
+        self.assertAlmostEqual(split["cost"], round(100 / 10.7155 * 1.0175 + 6.24 + 14.99, 2))
+        self.assertEqual([p["code"] for p in split["parts"]], ["DE", "NO"])
+        self.assertEqual(split["parts"][1]["titles"], ["Hades"])
+        # Good Job! gibt es in keinem Kartenland außer DE, also bleibt der Mix möglich
+        _, split = planner.plans(self.data, self.settings, basket=["good-job"], now=NOW, with_mix=True)
+        self.assertEqual([p["code"] for p in split["parts"]], ["DE"])
+        self.data["prices"]["DE"]["good-job"] = {"status": "not_found"}
+        _, split = planner.plans(self.data, self.settings, basket=["good-job"], now=NOW, with_mix=True)
+        self.assertIsNone(split)                    # nur in Brasilien: kein Mix
+        _, split = planner.plans(self.data, self.settings, now=NOW, with_mix=True)
+        self.assertIsNone(split)                    # ohne gemeinsamen Korb
+
+    def test_owned_flags(self):
+        self.data["owned"] = ["hades", "vampire-survivors"]
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        rows = {i["slug"]: i for i in br["items"]}
+        self.assertTrue(rows["hades"]["owned"])
+        self.assertEqual((rows["vs-foscari"]["owned"], rows["vs-foscari"]["parent_owned"]), (False, True))
+        self.assertIsNone(rows["hades"]["parent_owned"])        # kein DLC
+
     def test_matrix(self):
         m = planner.matrix(self.data, self.settings, now=NOW)
         row = {r["slug"]: r for r in m["rows"]}
@@ -526,6 +571,8 @@ class SyncTest(unittest.TestCase):
             calls.append(url)
             if "/wishlist/" in url:
                 return ('<a href="/items/vs-foscari">x</a>' if "page=1" in url else "")
+            if "/collection/" in url:
+                return ('<a href="/items/vampire-survivors">x</a>' if "page=1" in url else "")
             if "/items/" in url:
                 if "country=us" in url:
                     return ITEM_US
@@ -570,6 +617,9 @@ class SyncTest(unittest.TestCase):
         self.assertNotIn("JP", data["prices"])  # keine japanische ID, kein Abruf
         self.assertFalse(any("country=JP" in u for u in calls))
         self.assertEqual(it["langs"], {"EU": "english, german"})
+        self.assertEqual(data["owned"], ["vampire-survivors"])          # Hauptspiel in der Sammlung
+        row = planner.radar(data, store.load_settings())[0]
+        self.assertEqual((row["owned"], row["parent_owned"]), (False, True))
         price_calls = [u for u in calls if "api.ec.nintendo.com" in u]
         # Preise für alle Länder mit bekannten IDs (Europa und Amerika), nicht für Japan und Asien
         self.assertEqual(len(price_calls), 19)
@@ -578,8 +628,8 @@ class SyncTest(unittest.TestCase):
         n = len(calls)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
         # zweiter Lauf sucht weder IDs, Sprachen noch Tiefstpreise:
-        # Wishlist (2), Kurse (1), Preise (19 Länder minus das ruhende Chile)
-        self.assertEqual(len(calls) - n, 2 + 1 + 18)
+        # Wishlist (2), Sammlung (2), Kurse (1), Preise (19 Länder minus das ruhende Chile)
+        self.assertEqual(len(calls) - n, 2 + 2 + 1 + 18)
         self.assertEqual(len(store.load_history()["BR"]["vs-foscari"]), 1)  # kein Preiswechsel
 
     def test_low_is_lowered_by_own_tracking(self):

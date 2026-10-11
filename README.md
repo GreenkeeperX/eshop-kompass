@@ -31,6 +31,14 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
   aber nur unter Ländern, die den ganzen Korb anbieten.
 - Preisvergleich: alle Titel mal alle Länder in Euro.
 
+Jeder Europreis enthält alles, was der Kauf dich kostet: Shop-Preis, Steuer,
+Wechselkurs und den Weg zum Guthaben (Kartengebühr oder Preis der
+Guthabenkarte). Der Tooltip am Preis zeigt die Rechnung.
+
+Unter der Vergleichstabelle steht, was der Korb kostet, wenn jeder Titel im
+günstigsten Land mit Kartenzahlung gekauft wird. Dort kostet der Wechsel
+nichts und es bleibt kein Rest.
+
 Marken an jedem Angebot: ★ Bestpreis über alle Länder, ☆ Bestpreis der leicht
 erreichbaren Länder, grün Landestief, rot Angebot darüber. Der Bestpreis ist
 der niedrigste Preis, den es je gab, zum heutigen Kurs.
@@ -50,6 +58,12 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
 - Bezahlen: Karte, Guthabenkarte oder das Günstigere von beiden.
 - Steuer: Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt
   (USA, Kanada).
+- Aufschlag: was Guthaben über dem Wechselkurs kostet, wenn bei einer Karte
+  kein Preis steht. Je Land einstellbar, zum Beispiel 1,75 für Japan, wenn du
+  das Guthaben dort per Kreditkarte zum Nennwert kaufst. Die Spalte "Dein Kurs"
+  zeigt, was dabei herauskommt.
+- Sammlung: Titel aus deiner DekuDeals-Sammlung werden als vorhanden markiert,
+  bei DLC steht dabei, ob du das Hauptspiel hast.
 - Guthabenkarten: eine Karte je Zeile, `Wert = Preis in Euro | Link`. Ein
   vorangestelltes `x` heißt nicht vorrätig.
 - Sprachen: Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne
@@ -65,7 +79,7 @@ in `data/history.json`.
 
 ## Datenquellen
 
-- Wishlist und Titel-IDs: dekudeals.com (öffentliche Wishlist, IDs werden dauerhaft gespeichert)
+- Wishlist, Sammlung und Titel-IDs: dekudeals.com (öffentliche Wishlist, IDs werden dauerhaft gespeichert)
 - Preise und Verfügbarkeit: api.ec.nintendo.com/v1/price (inoffiziell)
 - Sprachen: search.nintendo-europe.com (Europa), store-jp.nintendo.com (Japan)
 - Wechselkurse: open.er-api.com, ersatzweise frankfurter.dev (EZB)

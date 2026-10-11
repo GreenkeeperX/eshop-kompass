@@ -19,7 +19,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{padding:0 16px 60px}
-.narrow{max-width:1100px}
+.narrow{max-width:1280px}
 header.top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:14px 0 6px}
 header.top h1{font-size:19px;margin:0;letter-spacing:-.01em}
 header.top .meta{color:var(--muted);font-size:13px;flex:1;min-width:200px}
@@ -52,6 +52,8 @@ th:first-child,td:first-child{text-align:left}
 .ok{color:var(--accent);font-weight:600}
 .bad{color:var(--warn);font-weight:600}
 .over{color:var(--sale)}
+.dlc.has{border-color:var(--accent);color:var(--accent)}
+.dlc.own{border-color:var(--warn);color:var(--warn)}
 .dlc{font-size:9px;border:1px solid var(--line);border-radius:3px;padding:0 3px;margin-right:4px;color:var(--muted);vertical-align:1px}
 a.pl{color:inherit;text-decoration:none}
 a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
@@ -211,6 +213,8 @@ h3.sec{margin:22px 0 8px;font-size:14px}
 .lvl-neg{color:var(--accent);font-weight:600}
 .lvl-pos{color:var(--muted)}
 .set td input[type=number].sm{width:64px}
+.set td select[data-k=tier]{width:92px}
+.set td select[data-k=pay]{width:156px}
 </style>
 </head>
 <body>
@@ -304,12 +308,38 @@ function shopUrl(code, nsuid){   // Produktseite im eShop des Landes
 }
 /* Landespreis verlinkt den Verlauf bei DekuDeals, der Europreis die eShop-Seite */
 function priceLink(slug, code, text, x, cur){
-  const tip = "Preisverlauf bei DekuDeals öffnen" + (x && x.low !== null && x.low !== undefined ? ` · Landestief ${money(x.low, cur)}` : "");
+  const tip = (x && x.eur !== undefined && String(text).includes("€") ? compose(code, x) + " · " : "") +
+    "Klick öffnet den Preisverlauf bei DekuDeals" + (x && x.low !== null && x.low !== undefined ? ` · Landestief ${money(x.low, cur)}` : "");
   return `<a class="pl" href="${deku(slug, code)}" target="_blank" rel="noopener" title="${esc(tip)}">${text}</a>`;
 }
+/* Woraus sich ein Europreis zusammensetzt: Shop-Preis, Steuer, Kurs, Zahlweg */
+function compose(code, x){
+  const p = S.state.pay[code];
+  if(!p || x.eur === null || x.eur === undefined) return "";
+  const cur = p.currency, parts = [];
+  const net = x.net ?? x.local;
+  parts.push(`eShop ${money(net, cur)}` + (p.tax ? ` + ${String(p.tax).replace(".", ",")} % Steuer = ${money(x.local, cur)}` : ""));
+  if(p.via === "eur") return parts[0] + ", exakter Betrag";
+  if(p.via !== "eur"){
+    parts.push(`Kurs 1 € = ${p.rate.toLocaleString("de-DE", {maximumFractionDigits: p.rate > 20 ? 1 : 3})} ${cur}`);
+    if(p.via === "card") parts.push(`Kartenzahlung mit ${String(p.fee).replace(".", ",")} % Gebühr`);
+    else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}, das sind ${p.vs_mid > 0 ? "+" : ""}${String(p.vs_mid).replace(".", ",")} % zum Kurs`);
+    else parts.push(`Guthaben zum Kurs ${p.markup >= 0 ? "+" : ""}${String(p.markup).replace(".", ",")} %`);
+  }
+  return parts.join(" · ") + ` · ergibt ${eur(x.eur)}`;
+}
 function buyLink(code, x, text){
-  const url = shopUrl(code, x.nsuid);
-  return url ? `<a class="pl" href="${url}" target="_blank" rel="noopener" title="Im eShop ${esc(country(code).name)} öffnen">${text}</a>` : text;
+  const url = shopUrl(code, x.nsuid), tip = esc(compose(code, x));
+  return url ? `<a class="pl" href="${url}" target="_blank" rel="noopener" title="${tip} · Klick öffnet den eShop ${esc(country(code).name)}">${text}</a>`
+             : `<span title="${tip}">${text}</span>`;
+}
+function costTip(p){
+  if(p.is_ref) return "Kauf in Deutschland, exakter Betrag";
+  const info = S.state.pay[p.code] || {};
+  if(p.via === "card") return `Exakter Betrag per Karte: ${money(p.total, p.currency)} zum Kurs plus ${String(info.fee ?? "").replace(".", ",")} % Gebühr`;
+  if(p.estimated) return `Geschätzt: ${money(p.total, p.currency)} zum Kurs ${info.markup >= 0 ? "+" : ""}${String(info.markup ?? "").replace(".", ",")} %, weil keine Guthabenkarten eingetragen sind`;
+  const sum = p.cards.reduce((a, c) => a + c.count * c.face, 0);
+  return `Guthabenkarten über ${money(sum, p.currency)} für ${eur(p.cost)}` + (p.rest ? `, davon bleiben ${money(p.rest, p.currency)} als Rest` : ", kein Rest");
 }
 
 /* ---------- Deal-Güte ---------- */
@@ -358,6 +388,10 @@ function migrateLocal(){   // frühere Versionen merkten sich den Korb im Browse
     localStorage.removeItem("ek.basket"); localStorage.removeItem("ek.overrides"); localStorage.removeItem("ek.dense");
   }catch(e){}
 }
+async function loadPlans(){
+  const r = await api("/api/plans", planBody());
+  S.plans = r.plans; S.mix = r.mix;
+}
 async function refresh(){
   S.state = await api("/api/state");
   S.ui = S.state.ui;
@@ -368,14 +402,14 @@ async function refresh(){
     S.ui.basket = S.ui.basket.filter(s => known.has(s));
     if(!S.ui.basket.length) S.ui.basket = null;
   }
-  S.plans = (await api("/api/plans", planBody())).plans;
+  await loadPlans();
   render();
   watch();
 }
 async function replan(){
   if(S.ui.basket && !S.ui.basket.length) S.ui.basket = null;
   saveUi();
-  S.plans = (await api("/api/plans", planBody())).plans;
+  await loadPlans();
   render();
 }
 /* Änderung mit Rückweg: merkt sich den Stand davor */
@@ -477,7 +511,7 @@ function viewRadar(){
       champ = `<td>${eur(r.champ.eur)}<small>${esc(r.champ.name)}${differs ? ` · leicht ${eur(r.champ_easy.eur)} ${esc(r.champ_easy.name)}` : ""}</small></td>`;
     }
     const hit = r.target !== null && r.easy && r.easy.eur <= r.target + 0.005;
-    return `<tr class="v-${r.verdict}"><td>${r.dlc_of ? `<span class="dlc" title="DLC zu ${esc(r.dlc_of)}">DLC</span>` : ""}<a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen">${esc(r.title)}</a><a class="mini" href="${epSearch(r.title)}" target="_blank" rel="noopener" title="Bei eShop-Prices suchen">eP</a>${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+    return `<tr class="v-${r.verdict}"><td>${r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : ""}<a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen">${esc(r.title)}</a><a class="mini" href="${epSearch(r.title)}" target="_blank" rel="noopener" title="Bei eShop-Prices suchen">eP</a>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
       ${bestCell(r.easy, r.slug)}${bestCell(r.hard, r.slug)}${champ}
       <td>${r.de === null ? `<span class="na">–</span>` : eur(r.de)}</td>
       <td><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="–">${hit ? ` <span class="ok">✓</span>` : ""}</td>
@@ -539,7 +573,7 @@ function planCard(p){
   let h = `<article class="pc ${p.current ? "cur" : ""}"><header><h2>${esc(p.name)}</h2><span>${save}${p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</span></header><p class="sub">${esc(sub)}</p>`;
 
   if(has){
-    const parts = [`${cur === "EUR" ? "" : money(p.total, cur) + " → "}<b>${p.estimated ? "ca. " : ""}${eur(p.cost)}</b> statt ${eur(p.ref_total)}${p.is_ref ? " normal" : ""}`];
+    const parts = [`${cur === "EUR" ? "" : money(p.total, cur) + " → "}<b title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}</b> statt ${eur(p.ref_total)}${p.is_ref ? " normal" : ""}`];
     if(p.cards.length) parts.push(cardsHtml(p));
     if(!p.is_ref) parts.push(restHtml(p));
     if(!p.worth && p.saving >= 0) parts.push(`<small title="Für Länder der Stufe ${esc(p.tier_name)} lohnt der Wechsel bei dir erst ab ${eur(p.threshold)} Ersparnis">unter Schwelle ${eur(p.threshold)}</small>`);
@@ -549,8 +583,8 @@ function planCard(p){
     h += `<table><colgroup><col><col class="c-l"><col class="c-t"><col class="c-b"><col class="c-e"><col class="c-d"></colgroup>
       <thead><tr><th>Titel</th><th>${esc(cur || "")}</th><th class="c-t">Bestpreis €</th><th>bis</th><th>€</th><th>${p.is_ref ? "normal" : "DE €"}</th></tr></thead><tbody>` +
     p.items.map(i => {
-      const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of})` : "");
-      return `<tr><td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}"><span class="nm">${i.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(i.short)}</span></label></td>
+      const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "");
+      return `<tr><td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}"><span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}</span></label></td>
       <td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}${pctTag(i, cur)}</td><td class="c-t">${i.champ === null ? "–" : num(i.champ)}${gapTag(i)}</td>
       <td>${endCell(i.end)}</td><td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als in Deutschland"` : ""}>${buyLink(p.code, i, num(i.eur))}</td><td>${num(i.ref)}</td></tr>`;
     }).join("") + `</tbody></table>`;
@@ -605,11 +639,14 @@ function viewCompare(){
   const winEasy = easy.length ? easy.reduce((a, b) => b.cost < a.cost ? b : a) : null;
   const de = cols.find(p => p.is_ref);
 
+  const single = complete.filter(p => p.tier === 1 && p.via === "card" || p.is_ref).reduce((a, b) => !a || b.cost < a.cost ? b : a, null);
+  const mixWins = !!(S.mix && S.mix.parts.length > 1 && (!single || S.mix.cost < single.cost - 0.5));
   let verdict = `<span class="hint">Kein Land bietet den ganzen Korb, deshalb ist nichts hervorgehoben.</span>`;
   if(win){
     const diff = de && !win.is_ref && !de.missing.length ? ` · ${eur(de.cost - win.cost)} unter Deutschland` : "";
     verdict = `<span>Günstigstes Land: <b>${esc(win.name)}</b>, ${win.estimated ? "ca. " : ""}${eur(win.cost)}${diff}` +
-      (winEasy && winEasy.code !== win.code ? ` · leicht erreichbar: <b>${esc(winEasy.name)}</b>, ${eur(winEasy.cost)}` : "") + `</span>`;
+      (winEasy && winEasy.code !== win.code ? ` · leicht erreichbar: <b>${esc(winEasy.name)}</b>, ${eur(winEasy.cost)}` : "") +
+      (mixWins ? ` · <span title="Jeder Titel im günstigsten Land mit Kartenzahlung, Aufteilung steht unter der Tabelle">aufgeteilt: <b>${eur(S.mix.cost)}</b></span>` : "") + `</span>`;
   } else if(complete.length === 1){
     verdict = `<span class="hint">Nur ${esc(complete[0].name)} bietet den ganzen Korb.</span>`;
   }
@@ -644,7 +681,7 @@ function viewCompare(){
   h += `</tbody><tfoot>` +
     row("Summe", p => money(p.total, p.currency), "sumtop") +
     row("Karten", p => p.cards.length ? cardsHtml(p) : (p.via === "card" || p.is_ref ? "exakter Betrag" : "–")) +
-    row("Du zahlst", p => `${p.estimated ? "ca. " : ""}${eur(p.cost)}`, "pay") +
+    row("Du zahlst", p => `<span title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}</span>`, "pay") +
     row("Rest", p => p.is_ref ? `<span class="ok">0</span>` : restHtml(p, true)) +
     row("Gegenüber Deutschland", p => {
       if(p.is_ref) return "Basis";
@@ -660,6 +697,10 @@ function viewCompare(){
     }) +
     row("Hinweise", p => { const c = chipsFor(p); return c.length ? `<div class="chips">${c.join("")}</div>` : ""; }) +
     `</tfoot></table></div>`;
+  if(mixWins)
+    h += `<p class="restline"><b>Aufgeteilt auf Länder mit Kartenzahlung:</b> ${eur(S.mix.cost)}` +
+      (single ? `, das sind ${eur(single.cost - S.mix.cost)} weniger als alles in ${esc(single.name)}` : "") + `. ` +
+      S.mix.parts.map(x => `${esc(x.name)} ${eur(x.cost)} (${x.titles.map(esc).join(", ")})`).join(" · ") + `</p>`;
   if(none.length)
     h += `<p class="restline">Korb dort nicht kaufbar: ` + none.map(p => esc(p.name)).join(" · ") + `</p>`;
   return h + hiddenLine();
@@ -672,14 +713,14 @@ function viewMatrix(){
     (!S.onlySale || Object.values(r.cells).some(c => c.sale)));
   let h = `<div class="tools"><input type="search" id="q" placeholder="Titel filtern" value="${esc(S.filter)}">
     <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>${LEGEND}
-    <span class="hint">Preise in Euro beim üblichen Zahlweg des Landes. ★ legt den Titel in den gemeinsamen Korb.</span></div>
+    <span class="hint">Europreise enthalten Steuer, Kurs und deinen Zahlweg, der Tooltip zeigt die Rechnung. ★ legt den Titel in den gemeinsamen Korb.</span></div>
     <div class="matrix scroll"><table><thead><tr><th>Titel</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><button class="star ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button><a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     mx.cols.map(c => {
       const x = r.cells[c.code];
       if(!x) return `<td class="na"></td>`;
       if(x.na) return `<td class="na" ${x.nolang ? `title="Hier gibt es keine deutsche Fassung"` : ""}>${x.nolang ? "kein DE" : "–"}</td>`;
-      return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(money(x.local, c.currency))}">${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}</td>`;
+      return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(compose(c.code, x))}">${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}</td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
 }
@@ -702,6 +743,7 @@ function viewSettings(){
   const sel = (v, cur, l) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${l}</option>`;
   let h = `<form class="set" id="setForm"><div class="fields">
     <label class="f" style="grid-column:1/-1">DekuDeals-Wishlist-Link<input name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label>
+    <label class="f" style="grid-column:1/-1">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label>
     <label class="f">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
       S.state.countries.map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label>
     <label class="f">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label>
@@ -715,18 +757,20 @@ function viewSettings(){
     <p class="hint">Änderungen werden sofort gespeichert.<span class="saved" id="saved"></span></p>
     <h3 class="sec">Länder</h3>
     <p class="hint">Das Preisniveau vergleicht deine Wishlist mit Deutschland, auch für abgeschaltete Länder. Neu eingeschaltete Länder brauchen einen Abgleich.</p>
-    <div class="scroll"><table><thead><tr><th>Land</th><th>Aktiv</th><th>Wechsel</th><th>Bezahlen</th><th>Steuer %</th><th>Guthaben</th><th>Rest blockiert</th><th>Preisniveau</th></tr></thead><tbody>`;
+    <div class="scroll"><table><thead><tr><th>Land</th><th>Aktiv</th><th>Wechsel</th><th>Bezahlen</th><th title="Aufschlag auf den Kurs für Guthabenkarten ohne eigenen Preis. Leer gilt der allgemeine Wert.">Aufschlag %</th><th>Steuer %</th><th>Guthaben</th><th>Rest blockiert</th><th title="Was dich die Landeswährung kostet, verglichen mit dem Wechselkurs">Dein Kurs</th><th>Preisniveau</th></tr></thead><tbody>`;
   h += S.state.countries.map(c => {
-    const x = s.countries[c.code], ref = c.code === "DE", l = lv[c.code];
+    const x = s.countries[c.code], ref = c.code === "DE", l = lv[c.code], pi = S.state.pay[c.code];
+    const kurs = ref || !pi ? "" : `<span title="${pi.via === "card" ? "Kartenzahlung" : pi.card ? `beste Karte: ${money(pi.card.face, pi.currency)} für ${eur(pi.card.cost)}` : "Guthaben ohne Kartenpreis"} · 1 € = ${(1 / pi.unit).toLocaleString("de-DE", {maximumFractionDigits: 3})} ${esc(pi.currency)}" class="${pi.vs_mid < 0 ? "lvl-neg" : "lvl-pos"}">${pi.vs_mid > 0 ? "+" : ""}${String(pi.vs_mid).replace(".", ",")} %</span>`;
     const level = ref ? "Basis" : !l ? "–" : `<span class="${l.level < 0 ? "lvl-neg" : "lvl-pos"}" title="gemessen an ${l.titles} gemeinsamen Titeln">${l.level > 0 ? "+" : ""}${l.level} %</span> <small class="hint">${l.cheaper} günstiger, ${l.sale} im Angebot</small>`;
     return `<tr data-code="${c.code}"><td>${esc(c.name)}<span class="code">${c.code}</span></td>
       <td><input type="checkbox" data-k="enabled" ${x.enabled ? "checked" : ""} ${ref ? "disabled" : ""}></td>
       <td>${ref ? "" : `<select data-k="tier">${sel(1, x.tier, "leicht")}${sel(2, x.tier, "mittel")}${sel(3, x.tier, "schwer")}</select>`}</td>
       <td>${ref ? "" : `<select data-k="pay">${sel("card", x.pay, "Karte")}${sel("giftcard", x.pay, "Guthabenkarte")}${sel("auto", x.pay, "das Günstigere")}</select>`}</td>
+      <td>${ref ? "" : `<input class="sm" type="number" data-k="markup_pct" step="0.25" value="${x.markup_pct ?? ""}" placeholder="${x.pay === "card" ? "–" : s.gift_markup_pct}" ${x.pay === "card" ? `disabled title="Gilt nur für Guthaben, hier wird per Karte bezahlt"` : ""}>`}</td>
       <td>${ref ? "" : `<input class="sm" type="number" data-k="tax_pct" step="0.5" min="0" max="50" value="${x.tax_pct || 0}">`}</td>
       <td>${ref ? "" : `<input type="number" data-k="balance" step="0.01" min="0" value="${x.balance || 0}">`}</td>
       <td>${ref ? "" : `<input type="checkbox" data-k="rest_blocks" ${x.rest_blocks ? "checked" : ""}>`}</td>
-      <td style="white-space:nowrap">${level}</td></tr>`;
+      <td style="white-space:nowrap">${kurs}</td><td style="white-space:nowrap">${level}</td></tr>`;
   }).join("");
   h += `</tbody></table></div>
     <h3 class="sec">Guthabenkarten</h3>
@@ -751,7 +795,7 @@ function viewSettings(){
 }
 function settingsBody(form){
   const body = {countries:{}, tier_min_saving:{}};
-  for(const k of ["wishlist_url","current_country","card_fee_pct","gift_markup_pct","refresh_hours","lang_rule"])
+  for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","refresh_hours","lang_rule"])
     body[k] = form.elements[k].value;
   for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;
   form.querySelectorAll("tr[data-code]").forEach(tr => {
@@ -770,7 +814,7 @@ async function saveSettings(form, rerender){
   await api("/api/settings", settingsBody(form));
   const fresh = await api("/api/state");
   S.state = fresh; S.ui = fresh.ui;
-  S.plans = (await api("/api/plans", planBody())).plans;
+  await loadPlans();
   if(rerender || before !== active()) render(); else renderHead();
   const el = $("saved");
   if(el){ el.textContent = before !== active() ? "Gespeichert. Für neue Länder bitte aktualisieren." : "Gespeichert ✓"; setTimeout(() => { if($("saved")) $("saved").textContent = ""; }, 3000); }
@@ -835,7 +879,7 @@ document.addEventListener("change", async e => {
       await refresh();
       toast("Sicherung eingelesen");
     }
-    else if(el.closest("#setForm")){ await saveSettings($("setForm"), !!el.dataset.cards || el.dataset.k === "pay" || el.dataset.k === "tax_pct"); }
+    else if(el.closest("#setForm")){ await saveSettings($("setForm"), !!el.dataset.cards || ["pay", "tax_pct", "markup_pct"].includes(el.dataset.k)); }
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
     else if(a === "sort"){ S.ui.sort = el.value; saveUi(); render(); }

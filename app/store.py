@@ -10,6 +10,7 @@ DATA_DIR = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(__file__), ".
 
 DEFAULT_SETTINGS = {
     "wishlist_url": "",
+    "collection_url": "",     # leer = Sammlung mit derselben Kennung wie die Wishlist
     "card_fee_pct": 1.75,     # Fremdwährungsgebühr der eigenen Karte
     "gift_markup_pct": 5.0,   # Aufschlag für Guthabenkarten ohne eigenen Preis
     # ab dieser Ersparnis lohnt der Länderwechsel, je Stufe (leicht, mittel, schwer)
@@ -73,6 +74,8 @@ def save_settings(new):
         s = load_settings()
         if isinstance(new.get("wishlist_url"), str):
             s["wishlist_url"] = new["wishlist_url"].strip()
+        if isinstance(new.get("collection_url"), str):
+            s["collection_url"] = new["collection_url"].strip()
         for k in ("card_fee_pct", "gift_markup_pct", "refresh_hours"):
             if k in new:
                 try:
@@ -99,6 +102,12 @@ def save_settings(new):
                 cur["pay"] = c["pay"]
             if str(c.get("tier")) in ("1", "2", "3"):
                 cur["tier"] = int(c["tier"])
+            if "markup_pct" in c:
+                try:
+                    raw = c["markup_pct"]
+                    cur["markup_pct"] = "" if raw in ("", None) else min(100.0, max(-50.0, float(raw)))
+                except (TypeError, ValueError):
+                    pass
             if "tax_pct" in c:
                 try:
                     cur["tax_pct"] = min(50.0, max(0.0, float(c["tax_pct"] or 0)))
