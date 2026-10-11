@@ -260,7 +260,9 @@ class Context:
                "via": "giftcard" if gift else "card", "unit": c["unit"] * 100,
                "vs_mid": round(100 * (c["unit"] / mid - 1), 1),
                "fee": self.settings["card_fee_pct"], "markup": self.markup(c), "card": None,
-               "at_rate": any(x["stock"] for x in c["cards"])}
+               # Karten nur mit Wert und ohne Shop-Link: Guthaben zum Kurs, wie bei Amazon Japan.
+               # Karten mit Link, aber ohne bekannten Preis, bleiben eine Schätzung.
+               "at_rate": any(x["stock"] and x["cost"] is None and not x["url"] for x in c["cards"])}
         if c["currency"] == "EUR":
             out["via"] = "eur"
         elif gift:
@@ -275,8 +277,7 @@ class Context:
         weil für dieses Land gar keine Guthabenkarte eingetragen ist. Karten nur
         mit Wert heißen: Guthaben zum Kurs plus Aufschlag, so wie du es kaufst."""
         how = self.how(c)
-        return bool(how and how["via"] == "giftcard" and not how["card"]
-                    and not any(x["stock"] for x in c["cards"]))
+        return bool(how and how["via"] == "giftcard" and not how["card"] and not how["at_rate"])
 
     def est(self, c, local):
         """Europreis eines Bruttobetrags in Landeswährung beim üblichen Zahlweg."""

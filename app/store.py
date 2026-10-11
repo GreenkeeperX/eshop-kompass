@@ -134,12 +134,38 @@ def save_settings(new):
                     cur["balance"] = max(0.0, float(c["balance"] or 0))
                 except (TypeError, ValueError):
                     pass
+            if isinstance(c.get("cards_add"), str):     # aus einer Datei: ergänzen statt ersetzen
+                c = dict(c, cards=merge_cards(c.get("cards", cur["cards"]), c["cards_add"]))
             if isinstance(c.get("cards"), str) and c["cards"].strip() != cur["cards"]:
                 cur["cards"] = c["cards"].strip()
                 cur["cards_checked"] = date.today().isoformat() if cur["cards"] else ""
         s["countries"][countries.REFERENCE]["enabled"] = True
         _save("settings.json", s)
         return s
+
+
+def merge_cards(text, add):
+    """Ergänzt eine Kartenliste um Zeilen, ohne Vorhandenes zu verlieren.
+
+    Gibt es den Kartenwert schon, bekommt die Zeile nur den Link, falls sie
+    noch keinen hat. Der eingetragene Preis bleibt.
+    """
+    from . import planner
+    lines = [l for l in (text or "").splitlines() if l.strip()]
+    for new in (add or "").splitlines():
+        card = planner.parse_card_list(new)
+        if not new.strip() or not card:
+            continue
+        card = card[0]
+        for i, line in enumerate(lines):
+            old = planner.parse_card_list(line)
+            if any(o["face"] == card["face"] for o in old):
+                if len(old) == 1 and card["url"] and not old[0]["url"]:
+                    lines[i] = line.rstrip() + " | " + card["url"]
+                break
+        else:
+            lines.append(new.strip())
+    return "\n".join(lines)
 
 
 def load_data():

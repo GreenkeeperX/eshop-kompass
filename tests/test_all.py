@@ -511,6 +511,9 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(jp["rest"], 100.0)
         cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
         self.assertFalse(cells["JP"]["est"])          # feste Werte zum Kurs: keine Schätzung
+        self.settings["countries"]["JP"]["cards"] = "1000 | https://shop.example/jp"
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertTrue(cells["JP"]["est"])           # Shop-Karte ohne bekannten Preis
 
     def test_card_prices_from_shop_pages(self):
         ld = ('<script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer",'
@@ -662,6 +665,21 @@ class SafetyTest(unittest.TestCase):
         s = store.save_settings({"countries": {"JP": {"rest_blocks": True}}})
         self.assertTrue(store.load_settings()["countries"]["JP"]["rest_blocks"])  # deine Wahl bleibt
         store.save_settings({"countries": {"JP": {"rest_blocks": False}}})
+
+    def test_cards_can_be_added_from_a_file(self):
+        store.save_settings({"countries": {"US": {"cards": "x 10 = 8,50\n5 = 4,20\n25 50=41"}}})
+        s = store.save_settings({"countries": {"US": {"cards_add":
+            "5 | https://shop.example/5\n10 | https://shop.example/10\n50 | https://shop.example/50\n"
+            "20 | https://shop.example/20"}}})
+        self.assertEqual(s["countries"]["US"]["cards"],
+                         "x 10 = 8,50 | https://shop.example/10\n5 = 4,20 | https://shop.example/5\n"
+                         "25 50=41\n20 | https://shop.example/20")
+        cards = {c["face"]: c for c in planner.parse_card_list(s["countries"]["US"]["cards"])}
+        self.assertEqual((cards[500]["cost"], cards[1000]["stock"], cards[5000]["cost"]), (4.2, False, 41.0))
+        # zweimal einlesen ändert nichts
+        again = store.save_settings({"countries": {"US": {"cards_add": "5 | https://shop.example/5"}}})
+        self.assertEqual(again["countries"]["US"]["cards"], s["countries"]["US"]["cards"])
+        store.save_settings({"countries": {"US": {"cards": ""}}})
 
     def test_blocked_sources_stop_the_run(self):
         data = {"items": {f"t{i}": {"title": f"T{i}", "active": True, "ids": {}, "ids_checked": {}}

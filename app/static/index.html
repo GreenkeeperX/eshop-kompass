@@ -265,7 +265,7 @@ function num(n, cur){   // Zahl ohne Währungszeichen, für enge Spalten
   return n.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d});
 }
 const eur = n => money(n, "EUR");
-const APPROX = `<span class="approx" title="geschätzt: Guthaben zum Kurs plus pauschalem Aufschlag, weil für das Land keine Guthabenkarte eingetragen ist">≈</span>`;
+const APPROX = `<span class="approx" title="geschätzt: Guthaben zum Kurs plus pauschalem Aufschlag, weil für das Land keine Guthabenkarte mit bekanntem Preis eingetragen ist">≈</span>`;
 const ax = x => x && x.est ? APPROX : "";   // Kennzeichen für geschätzte Europreise
 function endCell(iso, prefix){
   if(!iso) return "";
@@ -329,7 +329,7 @@ function compose(code, x){
   if(p.via === "card") parts.push(`Kartenzahlung plus ${pctTxt(p.fee)} Fremdwährungsgebühr, die Bank rechnet mit eigenem Kurs`);
   else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}${p.card.live ? ` (Shop-Preis vom ${stamp(p.card.live)})` : ""}, das sind ${p.vs_mid > 0 ? "+" : ""}${pctTxt(p.vs_mid)} zum Kurs`);
   else if(p.at_rate) parts.push(`Guthaben in festen Werten zum Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}`);
-  else parts.push(`Guthaben geschätzt mit Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}, weil keine Guthabenkarte eingetragen ist`);
+  else parts.push(`Guthaben geschätzt mit Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}, weil kein Kartenpreis bekannt ist`);
   return parts.join(" · ") + ` · ergibt ${x.est ? "ungefähr " : ""}${eur(x.eur)}`;
 }
 const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
