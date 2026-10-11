@@ -19,6 +19,7 @@ def state():
         "radar": planner.radar(data, settings, ui["targets"]),
         "levels": planner.price_levels(data, settings),
         "pay": planner.pay_info(data, settings),
+        "card_status": planner.card_status(data, settings),
         "owned_count": len(data.get("owned") or []),
         "countries": [dict(countries.BY_CODE[c], family_name=countries.FAMILIES[
             countries.BY_CODE[c]["family"]]) for c in countries.ORDER],

@@ -28,7 +28,7 @@ DEFAULT_SETTINGS = {
 DEFAULT_UI = {"basket": None, "overrides": {}, "targets": {}, "hidden": [],
               "sort": "saving", "dense": True}
 
-EMPTY_DATA = {"items": {}, "prices": {}, "lows": {},
+EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {},
               "fx": {"rates": {"EUR": 1.0}, "updated": ""}, "last_sync": None}
 
 lock = threading.RLock()

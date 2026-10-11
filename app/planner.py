@@ -11,6 +11,7 @@ from . import countries
 from .sources import parse_amount
 
 MAX_STATES = 3_000_000
+CARD_PRICE_MAX_AGE = 3 * 24 * 3600   # gelesene Kartenpreise gelten so lange
 MIN_FILLER_GAIN = 0.5    # Füllartikel erst ab dieser Ersparnis in Euro vorschlagen
 BEST_TOLERANCE = 0.02    # bis 2 % über dem Bestpreis gilt ein Angebot als Bestpreis
 GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
@@ -163,6 +164,8 @@ class Context:
         self.lows = data.get("lows", {})
         self.owned = set(data.get("owned") or [])
         rates = data["fx"]["rates"]
+        self.rates = rates
+        self.card_prices = data.get("card_prices") or {}
         self.countries = {}
         for code in countries.ORDER:
             cfg = settings["countries"][code]
@@ -188,7 +191,7 @@ class Context:
                  "currency": currency, "rate": rates.get(currency) if currency else None,
                  "known": set(data["prices"].get(code, {})), "tax": tax,
                  "tier": int(cfg.get("tier") or meta["tier"]), "nolang": set(),
-                 "cards": parse_card_list(cfg.get("cards"))}
+                 "cards": self._live_cards(parse_card_list(cfg.get("cards")))}
             c["unit"] = self._unit(c)
             c["estimated"] = self.estimated(c)
             self.countries[code] = c
@@ -197,6 +200,20 @@ class Context:
         self.ref = {s: o["local"] / 100 for s, o in ref["offers"].items()}
         self.ref_regular = {s: o["regular"] / 100 for s, o in ref["offers"].items()}
         self._champions()
+
+    def _live_cards(self, cards):
+        """Setzt für Karten mit Link den zuletzt gelesenen Shop-Preis ein, solange
+        er frisch ist. Sonst bleibt der von Hand eingetragene Preis."""
+        now = self.now.timestamp()
+        for x in cards:
+            e = self.card_prices.get(x["url"]) if x["url"] else None
+            if not e or e.get("price") is None or now - e.get("checked", 0) > CARD_PRICE_MAX_AGE:
+                continue
+            rate = 1.0 if e.get("currency") == "EUR" else self.rates.get(e.get("currency"))
+            if not rate:
+                continue
+            x.update(manual=x["cost"], cost=round(e["price"] / rate, 2), live=e["checked"])
+        return cards
 
     # ---- Europreis je Währungseinheit
 
@@ -242,20 +259,24 @@ class Context:
         out = {"currency": c["currency"], "rate": c["rate"], "tax": c["tax"],
                "via": "giftcard" if gift else "card", "unit": c["unit"] * 100,
                "vs_mid": round(100 * (c["unit"] / mid - 1), 1),
-               "fee": self.settings["card_fee_pct"], "markup": self.markup(c), "card": None}
+               "fee": self.settings["card_fee_pct"], "markup": self.markup(c), "card": None,
+               "at_rate": any(x["stock"] for x in c["cards"])}
         if c["currency"] == "EUR":
             out["via"] = "eur"
         elif gift:
             card = self._gift(c)[1]
             if card and card["cost"] is not None:
-                out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"]}
+                out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
+                               "live": card.get("live")}
         return out
 
     def estimated(self, c):
         """True, wenn der Europreis auf dem pauschalen Guthaben-Aufschlag beruht,
-        weil für dieses Land keine Guthabenkarte mit Preis eingetragen ist."""
+        weil für dieses Land gar keine Guthabenkarte eingetragen ist. Karten nur
+        mit Wert heißen: Guthaben zum Kurs plus Aufschlag, so wie du es kaufst."""
         how = self.how(c)
-        return bool(how and how["via"] == "giftcard" and not how["card"])
+        return bool(how and how["via"] == "giftcard" and not how["card"]
+                    and not any(x["stock"] for x in c["cards"]))
 
     def est(self, c, local):
         """Europreis eines Bruttobetrags in Landeswährung beim üblichen Zahlweg."""
@@ -756,6 +777,24 @@ def radar(data, settings, targets=None, now=None):
     rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]),
                              r["gap_easy"] if r["gap_easy"] is not None else 999))
     return rows
+
+
+def card_status(data, settings, now=None):
+    """Je Land die Karten mit Link: gelesener Preis, Stand oder Fehler."""
+    ctx = Context(data, settings, now, include_all=True)
+    out = {}
+    for code, c in ctx.countries.items():
+        rows = []
+        for x in c["cards"]:
+            if not x["url"]:
+                continue
+            e = ctx.card_prices.get(x["url"]) or {}
+            rows.append({"face": x["face"] / 100, "cost": x["cost"], "live": x.get("live"),
+                         "manual": x.get("manual", x["cost"]), "checked": e.get("checked"),
+                         "error": e.get("error")})
+        if rows:
+            out[code] = rows
+    return out
 
 
 def pay_info(data, settings, now=None):

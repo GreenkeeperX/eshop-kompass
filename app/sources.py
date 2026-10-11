@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.6.1"
+VERSION = "0.6.2"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -401,3 +401,8 @@ def parse_ld_price(page_html):
                         pass
             stack.extend(v for v in x.values() if isinstance(v, (dict, list)))
     return None
+
+
+def fetch_card_price(url, fetch=fetch):
+    """Preis einer Guthabenkarte von ihrer Shopseite: (Preis, Währung) oder None."""
+    return parse_ld_price(fetch(url))

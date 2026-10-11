@@ -41,7 +41,7 @@ Jeder Europreis enthält alles, was der Kauf dich kostet: Shop-Preis, Steuer,
 Wechselkurs und den Weg zum Guthaben (Kartengebühr oder Preis der
 Guthabenkarte). Der Tooltip am Preis zeigt die Rechnung samt Stand des
 Wechselkurses. Ein ≈ vor dem Preis heißt geschätzt: Für das Land ist keine
-Guthabenkarte mit Preis eingetragen, gerechnet wird mit Kurs plus Aufschlag.
+Guthabenkarte eingetragen, gerechnet wird mit Kurs plus pauschalem Aufschlag.
 Auch Kartenzahlung ist eine Näherung (Mittelkurs plus Fremdwährungsgebühr),
 die Bank rechnet mit ihrem eigenen Kurs.
 
@@ -80,6 +80,10 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   bei Amazon Japan), genügen die Werte, zum Beispiel `500 1000 2000 3000 5000
   9000` mit Aufschlag 0: Dann folgen die Kosten jedem neuen Kurs und der Rest
   zählt mit.
+  Hat eine Karte einen Link, liest das Tool beim Abgleich höchstens einmal am
+  Tag den Preis von der Shopseite (aus den Produktdaten der Seite). Unter dem
+  Eingabefeld steht, was es gelesen hat. Liefert die Seite keinen Preis oder
+  ist der Wert älter als drei Tage, gilt dein eingetragener Preis.
 - Sprachen: Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne
   sie weg. Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft.
 - Sicherung: Einstellungen, Karten, Zielpreise und Körbe als Datei.

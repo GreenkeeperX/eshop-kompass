@@ -15,6 +15,8 @@ LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu pr
 LOWS_VERSION = 2                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
 LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu prüfen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
+CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
+CARD_PAUSE = 3.0
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None}
@@ -262,6 +264,50 @@ def sync_prices(data, settings, fetch, sleep, history=None):
         _log("Ohne Preise (abgeschaltete Länder): " + ", ".join(quiet))
 
 
+def sync_card_prices(data, settings, fetch, sleep, now=None):
+    """Liest die Preise der Guthabenkarten, die einen Link haben, von der Shopseite.
+
+    Nur aktive Länder, höchstens einmal am Tag je Link. Liefert eine Seite
+    keinen Preis, bleibt der von Hand eingetragene Wert.
+    """
+    now = now or time.time()
+    prices = data.setdefault("card_prices", {})
+    urls = []
+    for code in countries.ORDER:
+        cfg = settings["countries"][code]
+        if not cfg["enabled"]:
+            continue
+        for x in planner.parse_card_list(cfg.get("cards")):
+            if x["url"] and x["stock"] and x["url"] not in urls:
+                urls.append(x["url"])
+    for url in list(prices):                  # Links, die nicht mehr eingetragen sind
+        if url not in urls:
+            del prices[url]
+    todo = [u for u in urls if now - (prices.get(u) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS]
+    if not todo:
+        return
+    _step("Kartenpreise lesen", len(todo))
+    got = 0
+    for url in todo:
+        try:
+            found = sources.fetch_card_price(url, fetch=fetch)
+        except sources.FetchError as e:
+            if e.status in sources.BLOCKED:
+                _log(f"Kartenpreise: Shop lehnt Abrufe ab ({e}), Werte von Hand gelten weiter")
+                break
+            prices[url] = {"checked": now, "error": f"HTTP {e.status or 'Fehler'}"}
+        else:
+            if found:
+                prices[url] = {"checked": now, "price": found[0], "currency": found[1]}
+                got += 1
+            else:
+                prices[url] = {"checked": now, "error": "Seite nennt keinen Preis"}
+        status["done"] += 1
+        sleep(CARD_PAUSE)
+    _log(f"Kartenpreise: {got} von {len(todo)} gelesen" +
+         ("" if got == len(todo) else ", für die übrigen gilt der Wert von Hand"))
+
+
 def sync_langs(data, settings, fetch, sleep, now=None):
     """Sprachen je Region von Nintendo: Europa in einem Abruf, Japan je Titel."""
     now = now or time.time()
@@ -403,6 +449,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         history = store.load_history()
         sync_prices(data, settings, fetch, sleep, history)
         store.save_history(history)
+        sync_card_prices(data, settings, fetch, sleep)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
         sync_langs(data, settings, fetch, sleep)

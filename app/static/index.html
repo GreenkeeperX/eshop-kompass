@@ -265,7 +265,7 @@ function num(n, cur){   // Zahl ohne Währungszeichen, für enge Spalten
   return n.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d});
 }
 const eur = n => money(n, "EUR");
-const APPROX = `<span class="approx" title="geschätzt: Guthaben zum Kurs plus pauschalem Aufschlag, weil keine Karte mit Preis eingetragen ist">≈</span>`;
+const APPROX = `<span class="approx" title="geschätzt: Guthaben zum Kurs plus pauschalem Aufschlag, weil für das Land keine Guthabenkarte eingetragen ist">≈</span>`;
 const ax = x => x && x.est ? APPROX : "";   // Kennzeichen für geschätzte Europreise
 function endCell(iso, prefix){
   if(!iso) return "";
@@ -327,9 +327,22 @@ function compose(code, x){
   parts.push(`Mittelkurs 1 € = ${p.rate.toLocaleString("de-DE", {maximumFractionDigits: p.rate > 20 ? 1 : 3})} ${cur}` +
     (S.state.fx_updated ? ` (Stand ${fxDate()})` : ""));
   if(p.via === "card") parts.push(`Kartenzahlung plus ${pctTxt(p.fee)} Fremdwährungsgebühr, die Bank rechnet mit eigenem Kurs`);
-  else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}, das sind ${p.vs_mid > 0 ? "+" : ""}${pctTxt(p.vs_mid)} zum Kurs`);
-  else parts.push(`Guthaben geschätzt mit Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}, weil keine Karte mit Preis eingetragen ist`);
+  else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}${p.card.live ? ` (Shop-Preis vom ${stamp(p.card.live)})` : ""}, das sind ${p.vs_mid > 0 ? "+" : ""}${pctTxt(p.vs_mid)} zum Kurs`);
+  else if(p.at_rate) parts.push(`Guthaben in festen Werten zum Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}`);
+  else parts.push(`Guthaben geschätzt mit Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}, weil keine Guthabenkarte eingetragen ist`);
   return parts.join(" · ") + ` · ergibt ${x.est ? "ungefähr " : ""}${eur(x.eur)}`;
+}
+const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+/* Gelesene Shop-Preise der Guthabenkarten eines Landes, für die Einstellungen */
+function cardStatus(code, cur){
+  const rows = (S.state.card_status || {})[code];
+  if(!rows) return "";
+  return rows.map(r => {
+    const face = cur ? money(r.face, cur) : num(r.face);
+    if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)})`;
+    if(r.checked) return `${face}: <span class="warnc">${esc(r.error || "kein Preis")}</span>, es gilt ${r.manual === null ? "Kurs plus Aufschlag" : eur(r.manual)}`;
+    return `${face}: wird beim nächsten Abgleich gelesen`;
+  }).join(" · ");
 }
 const pctTxt = v => String(v ?? "").replace(".", ",") + " %";
 function fxDate(){
@@ -789,7 +802,7 @@ function viewSettings(){
     <div class="scroll"><table><thead><tr><th>Land</th><th title="Land in Radar, Paketen und Preisvergleich zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th><th title="Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt. schwer: Rest blockiert den Wechsel. Je Stufe gilt oben eine eigene Mindestersparnis.">Wechsel</th><th title="Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der eingetragenen Karten, sonst Kurs plus Aufschlag. Das Günstigere: wählt je Paket.">Bezahlen</th><th title="Aufschlag auf den Mittelkurs für Guthaben ohne eingetragenen Kartenpreis. Leer gilt der allgemeine Wert oben. 0 heißt: Guthaben zum Kurs, etwa bei Amazon Japan.">Aufschlag %</th><th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th><th title="Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.">Guthaben</th><th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er über den Support gelöst ist (Amerika). Sonst verfällt ein Rest nur und zählt als Kosten.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne Kartenpreis: der Aufschlag, als Schätzung.">Dein Kurs</th><th title="Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.">Preisniveau</th></tr></thead><tbody>`;
   h += S.state.countries.map(c => {
     const x = s.countries[c.code], ref = c.code === "DE", l = lv[c.code], pi = S.state.pay[c.code];
-    const kurs = ref || !pi ? "" : `<span title="${pi.via === "card" ? "Kartenzahlung" : pi.card ? `beste Karte: ${money(pi.card.face, pi.currency)} für ${eur(pi.card.cost)}` : "Guthaben ohne Kartenpreis"} · 1 € = ${(1 / pi.unit).toLocaleString("de-DE", {maximumFractionDigits: 3})} ${esc(pi.currency)}" class="${pi.vs_mid < 0 ? "lvl-neg" : "lvl-pos"}">${pi.via === "giftcard" && !pi.card ? "≈ " : ""}${pi.vs_mid > 0 ? "+" : ""}${String(pi.vs_mid).replace(".", ",")} %</span>`;
+    const kurs = ref || !pi ? "" : `<span title="${pi.via === "card" ? "Kartenzahlung" : pi.card ? `beste Karte: ${money(pi.card.face, pi.currency)} für ${eur(pi.card.cost)}` : "Guthaben ohne Kartenpreis"} · 1 € = ${(1 / pi.unit).toLocaleString("de-DE", {maximumFractionDigits: 3})} ${esc(pi.currency)}" class="${pi.vs_mid < 0 ? "lvl-neg" : "lvl-pos"}">${pi.via === "giftcard" && !pi.card && !pi.at_rate ? "≈ " : ""}${pi.vs_mid > 0 ? "+" : ""}${String(pi.vs_mid).replace(".", ",")} %</span>`;
     const level = ref ? "Basis" : !l ? "–" : `<span class="${l.level < 0 ? "lvl-neg" : "lvl-pos"}" title="gemessen an ${l.titles} gemeinsamen Titeln">${l.level > 0 ? "+" : ""}${l.level} %</span> <small class="hint">${l.cheaper} günstiger, ${l.sale} im Angebot</small>`;
     return `<tr data-code="${c.code}"><td>${esc(c.name)}<span class="code">${c.code}</span></td>
       <td><input type="checkbox" data-k="enabled" ${x.enabled ? "checked" : ""} ${ref ? "disabled" : ""}></td>
@@ -803,13 +816,14 @@ function viewSettings(){
   }).join("");
   h += `</tbody></table></div>
     <h3 class="sec">Guthabenkarten</h3>
-    <p class="hint">Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag, so folgen die Kosten jedem neuen Kurs. Nur Werte wie <code>500 1000 3000</code> genügen, wenn du Guthaben zum Kurs kaufst (Amazon Japan): Dann zählt auch der Rest.</p>
+    <p class="hint">Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag, so folgen die Kosten jedem neuen Kurs. Nur Werte wie <code>500 1000 3000</code> genügen, wenn du Guthaben zum Kurs kaufst (Amazon Japan): Dann zählt auch der Rest. Hat eine Karte einen Link, liest das Tool den Preis einmal am Tag von der Shopseite, sofern die Seite ihn ohne Browser verrät. Sonst gilt dein Wert.</p>
     <div class="cardsbox">`;
   h += S.state.countries.filter(c => c.code !== "DE" && (s.countries[c.code].enabled || s.countries[c.code].cards)).map(c => {
     const x = s.countries[c.code];
     const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000;
     return `<label>${esc(c.name)}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>
-      <small><span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</small></label>`;
+      <small><span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</small>
+      ${cardStatus(c.code, (S.state.pay[c.code] || {}).currency) ? `<small>${cardStatus(c.code, (S.state.pay[c.code] || {}).currency)}</small>` : ""}</label>`;
   }).join("");
   h += `</div></form>
     <h3 class="sec">Sicherung</h3>

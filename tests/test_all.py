@@ -509,6 +509,48 @@ class PlanTest(unittest.TestCase):
                                        {"face": 500.0, "count": 1, "url": ""}])
         self.assertAlmostEqual(jp["cost"], round(1500 / 177.3267, 2))
         self.assertEqual(jp["rest"], 100.0)
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertFalse(cells["JP"]["est"])          # feste Werte zum Kurs: keine Schätzung
+
+    def test_card_prices_from_shop_pages(self):
+        ld = ('<script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer",'
+              '"price":"%s","priceCurrency":"%s"}}</script>')
+        pages = {"https://shop.example/br50": ld % ("8.90", "EUR"),
+                 "https://shop.example/br25": "<div id=app></div>"}
+        self.settings["countries"]["BR"]["cards"] = (
+            "15 = 3,00\n25 = 4,80 | https://shop.example/br25\n50 = 9,50 | https://shop.example/br50")
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            return pages[url]
+        t0 = NOW.timestamp()
+        sync.sync_card_prices(self.data, self.settings, fake, lambda s: None, now=t0)
+        cp = self.data["card_prices"]
+        self.assertEqual(cp["https://shop.example/br50"], {"checked": t0, "price": 8.9, "currency": "EUR"})
+        self.assertEqual(cp["https://shop.example/br25"]["error"], "Seite nennt keinen Preis")
+        sync.sync_card_prices(self.data, self.settings, fake, lambda s: None, now=t0 + 3600)
+        self.assertEqual(len(calls), 2)                       # höchstens einmal am Tag
+        # Der gelesene Preis ersetzt den von Hand eingetragenen
+        info = planner.pay_info(self.data, self.settings, now=NOW)["BR"]
+        self.assertEqual((info["card"]["face"], info["card"]["cost"], info["card"]["live"]), (50.0, 8.9, t0))
+        st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
+        self.assertEqual([(r["face"], r["cost"], r["manual"], r["error"]) for r in st],
+                         [(25.0, 4.8, 4.8, "Seite nennt keinen Preis"), (50.0, 8.9, 9.5, None)])
+        # Veraltet: nach drei Tagen gilt wieder der Wert von Hand
+        later = datetime.fromtimestamp(t0 + 4 * 86400, timezone.utc)
+        self.assertEqual(planner.pay_info(self.data, self.settings, now=later)["BR"]["card"]["cost"], 9.5)
+        # Sperre beendet das Lesen, gelöschte Links fallen aus dem Speicher
+        self.settings["countries"]["BR"]["cards"] = "50 = 9,50 | https://shop.example/br50\n25 | https://shop.example/x"
+        calls.clear()
+
+        def deny(url, ua=None):
+            calls.append(url)
+            raise sources.FetchError(url, 403)
+        sync.sync_card_prices(self.data, self.settings, deny, lambda s: None, now=t0 + 2 * 86400)
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn("https://shop.example/br25", self.data["card_prices"])
+        self.assertIn("lehnt Abrufe ab", sync.status["log"][-2])
 
     def test_own_low_without_dekudeals(self):
         self.data["lows"] = {"NO": {"hades": {"checked": 1}}}      # DekuDeals ohne Wert
@@ -653,7 +695,9 @@ class SafetyTest(unittest.TestCase):
                 c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
                 c.request("POST", "/api/settings", body='{"wishlist_url": "x"}',
                           headers={"Content-Type": ctype})
-                return c.getresponse().status
+                status = c.getresponse().status
+                c.close()
+                return status
             before = store.load_settings()["wishlist_url"]
             self.assertEqual(post("text/plain"), 400)       # einfaches Formular einer fremden Seite
             self.assertEqual(store.load_settings()["wishlist_url"], before)
@@ -662,6 +706,7 @@ class SafetyTest(unittest.TestCase):
             store.save_settings({"wishlist_url": before})
         finally:
             srv.shutdown()
+            srv.server_close()
 
     def test_card_shop_price_and_diagnosis(self):
         page = ('<script type="application/ld+json">{"@type":"Product","offers":'
