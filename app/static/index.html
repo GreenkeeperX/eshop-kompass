@@ -360,10 +360,10 @@ const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit"
 function cardStatus(code, cur){
   const rows = (S.state.card_status || {})[code];
   if(!rows) return "";
-  const gg = rows.filter(r => r.market), own = rows.filter(r => !r.market && !r.market_error), err = rows.find(r => r.market_error);
+  const gg = rows.filter(r => r.market), own = rows.filter(r => !r.market && !r.market_error), errs = rows.filter(r => r.market_error);
   const parts = [];
   if(gg.length) parts.push(`gg.deals (${stamp(gg[0].market)}): ` + gg.map(r => `${cur ? money(r.face, cur) : num(r.face)} <span class="ok">${eur(r.cost)}</span>`).join(", "));
-  if(err) parts.push(`gg.deals: <span class="warnc">${esc(err.market_error)}</span>`);
+  errs.forEach(err => parts.push(`gg.deals: <span class="warnc">${esc(err.market_error)}</span>`));
   return parts.concat(own.map(r => {
     const face = cur ? money(r.face, cur) : num(r.face);
     if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)}${feeTxt(S.state.settings.shop_fee_pct, S.state.settings.shop_fee_eur)})`;
@@ -594,7 +594,7 @@ function viewRadar(){
       ${bestCell(r.easy, r.slug, false)}${bestCell(r.hard, r.slug, true)}${champ}
       <td>${r.de === null ? `<span class="na">–</span>` : eur(r.de)}</td>
       <td><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="–">${hit ? ` <span class="ok">✓</span>` : ""}</td>
-      <td><span class="vd ${r.verdict}" title="${esc(r.reason)}">${VERDICT[r.verdict]}</span>${r.verdict !== "none" ? `<small>${esc(r.reason)}</small>` : ""}</td>
+      <td><span class="vd ${r.verdict}" title="${esc(r.reason)}">${VERDICT[r.verdict]}</span>${r.verdict !== "none" || (r.lang_unsure || []).length ? `<small>${esc(r.reason)}</small>` : ""}</td>
       <td><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
   }).join("");
   h += `</tbody></table></div>`;
@@ -838,7 +838,7 @@ function viewMatrix(){
       const x = r.cells[c.code];
       if(!x) return `<td class="na"></td>`;
       if(x.na) return `<td class="na" ${x.nolang ? `title="Hier gibt es keine deutsche Fassung"` : ""}>${x.nolang ? "kein DE" : "–"}</td>`;
-      return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(compose(c.code, x))}">${ax(x)}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
+      return `<td class="${r.best === c.code ? "best" : ""}" title="${esc(compose(c.code, x))}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.lang === "unknown" ? `<small class="hint">Sprache?</small> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
 }
@@ -939,7 +939,7 @@ function viewSettings(){
     <label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label>
     <label class="f" title="Radar: Liegt der beste leicht erreichbare Angebotspreis höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label>
     <label class="f" title="Radar: Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gutes Angebot“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label>
-    <label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label>
+    <label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label>
     </div>
     <p class="hint">Änderungen werden sofort gespeichert.<span class="saved" id="saved"></span></p>
     <h3 class="sec">Länder</h3>

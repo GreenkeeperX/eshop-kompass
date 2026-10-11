@@ -594,6 +594,59 @@ class PlanTest(unittest.TestCase):
         self.settings["card_market"] = False
         self.assertEqual(planner.Context(self.data, self.settings, NOW).countries["BR"]["cards"][2]["cost"], 9.5)
 
+    def test_implausible_card_prices_are_ignored(self):
+        # 50 BRL zum Mittelkurs sind 8,91 €: 0,35 € (Gebührenhinweis statt Preis) ist ein Lesefehler
+        self.data["card_market"] = {"BR": {"checked": NOW.timestamp(), "cards": {
+            "50": {"price": 0.35, "url": "https://gg.deals/a"},
+            "100": {"price": 16.10, "url": "https://gg.deals/b"},
+            "200": {"price": 90.0, "url": "https://gg.deals/c"}}}}
+        self.settings["countries"]["BR"]["cards"] = "15=3.00\n25=4.80\n50=9.50 | https://shop.example/br50"
+        self.data["card_prices"] = {"https://shop.example/br50": {
+            "checked": NOW.timestamp(), "price": 0.99, "currency": "EUR"}}
+        ctx = planner.Context(self.data, self.settings, NOW)
+        by = {x["face"] // 100: x for x in ctx.countries["BR"]["cards"]}
+        self.assertEqual(by[50]["cost"], 9.50)              # beides unglaubhaft: dein Eintrag gilt
+        self.assertEqual(by[100]["cost"], 16.10)            # 90 % vom Mittelkurs: zählt
+        self.assertNotIn(200, by)                           # 252 %: zählt nicht
+        self.assertEqual(sorted((i["src"], i["face"]) for i in ctx.countries["BR"]["implausible"]),
+                         [("gg.deals", 50.0), ("gg.deals", 200.0), ("shop", 50.0)])
+        rows = planner.card_status(self.data, self.settings, now=NOW)["BR"]
+        self.assertIn("unglaubhaft", next(r for r in rows if r["face"] == 50)["error"])
+        self.assertIn("50 für 0,35 €", next(r for r in rows if r.get("market_error"))["market_error"])
+        # Deutschland: eine 20-€-Karte für 0,35 € senkt die Vergleichsbasis nicht
+        self.data["card_market"]["DE"] = {"checked": NOW.timestamp(), "cards": {
+            "20": {"price": 0.35, "url": "https://gg.deals/d"}}}
+        self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["DE"]["via"], "eur")
+        self.assertTrue(planner.plausible_card(6.40, 3000, 5.6086))   # kleine Karte mit Gebühr
+        self.assertFalse(planner.plausible_card(None, 3000, 5.6086))
+
+    def test_unknown_language_does_not_decide(self):
+        # Deutschland hat Deutsch, Japan und Brasilien sind ungeprüft
+        self.data["items"]["hades"]["langs"] = {"EU": "english, german"}
+        rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
+        self.assertEqual(rows["hades"]["easy"]["code"], "NO")      # nicht Japan
+        self.assertIsNone(rows["hades"]["hard"])                     # nicht Brasilien
+        self.assertNotIn(rows["hades"]["champ"]["code"], ("JP", "BR"))
+        mx = planner.matrix(self.data, self.settings, now=NOW)
+        hades = next(r for r in mx["rows"] if r["slug"] == "hades")
+        self.assertEqual(hades["cells"]["JP"]["lang"], "unknown")   # weiter sichtbar
+        self.assertNotIn(hades["cells"]["BR"]["mark"], ("best", "best_easy"))
+        self.assertNotIn(hades["best"], ("JP", "BR"))
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True)
+        where = {i["slug"]: p["code"] for p in plan["steps"] for i in p["items"]}
+        self.assertNotIn(where.get("hades"), ("JP", "BR"))
+        # Nur in ungeprüften Ländern kaufbar: kein Urteil, aber ein Grund
+        for code in ("DE", "NO"):
+            self.data["prices"][code].pop("hades")
+        row = next(r for r in planner.radar(self.data, self.settings, now=NOW) if r["slug"] == "hades")
+        self.assertEqual(row["verdict"], "none")
+        self.assertEqual(row["lang_unsure"], ["JP", "BR"])
+        self.assertIn("Sprache dort ungeprüft", row["reason"])
+        # „nur warnen“ entscheidet wie bisher mit
+        self.settings["lang_rule"] = "warn"
+        row = next(r for r in planner.radar(self.data, self.settings, now=NOW) if r["slug"] == "hades")
+        self.assertEqual(row["easy"]["code"], "JP")
+
     def test_cheaper_german_cards_lower_the_baseline(self):
         de = self.settings["countries"]["DE"]
         de["cards"] = "20 = 21,00"                          # über Nennwert: zählt nicht

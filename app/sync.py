@@ -354,6 +354,20 @@ def sync_card_market(data, settings, fetch, sleep, now=None):
     _log(f"Kartenpreise gg.deals: {got} von {len(todo)} Ländern gelesen")
 
 
+def log_implausible(data, settings):
+    """Meldet gelesene Kartenpreise, die außerhalb des glaubhaften Bereichs liegen
+    und deshalb nicht zählen (planner.CARD_PLAUSIBLE)."""
+    try:
+        ctx = planner.Context(data, settings)
+    except Exception:
+        return
+    for code, c in ctx.countries.items():
+        if c["implausible"]:
+            _log(f"Kartenpreise {code}: unglaubhaft und ignoriert: " + ", ".join(
+                f"{planner.num_txt(i['face'])} {c['currency'] or ''} für {planner._eur(i['price'])} ({i['src']})"
+                for i in c["implausible"]))
+
+
 def sync_langs(data, settings, fetch, sleep, now=None):
     """Sprachen je Region von Nintendo: Europa in einem Abruf, Japan je Titel."""
     now = now or time.time()
@@ -497,6 +511,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         store.save_history(history)
         sync_card_prices(data, settings, fetch, sleep)
         sync_card_market(data, settings, fetch, sleep)
+        log_implausible(data, settings)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
         sync_langs(data, settings, fetch, sleep)

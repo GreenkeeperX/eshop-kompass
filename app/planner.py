@@ -15,6 +15,11 @@ CARD_PRICE_MAX_AGE = 3 * 24 * 3600   # gelesene Kartenpreise gelten so lange
 MIN_FILLER_GAIN = 0.5    # Füllartikel erst ab dieser Ersparnis in Euro vorschlagen
 BEST_TOLERANCE = 0.02    # bis 2 % über dem Bestpreis gilt ein Angebot als Bestpreis
 GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
+# Gelesene Kartenpreise (Shopseite, gg.deals) zählen nur in diesem Bereich, gemessen am
+# Nennwert zum Mittelkurs. Ein Lesefehler (etwa ein Gebührenhinweis statt des Preises)
+# würde sonst als „günstiger“ alle Vergleiche kippen. Kleine Karten mit Servicegebühr
+# liegen bei rund 135 %, deutsche Karten unter Nennwert bei rund 90 %.
+CARD_PLAUSIBLE = (0.70, 1.60)
 
 
 def cents(value):
@@ -24,6 +29,14 @@ def cents(value):
 # ------------------------------------------------------------ Guthabenkarten
 
 _OUT_RE = re.compile(r"^\s*(?:[x#!\-]\s+|\(aus\)\s*)", re.I)
+
+
+def plausible_card(cost_eur, face, rate):
+    """Liegt ein gelesener Kartenpreis in Euro im glaubhaften Bereich? face in Hundertstel."""
+    if not rate or not face or cost_eur is None:
+        return False
+    ratio = cost_eur / (face / 100 / rate)
+    return CARD_PLAUSIBLE[0] <= ratio <= CARD_PLAUSIBLE[1]
 
 
 def parse_card_list(text):
@@ -193,9 +206,10 @@ class Context:
                  "currency": currency, "rate": rates.get(currency) if currency else None,
                  "known": set(data["prices"].get(code, {})), "tax": tax,
                  "tier": int(cfg.get("tier") or meta["tier"]), "nolang": set(),
-                 "cards": self._live_cards(parse_card_list(cfg.get("cards")))}
+                 "cards": parse_card_list(cfg.get("cards")), "implausible": []}
             if c["rate"]:
-                c["cards"] = self._market_cards(code, c["cards"], c["rate"], cfg)
+                c["cards"] = self._live_cards(c["cards"], c["rate"], c["implausible"])
+                c["cards"] = self._market_cards(code, c["cards"], c["rate"], cfg, c["implausible"])
             c["unit"] = self._unit(c)
             c["estimated"] = self.estimated(c)
             self.countries[code] = c
@@ -207,9 +221,9 @@ class Context:
         self.ref_regular = {s: o["regular"] * unit for s, o in ref["offers"].items()}
         self._champions()
 
-    def _live_cards(self, cards):
+    def _live_cards(self, cards, country_rate, implausible):
         """Setzt für Karten mit Link den zuletzt gelesenen Shop-Preis ein, solange
-        er frisch ist. Sonst bleibt der von Hand eingetragene Preis."""
+        er frisch und glaubhaft ist. Sonst bleibt der von Hand eingetragene Preis."""
         now = self.now.timestamp()
         for x in cards:
             e = self.card_prices.get(x["url"]) if x["url"] else None
@@ -223,16 +237,20 @@ class Context:
             # Teil nur einmal an, die Rechnung liegt dann etwas zu hoch
             fee = float(self.settings.get("shop_fee_pct") or 0)
             fee_eur = float(self.settings.get("shop_fee_eur") or 0)
-            x.update(manual=x["cost"], cost=round(e["price"] / rate * (1 + fee / 100) + fee_eur, 2),
-                     live=e["checked"], fee=fee, fee_eur=fee_eur)
+            cost = round(e["price"] / rate * (1 + fee / 100) + fee_eur, 2)
+            if not plausible_card(cost, x["face"], country_rate):
+                implausible.append({"face": x["face"] / 100, "price": cost, "src": "shop"})
+                continue
+            x.update(manual=x["cost"], cost=cost, live=e["checked"], fee=fee, fee_eur=fee_eur)
         return cards
 
-    def _market_cards(self, code, cards, rate, cfg):
+    def _market_cards(self, code, cards, rate, cfg, implausible):
         """Ergänzt die Kartenliste um die Preise von gg.deals, solange sie frisch sind.
 
         Ein Kartenwert, den du nicht eingetragen hast, kommt dazu. Bei einem
         eingetragenen gilt der günstigere Preis; ohne Preis zählt dort Kurs plus
-        Aufschlag. Als nicht vorrätig markierte Werte bleiben draußen.
+        Aufschlag. Als nicht vorrätig markierte Werte bleiben draußen, unglaubhafte
+        Preise (siehe CARD_PLAUSIBLE) ebenso.
         """
         if not self.settings.get("card_market", True):
             return cards
@@ -244,6 +262,9 @@ class Context:
         by_face = {x["face"]: x for x in cards}
         for face_txt, m in e["cards"].items():
             face = cents(float(face_txt))
+            if not plausible_card(m.get("price"), face, rate):
+                implausible.append({"face": face / 100, "price": m.get("price"), "src": "gg.deals"})
+                continue
             x = by_face.get(face)
             if x is None:
                 by_face[face] = {"face": face, "cost": m["price"], "url": m["url"], "stock": True,
@@ -376,6 +397,13 @@ class Context:
                 elif here is None:
                     c["offers"][slug]["lang"] = "unknown"
 
+    def decides(self, o):
+        """Darf dieses Angebot Bestpreis, Urteil und Kaufplan bestimmen? Nicht, wenn
+        die Sprachregel gilt und für die Region unbekannt ist, ob es Deutsch gibt:
+        Gezeigt wird es weiter, entschieden wird damit nicht."""
+        return not (self.settings.get("lang_rule", "exclude") == "exclude"
+                    and o.get("lang") == "unknown")
+
     # ---- Tiefst- und Bestpreise
 
     def low_value(self, code, slug):
@@ -401,6 +429,8 @@ class Context:
             if c["unit"] is None:
                 continue
             for slug, o in c["offers"].items():
+                if not self.decides(o):
+                    continue
                 local = o["local"]
                 low = self.low_value(code, slug)
                 if low is not None:
@@ -421,7 +451,10 @@ class Context:
         if not o["sale"]:
             return out
         easy = self.champ_easy.get(slug)
-        if eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005:
+        if not self.decides(o):
+            # Ungeprüfte Sprache bestimmt keinen Bestpreis, also auch keine Bestpreis-Marke
+            out["mark"] = "low" if self.low(c["code"], slug, o)["at_low"] else "sale"
+        elif eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005:
             out["mark"] = "best"
         elif c["tier"] <= 2 and easy and eur <= easy[0] * (1 + BEST_TOLERANCE) + 0.005:
             out["mark"] = "best_easy"
@@ -690,6 +723,10 @@ def _eur(x):
     return f"{x:.2f}".replace(".", ",") + " €"
 
 
+def num_txt(x):
+    return (f"{x:.2f}".rstrip("0").rstrip(".")).replace(".", ",")
+
+
 def _r(x):
     return None if x is None else round(x + 0.0, 2)
 
@@ -764,7 +801,7 @@ def matrix(data, settings, now=None):
                 continue
             cells[code] = ctx.cell(c, slug, o)
             eur = cells[code]["eur"]
-            if eur is not None and (best is None or eur < cells[best]["eur"]):
+            if eur is not None and ctx.decides(o) and (best is None or eur < cells[best]["eur"]):
                 best = code
         rows.append({"slug": slug, "title": it["title"], "cells": cells, "best": best,
                      "dlc_of": ctx.parent_title(slug), **ctx.owned_flags(slug),
@@ -787,9 +824,13 @@ def radar(data, settings, targets=None, now=None):
     rows = []
     for slug in ctx.order:
         best = {"easy": None, "hard": None}
+        unsure = []
         for code, c in ctx.countries.items():
             o = c["offers"].get(slug)
             if not o or c["unit"] is None:
+                continue
+            if not ctx.decides(o):
+                unsure.append(code)
                 continue
             raw = ctx.est(c, o["local"])
             group = "easy" if c["tier"] <= 2 else "hard"
@@ -819,6 +860,8 @@ def radar(data, settings, targets=None, now=None):
         # günstigen Titel ist wenig, auch wenn es 30 % sind.
         buy_eur, good_eur = deal_eur["buy"], deal_eur["good"]
         verdict, reason = "none", "kein Angebot"
+        if unsure and not easy and not hard:
+            reason = "nur in " + ", ".join(unsure) + " kaufbar, Sprache dort ungeprüft"
         if target is not None and easy and easy["raw"] <= target + 0.005:
             verdict, reason = "buy", "Zielpreis erreicht"
         elif easy and easy["mark"] in ("best", "best_easy"):
@@ -845,6 +888,7 @@ def radar(data, settings, targets=None, now=None):
                      "champ": champ(champ_all), "champ_easy": champ(champ_easy),
                      "gap_easy": gap_easy, "diff_easy": diff_easy, "diff_all": diff_all,
                      "target": target, "verdict": verdict,
+                     "lang_unsure": [] if (easy or hard) else unsure,
                      "reason": reason, "no_ids": not any(it.get("ids", {}).values())})
     rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]),
                              r["gap_easy"] if r["gap_easy"] is not None else 999))
@@ -857,13 +901,21 @@ def card_status(data, settings, now=None):
     out = {}
     for code, c in ctx.countries.items():
         rows = []
+        odd_shop = {round(i["face"] * 100): i["price"] for i in c["implausible"] if i["src"] == "shop"}
         for x in c["cards"]:
             if not x["url"]:
                 continue
             e = ctx.card_prices.get(x["url"]) or {}
+            error = e.get("error")
+            if x["face"] in odd_shop and not x.get("market"):
+                error = f"gelesen {_eur(odd_shop[x['face']])}, unglaubhaft, ignoriert"
             rows.append({"face": x["face"] / 100, "cost": x["cost"], "live": x.get("live"),
                          "manual": x.get("manual", x["cost"]), "checked": e.get("checked"),
-                         "error": e.get("error"), "market": x.get("market")})
+                         "error": error, "market": x.get("market")})
+        odd_gg = [i for i in c["implausible"] if i["src"] == "gg.deals"]
+        if odd_gg:
+            rows.append({"face": None, "checked": None, "market_error": "unglaubhafte Preise ignoriert: " + ", ".join(
+                f"{num_txt(i['face'])} für {_eur(i['price'])}" for i in odd_gg)})
         m = ctx.card_market.get(code) or {}
         if m.get("error"):
             rows.append({"face": None, "market_error": m["error"], "checked": m.get("checked")})
@@ -939,6 +991,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None):
             best = None
             for code in allowed:
                 o = ctx.countries[code]["offers"].get(slug)
+                if o and not ctx.decides(o):
+                    continue
                 if o and (best is None or ctx.est(ctx.countries[code], o["local"]) < best[0] - 0.005):
                     best = (ctx.est(ctx.countries[code], o["local"]), code, o)
             if not best:

@@ -114,6 +114,11 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   dazu, bei eingetragenen gilt der günstigere Preis, mit x markierte bleiben
   draußen. Werte älter als drei Tage zählen nicht. Abschaltbar unter
   Einstellungen.
+- Glaubhaft: Ein gelesener Kartenpreis (Shopseite oder gg.deals) zählt nur
+  zwischen 70 und 160 % des Nennwerts zum Mittelkurs. Alles andere ist fast
+  sicher ein Lesefehler, etwa ein Gebührenhinweis statt des Preises. Solche
+  Werte stehen mit „unglaubhaft, ignoriert“ unter der Kartenliste und im
+  Protokoll, es gilt dein Eintrag.
 - Deutschland: Karten unter Nennwert (etwa von Eneba) senken den
   Deutschland-Preis und damit die Vergleichsbasis. Ein Rest bleibt auf dem
   Konto und zählt nicht als Kosten. Karten zum Nennwert oder darüber zählen
@@ -123,6 +128,11 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   die Zeile nur den Link.
 - Sprachen: Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne
   sie weg. Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft.
+  Ist für eine Region unbekannt, ob es Deutsch gibt (Amerika immer, Japan ohne
+  Angabe), bleibt das Angebot im Preisvergleich sichtbar („Sprache?“), zählt
+  aber nicht für Bestpreis, Urteil und Kaufplan. Ist ein Titel nur dort
+  kaufbar, sagt das Radar es als Grund. Mit „nur warnen“ zählen solche
+  Angebote wie früher mit.
 - Sicherung: Einstellungen, Karten, Zielpreise und Körbe als Datei.
 
 Jede Spalte und jedes Feld erklärt sich im Tooltip. Das Protokoll unter
