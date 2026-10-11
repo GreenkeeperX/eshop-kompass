@@ -534,7 +534,10 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(cp["https://shop.example/br25"]["error"], "Seite nennt keinen Preis")
         sync.sync_card_prices(self.data, self.settings, fake, lambda s: None, now=t0 + 3600)
         self.assertEqual(len(calls), 2)                       # höchstens einmal am Tag
-        # Der gelesene Preis ersetzt den von Hand eingetragenen
+        # Der gelesene Preis ersetzt den von Hand eingetragenen, mit der Servicegebühr des Shops
+        st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
+        self.assertEqual(st[1]["cost"], round(8.90 * 1.105, 2))   # Vorgabe 10,5 %
+        self.settings["shop_fee_pct"] = 0
         info = planner.pay_info(self.data, self.settings, now=NOW)["BR"]
         self.assertEqual((info["card"]["face"], info["card"]["cost"], info["card"]["live"]), (50.0, 8.9, t0))
         st = planner.card_status(self.data, self.settings, now=NOW)["BR"]

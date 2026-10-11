@@ -13,6 +13,7 @@ DEFAULT_SETTINGS = {
     "collection_url": "",     # leer = Sammlung mit derselben Kennung wie die Wishlist
     "card_fee_pct": 1.75,     # Fremdwährungsgebühr der eigenen Karte
     "gift_markup_pct": 5.0,   # Aufschlag für Guthabenkarten ohne eigenen Preis
+    "shop_fee_pct": 10.5,     # Servicegebühr des Kartenshops auf gelesene Preise (Eneba, Okt. 2026)
     # ab dieser Ersparnis lohnt der Länderwechsel, je Stufe (leicht, mittel, schwer)
     "tier_min_saving": {"1": 3.0, "2": 8.0, "3": 20.0},
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
@@ -84,7 +85,7 @@ def save_settings(new):
             s["wishlist_url"] = new["wishlist_url"].strip()
         if isinstance(new.get("collection_url"), str):
             s["collection_url"] = new["collection_url"].strip()
-        for k in ("card_fee_pct", "gift_markup_pct", "refresh_hours"):
+        for k in ("card_fee_pct", "gift_markup_pct", "shop_fee_pct", "refresh_hours"):
             if k in new:
                 try:
                     s[k] = max(0.0, float(new[k]))

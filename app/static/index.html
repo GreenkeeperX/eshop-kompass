@@ -342,11 +342,11 @@ function compose(code, x){
   const net = x.net ?? x.local;
   parts.push(`eShop ${money(net, cur)}` + (p.tax ? ` + ${String(p.tax).replace(".", ",")} % Steuer = ${money(x.local, cur)}` : ""));
   if(p.via === "eur") return parts[0] + ", exakter Betrag";
-  if(cur === "EUR" && p.card) return parts.concat(`Guthabenkarte ${eur(p.card.face)} für ${eur(p.card.cost)}${p.card.live ? ` (Shop-Preis vom ${stamp(p.card.live)})` : ""}, ein Rest bleibt auf dem Konto`).join(" · ") + ` · ergibt ${eur(x.eur)}`;
+  if(cur === "EUR" && p.card) return parts.concat(`Guthabenkarte ${eur(p.card.face)} für ${eur(p.card.cost)}${p.card.live ? ` (Shop-Preis vom ${stamp(p.card.live)}${p.card.fee ? ` mit ${pctTxt(p.card.fee)} Servicegebühr` : ""})` : ""}, ein Rest bleibt auf dem Konto`).join(" · ") + ` · ergibt ${eur(x.eur)}`;
   parts.push(`Mittelkurs 1 € = ${p.rate.toLocaleString("de-DE", {maximumFractionDigits: p.rate > 20 ? 1 : 3})} ${cur}` +
     (S.state.fx_updated ? ` (Stand ${fxDate()})` : ""));
   if(p.via === "card") parts.push(`Kartenzahlung plus ${pctTxt(p.fee)} Fremdwährungsgebühr, die Bank rechnet mit eigenem Kurs`);
-  else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}${p.card.live ? ` (Shop-Preis vom ${stamp(p.card.live)})` : ""}, das sind ${p.vs_mid > 0 ? "+" : ""}${pctTxt(p.vs_mid)} zum Kurs`);
+  else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}${p.card.live ? ` (Shop-Preis vom ${stamp(p.card.live)}${p.card.fee ? ` mit ${pctTxt(p.card.fee)} Servicegebühr` : ""})` : ""}, das sind ${p.vs_mid > 0 ? "+" : ""}${pctTxt(p.vs_mid)} zum Kurs`);
   else if(p.at_rate) parts.push(`Guthaben in festen Werten zum Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}`);
   else parts.push(`Guthaben geschätzt mit Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}, weil kein Kartenpreis bekannt ist`);
   return parts.join(" · ") + ` · ergibt ${x.est ? "ungefähr " : ""}${eur(x.eur)}` + aloneTxt(x, cur);
@@ -358,7 +358,7 @@ function cardStatus(code, cur){
   if(!rows) return "";
   return rows.map(r => {
     const face = cur ? money(r.face, cur) : num(r.face);
-    if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)})`;
+    if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)}${S.state.settings.shop_fee_pct ? `, mit ${pctTxt(S.state.settings.shop_fee_pct)} Servicegebühr` : ""})`;
     if(r.checked) return `${face}: <span class="warnc">${esc(r.error || "kein Preis")}</span>, es gilt ${r.manual === null ? "Kurs plus Aufschlag" : eur(r.manual)}`;
     return `${face}: wird beim nächsten Abgleich gelesen`;
   }).join(" · ");
@@ -922,6 +922,7 @@ function viewSettings(){
       S.state.countries.map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label>
     <label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label>
     <label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label>
+    <label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Eneba nennt keine feste Höhe; 10,5 % entsprach einem Kauf im Oktober 2026. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.1" min="0" value="${s.shop_fee_pct}"></label>
     <label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label>
     <label class="f" title="Pakete je Land: Unter dieser Ersparnis gegenüber Deutschland steht ein Land als „unter Schwelle“. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Ersparnis, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label>
     <label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label>
@@ -972,7 +973,7 @@ function viewSettings(){
 }
 function settingsBody(form){
   const body = {countries:{}, tier_min_saving:{}};
-  for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","refresh_hours","lang_rule"])
+  for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","refresh_hours","lang_rule"])
     body[k] = form.elements[k].value;
   for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;
   body.deal_eur = {buy: form.elements.deal_buy.value, good: form.elements.deal_good.value};

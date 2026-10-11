@@ -215,7 +215,10 @@ class Context:
             rate = 1.0 if e.get("currency") == "EUR" else self.rates.get(e.get("currency"))
             if not rate:
                 continue
-            x.update(manual=x["cost"], cost=round(e["price"] / rate, 2), live=e["checked"])
+            # Der Shop zeigt den Preis ohne seine Servicegebühr, die kommt an der Kasse dazu
+            fee = float(self.settings.get("shop_fee_pct") or 0)
+            x.update(manual=x["cost"], cost=round(e["price"] / rate * (1 + fee / 100), 2),
+                     live=e["checked"], fee=fee)
         return cards
 
     # ---- Europreis je Währungseinheit
@@ -281,12 +284,12 @@ class Context:
             out["via"] = "giftcard" if card else "eur"
             if card:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live")}
+                               "live": card.get("live"), "fee": card.get("fee")}
         elif gift:
             card = self._gift(c)[1]
             if card and card["cost"] is not None:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live")}
+                               "live": card.get("live"), "fee": card.get("fee")}
         return out
 
     def estimated(self, c):
