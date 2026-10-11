@@ -2,6 +2,7 @@
 import threading
 import time
 import traceback
+import urllib.parse
 from datetime import datetime, timezone
 
 from . import countries, planner, sources, store
@@ -105,6 +106,10 @@ def sync_ids(data, settings, fetch, sleep, now=None):
             except sources.FetchError as e:
                 _log(f"{slug} ({lookup}): {e}")
                 misses += 1
+                if e.status in sources.BLOCKED:
+                    store.save_data(data)
+                    raise RuntimeError(f"DekuDeals lehnt Abrufe ab (HTTP {e.status}), "
+                                       "nächster Versuch beim nächsten Abgleich")
                 if misses >= 6:            # nicht hundertfach gegen eine Sperre anrennen
                     for line in sources.attempts:
                         _log("  " + line)
@@ -169,10 +174,13 @@ def _store_low(data, settings, code, slug, low, now):
     cfg = settings["countries"].get(code)
     if not cfg or not cfg["enabled"]:
         return
-    entry = {"checked": now}
+    e = data.setdefault("lows", {}).setdefault(code, {}).setdefault(slug, {})
+    e["checked"] = now
     if low and low > 0:
-        entry.update(low=low, src="deku")
-    data.setdefault("lows", {}).setdefault(code, {})[slug] = entry
+        e.update(low=low, src="deku")
+    else:
+        e.pop("low", None)
+        e.pop("src", None)
 
 
 def _track(data, history, code, table, stamp):
@@ -188,12 +196,16 @@ def _track(data, history, code, table, stamp):
         series = hist.setdefault(slug, [])
         if not series or series[-1][1] != cur:
             series.append([stamp, cur])
-        e = lows.get(slug)
-        if e and "low" in e:
+        e = lows.setdefault(slug, {})
+        if "low" in e:
             if e["low"] > regular * 1.001:   # unplausibel, z. B. anderes Format
                 del e["low"]
             elif cur < e["low"] - 1e-9:
                 e.update(low=cur, src="own", since=stamp)
+        # Eigener Tiefstwert, unabhängig von DekuDeals: zählt auch dort, wo
+        # DekuDeals keinen Wert liefert
+        if cur < e.get("own_low", float("inf")) - 1e-9:
+            e.update(own_low=cur, own_since=stamp)
 
 
 def sync_prices(data, settings, fetch, sleep, history=None):
@@ -221,6 +233,9 @@ def sync_prices(data, settings, fetch, sleep, history=None):
                                        lang=countries.BY_CODE[code]["lang"],
                                        pause=lambda: sleep(NINTENDO_PAUSE))
         except Exception as e:  # ein Land darf ausfallen, alte Preise bleiben
+            if getattr(e, "status", None) in sources.BLOCKED:
+                _log(f"Nintendo lehnt Preisabrufe ab ({e}), übrige Länder beim nächsten Abgleich")
+                break
             if active:
                 _log(f"{code}: Preisabruf fehlgeschlagen ({e})")
             else:
@@ -395,8 +410,10 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             # Frühere Versionen lasen teils den Händler- statt den digitalen
             # Tiefstpreis. Von DekuDeals übernommene Werte neu laden.
             for table in data.get("lows", {}).values():
-                for slug in [s for s, e in table.items() if e.get("src") == "deku"]:
-                    del table[slug]
+                for e in table.values():
+                    if e.get("src") == "deku":
+                        for k in ("low", "src", "checked"):
+                            e.pop(k, None)
             data["lows_v"] = LOWS_VERSION
             _log("Tiefstpreise werden neu geladen (nur digitale Preise)")
         sync_lows(data, settings, fetch, sleep)
@@ -431,9 +448,7 @@ def diagnose():
 
     try:
         wid = sources.wishlist_id(settings["wishlist_url"])
-        for label, ua in sources.UAS:
-            probe(f"Wishlist ({label})", f"https://www.dekudeals.com/wishlist/{wid}?page=1",
-                  ua, sources.describe)
+        probe("Wishlist", f"https://www.dekudeals.com/wishlist/{wid}?page=1", None, sources.describe)
     except ValueError as e:
         lines.append(f"Wishlist: {e}")
     slug = next((s for s, it in data["items"].items() if it.get("active")), "hades")
@@ -442,28 +457,33 @@ def diagnose():
         info = sources.parse_item_page(text)
         return (f"Titel „{(info['title'] or '')[:50]}“, IDs {info['nsuids']}, "
                 f"Tiefstpreis {info['low']}")
-    for label, ua in sources.UAS:
-        probe(f"Artikelseite {slug} ({label})",
-              f"https://www.dekudeals.com/items/{slug}?country=de", ua, item_info)
+    r = probe(f"Artikelseite {slug}", f"https://www.dekudeals.com/items/{slug}?country=de",
+              None, item_info)
     probe("Nintendo-Preise", sources.NINTENDO_PRICE_URL + "?country=DE&lang=de&ids=70010000000126",
           None, lambda t: t[:160])
     probe("Sprachen Europa", sources.SOLR_URL + "?q=*&fq=nsuid_txt:70010000005306"
           "&fl=nsuid_txt,language_availability&wt=json", None, lambda t: t[:200].replace("\n", " "))
-    probe("Sprachen Japan", sources.JP_STORE_URL.format(nsuid="70010000033130"), None,
-          lambda t: f"{len(t)} Zeichen, Sprachen: {sources.parse_langs_jp(t)}")
+    jp = next((it["ids"]["JP"][0] for it in data["items"].values()
+               if it.get("active") and (it.get("ids") or {}).get("JP")), "70010000033130")
+    # Japan meldete zuletzt keine Sprachen: zeigen, was die Seite stattdessen enthält
+    def jp_info(t):
+        refs = sorted(set(sources.re.findall(r"""(?:src|href)=["']([^"']{4,90})""", t)))[:8]
+        return (f"{len(t)} Zeichen, Sprachen: {sources.parse_langs_jp(t)}, "
+                f"Titel „{sources.page_title(t)[:60]}“, Anfang: {sources.visible_text(t)[:160]}, "
+                f"Verweise: {' '.join(refs)}")
+    probe(f"Sprachen Japan ({jp})", sources.JP_STORE_URL.format(nsuid=jp), None, jp_info)
 
-    # Wie liefert DekuDeals den Preisverlauf? Grundlage für die Kurven im Tool.
-    r = sources.request(f"https://www.dekudeals.com/items/{slug}?country=de",
-                        sources._deku_ua, timeout=20)
+    # Preisverlauf: DekuDeals liefert ihn als JSON in der Artikelseite (für Kurven im Tool)
     text = r["text"]
-    tags = sources.re.findall(r"<script\b[^>]*(?:id|type)=[^>]*>", text)[:12]
-    lines.append("Verlauf, Skript-Marken: " + (" ".join(t[:90] for t in tags) or "keine"))
-    for m in list(sources.re.finditer(r"(?i)price[_ -]?history|chart[_-]?data|plotly|dygraph|highcharts", text))[:6]:
-        lines.append("Verlauf, Fundstelle: " + text[max(0, m.start() - 60):m.start() + 160].replace("\n", " "))
+    for sid in ("price_history_data", "price_history_indices"):
+        m = sources.re.search(r"""<script[^>]*id=["']""" + sid + r"""["'][^>]*>(.*?)</script>""",
+                              text, sources.re.S)
+        lines.append(f"Verlauf, {sid}: " + (f"{len(m.group(1))} Zeichen, Anfang: {m.group(1)[:300]}"
+                                            if m else "nicht gefunden"))
     # Wie zeigt DekuDeals Komplettfassungen, DLC und Upgrade-Pakete? Grundlage für später.
     seen = set()
-    for m in sources.re.finditer(r"(?i)included in|dlc for|>\s*dlc\s*<|upgrade pack|switch 2 edition", text):
-        key = m.group(0).lower().strip("<> \n")
+    for m in sources.re.finditer(r"(?i)included in|dlc for|upgrade pack|switch 2 edition", text):
+        key = m.group(0).lower().strip()
         if key in seen:
             continue
         seen.add(key)
@@ -473,10 +493,19 @@ def diagnose():
         lines.append("Pakete: auf dieser Artikelseite keine Fundstelle")
     try:
         cid = sources.wishlist_id(settings.get("collection_url") or settings["wishlist_url"])
-        probe("Sammlung", f"https://www.dekudeals.com/collection/{cid}?page=1",
-              sources._deku_ua, sources.describe)
+        probe("Sammlung", f"https://www.dekudeals.com/collection/{cid}?page=1", None, sources.describe)
     except ValueError as e:
         lines.append(f"Sammlung: {e}")
+    # Guthabenkarten: liefert die erste eingetragene Shopseite einen lesbaren Preis?
+    links = [(code, x["url"]) for code in countries.ORDER
+             for x in planner.parse_card_list(settings["countries"][code].get("cards")) if x["url"]]
+    if links:
+        code, url = links[0]
+        probe(f"Guthabenkarte {code} ({urllib.parse.urlsplit(url).netloc})", url, None,
+              lambda t: f"{len(t)} Zeichen, Titel „{sources.page_title(t)[:60]}“, "
+                        f"Preis in Produktdaten: {sources.parse_ld_price(t)}, Anfang: {sources.visible_text(t)[:140]}")
+    else:
+        lines.append("Guthabenkarte: keine Karte mit Link eingetragen, Eneba nicht geprüft")
     probe("Wechselkurse", sources.FX_URL, None, lambda t: t[:80])
     return lines
 

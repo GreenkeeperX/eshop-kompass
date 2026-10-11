@@ -18,6 +18,9 @@ DEFAULT_SETTINGS = {
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
     "refresh_hours": 6,
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
+    # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
+    # Angebot als Kauf bzw. gutes Angebot, auch wenn es prozentual mehr ist
+    "deal_eur": {"buy": 0.5, "good": 2.0},
     "countries": countries.default_country_settings(),
 }
 
@@ -56,13 +59,18 @@ def load_settings():
         s = _load("settings.json", DEFAULT_SETTINGS)
         for k, v in DEFAULT_SETTINGS.items():
             s.setdefault(k, json.loads(json.dumps(v)))
-        for tier, value in DEFAULT_SETTINGS["tier_min_saving"].items():
-            s["tier_min_saving"].setdefault(tier, value)
+        for group in ("tier_min_saving", "deal_eur"):
+            for k, value in DEFAULT_SETTINGS[group].items():
+                s[group].setdefault(k, value)
         defaults = countries.default_country_settings()
         for code, d in defaults.items():
             cur = s["countries"].setdefault(code, d)
             for k, v in d.items():
                 cur.setdefault(k, v)
+        if s.get("settings_v", 0) < 1:
+            # Bis 0.6 blockierte ein Rest in Japan den Wechsel. Dort verfällt er nur.
+            s["countries"]["JP"]["rest_blocks"] = False
+            s["settings_v"] = 1
         if not s["wishlist_url"]:
             s["wishlist_url"] = os.environ.get("WISHLIST_URL", "")
         return s
@@ -90,6 +98,12 @@ def save_settings(new):
             if str(tier) in s["tier_min_saving"]:
                 try:
                     s["tier_min_saving"][str(tier)] = max(0.0, float(value))
+                except (TypeError, ValueError):
+                    pass
+        for k, value in (new.get("deal_eur") or {}).items():
+            if k in s["deal_eur"]:
+                try:
+                    s["deal_eur"][k] = min(100.0, max(0.0, float(value)))
                 except (TypeError, ValueError):
                     pass
         for code, c in (new.get("countries") or {}).items():

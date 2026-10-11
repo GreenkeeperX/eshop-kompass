@@ -48,6 +48,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _body(self):
+        # Nur JSON annehmen: Ein einfaches Formular einer fremden Seite im
+        # Browser kann so keine Einstellungen ändern oder Abgleiche starten.
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/json":
+            raise ValueError("nur application/json")
         n = int(self.headers.get("Content-Length") or 0)
         if n > 1_000_000:
             raise ValueError("zu groß")

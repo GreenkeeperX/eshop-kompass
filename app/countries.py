@@ -5,8 +5,8 @@ family: Titel-IDs sind je Region verschieden. EU = Nintendo of Europe
         AS = Südostasien.
 pay:    Voreinstellung fürs Bezahlen ("card", "giftcard", "auto").
 tier:   Wie mühsam der Länderwechsel ist. 1 = leicht (Karte, kein Rest),
-        2 = mittel (Guthabenkarten, Rest verfällt), 3 = schwer (Amerika:
-        Guthaben muss 0 sein).
+        2 = mittel (Guthabenkarten, ein Rest verfällt beim Wechsel),
+        3 = schwer (Amerika: Guthaben muss vor dem Wechsel 0 sein).
 tax:    Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt.
 rest_blocks: Restguthaben verhindert den Länderwechsel.
 
@@ -37,7 +37,7 @@ COUNTRIES = [
     ("ZA", "Südafrika", "EU", "card", 1, 0, False, True, "en", "Kartenzahlung unsicher"),
     ("NZ", "Neuseeland", "EU", "giftcard", 2, 0, False, True, "en", "Kartenzahlung ungeklärt"),
     ("AU", "Australien", "EU", "giftcard", 2, 0, False, False, "en", ""),
-    ("JP", "Japan", "JP", "giftcard", 2, 0, True, True, "ja", "keine ausländischen Karten"),
+    ("JP", "Japan", "JP", "giftcard", 2, 0, False, True, "ja", "keine ausländischen Karten"),
     ("SG", "Singapur", "AS", "giftcard", 2, 0, False, False, "en", ""),
     ("MY", "Malaysia", "AS", "giftcard", 2, 0, False, False, "en", ""),
     ("TH", "Thailand", "AS", "giftcard", 2, 0, False, False, "en", ""),

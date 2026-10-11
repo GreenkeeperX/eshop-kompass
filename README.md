@@ -21,19 +21,29 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 ## Ansichten
 
 - Radar: eine Zeile je Wishlist-Titel mit dem besten Preis jetzt (getrennt nach
-  leicht und schwer erreichbaren Ländern), dem Bestpreis, deinem Zielpreis und
-  einem Urteil (kaufen, gutes Angebot, nur schwer, warten).
+  leicht und schwer erreichbaren Ländern), dem Abstand zum Bestpreis in Euro
+  (der Bestpreis selbst steht im Tooltip), deinem Zielpreis und einem Urteil:
+  - kaufen: Zielpreis erreicht, Bestpreis (bis 2 % darüber) oder höchstens
+    0,50 € über dem Bestpreis,
+  - gutes Angebot: bis 15 % oder höchstens 2 € über dem Bestpreis,
+  - nur schwer: stark nur in einem Land der Stufe schwer,
+  - warten: im Angebot, war aber schon deutlich günstiger.
+  Die beiden Euro-Grenzen sind unter Einstellungen änderbar.
 - Pakete, Angebote je Land: Länderkarten als dichtes Raster oder große Liste.
   Je Land die Wishlist-Angebote mit Kosten, Karten, Rest, Angebotsende und
   Vorschlägen zum Dazunehmen (+) oder Weglassen (−).
 - Pakete, gemeinsamer Korb: "Korb für alle" öffnet eine Vergleichstabelle,
   Titel als Zeilen, Länder als Spalten. Das günstigste Land ist hervorgehoben,
   aber nur unter Ländern, die den ganzen Korb anbieten.
-- Preisvergleich: alle Titel mal alle Länder in Euro.
+- Preisvergleich: alle Titel mal alle Länder in Euro, mit Angebotsende.
 
 Jeder Europreis enthält alles, was der Kauf dich kostet: Shop-Preis, Steuer,
 Wechselkurs und den Weg zum Guthaben (Kartengebühr oder Preis der
-Guthabenkarte). Der Tooltip am Preis zeigt die Rechnung.
+Guthabenkarte). Der Tooltip am Preis zeigt die Rechnung samt Stand des
+Wechselkurses. Ein ≈ vor dem Preis heißt geschätzt: Für das Land ist keine
+Guthabenkarte mit Preis eingetragen, gerechnet wird mit Kurs plus Aufschlag.
+Auch Kartenzahlung ist eine Näherung (Mittelkurs plus Fremdwährungsgebühr),
+die Bank rechnet mit ihrem eigenen Kurs.
 
 Unter der Vergleichstabelle steht, was der Korb kostet, wenn jeder Titel im
 günstigsten Land mit Kartenzahlung gekauft wird. Dort kostet der Wechsel
@@ -52,9 +62,10 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
 
 - Länder: beliebig ein- und ausschalten. Die Spalte Preisniveau zeigt für
   jedes Land, wie es zu deiner Wishlist steht, auch wenn es abgeschaltet ist.
-- Wechsel: leicht (Karte, kein Rest), mittel (Guthabenkarten), schwer
-  (Amerika: Guthaben muss vor dem Wechsel 0 sein). Je Stufe gilt eine eigene
-  Mindestersparnis.
+- Wechsel: leicht (Karte, kein Rest), mittel (Guthabenkarten, ein Rest
+  verfällt beim Wechsel), schwer (Amerika: Guthaben muss vor dem Wechsel 0
+  sein). Je Stufe gilt eine eigene Mindestersparnis.
+- Fremdwährungsgebühr: 0 für Karten ohne Auslandseinsatzentgelt.
 - Bezahlen: Karte, Guthabenkarte oder das Günstigere von beiden.
 - Steuer: Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt
   (USA, Kanada).
@@ -65,17 +76,35 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
 - Sammlung: Titel aus deiner DekuDeals-Sammlung werden als vorhanden markiert,
   bei DLC steht dabei, ob du das Hauptspiel hast.
 - Guthabenkarten: eine Karte je Zeile, `Wert = Preis in Euro | Link`. Ein
-  vorangestelltes `x` heißt nicht vorrätig.
+  vorangestelltes `x` heißt nicht vorrätig. Kaufst du Guthaben zum Kurs (etwa
+  bei Amazon Japan), genügen die Werte, zum Beispiel `500 1000 2000 3000 5000
+  9000` mit Aufschlag 0: Dann folgen die Kosten jedem neuen Kurs und der Rest
+  zählt mit.
 - Sprachen: Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne
   sie weg. Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft.
 - Sicherung: Einstellungen, Karten, Zielpreise und Körbe als Datei.
+
+Jede Spalte und jedes Feld erklärt sich im Tooltip. Das Protokoll unter
+Einstellungen läuft während eines Abgleichs mit und bleibt am Ende stehen.
 
 ## Tiefstpreise und Verlauf
 
 Nach dem Preisabruf lädt das Tool je Titel und Land den digitalen Tiefstpreis
 von der DekuDeals-Artikelseite nach (ein Abruf alle 2,5 Sekunden, Angebote
-zuerst) und führt ihn danach selbst fort. Jeder Preiswechsel landet zusätzlich
-in `data/history.json`.
+zuerst) und führt ihn danach selbst fort, auch dort, wo DekuDeals keinen Wert
+hat. Jeder Preiswechsel landet zusätzlich in `data/history.json`.
+
+## Abrufen
+
+Das Tool fragt immer mit seiner eigenen Kennung an (`eshop-kompass/<Version>`),
+macht Pausen zwischen den Abrufen und hört bei einer Sperre (HTTP 403 oder 429)
+oder einer Prüfseite auf, statt sich als Browser auszugeben. Der Rest folgt
+beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
+auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?).
+
+Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so
+keine Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen
+freigeben solltest du das Tool deshalb nicht.
 
 ## Datenquellen
 

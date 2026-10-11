@@ -115,25 +115,22 @@ class SourcesTest(unittest.TestCase):
         self.assertEqual(data["items"]["12345"]["alias_of"], "hades")
         self.assertTrue(all(data["items"][s]["active"] for s in ("hades", "other", "no-id-a", "no-id-b")))
 
-    def test_user_agent_fallback_and_diagnosis(self):
-        sources._deku_ua = None
-        seen = []
+    def test_no_disguise_on_challenge_page(self):
+        # Eine Prüfseite wird gemeldet, nicht mit einer anderen Kennung umgangen
+        calls = []
 
         def fake(url, ua=None):
-            seen.append(ua)
-            if ua.startswith("eshop-kompass"):
-                return "<title>Prüfung läuft</title><p>Bitte warten</p>"
-            return '<a href="/items/a-game">A</a>' if "page=1" in url else ""
-        self.assertEqual(sources.fetch_wishlist("abc123", fetch=fake), ["a-game"])
-        self.assertEqual(len(seen), 3)                      # Seite 1 zweimal, Seite 2 einmal
-        self.assertTrue(seen[2].startswith("Mozilla"))      # funktionierende Kennung gemerkt
-
-        sources._deku_ua = None
+            calls.append(ua)
+            return "<title>Sperre</title>x"
         with self.assertRaises(sources.FetchError):
-            sources.fetch_wishlist("abc123", fetch=lambda url, ua=None: "<title>Sperre</title>x")
-        self.assertEqual(len(sources.attempts), 2)
+            sources.fetch_wishlist("abc123", fetch=fake)
+        self.assertEqual(calls, [None])                     # genau ein Versuch
+        self.assertEqual(len(sources.attempts), 1)
         self.assertIn("Titel „Sperre“", sources.attempts[0])
         self.assertIn("0 Titel-Links", sources.attempts[0])
+        self.assertTrue(sources.USER_AGENT.startswith("eshop-kompass/"))
+        with open(sources.__file__, encoding="utf-8") as f:
+            self.assertNotIn("Mozilla", f.read())
 
     def test_wishlist_ends_on_missing_page(self):
         def fake(url, ua=None):
@@ -476,6 +473,57 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(rows[0]["verdict"], "buy")
         self.assertIn("nidhogg-2", [r["slug"] for r in rows if r["reason"] == "Zielpreis erreicht"])
 
+    def test_verdict_counts_euros_too(self):
+        sale = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
+        de = self.data["prices"]["DE"]
+        de["nidhogg-2"] = dict(de["nidhogg-2"], discount=4.99, **sale)
+        self.data["lows"] = {"DE": {"spiritfarer": {"low": 5.99}, "nidhogg-2": {"low": 3.49}}}
+        rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
+        # 0,25 € über dem Bestpreis: kaufen, auch wenn es kein Bestpreis ist
+        self.assertEqual((rows["spiritfarer"]["verdict"], rows["spiritfarer"]["diff_easy"]), ("buy", 0.25))
+        self.assertEqual(rows["spiritfarer"]["reason"], "nur 0,25 € über Bestpreis")
+        # 1,50 € über dem Bestpreis sind 43 %, in Euro aber wenig: gutes Angebot
+        n = rows["nidhogg-2"]
+        self.assertEqual((n["verdict"], n["diff_easy"], n["gap_easy"]), ("good", 1.5, 43))
+        self.assertEqual(n["reason"], "1,50 € (43 %) über Bestpreis")
+        self.settings["deal_eur"] = {"buy": 0.1, "good": 1.0}
+        rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
+        self.assertEqual(rows["spiritfarer"]["verdict"], "good")        # 4 % über Bestpreis
+        self.assertEqual(rows["nidhogg-2"]["verdict"], "wait")
+        self.assertEqual(rows["nidhogg-2"]["reason"], "war 1,50 € günstiger")
+
+    def test_estimated_prices_are_flagged(self):
+        # Japan: Guthaben ohne eingetragene Karte, also Kurs plus Aufschlag geschätzt
+        rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
+        self.assertTrue(rows["hades"]["easy"]["est"])
+        self.assertTrue(rows["hades"]["champ_easy"]["est"])
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertTrue(cells["JP"]["est"])
+        self.assertFalse(cells["BR"]["est"])          # Karten mit Preis eingetragen
+        self.assertFalse(cells["NO"]["est"])          # Kartenzahlung
+        self.assertFalse(cells["DE"]["est"])
+        # Werte ohne Preis folgen dem Kurs: Amazon Japan zum Nennwert, nur der Rest kostet
+        self.settings["countries"]["JP"].update(cards="500 1000 2000 3000 5000 9000", markup_pct=0)
+        jp = self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]
+        self.assertEqual(jp["cards"], [{"face": 1000.0, "count": 1, "url": ""},
+                                       {"face": 500.0, "count": 1, "url": ""}])
+        self.assertAlmostEqual(jp["cost"], round(1500 / 177.3267, 2))
+        self.assertEqual(jp["rest"], 100.0)
+
+    def test_own_low_without_dekudeals(self):
+        self.data["lows"] = {"NO": {"hades": {"checked": 1}}}      # DekuDeals ohne Wert
+        hist = {}
+        sync._track(self.data, hist, "NO", self.data["prices"]["NO"], "2026-10-11T00:00:00+00:00")
+        e = self.data["lows"]["NO"]["hades"]
+        self.assertEqual((e["own_low"], e.get("low")), (100.0, None))
+        cell = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]["NO"]
+        self.assertEqual((cell["low"], cell["mark"]), (100.0, "low"))
+        # Ein späterer DekuDeals-Wert ersetzt den eigenen nicht, der niedrigere zählt
+        sync._store_low(self.data, self.settings, "NO", "hades", 120.0, 2)
+        self.assertEqual((e["low"], e["own_low"], e["checked"]), (120.0, 100.0, 2))
+        cell = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]["NO"]
+        self.assertEqual(cell["low"], 100.0)
+
     def test_price_levels_include_inactive(self):
         self.settings["countries"]["BR"]["enabled"] = False
         levels = planner.price_levels(self.data, self.settings, now=NOW)
@@ -558,6 +606,89 @@ class StoreTest(unittest.TestCase):
         # nur genannte Felder ändern sich: so liest die Sicherung auch Teil-Dateien ein
         s = store.save_settings({"countries": {"US": {"balance": 3}}})
         self.assertEqual((s["countries"]["US"]["cards"], s["countries"]["US"]["balance"]), ("50=41", 3.0))
+
+
+class SafetyTest(unittest.TestCase):
+    def test_settings_migration_and_deal_limits(self):
+        with open(os.path.join(store.DATA_DIR, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"countries": {"JP": {"rest_blocks": True}}}, f)     # Stand 0.6
+        s = store.load_settings()
+        self.assertFalse(s["countries"]["JP"]["rest_blocks"])            # Rest verfällt nur
+        self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 2.0})
+        s = store.save_settings({"deal_eur": {"buy": "0,3", "good": -4, "x": 1}})
+        self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 0.0})
+        s = store.save_settings({"countries": {"JP": {"rest_blocks": True}}})
+        self.assertTrue(store.load_settings()["countries"]["JP"]["rest_blocks"])  # deine Wahl bleibt
+        store.save_settings({"countries": {"JP": {"rest_blocks": False}}})
+
+    def test_blocked_sources_stop_the_run(self):
+        data = {"items": {f"t{i}": {"title": f"T{i}", "active": True, "ids": {}, "ids_checked": {}}
+                          for i in range(5)}, "prices": {}, "lows": {}}
+        settings = store.load_settings()
+        calls = []
+
+        def deny(url, ua=None):
+            calls.append(url)
+            raise sources.FetchError(url, 429)
+        with self.assertRaises(RuntimeError) as ctx:
+            sync.sync_ids(data, settings, deny, lambda s: None, now=10 ** 9)
+        self.assertIn("HTTP 429", str(ctx.exception))
+        self.assertEqual(len(calls), 1)                    # nach der ersten Sperre Schluss
+        for it in data["items"].values():
+            it["ids"] = {"EU": ["70010000000001"]}
+        calls.clear()
+        sync.sync_prices(data, settings, deny, lambda s: None, {})
+        self.assertEqual(len(calls), 1)
+        self.assertIn("lehnt Preisabrufe ab", sync.status["log"][-1])
+
+    def test_post_needs_json(self):
+        import http.client
+        import threading
+        from http.server import ThreadingHTTPServer
+        from app import server
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            def post(ctype):
+                c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+                c.request("POST", "/api/settings", body='{"wishlist_url": "x"}',
+                          headers={"Content-Type": ctype})
+                return c.getresponse().status
+            before = store.load_settings()["wishlist_url"]
+            self.assertEqual(post("text/plain"), 400)       # einfaches Formular einer fremden Seite
+            self.assertEqual(store.load_settings()["wishlist_url"], before)
+            self.assertEqual(post("application/json; charset=utf-8"), 200)
+            self.assertEqual(store.load_settings()["wishlist_url"], "x")
+            store.save_settings({"wishlist_url": before})
+        finally:
+            srv.shutdown()
+
+    def test_card_shop_price_and_diagnosis(self):
+        page = ('<script type="application/ld+json">{"@type":"Product","offers":'
+                '{"@type":"AggregateOffer","lowPrice":"52.37","priceCurrency":"EUR"}}</script>')
+        self.assertEqual(sources.parse_ld_price(page), (52.37, "EUR"))
+        self.assertIsNone(sources.parse_ld_price("<div id=app></div>"))
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc",
+                             "countries": {"US": {"cards": "50 = 41 | https://www.eneba.com/x"}}})
+        seen = []
+
+        def fake_request(url, ua=None, timeout=25):
+            seen.append(ua)
+            text = page if "eneba" in url else "<title>Seite</title><p>Text</p>"
+            return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
+        old = sources.request
+        sources.request = fake_request
+        try:
+            lines = sync.diagnose()
+        finally:
+            sources.request = old
+            store.save_settings({"countries": {"US": {"cards": ""}}})
+        text = "\n".join(lines)
+        self.assertIn("Guthabenkarte US (www.eneba.com)", text)
+        self.assertIn("Preis in Produktdaten: (52.37, 'EUR')", text)
+        self.assertIn("Sprachen Japan", text)
+        self.assertIn("price_history_data: nicht gefunden", text)
+        self.assertEqual(set(seen), {None})                # immer die eigene Kennung
 
 
 class SyncTest(unittest.TestCase):

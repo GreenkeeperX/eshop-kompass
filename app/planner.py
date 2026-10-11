@@ -87,13 +87,18 @@ class CardSolver:
         inf = float("inf")
         best = [inf] * (n + 1)
         pick = [0] * (n + 1)
+        count = [0] * (n + 1)
         best[0] = 0.0
         for s in range(1, n + 1):
-            b, p = inf, 0
+            b, p, k = inf, 0, 0
             for u, c in units:
-                if s >= u and best[s - u] + c < b:
-                    b, p = best[s - u] + c, u
-            best[s], pick[s] = b, p
+                if s < u:
+                    continue
+                cost, cards = best[s - u] + c, count[s - u] + 1
+                # bei gleichen Kosten (Karten zum Kurs) gewinnen weniger Karten
+                if cost < b - 1e-9 or (cost < b + 1e-9 and cards < k):
+                    b, p, k = cost, u, cards
+            best[s], pick[s], count[s] = b, p, k
         # cover[s]: günstigste erreichbare Summe >= s (bei Gleichstand die kleinere)
         cover = [0] * (n + 2)
         cover[n + 1] = -1
@@ -185,6 +190,7 @@ class Context:
                  "tier": int(cfg.get("tier") or meta["tier"]), "nolang": set(),
                  "cards": parse_card_list(cfg.get("cards"))}
             c["unit"] = self._unit(c)
+            c["estimated"] = self.estimated(c)
             self.countries[code] = c
         self._apply_language_rule()
         ref = self.countries.get(countries.REFERENCE, {"offers": {}})
@@ -245,6 +251,12 @@ class Context:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"]}
         return out
 
+    def estimated(self, c):
+        """True, wenn der Europreis auf dem pauschalen Guthaben-Aufschlag beruht,
+        weil für dieses Land keine Guthabenkarte mit Preis eingetragen ist."""
+        how = self.how(c)
+        return bool(how and how["via"] == "giftcard" and not how["card"])
+
     def est(self, c, local):
         """Europreis eines Bruttobetrags in Landeswährung beim üblichen Zahlweg."""
         return None if c["unit"] is None else local * c["unit"]
@@ -286,10 +298,15 @@ class Context:
 
     # ---- Tiefst- und Bestpreise
 
+    def low_value(self, code, slug):
+        """Tiefstpreis in Landeswährung (ohne Steuer): DekuDeals oder eigene Aufzeichnung."""
+        e = self.lows.get(code, {}).get(slug) or {}
+        values = [v for v in (e.get("low"), e.get("own_low")) if v is not None]
+        return min(values) if values else None
+
     def low(self, code, slug, o):
         """Tiefstpreis in Landeswährung und ob das aktuelle Angebot ihn erreicht."""
-        e = self.lows.get(code, {}).get(slug) or {}
-        low = e.get("low")
+        low = self.low_value(code, slug)
         if low is None:
             return {"low": None, "at_low": False}
         base = o.get("regular_net", o["regular"])
@@ -305,13 +322,13 @@ class Context:
                 continue
             for slug, o in c["offers"].items():
                 local = o["local"]
-                low = (self.lows.get(code, {}).get(slug) or {}).get("low")
+                low = self.low_value(code, slug)
                 if low is not None:
                     local = min(local, round(cents(low) * (1 + c["tax"] / 100)))
                 eur = local * c["unit"]
                 for table, ok in ((self.champ_all, True), (self.champ_easy, c["tier"] <= 2)):
                     if ok and (slug not in table or eur < table[slug][0] - 1e-9):
-                        table[slug] = (eur, code)
+                        table[slug] = (eur, code, c["estimated"])
 
     def mark(self, c, slug, o):
         """Deal-Güte eines Angebots: Marke und Abstand zum Bestpreis in Prozent."""
@@ -339,7 +356,7 @@ class Context:
         return {"local": o["local"] / 100, "regular": o["regular"] / 100, "sale": o["sale"],
                 "net": o.get("net", o["local"]) / 100,
                 "pct": round(100 * (1 - o["local"] / o["regular"])) if o["regular"] else 0,
-                "end": o["end"], "eur": _r(self.est(c, o["local"])),
+                "end": o["end"], "eur": _r(self.est(c, o["local"])), "est": c["estimated"],
                 "lang": o.get("lang"), "nsuid": o.get("nsuid"),
                 **self.low(c["code"], slug, o), **self.mark(c, slug, o)}
 
@@ -576,6 +593,10 @@ def _fillers(ctx, c, chosen, total, base, pay, has_cards, ref):
     return result
 
 
+def _eur(x):
+    return f"{x:.2f}".replace(".", ",") + " €"
+
+
 def _r(x):
     return None if x is None else round(x + 0.0, 2)
 
@@ -669,6 +690,7 @@ def radar(data, settings, targets=None, now=None):
     """
     ctx = Context(data, settings, now)
     targets = targets or {}
+    deal_eur = dict({"buy": 0.5, "good": 2.0}, **(settings.get("deal_eur") or {}))
     rows = []
     for slug in ctx.order:
         best = {"easy": None, "hard": None}
@@ -687,28 +709,39 @@ def radar(data, settings, targets=None, now=None):
         def champ(entry):
             if not entry:
                 return None
-            return {"eur": _r(entry[0]), "code": entry[1],
+            return {"eur": _r(entry[0]), "code": entry[1], "est": entry[2],
                     "name": countries.BY_CODE[entry[1]]["name"]}
         try:
             target = float(targets.get(slug))
         except (TypeError, ValueError):
             target = None
-        gap_easy = None
+        gap_easy = diff_easy = diff_all = None
         if easy and champ_easy and champ_easy[0]:
             gap_easy = max(0, round(100 * (easy["raw"] / champ_easy[0] - 1)))
+            diff_easy = max(0.0, _r(easy["raw"] - champ_easy[0]))
+        if easy and champ_all:
+            diff_all = max(0.0, _r(easy["raw"] - champ_all[0]))
+        # Ein Angebot zählt als Kauf oder gutes Angebot, wenn es prozentual
+        # oder in Euro nah genug am Bestpreis liegt: 1 € mehr für einen
+        # günstigen Titel ist wenig, auch wenn es 30 % sind.
+        buy_eur, good_eur = deal_eur["buy"], deal_eur["good"]
         verdict, reason = "none", "kein Angebot"
         if target is not None and easy and easy["raw"] <= target + 0.005:
             verdict, reason = "buy", "Zielpreis erreicht"
         elif easy and easy["mark"] in ("best", "best_easy"):
             verdict, reason = "buy", "Bestpreis"
-        elif easy and easy["sale"] and gap_easy is not None and gap_easy <= GOOD_GAP:
-            verdict, reason = "good", f"{gap_easy} % über Bestpreis"
+        elif easy and easy["sale"] and diff_easy is not None and diff_easy <= buy_eur + 0.005:
+            verdict, reason = "buy", f"nur {_eur(diff_easy)} über Bestpreis"
+        elif easy and easy["sale"] and gap_easy is not None and (
+                gap_easy <= GOOD_GAP or diff_easy <= good_eur + 0.005):
+            verdict, reason = "good", f"{_eur(diff_easy)} ({gap_easy} %) über Bestpreis"
         elif hard and hard["sale"] and (
                 (target is not None and hard["raw"] <= target + 0.005)
                 or (hard["mark"] == "best" and (not easy or hard["raw"] < easy["raw"] * 0.85))):
             verdict, reason = "hard", f"stark nur in {hard['name']}"
         elif (easy and easy["sale"]) or (hard and hard["sale"]):
-            verdict, reason = "wait", "war schon günstiger"
+            verdict, reason = "wait", (f"war {_eur(diff_easy)} günstiger" if diff_easy
+                                       else "war schon günstiger")
         for b in (easy, hard):
             if b:
                 b.pop("raw")
@@ -717,7 +750,8 @@ def radar(data, settings, targets=None, now=None):
                      **ctx.owned_flags(slug),
                      "easy": easy, "hard": hard, "de": _r(ctx.ref.get(slug)),
                      "champ": champ(champ_all), "champ_easy": champ(champ_easy),
-                     "gap_easy": gap_easy, "target": target, "verdict": verdict,
+                     "gap_easy": gap_easy, "diff_easy": diff_easy, "diff_all": diff_all,
+                     "target": target, "verdict": verdict,
                      "reason": reason, "no_ids": not any(it.get("ids", {}).values())})
     rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]),
                              r["gap_easy"] if r["gap_easy"] is not None else 999))

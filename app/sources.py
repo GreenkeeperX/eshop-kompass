@@ -13,14 +13,12 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.6"
+VERSION = "0.6.1"
 
-# Kennungen, mit denen das Tool anfragt. Zuerst die ehrliche eigene, sonst eine
-# gewöhnliche Browser-Kennung. Bot-Sperren werden nicht umgangen.
-UAS = [
-    ("tool", f"eshop-kompass/{VERSION} (privates Wishlist-Tool)"),
-    ("browser", "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"),
-]
+# Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
+# einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
+USER_AGENT = f"eshop-kompass/{VERSION} (privates Wishlist-Tool)"
+BLOCKED = (403, 429)
 
 NINTENDO_PRICE_URL = "https://api.ec.nintendo.com/v1/price"
 FX_URL = "https://open.er-api.com/v6/latest/EUR"
@@ -50,7 +48,7 @@ def _decode(raw, enc):
 def request(url, ua=None, timeout=25, encoding="gzip, deflate"):
     """HTTP GET ohne Ausnahme: liefert Status, Text und Kopfdaten für die Diagnose."""
     req = urllib.request.Request(url, headers={
-        "User-Agent": ua or UAS[0][1],
+        "User-Agent": ua or USER_AGENT,
         "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
         "Accept-Encoding": encoding,
@@ -104,8 +102,7 @@ _PARENT_RE = re.compile(
     r"""[^>]*>([^<]*)""", re.S | re.I)
 _SCRIPT_RE = re.compile(r"<(script|style)\b.*?</\1>", re.S | re.I)
 
-attempts = []       # Protokoll der letzten DekuDeals-Abrufe, für die Diagnose
-_deku_ua = None     # Kennung, mit der DekuDeals zuletzt brauchbar geantwortet hat
+attempts = []       # Protokoll des letzten DekuDeals-Abrufs, für die Diagnose
 
 
 def _norm(page_html):
@@ -119,37 +116,27 @@ def page_title(page_html):
 
 def describe(page_html):
     """Kurzbeschreibung einer Seite: Länge, Titel, Treffer, sichtbarer Anfang."""
-    text = _TAG_RE.sub(" ", _SCRIPT_RE.sub(" ", page_html or ""))
-    text = re.sub(r"\s+", " ", html.unescape(text)).strip()
     return (f"{len(page_html or '')} Zeichen, Titel „{page_title(page_html)[:60]}“, "
-            f"{len(parse_wishlist_page(page_html))} Titel-Links, Anfang: {text[:140]}")
+            f"{len(parse_wishlist_page(page_html))} Titel-Links, Anfang: {visible_text(page_html)[:140]}")
 
 
-def _call(fetch, url, ua):
-    return fetch(url, ua=ua)
+def visible_text(page_html):
+    text = _TAG_RE.sub(" ", _SCRIPT_RE.sub(" ", page_html or ""))
+    return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
 def deku_get(url, ok, fetch=fetch):
     """Holt eine DekuDeals-Seite und prüft mit `ok`, ob sie brauchbar ist."""
-    global _deku_ua
-    order = [u for u in UAS if u[1] == _deku_ua] + [u for u in UAS if u[1] != _deku_ua]
     del attempts[:]
-    last = None
-    for label, ua in order:
-        try:
-            text = _call(fetch, url, ua)
-        except FetchError as e:
-            attempts.append(f"{label}: Fehler {e.status or ''} {str(e)[-120:] if not e.status else ''}".strip())
-            last = e
-            if e.status == 404:
-                break                     # Seite gibt es nicht, andere Kennung hilft nicht
-            continue
-        if ok(text):
-            _deku_ua = ua
-            return text
-        attempts.append(f"{label}: {describe(text)}")
-        last = FetchError(url, 200, "Seite ohne erwarteten Inhalt")
-    raise last
+    try:
+        text = fetch(url)
+    except FetchError as e:
+        attempts.append(f"Fehler {e.status or ''} {str(e)[-120:] if not e.status else ''}".strip())
+        raise
+    if not ok(text):
+        attempts.append(describe(text))
+        raise FetchError(url, 200, "Seite ohne erwarteten Inhalt")
+    return text
 
 
 _LOW_RE = re.compile(r"All[\s\-]*time low(.{0,1500})", re.S | re.I)
@@ -381,3 +368,36 @@ def fetch_fx(fetch=fetch):
     rates = {k: float(v) for k, v in data["rates"].items()}
     rates["EUR"] = 1.0
     return rates, data.get("date", "")
+
+
+# ----------------------------------------------------------- Guthabenkarten
+
+_LD_RE = re.compile(r"""<script[^>]*type=["']application/ld\+json["'][^>]*>(.*?)</script>""", re.S | re.I)
+
+
+def parse_ld_price(page_html):
+    """Preis aus den strukturierten Produktdaten einer Shopseite (schema.org Offer).
+
+    Liefert (Preis, Währung) oder None, wenn die Seite keine mitliefert, etwa
+    weil sie ihre Preise erst im Browser lädt.
+    """
+    for block in _LD_RE.findall(page_html or ""):
+        try:
+            stack = [json.loads(block)]
+        except ValueError:
+            continue
+        while stack:
+            x = stack.pop()
+            if isinstance(x, list):
+                stack.extend(x)
+                continue
+            if not isinstance(x, dict):
+                continue
+            for key in ("lowPrice", "price"):
+                if x.get(key) not in (None, "") and x.get("priceCurrency"):
+                    try:
+                        return float(x[key]), x["priceCurrency"]
+                    except (TypeError, ValueError):
+                        pass
+            stack.extend(v for v in x.values() if isinstance(v, (dict, list)))
+    return None
