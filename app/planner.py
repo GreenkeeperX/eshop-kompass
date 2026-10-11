@@ -197,8 +197,10 @@ class Context:
             self.countries[code] = c
         self._apply_language_rule()
         ref = self.countries.get(countries.REFERENCE, {"offers": {}})
-        self.ref = {s: o["local"] / 100 for s, o in ref["offers"].items()}
-        self.ref_regular = {s: o["regular"] / 100 for s, o in ref["offers"].items()}
+        # Vergleichsbasis mit allen Kosten: günstigere Guthabenkarten senken auch sie
+        unit = ref.get("unit") or 0.01
+        self.ref = {s: o["local"] * unit for s, o in ref["offers"].items()}
+        self.ref_regular = {s: o["regular"] * unit for s, o in ref["offers"].items()}
         self._champions()
 
     def _live_cards(self, cards):
@@ -234,11 +236,21 @@ class Context:
                 best, card = unit, x
         return best, card
 
+    def _euro_card(self, c):
+        """Euro-Land: günstigste vorrätige Karte mit bekanntem Preis unter Nennwert.
+        Ein Rest bleibt auf dem eigenen Konto, deshalb zählt nur der Preis je Euro."""
+        best, card = 0.01, None
+        for x in c["cards"]:
+            if x["stock"] and x["cost"] is not None and x["cost"] / x["face"] < best - 1e-12:
+                best, card = x["cost"] / x["face"], x
+        return best, card
+
     def _units(self, c):
         """(Kartenzahlung, Guthabenkarte) in Euro je Hundertstel Landeswährung."""
         mid = 1 / 100 / c["rate"]
         if c["code"] == countries.REFERENCE or c["currency"] == "EUR":
-            return mid, mid
+            unit = self._euro_card(c)[0] if c["currency"] == "EUR" else mid
+            return unit, unit
         return mid * (1 + self.settings["card_fee_pct"] / 100), self._gift(c)[0]
 
     def _unit(self, c):
@@ -264,7 +276,11 @@ class Context:
                # Karten mit Link, aber ohne bekannten Preis, bleiben eine Schätzung.
                "at_rate": any(x["stock"] and x["cost"] is None and not x["url"] for x in c["cards"])}
         if c["currency"] == "EUR":
-            out["via"] = "eur"
+            card = self._euro_card(c)[1]
+            out["via"] = "giftcard" if card else "eur"
+            if card:
+                out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
+                               "live": card.get("live")}
         elif gift:
             card = self._gift(c)[1]
             if card and card["cost"] is not None:

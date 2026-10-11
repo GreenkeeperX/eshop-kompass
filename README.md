@@ -85,6 +85,10 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   Tag den Preis von der Shopseite (aus den Produktdaten der Seite). Unter dem
   Eingabefeld steht, was es gelesen hat. Liefert die Seite keinen Preis oder
   ist der Wert älter als drei Tage, gilt dein eingetragener Preis.
+- Deutschland: Karten unter Nennwert (etwa von Eneba) senken den
+  Deutschland-Preis und damit die Vergleichsbasis. Ein Rest bleibt auf dem
+  Konto und zählt nicht als Kosten. Karten zum Nennwert oder darüber zählen
+  nicht.
 - Datei einlesen: Unter `countries.<Land>.cards_add` ergänzt eine Datei
   Karten, ohne vorhandene zu ersetzen. Gibt es den Kartenwert schon, bekommt
   die Zeile nur den Link.

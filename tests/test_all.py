@@ -555,6 +555,22 @@ class PlanTest(unittest.TestCase):
         self.assertNotIn("https://shop.example/br25", self.data["card_prices"])
         self.assertIn("lehnt Abrufe ab", sync.status["log"][-2])
 
+    def test_cheaper_german_cards_lower_the_baseline(self):
+        de = self.settings["countries"]["DE"]
+        de["cards"] = "20 = 21,00"                          # über Nennwert: zählt nicht
+        self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["DE"]["via"], "eur")
+        de["cards"] = "20 = 21,00\n25 = 22,50 | https://shop.example/de25"
+        info = planner.pay_info(self.data, self.settings, now=NOW)["DE"]
+        self.assertEqual((info["via"], info["card"]["face"], info["card"]["cost"], info["vs_mid"]),
+                         ("giftcard", 25.0, 22.5, -10.0))
+        by = self.by(planner.plans(self.data, self.settings, now=NOW))
+        self.assertEqual(by["DE"]["cost"], round(6.24 * 0.9, 2))     # Spiritfarer im Angebot
+        self.assertEqual((by["DE"]["rest"], by["DE"]["estimated"]), (0, False))  # Rest bleibt nutzbar
+        no = by["NO"]                                             # Hades: DE 24,99 € mal 0,9
+        self.assertAlmostEqual(no["saving"], round(24.99 * 0.9 - 100 / 10.7155 * 1.0175, 2))
+        row = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
+        self.assertEqual(row["de"], round(19.99 * 0.9, 2))
+
     def test_own_low_without_dekudeals(self):
         self.data["lows"] = {"NO": {"hades": {"checked": 1}}}      # DekuDeals ohne Wert
         hist = {}
