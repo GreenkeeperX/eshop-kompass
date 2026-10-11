@@ -558,6 +558,39 @@ class PlanTest(unittest.TestCase):
         self.assertNotIn("https://shop.example/br25", self.data["card_prices"])
         self.assertIn("lehnt Abrufe ab", sync.status["log"][-2])
 
+    def test_card_prices_from_ggdeals(self):
+        page = ('<div class="tile"><a href="/de/gift-card/nintendo-eshop-gift-card-50-brl/"><img></a>'
+                '<a href="/de/gift-card/nintendo-eshop-gift-card-50-brl/">Nintendo eShop 50 BRL</a>'
+                '<s>9,10€</s> <b>~8,05€</b></div>'
+                '<div class="tile"><a href="/de/gift-card/nintendo-eshop-gift-card-60-brl-brazil/">60 BRL</a>'
+                '<span>Nicht verfügbar</span></div>'
+                '<div class="tile"><a href="/de/gift-card/nintendo-eshop-gift-card-100-brl/">100 BRL</a>'
+                '<b>16,10 €</b></div>'
+                '<div><a href="/de/gift-card/nintendo-eshop-gift-card-20-usd/">20 USD</a> 17,00€</div>')
+        cards = sources.parse_ggdeals_group(page, "BRL")
+        self.assertEqual({f: p for f, (p, _) in cards.items()}, {50: 8.05, 100: 16.1})
+        self.assertEqual(cards[50][1], "https://gg.deals/de/gift-card/nintendo-eshop-gift-card-50-brl/")
+        self.settings["countries"]["BR"]["cards"] = "15=3.00\n25=4.80\n50=9.50\nx 100"
+        self.data["card_market"] = {"BR": {"checked": NOW.timestamp(), "cards": {
+            "50": {"price": 8.05, "url": "https://gg.deals/a"},
+            "100": {"price": 16.10, "url": "https://gg.deals/b"},
+            "150": {"price": 23.99, "url": "https://gg.deals/c"},
+            "15": {"price": 3.50, "url": "https://gg.deals/d"}}}}
+        ctx = planner.Context(self.data, self.settings, NOW)
+        by = {x["face"] // 100: x for x in ctx.countries["BR"]["cards"]}
+        self.assertEqual(by[50]["cost"], 8.05)            # günstiger als dein Eintrag
+        self.assertEqual(by[50]["manual"], 9.50)
+        self.assertEqual(by[15]["cost"], 3.00)            # dein Eintrag ist günstiger
+        self.assertFalse(by[100]["stock"])                # nicht vorrätig bleibt draußen
+        self.assertEqual((by[150]["cost"], by[150]["stock"]), (23.99, True))   # neuer Wert
+        self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["BR"]["card"]["market"],
+                         NOW.timestamp())
+        # Abgeschaltet oder älter als drei Tage: nur deine Einträge
+        later = datetime.fromtimestamp(NOW.timestamp() + 4 * 86400, timezone.utc)
+        self.assertEqual(len(planner.Context(self.data, self.settings, later).countries["BR"]["cards"]), 4)
+        self.settings["card_market"] = False
+        self.assertEqual(planner.Context(self.data, self.settings, NOW).countries["BR"]["cards"][2]["cost"], 9.5)
+
     def test_cheaper_german_cards_lower_the_baseline(self):
         de = self.settings["countries"]["DE"]
         de["cards"] = "20 = 21,00"                          # über Nennwert: zählt nicht
@@ -885,6 +918,11 @@ class SyncTest(unittest.TestCase):
                 if "country=CL" in url:
                     raise sources.FetchError(url, 500)     # abgeschaltetes Land fällt aus
                 return '{"prices":[]}'                     # übrige Länder: nichts im Angebot
+            if "gg.deals" in url:
+                if "brl-brazil" in url:
+                    return ('<a href="/de/gift-card/nintendo-eshop-gift-card-50-brl/">50 BRL</a>'
+                            '<span>~8,05€</span>')
+                return "<p>leer</p>"
             raise AssertionError("unerwarteter Abruf " + url)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
         self.assertTrue(sync.status["ok"], sync.status["log"])
@@ -912,6 +950,11 @@ class SyncTest(unittest.TestCase):
         # Preise für alle Länder mit bekannten IDs (Europa und Amerika), nicht für Japan und Asien
         self.assertEqual(len(price_calls), 19)
         self.assertIn("CL", data["price_fail"])
+        # gg.deals: eine Seite je aktivem Land mit Guthaben (hier BR) und für Deutschland
+        gg = [u for u in calls if "gg.deals" in u]
+        self.assertEqual(len(gg), len(set(gg)))
+        self.assertEqual(data["card_market"]["BR"]["cards"]["50"]["price"], 8.05)
+        self.assertEqual(data["card_market"]["DE"]["error"], "Seite nennt keine Kartenpreise")
         self.assertFalse(any("Preisabruf fehlgeschlagen" in l for l in sync.status["log"]))
         n = len(calls)
         sync.run_sync(fetch=fake, sleep=lambda s: None)

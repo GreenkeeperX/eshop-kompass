@@ -13,6 +13,7 @@ DEFAULT_SETTINGS = {
     "collection_url": "",     # leer = Sammlung mit derselben Kennung wie die Wishlist
     "card_fee_pct": 1.75,     # Fremdwährungsgebühr der eigenen Karte
     "gift_markup_pct": 5.0,   # Aufschlag für Guthabenkarten ohne eigenen Preis
+    "card_market": True,      # Kartenpreise je Land von gg.deals lesen
     "shop_fee_pct": 10.5,     # Servicegebühr des Kartenshops auf gelesene Preise (Eneba, Okt. 2026)
     # ab dieser Ersparnis lohnt der Länderwechsel, je Stufe (leicht, mittel, schwer)
     "tier_min_saving": {"1": 3.0, "2": 8.0, "3": 20.0},
@@ -29,7 +30,7 @@ DEFAULT_SETTINGS = {
 DEFAULT_UI = {"basket": None, "overrides": {}, "targets": {}, "hidden": [],
               "sort": "saving", "dense": True, "plan_good": False}
 
-EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {},
+EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {}, "card_market": {},
               "fx": {"rates": {"EUR": 1.0}, "updated": ""}, "last_sync": None}
 
 lock = threading.RLock()
@@ -93,6 +94,8 @@ def save_settings(new):
                     pass
         if new.get("current_country") in list(s["countries"]) + [""]:
             s["current_country"] = new["current_country"]
+        if isinstance(new.get("card_market"), bool):
+            s["card_market"] = new["card_market"]
         if new.get("lang_rule") in ("exclude", "warn", "off"):
             s["lang_rule"] = new["lang_rule"]
         for tier, value in (new.get("tier_min_saving") or {}).items():

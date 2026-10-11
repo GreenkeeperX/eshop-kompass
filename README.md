@@ -104,6 +104,14 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   Vorgabe 10,5 %): Die Seite zeigt den Preis ohne sie, berechnet wird sie
   erst an der Kasse. Eneba nennt keine feste Höhe, sie hängt von Zahlweg und
   Land ab. Von Hand eingetragene Preise bleiben, wie du sie einträgst.
+- gg.deals: Für jedes aktive Land mit Guthabenkarten (und Deutschland) liest
+  das Tool einmal am Tag die Kartengruppe bei gg.deals, eine Seite je Land.
+  Sie nennt je Kartenwert den günstigsten Preis über alle Shops in Euro;
+  gg.deals rechnet dort mit Gebühr und teils mit einem Rabattcode, den die
+  Kartenseite nennt (der Tooltip verlinkt sie). Fehlende Kartenwerte kommen
+  dazu, bei eingetragenen gilt der günstigere Preis, mit x markierte bleiben
+  draußen. Werte älter als drei Tage zählen nicht. Abschaltbar unter
+  Einstellungen.
 - Deutschland: Karten unter Nennwert (etwa von Eneba) senken den
   Deutschland-Preis und damit die Vergleichsbasis. Ein Rest bleibt auf dem
   Konto und zählt nicht als Kosten. Karten zum Nennwert oder darüber zählen

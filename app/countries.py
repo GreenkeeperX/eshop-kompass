@@ -51,6 +51,15 @@ COUNTRIES = [
     ("AR", "Argentinien", "AM", "giftcard", 3, 0, True, False, "es", ""),
 ]
 
+# Kartengruppen bei gg.deals: eine Seite je Land nennt den günstigsten Preis
+# jedes Kartenwerts über alle Shops, in Euro
+GGDEALS = {
+    "DE": "eur-germany", "PL": "pln-poland", "NO": "nok-norway", "DK": "dkk-denmark",
+    "SE": "sek-sweden", "GB": "gbp-united-kingdom", "CH": "chf-switzerland",
+    "NZ": "nzd-new-zealand", "AU": "aud-australia", "JP": "jpy-japan",
+    "US": "usd-united-states", "CA": "cad-canada", "BR": "brl-brazil", "MX": "mxn-mexico",
+}
+
 BY_CODE = {
     c[0]: {
         "code": c[0], "name": c[1], "family": c[2], "pay": c[3], "tier": c[4],

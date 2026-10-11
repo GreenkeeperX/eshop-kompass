@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.8.1"
+VERSION = "0.9"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -371,6 +371,46 @@ def fetch_fx(fetch=fetch):
 
 
 # ----------------------------------------------------------- Guthabenkarten
+
+GGDEALS_URL = "https://gg.deals/de/gift-cards-group/nintendo-eshop-gift-card-{}/"
+_GG_LINK_RE = re.compile(r"""href=["'](?:https://gg\.deals)?(?:/[a-z]{2})?/gift-card/([a-z0-9-]+)/?["']""")
+_EUR_RE = re.compile(r"(\d{1,3}(?:\.\d{3})*,\d{2}|\d+\.\d{2})\s*(?:€|&euro;|&#8364;)")
+
+
+def parse_ggdeals_group(page_html, currency):
+    """Kartenwerte und günstigster Preis von einer Gruppenseite bei gg.deals.
+
+    Liefert {Wert: (Preis in Euro, Link)}. Jede Kachel verlinkt ihre Karte;
+    zwischen dem ersten Link einer Karte und dem Link der nächsten steht ihr
+    Preis. Mehrere Preise (Shop, Keyshop, durchgestrichen) ergeben den kleinsten.
+    Werte ohne Preis (nicht verfügbar) fehlen.
+    """
+    page_html = page_html or ""
+    hits, seen = [], set()
+    for m in _GG_LINK_RE.finditer(page_html):
+        slug = m.group(1)
+        if slug not in seen:
+            seen.add(slug)
+            hits.append((m.start(), slug))
+    cards = {}
+    face_re = re.compile(r"-(\d+)-" + re.escape(currency.lower()) + r"(?:-|$)")
+    for i, (pos, slug) in enumerate(hits):
+        fm = face_re.search(slug)
+        if not fm:
+            continue
+        end = hits[i + 1][0] if i + 1 < len(hits) else min(len(page_html), pos + 4000)
+        prices = []
+        for p in _EUR_RE.findall(visible_text(page_html[pos:end])):
+            try:
+                prices.append(float(p.replace(".", "").replace(",", ".")) if "," in p else float(p))
+            except ValueError:
+                pass
+        if prices:
+            face = int(fm.group(1))
+            price = min(prices)
+            if face not in cards or price < cards[face][0]:
+                cards[face] = (price, f"https://gg.deals/de/gift-card/{slug}/")
+    return cards
 
 _LD_RE = re.compile(r"""<script[^>]*type=["']application/ld\+json["'][^>]*>(.*?)</script>""", re.S | re.I)
 

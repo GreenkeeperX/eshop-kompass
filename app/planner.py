@@ -166,6 +166,7 @@ class Context:
         rates = data["fx"]["rates"]
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
+        self.card_market = data.get("card_market") or {}
         self._payers = {}
         self.countries = {}
         for code in countries.ORDER:
@@ -193,6 +194,8 @@ class Context:
                  "known": set(data["prices"].get(code, {})), "tax": tax,
                  "tier": int(cfg.get("tier") or meta["tier"]), "nolang": set(),
                  "cards": self._live_cards(parse_card_list(cfg.get("cards")))}
+            if c["rate"]:
+                c["cards"] = self._market_cards(code, c["cards"], c["rate"], cfg)
             c["unit"] = self._unit(c)
             c["estimated"] = self.estimated(c)
             self.countries[code] = c
@@ -220,6 +223,36 @@ class Context:
             x.update(manual=x["cost"], cost=round(e["price"] / rate * (1 + fee / 100), 2),
                      live=e["checked"], fee=fee)
         return cards
+
+    def _market_cards(self, code, cards, rate, cfg):
+        """Ergänzt die Kartenliste um die Preise von gg.deals, solange sie frisch sind.
+
+        Ein Kartenwert, den du nicht eingetragen hast, kommt dazu. Bei einem
+        eingetragenen gilt der günstigere Preis; ohne Preis zählt dort Kurs plus
+        Aufschlag. Als nicht vorrätig markierte Werte bleiben draußen.
+        """
+        if not self.settings.get("card_market", True):
+            return cards
+        e = self.card_market.get(code) or {}
+        if not e.get("cards") or self.now.timestamp() - e.get("checked", 0) > CARD_PRICE_MAX_AGE:
+            return cards
+        markup = float(self.settings["gift_markup_pct"] if cfg.get("markup_pct") in ("", None)
+                       else cfg["markup_pct"])
+        by_face = {x["face"]: x for x in cards}
+        for face_txt, m in e["cards"].items():
+            face = cents(float(face_txt))
+            x = by_face.get(face)
+            if x is None:
+                by_face[face] = {"face": face, "cost": m["price"], "url": m["url"], "stock": True,
+                                 "market": e["checked"]}
+                continue
+            if not x["stock"]:
+                continue
+            mine = x["cost"] if x["cost"] is not None else face / 100 / rate * (1 + markup / 100)
+            if m["price"] < mine - 0.005:
+                x.update(manual=x["cost"], cost=m["price"], url=m["url"], market=e["checked"],
+                         live=None, fee=None)
+        return [by_face[k] for k in sorted(by_face)]
 
     # ---- Europreis je Währungseinheit
 
@@ -284,12 +317,14 @@ class Context:
             out["via"] = "giftcard" if card else "eur"
             if card:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee")}
+                               "live": card.get("live"), "fee": card.get("fee"),
+                               "market": card.get("market")}
         elif gift:
             card = self._gift(c)[1]
             if card and card["cost"] is not None:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee")}
+                               "live": card.get("live"), "fee": card.get("fee"),
+                               "market": card.get("market")}
         return out
 
     def estimated(self, c):
@@ -825,7 +860,10 @@ def card_status(data, settings, now=None):
             e = ctx.card_prices.get(x["url"]) or {}
             rows.append({"face": x["face"] / 100, "cost": x["cost"], "live": x.get("live"),
                          "manual": x.get("manual", x["cost"]), "checked": e.get("checked"),
-                         "error": e.get("error")})
+                         "error": e.get("error"), "market": x.get("market")})
+        m = ctx.card_market.get(code) or {}
+        if m.get("error"):
+            rows.append({"face": None, "market_error": m["error"], "checked": m.get("checked")})
         if rows:
             out[code] = rows
     return out
