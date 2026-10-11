@@ -220,6 +220,9 @@ def sync_prices(data, settings, fetch, sleep, history=None):
     history = {} if history is None else history
     quiet = []
     for code in enabled:
+        if countries.BY_CODE[code]["shop"] != code:   # kein eigener eShop
+            status["done"] += 1
+            continue
         fam = countries.BY_CODE[code]["family"]
         by_nsuid = {}
         for slug, it in data["items"].items():
@@ -323,7 +326,7 @@ def sync_card_market(data, settings, fetch, sleep, now=None):
     for code in countries.ORDER:
         cfg = settings["countries"][code]
         slug = countries.GGDEALS.get(code)
-        if not slug or not cfg["enabled"] or (cfg["pay"] == "card" and code != countries.REFERENCE):
+        if not slug or not cfg["enabled"] or cfg["pay"] == "card":
             continue
         if now - (market.get(code) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS:
             todo.append((code, slug))
@@ -354,18 +357,66 @@ def sync_card_market(data, settings, fetch, sleep, now=None):
     _log(f"Kartenpreise gg.deals: {got} von {len(todo)} Ländern gelesen")
 
 
-def log_implausible(data, settings):
-    """Meldet gelesene Kartenpreise, die außerhalb des glaubhaften Bereichs liegen
-    und deshalb nicht zählen (planner.CARD_PLAUSIBLE)."""
+UNIT_JUMP = 0.15        # mehr Änderung je Währungseinheit seit dem letzten Abgleich ist auffällig
+FX_MAX_AGE_DAYS = 3
+
+
+def _fx_age_days(updated, now):
+    """Alter des Kursstands in Tagen; None, wenn unlesbar."""
+    from email.utils import parsedate_to_datetime
+    for parse in (parsedate_to_datetime, lambda t: datetime.fromisoformat(t)):
+        try:
+            dt = parse(updated)
+        except (TypeError, ValueError, IndexError):
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (now - dt).total_seconds() / 86400
+    return None
+
+
+def self_check(data, settings, now=None):
+    """Prüft nach dem Abgleich, ob die Ergebnisse glaubhaft sind, und merkt sich die
+    Auffälligkeiten für Protokoll und Oberfläche. Vergleicht mit dem letzten Lauf."""
+    now = now or datetime.now(timezone.utc)
+    prev = data.get("checks") or {}
+    warnings = []
     try:
-        ctx = planner.Context(data, settings)
-    except Exception:
-        return
+        ctx = planner.Context(data, settings, now)
+    except Exception as e:
+        data["checks"] = {"at": now.isoformat(timespec="seconds"), "warnings": [f"Rechnung nicht möglich ({e})"]}
+        return data["checks"]
+    units, buyable = {}, {}
     for code, c in ctx.countries.items():
-        if c["implausible"]:
-            _log(f"Kartenpreise {code}: unglaubhaft und ignoriert: " + ", ".join(
-                f"{planner.num_txt(i['face'])} {c['currency'] or ''} für {planner._eur(i['price'])} ({i['src']})"
-                for i in c["implausible"]))
+        name = c["meta"]["name"]
+        for i in c["implausible"]:
+            warnings.append(f"{name}: Kartenpreis {planner.num_txt(i['face'])} {c['currency'] or ''} für "
+                            f"{planner._eur(i['price'])} ({i['src']}) unglaubhaft, ignoriert")
+        if c["unit"]:
+            units[code] = c["unit"] * 100
+            old = (prev.get("units") or {}).get(code)
+            if old and abs(units[code] / old - 1) > UNIT_JUMP:
+                warnings.append(f"{name}: Preis je {c['currency']} seit dem letzten Abgleich "
+                                f"{round(100 * (units[code] / old - 1)):+d} %, bitte Kurs und Kartenpreise prüfen")
+        n = sum(1 for p in data["prices"].get(code, {}).values() if p.get("status") == "onsale")
+        buyable[code] = n
+        old_n = (prev.get("buyable") or {}).get(code)
+        if old_n and old_n >= 5 and n < old_n / 2:
+            warnings.append(f"{name}: nur noch {n} statt {old_n} Titel kaufbar, Preisabruf prüfen")
+    age = _fx_age_days((data.get("fx") or {}).get("updated"), now)
+    if age is not None and age > FX_MAX_AGE_DAYS:
+        warnings.append(f"Wechselkurse sind {int(age)} Tage alt")
+    if "JP" in ctx.countries and ctx.countries["JP"]["offers"]:
+        unknown = sum(1 for o in ctx.countries["JP"]["offers"].values() if o.get("lang") == "unknown")
+        if unknown and settings.get("lang_rule", "exclude") == "exclude":
+            _log(f"Prüfung: Japan, bei {unknown} Titeln ist die Sprache ungeprüft, sie zählen nicht für Urteil und Kaufplan")
+    data["checks"] = {"at": now.isoformat(timespec="seconds"), "warnings": warnings,
+                      "units": units, "buyable": buyable}
+    for w in warnings:
+        _log("Prüfung: " + w)
+    if not warnings:
+        _log("Prüfung: alles glaubhaft")
+    return data["checks"]
 
 
 def sync_langs(data, settings, fetch, sleep, now=None):
@@ -511,7 +562,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         store.save_history(history)
         sync_card_prices(data, settings, fetch, sleep)
         sync_card_market(data, settings, fetch, sleep)
-        log_implausible(data, settings)
+        self_check(data, settings)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
         sync_langs(data, settings, fetch, sleep)

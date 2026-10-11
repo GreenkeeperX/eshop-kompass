@@ -3,11 +3,19 @@ import json
 import os
 import threading
 import urllib.parse
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import countries, planner, sources, store, sync
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+
+
+def _num(x):
+    try:
+        return round(float(x), 2)
+    except (TypeError, ValueError):
+        return None
 
 
 def state():
@@ -27,6 +35,7 @@ def state():
         "status": sync.status,
         "version": sources.VERSION,
         "last_sync": data.get("last_sync"),
+        "checks": data.get("checks"),
         "fx_updated": data["fx"].get("updated"),
         "item_count": sum(1 for it in data["items"].values() if it.get("active")),
         "matrix": planner.matrix(data, settings),
@@ -72,8 +81,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, dict(sync.status, last_sync=store.load_data().get("last_sync")))
             elif path == "/api/kaufplan":
                 ui = store.load_ui()
-                self._send(200, planner.purchase_plan(store.load_data(), store.load_settings(),
-                                                      ui["targets"], include_good=ui["plan_good"]))
+                out = planner.purchase_plan(store.load_data(), store.load_settings(), ui["targets"],
+                                            include_good=ui["plan_good"],
+                                            bought=store.load_purchases())
+                self._send(200, out)
             elif path == "/api/verlauf":
                 q = urllib.parse.parse_qs(self.path.partition("?")[2])
                 slug = (q.get("slug") or [""])[0]
@@ -85,7 +96,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"lines": sync.diagnose()})
             elif path == "/api/export":
                 self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
-                                 "settings": store.load_settings(), "ui": store.load_ui()})
+                                 "settings": store.load_settings(), "ui": store.load_ui(),
+                                 "purchases": store.load_purchases()})
             else:
                 self._send(404, {"error": "nicht gefunden"})
         except Exception as e:
@@ -111,7 +123,19 @@ class Handler(BaseHTTPRequestHandler):
                     store.save_settings(body["settings"])
                 if isinstance(body.get("ui"), dict):
                     store.save_ui(body["ui"])
+                if isinstance(body.get("purchases"), list) and not store.load_purchases():
+                    store.save_purchases([p for p in body["purchases"] if isinstance(p, dict)][-500:])
                 self._send(200, {"ok": True})
+            elif path == "/api/bought":
+                slugs = [str(x) for x in (body.get("slugs") or [])][:200]
+                entry = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                         "code": str(body.get("code") or ""), "slugs": slugs,
+                         "titles": [str(x) for x in (body.get("titles") or [])][:200],
+                         "cost": _num(body.get("cost")), "de": _num(body.get("de")),
+                         "rest": _num(body.get("rest")), "currency": str(body.get("currency") or "")}
+                self._send(200, {"purchases": store.record_purchase(entry)})
+            elif path == "/api/bought/undo":
+                self._send(200, {"purchases": store.undo_purchase()})
             elif path == "/api/sync":
                 self._send(200, {"started": sync.start_sync()})
             else:

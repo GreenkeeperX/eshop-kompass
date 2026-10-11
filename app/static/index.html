@@ -321,12 +321,13 @@ function toast(msg, undo){
   setTimeout(() => t.remove(), undo ? 7000 : 2600);
 }
 const country = code => S.state.countries.find(c => c.code === code) || {name: code, lang: "en"};
-const deku = (slug, code) => `https://www.dekudeals.com/items/${encodeURIComponent(slug)}?country=${(code || "de").toLowerCase()}`;
+const shopOf = code => code ? (country(code).shop || code) : "DE";   // DG nutzt den deutschen eShop
+const deku = (slug, code) => `https://www.dekudeals.com/items/${encodeURIComponent(slug)}?country=${shopOf(code).toLowerCase()}`;
 const epSearch = title => `https://eshop-prices.com/games?q=${encodeURIComponent(title)}&currency=EUR`;
 function shopUrl(code, nsuid){   // Produktseite im eShop des Landes
   if(!nsuid) return null;
   const kind = String(nsuid).startsWith("7001") ? "titles" : String(nsuid).startsWith("7007") ? "bundles" : null;
-  return kind ? `https://ec.nintendo.com/${code}/${country(code).lang}/${kind}/${nsuid}` : null;
+  return kind ? `https://ec.nintendo.com/${shopOf(code)}/${country(code).lang}/${kind}/${nsuid}` : null;
 }
 /* Landespreis verlinkt den Verlauf bei DekuDeals, der Europreis die eShop-Seite */
 function priceLink(slug, code, text, x, cur){
@@ -534,6 +535,10 @@ function banners(){
     h += `<div class="banner">Trage unter Einstellungen deinen DekuDeals-Wishlist-Link ein und klicke auf Aktualisieren.</div>`;
   else if(!S.state.last_sync && !st.running)
     h += `<div class="banner">Noch kein Abgleich. Der erste Lauf sucht die Titel-IDs und dauert einige Minuten.</div>`;
+  const warn = ((S.state.checks || {}).warnings || []);
+  if(warn.length && !st.running)
+    h += `<div class="banner">Selbstprüfung nach dem letzten Abgleich: ${warn.map(esc).join(" · ")}.
+      <button class="link" data-act="showlog">Protokoll öffnen</button></div>`;
   if(st.ok === false){
     const last = (st.log || []).filter(l => !/Abbruch|^\s/.test(l.slice(9))).pop() || "";
     const why = (st.log || []).filter(l => /Abbruch/.test(l)).pop() || last;
@@ -617,6 +622,9 @@ function viewKauf(){
     `${esc(d.name)} (${esc(d.tier_name)}) spart für ${d.titles.map(esc).join(", ")} nur ${eur(d.saving)}, deine Schwelle ist ${eur(d.threshold)}`).join(" · "));
   if(k.later.length) notes.push(`<b>Lieber warten:</b> ` + k.later.map(l => `${esc(l.title)} (${esc(l.reason)}, lohnt nur in einem Land, dessen Wechsel sich nicht rechnet)`).join(" · "));
   if(k.nowhere.length) notes.push(`<b>Nirgends kaufbar:</b> ${k.nowhere.map(esc).join(", ")}`);
+  if(k.bought_waiting.length) notes.push(`<b>Schon gekauft, noch auf der Wishlist:</b> ${k.bought_waiting.map(esc).join(", ")}`);
+  if(k.bought.length) notes.push(`<b>Gekauft:</b> ` + k.bought.map(b => `${dmy(b.at)} ${esc(country(b.code).name)}: ${b.titles.map(esc).join(", ")} für ${eur(b.cost)}${b.de !== null && b.de !== undefined ? ` statt ${eur(b.de)}` : ""}${b.rest ? `, Rest ${money(b.rest, b.currency)}` : ""}`).join(" · ")
+    + ` · insgesamt ${eur(k.bought_saving)} gespart <button class="link" data-act="unbought" title="Den letzten Kauf zurücknehmen, Land und Guthaben wie vorher">letzten zurücknehmen</button>`);
   return h + notes.map(x => `<p class="restline">${x}</p>`).join("");
 }
 function kaufStep(p, n){
@@ -627,10 +635,10 @@ function kaufStep(p, n){
   const parts = [`${cur === "EUR" ? "" : money(p.total, cur) + " → "}<b title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}</b>${p.is_ref ? "" : ` statt ${eur(p.de_now)} in Deutschland`}`];
   if(p.cards.length) parts.push(cardsHtml(p));
   if(!p.is_ref) parts.push(restHtml(p));
-  h += `<p class="line">${parts.join("<i>·</i>")}</p>`;
+  h += `<p class="line">${parts.join("<i>·</i>")} <button class="mini" data-act="bought" data-c="${esc(p.code)}" title="Vermerkt den Kauf: Dein Konto steht danach hier, ein Rest bleibt als Guthaben, die Titel verschwinden aus dem Plan">gekauft</button></p>`;
   const de = !p.is_ref;   // in Deutschland selbst wäre die Spalte doppelt
   h += `<table><colgroup><col><col class="c-l"><col class="c-e"><col class="c-d">${de ? `<col class="c-d">` : ""}</colgroup>
-    <thead><tr><th>Titel</th><th>${esc(cur || "")}</th><th>bis</th><th>€</th>${de ? "<th>DE €</th>" : ""}</tr></thead><tbody>` +
+    <thead><tr><th>Titel</th><th title="Preis im eShop des Landes">Shop ${esc(cur || "")}</th><th>bis</th><th title="Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben">€</th>${de ? "<th>DE €</th>" : ""}</tr></thead><tbody>` +
     p.items.map(i => `<tr><td class="t" title="${esc(i.title + " · " + (p.reasons[i.slug] || ""))}"><span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${esc(i.short)}</span><small class="hint">${esc(p.reasons[i.slug] || "")}</small></td>
       <td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}${pctTag(i, cur)}</td><td>${endCell(i.end)}</td>
       <td>${ax(i)}${buyLink(p.code, i, num(i.eur))}</td>${de ? `<td>${num(i.ref)}</td>` : ""}</tr>`).join("") + `</tbody></table>`;
@@ -699,7 +707,7 @@ function planCard(p){
     if(stars) parts.push(`<small title="${stars} von ${p.items.length} Titeln zum Bestpreis">${stars}× Bestpreis</small>`);
     h += `<p class="line">${parts.join("<i>·</i>")}</p>`;
     h += `<table><colgroup><col><col class="c-l"><col class="c-t"><col class="c-b"><col class="c-e"><col class="c-d"></colgroup>
-      <thead><tr><th>Titel</th><th>${esc(cur || "")}</th><th class="c-t">Bestpreis €</th><th>bis</th><th>€</th><th>${p.is_ref ? "normal" : "DE €"}</th></tr></thead><tbody>` +
+      <thead><tr><th>Titel</th><th title="Preis im eShop des Landes">Shop ${esc(cur || "")}</th><th class="c-t">Bestpreis €</th><th>bis</th><th title="Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben">€</th><th>${p.is_ref ? "normal" : "DE €"}</th></tr></thead><tbody>` +
     p.items.map(i => {
       const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "");
       return `<tr><td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}"><span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}</span></label></td>
@@ -963,10 +971,10 @@ function viewSettings(){
     <h3 class="sec">Guthabenkarten</h3>
     <p class="hint">Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag, so folgen die Kosten jedem neuen Kurs. Nur Werte wie <code>500 1000 3000</code> genügen, wenn du Guthaben zum Kurs kaufst (Amazon Japan): Dann zählt auch der Rest. Hat eine Karte einen Link, liest das Tool den Preis einmal am Tag von der Shopseite, sofern die Seite ihn ohne Browser verrät. Sonst gilt dein Wert.</p>
     <div class="cardsbox">`;
-  h += S.state.countries.filter(c => s.countries[c.code].enabled || s.countries[c.code].cards).map(c => {
+  h += S.state.countries.filter(c => c.code !== "DE" && (s.countries[c.code].enabled || s.countries[c.code].cards)).map(c => {
     const x = s.countries[c.code];
     const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000;
-    return `<label>${esc(c.name)}${c.code === "DE" ? ` <small>(nur Karten unter Nennwert zählen, ein Rest bleibt auf dem Konto)</small>` : ""}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>
+    return `<label>${esc(c.name)}${c.code === "DG" ? ` <small>(deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest zählt wie in jedem Guthabenland als Kosten; Deutschland zum Shop-Preis bleibt die Vergleichsbasis)</small>` : ""}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>
       <small><span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</small>
       ${cardStatus(c.code, (S.state.pay[c.code] || {}).currency) ? `<small>${cardStatus(c.code, (S.state.pay[c.code] || {}).currency)}</small>` : ""}</label>`;
   }).join("");
@@ -1033,6 +1041,14 @@ document.addEventListener("click", async e => {
   try{
     if(a === "tab"){ S.tab = d.tab; render(); window.scrollTo(0, 0); }
     else if(a === "verlauf"){ await openVerlauf(d.s); }
+    else if(a === "bought"){
+      const p = S.kauf.steps.find(x => x.code === d.c);
+      if(!confirm(`Kauf in ${p.name} vermerken? Dein Konto steht danach dort${p.rest ? `, Rest ${money(p.rest, p.currency)}` : ""}.`)) return;
+      await api("/api/bought", {code: p.code, slugs: p.items.map(i => i.slug), titles: p.items.map(i => i.short),
+        cost: p.cost, de: p.de_now, rest: p.rest, currency: p.currency});
+      toast(`Kauf in ${p.name} vermerkt`); await refresh(); S.kauf = await api("/api/kaufplan"); render();
+    }
+    else if(a === "unbought"){ await api("/api/bought/undo", {}); toast("Letzter Kauf zurückgenommen"); await refresh(); S.kauf = await api("/api/kaufplan"); render(); }
     else if(a === "vlclose"){ $("verlauf").close(); }
     else if(a === "vltoggle"){ const sh = S.vl.show; sh.has(d.c) ? sh.delete(d.c) : sh.add(d.c); drawVerlauf(); }
     else if(a === "showlog"){ S.tab = "settings"; render(); const l = $("log"); if(l) l.scrollIntoView({block:"center"}); }

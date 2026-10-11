@@ -39,6 +39,13 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
   Land, in dem dein Konto steht, dann leicht, mittel, schwer, innerhalb einer
   Stufe nach Angebotsende. "Als Korb vergleichen" übernimmt die Titel in den
   gemeinsamen Korb.
+  "gekauft" an einem Land vermerkt den Kauf im Kaufprotokoll
+  (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort
+  als Guthaben, Guthaben anderer Länder gilt als weg (Nintendo nimmt es beim
+  Wechsel nicht mit). Gekaufte Titel verschwinden aus dem Plan, auch solange
+  sie noch auf der Wishlist stehen. Unter dem Plan stehen die letzten Käufe
+  mit der Ersparnis gegenüber Deutschland; "letzten zurücknehmen" stellt Land
+  und Guthaben wieder her.
 - Pakete, Angebote je Land: Länderkarten als dichtes Raster oder große Liste.
   Je Land die Wishlist-Angebote mit Kosten, Karten, Rest, Angebotsende und
   Vorschlägen zum Dazunehmen (+) oder Weglassen (−).
@@ -106,7 +113,7 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   acht Käufe zwischen 5,57 und 93,03 € auf den Cent. Der feste Teil zählt je
   Karte; bei mehreren Karten in einer Bestellung fällt er nur einmal an. Von
   Hand eingetragene Preise bleiben, wie du sie einträgst.
-- gg.deals: Für jedes aktive Land mit Guthabenkarten (und Deutschland) liest
+- gg.deals: Für jedes aktive Land mit Guthabenkarten liest
   das Tool einmal am Tag die Kartengruppe bei gg.deals, eine Seite je Land.
   Sie nennt je Kartenwert den günstigsten Preis über alle Shops in Euro;
   gg.deals rechnet dort mit Gebühr und teils mit einem Rabattcode, den die
@@ -119,10 +126,12 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   sicher ein Lesefehler, etwa ein Gebührenhinweis statt des Preises. Solche
   Werte stehen mit „unglaubhaft, ignoriert“ unter der Kartenliste und im
   Protokoll, es gilt dein Eintrag.
-- Deutschland: Karten unter Nennwert (etwa von Eneba) senken den
-  Deutschland-Preis und damit die Vergleichsbasis. Ein Rest bleibt auf dem
-  Konto und zählt nicht als Kosten. Karten zum Nennwert oder darüber zählen
-  nicht.
+- Deutschland: Die Vergleichsbasis ist immer der Preis im deutschen eShop.
+  Wer mit günstigen deutschen Guthabenkarten (etwa von Eneba) zahlt, schaltet
+  "Deutschland mit Guthaben" (DG) ein: dasselbe Konto und dieselben Preise,
+  gerechnet wie jedes Guthabenland. Ein Rest zählt dort als Kosten, denn
+  Nintendo nimmt Guthaben bei keinem Länderwechsel mit. Karten, die bis 0.9.2
+  bei Deutschland standen, wandern beim Update dorthin.
 - Datei einlesen: Unter `countries.<Land>.cards_add` ergänzt eine Datei
   Karten, ohne vorhandene zu ersetzen. Gibt es den Kartenwert schon, bekommt
   die Zeile nur den Link.
@@ -153,6 +162,14 @@ Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar bleiben. Ein
 Angebot ist jede Strecke unter dem heutigen Normalpreis. Die Aufzeichnung
 kennt nur Zeiten, in denen das Tool lief; in den ersten Wochen sind die
 Kurven entsprechend kurz.
+
+## Selbstprüfung
+
+Nach jedem Abgleich prüft das Tool seine Ergebnisse: unglaubhafte
+Kartenpreise, ein Preis je Währungseinheit, der sich seit dem letzten Lauf um
+mehr als 15 % geändert hat, ein Land, in dem plötzlich weniger als die Hälfte
+der Titel kaufbar ist, und Wechselkurse, die älter als drei Tage sind.
+Auffälligkeiten stehen im Protokoll und als Hinweis über den Ansichten.
 
 ## Abrufen
 

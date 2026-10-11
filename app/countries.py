@@ -27,6 +27,10 @@ REFERENCE = "DE"
 COUNTRIES = [
     # code, name, family, pay, tier, tax, rest_blocks, enabled, lang, note
     ("DE", "Deutschland", "EU", "card", 1, 0, False, True, "de", "Vergleichsbasis"),
+    # Dasselbe deutsche Konto, bezahlt mit Guthabenkarten unter Nennwert: rechnet wie
+    # jedes Guthabenland, ein Rest zählt als Kosten. Preise kommen aus dem deutschen eShop.
+    ("DG", "Deutschland mit Guthaben", "EU", "giftcard", 1, 0, False, False, "de",
+     "deutsches Konto, bezahlt mit Guthabenkarten"),
     ("PL", "Polen", "EU", "card", 1, 0, False, True, "en", ""),
     ("NO", "Norwegen", "EU", "card", 1, 0, False, True, "en", ""),
     ("DK", "Dänemark", "EU", "card", 1, 0, False, True, "en", ""),
@@ -54,16 +58,20 @@ COUNTRIES = [
 # Kartengruppen bei gg.deals: eine Seite je Land nennt den günstigsten Preis
 # jedes Kartenwerts über alle Shops, in Euro
 GGDEALS = {
-    "DE": "eur-germany", "PL": "pln-poland", "NO": "nok-norway", "DK": "dkk-denmark",
+    "DG": "eur-germany", "PL": "pln-poland", "NO": "nok-norway", "DK": "dkk-denmark",
     "SE": "sek-sweden", "GB": "gbp-united-kingdom", "CH": "chf-switzerland",
     "NZ": "nzd-new-zealand", "AU": "aud-australia", "JP": "jpy-japan",
     "US": "usd-united-states", "CA": "cad-canada", "BR": "brl-brazil", "MX": "mxn-mexico",
 }
 
+# Länder ohne eigenen eShop: Preise, Tiefstpreise und Verlauf kommen von hier
+SAME_SHOP = {"DG": "DE"}
+
 BY_CODE = {
     c[0]: {
         "code": c[0], "name": c[1], "family": c[2], "pay": c[3], "tier": c[4],
         "tax_pct": c[5], "rest_blocks": c[6], "enabled": c[7], "lang": c[8], "note": c[9],
+        "shop": SAME_SHOP.get(c[0], c[0]),
     }
     for c in COUNTRIES
 }

@@ -189,7 +189,7 @@ class Context:
             meta = countries.BY_CODE[code]
             tax = 0.0 if code == countries.REFERENCE else float(cfg.get("tax_pct") or 0)
             offers, currency = {}, None
-            for slug, p in data["prices"].get(code, {}).items():
+            for slug, p in data["prices"].get(meta["shop"], {}).items():
                 if slug not in self.items:
                     continue
                 currency = currency or p.get("currency")
@@ -204,7 +204,7 @@ class Context:
                 offers[slug] = o
             c = {"code": code, "cfg": cfg, "meta": meta, "offers": offers,
                  "currency": currency, "rate": rates.get(currency) if currency else None,
-                 "known": set(data["prices"].get(code, {})), "tax": tax,
+                 "known": set(data["prices"].get(meta["shop"], {})), "tax": tax,
                  "tier": int(cfg.get("tier") or meta["tier"]), "nolang": set(),
                  "cards": parse_card_list(cfg.get("cards")), "implausible": []}
             if c["rate"]:
@@ -309,8 +309,10 @@ class Context:
     def _units(self, c):
         """(Kartenzahlung, Guthabenkarte) in Euro je Hundertstel Landeswährung."""
         mid = 1 / 100 / c["rate"]
-        if c["code"] == countries.REFERENCE or c["currency"] == "EUR":
-            unit = self._euro_card(c)[0] if c["currency"] == "EUR" else mid
+        if c["code"] == countries.REFERENCE:
+            return mid, mid           # Vergleichsbasis: der Preis im deutschen eShop
+        if c["currency"] == "EUR":
+            unit = self._euro_card(c)[0]
             return unit, unit
         return mid * (1 + self.settings["card_fee_pct"] / 100), self._gift(c)[0]
 
@@ -408,7 +410,7 @@ class Context:
 
     def low_value(self, code, slug):
         """Tiefstpreis in Landeswährung (ohne Steuer): DekuDeals oder eigene Aufzeichnung."""
-        e = self.lows.get(code, {}).get(slug) or {}
+        e = self.lows.get(countries.BY_CODE[code]["shop"], {}).get(slug) or {}
         values = [v for v in (e.get("low"), e.get("own_low")) if v is not None]
         return min(values) if values else None
 
@@ -575,7 +577,8 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
            "tax": c["tax"], "lang": c["meta"]["lang"],
            "note": c["meta"]["note"], "items": [], "fillers": [], "warnings": [],
            "available": len(offers), "saving": None, "missing": [], "trims": [],
-           "current": code == ctx.settings.get("current_country")}
+           "current": bool(ctx.settings.get("current_country"))
+                      and c["meta"]["shop"] == ctx.settings.get("current_country")}
     if not c["rate"]:
         if not c["known"]:
             out["warnings"].append("Noch keine Preise abgerufen")
@@ -957,7 +960,7 @@ def price_levels(data, settings, now=None):
 
 # ---------------------------------------------------------------- Kaufplan
 
-def purchase_plan(data, settings, targets=None, include_good=False, now=None):
+def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None):
     """Ein Gesamtvorschlag: welche Titel jetzt in welchem Land, in welcher Reihenfolge.
 
     Kandidaten sind die Titel mit dem Urteil "kaufen" oder "nur schwer"
@@ -970,7 +973,9 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None):
     ctx = Context(data, settings, now)
     verdicts = ("buy", "hard", "good") if include_good else ("buy", "hard")
     rows = radar(data, settings, targets, now)
-    wanted = [r["slug"] for r in rows if r["verdict"] in verdicts]
+    # Schon gekauft, aber noch auf der Wishlist: nicht noch einmal einplanen
+    done = {s for b in (bought or []) for s in b.get("slugs", [])}
+    wanted = [r["slug"] for r in rows if r["verdict"] in verdicts and r["slug"] not in done]
     reasons = {r["slug"]: r["reason"] for r in rows}
     # Der Preis, auf dem das Urteil beruht: Teurer darf der Titel im Plan nicht werden
     deal_price = {}
@@ -1042,6 +1047,11 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None):
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
             "ref_total": _r(ref_total), "saving": _r(ref_total - total),
             "include_good": include_good,
+            "bought_waiting": [ctx.title(s) for s in ctx.order if s in done],
+            "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "de", "rest", "currency")}
+                       for b in (bought or [])[-5:]][::-1],
+            "bought_saving": _r(sum((b.get("de") or 0) - (b.get("cost") or 0) for b in (bought or [])
+                                    if b.get("de") is not None and b.get("cost") is not None)),
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
 
 
@@ -1061,7 +1071,7 @@ def price_history(data, settings, history, slug, now=None):
     champ = ctx.champ_easy.get(slug)
     out["champ_easy"] = None if not champ else {"eur": _r(champ[0]), "code": champ[1], "est": champ[2]}
     for code, c in ctx.countries.items():
-        series = (history.get(code) or {}).get(slug) or []
+        series = (history.get(c["meta"]["shop"]) or {}).get(slug) or []
         points = [(t, _parse_dt(t), v) for t, v in series if _parse_dt(t) and v is not None]
         if not points or c["unit"] is None:
             continue
@@ -1104,7 +1114,7 @@ def price_history(data, settings, history, slug, now=None):
             "now_eur": _r(ctx.est(c, o["local"])) if o else None,
             "low": _r(low_v * gross), "low_eur": eur(low_v), "low_at": low_t,
             "deku_low_eur": (lambda lv: None if lv is None else eur(lv))(
-                (ctx.lows.get(code, {}).get(slug) or {}).get("low")),
+                (ctx.lows.get(c["meta"]["shop"], {}).get(slug) or {}).get("low")),
             "sales": sales, "sale_count": len(sales),
             "on_sale_pct": round(100 * on_sale / span),
             "typical_days": round(sorted(done)[len(done) // 2], 1) if done else None,

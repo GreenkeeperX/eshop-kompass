@@ -81,6 +81,16 @@ def load_settings():
             if s.get("shop_fee_pct") == 10.5:
                 s["shop_fee_pct"] = DEFAULT_SETTINGS["shop_fee_pct"]
             s["settings_v"] = 2
+        if s.get("settings_v", 0) < 3:
+            # Bis 0.9.2 senkten deutsche Guthabenkarten die Vergleichsbasis selbst. Jetzt
+            # bleibt Deutschland beim Shop-Preis, die Karten gehören zu „Deutschland mit Guthaben“.
+            de, dg = s["countries"][countries.REFERENCE], s["countries"]["DG"]
+            if de.get("cards"):
+                dg["cards"] = de["cards"] if not dg.get("cards") else dg["cards"] + "\n" + de["cards"]
+                dg["cards_checked"] = de.get("cards_checked", "")
+                dg["enabled"] = True
+                de["cards"], de["cards_checked"] = "", ""
+            s["settings_v"] = 3
         if not s["wishlist_url"]:
             s["wishlist_url"] = os.environ.get("WISHLIST_URL", "")
         return s
@@ -118,7 +128,18 @@ def save_settings(new):
                     s["deal_eur"][k] = min(100.0, max(0.0, float(value)))
                 except (TypeError, ValueError):
                     pass
-        for code, c in (new.get("countries") or {}).items():
+        incoming = dict(new.get("countries") or {})
+        de = incoming.get(countries.REFERENCE)
+        if isinstance(de, dict) and ("cards" in de or "cards_add" in de):
+            # Karten für Deutschland (etwa aus einer älteren Einlese-Datei) gehören jetzt
+            # zu „Deutschland mit Guthaben“
+            dg = dict(incoming.get("DG") or {}, enabled=True)
+            for k in ("cards", "cards_add"):
+                if k in de:
+                    dg[k] = de[k]
+            incoming[countries.REFERENCE] = {k: v for k, v in de.items() if k not in ("cards", "cards_add")}
+            incoming["DG"] = dg
+        for code, c in incoming.items():
             if code not in s["countries"] or not isinstance(c, dict):
                 continue
             cur = s["countries"][code]
@@ -242,3 +263,58 @@ def load_history():
 def save_history(h):
     with lock:
         _save("history.json", h)
+
+
+def load_purchases():
+    """Kaufprotokoll: [{at, code, slugs, titles, cost, de, rest, before}, ...]."""
+    with lock:
+        return _load("purchases.json", [])
+
+
+def save_purchases(p):
+    with lock:
+        _save("purchases.json", p)
+
+
+def record_purchase(entry):
+    """Vermerkt einen Kauf: Das Konto steht danach im Land des Kaufs, dort bleibt der
+    Rest als Guthaben. Guthaben anderer Länder gibt es nach einem Wechsel nicht mehr
+    (Nintendo nimmt es nicht mit). Der Zustand davor wird für „Rückgängig“ gemerkt."""
+    with lock:
+        s = load_settings()
+        code = entry["code"]
+        if code not in s["countries"]:
+            raise ValueError("unbekanntes Land")
+        before = {"current_country": s.get("current_country", ""),
+                  "balance": {c: v["balance"] for c, v in s["countries"].items() if v.get("balance")}}
+        for c, v in s["countries"].items():
+            v["balance"] = 0.0
+        rest = entry.get("rest")
+        try:
+            s["countries"][code]["balance"] = max(0.0, round(float(rest or 0), 2))
+        except (TypeError, ValueError):
+            pass
+        s["current_country"] = countries.BY_CODE[code]["shop"]   # DG ist das deutsche Konto
+        _save("settings.json", s)
+        log = load_purchases()
+        log.append(dict(entry, before=before))
+        save_purchases(log[-500:])
+        return log
+
+
+def undo_purchase():
+    """Nimmt den letzten Kauf zurück und stellt Land und Guthaben wieder her."""
+    with lock:
+        log = load_purchases()
+        if not log:
+            return log
+        last = log.pop()
+        s = load_settings()
+        before = last.get("before") or {}
+        s["current_country"] = before.get("current_country", "")
+        for c, v in s["countries"].items():
+            v["balance"] = float((before.get("balance") or {}).get(c, 0.0))
+        _save("settings.json", s)
+        save_purchases(log)
+        return log
+
