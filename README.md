@@ -101,9 +101,11 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   Eingabefeld steht, was es gelesen hat. Liefert die Seite keinen Preis oder
   ist der Wert älter als drei Tage, gilt dein eingetragener Preis.
   Auf gelesene Preise kommt die Servicegebühr des Shops (Einstellung,
-  Vorgabe 10,5 %): Die Seite zeigt den Preis ohne sie, berechnet wird sie
-  erst an der Kasse. Eneba nennt keine feste Höhe, sie hängt von Zahlweg und
-  Land ab. Von Hand eingetragene Preise bleiben, wie du sie einträgst.
+  Vorgabe 0,40 € plus 7,75 %): Die Seite zeigt den Preis ohne sie, berechnet
+  wird sie erst an der Kasse. Bei Eneba trafen diese Werte im Oktober 2026
+  acht Käufe zwischen 5,57 und 93,03 € auf den Cent. Der feste Teil zählt je
+  Karte; bei mehreren Karten in einer Bestellung fällt er nur einmal an. Von
+  Hand eingetragene Preise bleiben, wie du sie einträgst.
 - gg.deals: Für jedes aktive Land mit Guthabenkarten (und Deutschland) liest
   das Tool einmal am Tag die Kartengruppe bei gg.deals, eine Seite je Land.
   Sie nennt je Kartenwert den günstigsten Preis über alle Shops in Euro;

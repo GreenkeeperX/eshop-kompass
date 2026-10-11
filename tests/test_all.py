@@ -536,8 +536,11 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(len(calls), 2)                       # höchstens einmal am Tag
         # Der gelesene Preis ersetzt den von Hand eingetragenen, mit der Servicegebühr des Shops
         st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
-        self.assertEqual(st[1]["cost"], round(8.90 * 1.105, 2))   # Vorgabe 10,5 %
-        self.settings["shop_fee_pct"] = 0
+        self.assertEqual(st[1]["cost"], round(8.90 * 1.0775 + 0.40, 2))   # Vorgabe 0,40 € + 7,75 %
+        # Die Vorgabe trifft echte Eneba-Käufe auf den Cent
+        for sub, fee in ((5.57, 0.83), (16.58, 1.68), (49.26, 4.22), (93.03, 7.61)):
+            self.assertAlmostEqual(sub * 0.0775 + 0.40, fee, delta=0.006)
+        self.settings["shop_fee_pct"], self.settings["shop_fee_eur"] = 0, 0
         info = planner.pay_info(self.data, self.settings, now=NOW)["BR"]
         self.assertEqual((info["card"]["face"], info["card"]["cost"], info["card"]["live"]), (50.0, 8.9, t0))
         st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
@@ -783,6 +786,11 @@ class SafetyTest(unittest.TestCase):
         s = store.save_settings({"countries": {"JP": {"rest_blocks": True}}})
         self.assertTrue(store.load_settings()["countries"]["JP"]["rest_blocks"])  # deine Wahl bleibt
         store.save_settings({"countries": {"JP": {"rest_blocks": False}}})
+        # 0.8.1 speicherte pauschal 10,5 % Eneba-Gebühr: wird zur gemessenen Formel
+        with open(os.path.join(store.DATA_DIR, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"settings_v": 1, "shop_fee_pct": 10.5}, f)
+        s = store.load_settings()
+        self.assertEqual((s["shop_fee_pct"], s["shop_fee_eur"], s["settings_v"]), (7.75, 0.4, 2))
 
     def test_cards_can_be_added_from_a_file(self):
         store.save_settings({"countries": {"US": {"cards": "x 10 = 8,50\n5 = 4,20\n25 50=41"}}})

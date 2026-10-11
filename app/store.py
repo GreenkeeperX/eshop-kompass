@@ -14,7 +14,10 @@ DEFAULT_SETTINGS = {
     "card_fee_pct": 1.75,     # Fremdwährungsgebühr der eigenen Karte
     "gift_markup_pct": 5.0,   # Aufschlag für Guthabenkarten ohne eigenen Preis
     "card_market": True,      # Kartenpreise je Land von gg.deals lesen
-    "shop_fee_pct": 10.5,     # Servicegebühr des Kartenshops auf gelesene Preise (Eneba, Okt. 2026)
+    # Servicegebühr des Kartenshops auf gelesene Preise: fester Betrag plus Anteil.
+    # Eneba, Okt. 2026: acht Käufe von 5,57 bis 93,03 € passen auf den Cent zu 0,40 € + 7,75 %
+    "shop_fee_pct": 7.75,
+    "shop_fee_eur": 0.40,
     # ab dieser Ersparnis lohnt der Länderwechsel, je Stufe (leicht, mittel, schwer)
     "tier_min_saving": {"1": 3.0, "2": 8.0, "3": 20.0},
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
@@ -73,6 +76,11 @@ def load_settings():
             # Bis 0.6 blockierte ein Rest in Japan den Wechsel. Dort verfällt er nur.
             s["countries"]["JP"]["rest_blocks"] = False
             s["settings_v"] = 1
+        if s.get("settings_v", 0) < 2:
+            # 0.8.1 schätzte die Eneba-Gebühr pauschal auf 10,5 %, gemessen sind 0,40 € + 7,75 %
+            if s.get("shop_fee_pct") == 10.5:
+                s["shop_fee_pct"] = DEFAULT_SETTINGS["shop_fee_pct"]
+            s["settings_v"] = 2
         if not s["wishlist_url"]:
             s["wishlist_url"] = os.environ.get("WISHLIST_URL", "")
         return s
@@ -86,7 +94,7 @@ def save_settings(new):
             s["wishlist_url"] = new["wishlist_url"].strip()
         if isinstance(new.get("collection_url"), str):
             s["collection_url"] = new["collection_url"].strip()
-        for k in ("card_fee_pct", "gift_markup_pct", "shop_fee_pct", "refresh_hours"):
+        for k in ("card_fee_pct", "gift_markup_pct", "shop_fee_pct", "shop_fee_eur", "refresh_hours"):
             if k in new:
                 try:
                     s[k] = max(0.0, float(new[k]))

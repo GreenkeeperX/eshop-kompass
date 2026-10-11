@@ -353,7 +353,8 @@ function compose(code, x){
 }
 /* Woher ein Kartenpreis stammt, für Tooltips */
 const cardSrc = k => k.market ? ` (günstigster Preis bei gg.deals vom ${stamp(k.market)}, dort mit Shop und Rabattcode)`
-  : k.live ? ` (Shop-Preis vom ${stamp(k.live)}${k.fee ? ` mit ${pctTxt(k.fee)} Servicegebühr` : ""})` : "";
+  : k.live ? ` (Shop-Preis vom ${stamp(k.live)}${feeTxt(k.fee, k.fee_eur)})` : "";
+const feeTxt = (pct, fix) => pct || fix ? ` mit Servicegebühr ${[fix ? eur(fix) : "", pct ? pctTxt(pct) : ""].filter(Boolean).join(" + ")}` : "";
 const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 /* Gelesene Shop-Preise der Guthabenkarten eines Landes, für die Einstellungen */
 function cardStatus(code, cur){
@@ -365,7 +366,7 @@ function cardStatus(code, cur){
   if(err) parts.push(`gg.deals: <span class="warnc">${esc(err.market_error)}</span>`);
   return parts.concat(own.map(r => {
     const face = cur ? money(r.face, cur) : num(r.face);
-    if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)}${S.state.settings.shop_fee_pct ? `, mit ${pctTxt(S.state.settings.shop_fee_pct)} Servicegebühr` : ""})`;
+    if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)}${feeTxt(S.state.settings.shop_fee_pct, S.state.settings.shop_fee_eur)})`;
     if(r.checked) return `${face}: <span class="warnc">${esc(r.error || "kein Preis")}</span>, es gilt ${r.manual === null ? "Kurs plus Aufschlag" : eur(r.manual)}`;
     return `${face}: wird beim nächsten Abgleich gelesen`;
   })).join(" · ");
@@ -929,7 +930,8 @@ function viewSettings(){
       S.state.countries.map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label>
     <label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label>
     <label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label>
-    <label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Eneba nennt keine feste Höhe; 10,5 % entsprach einem Kauf im Oktober 2026. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.1" min="0" value="${s.shop_fee_pct}"></label>
+    <label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label>
+    <label class="f" title="Fester Teil der Servicegebühr je Bestellung. Das Tool rechnet ihn je Karte; kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label>
     <label class="f" title="Liest einmal am Tag je Land mit Guthabenkarten die Kartenpreise von gg.deals: je Kartenwert den günstigsten Preis über alle Shops, in Euro. Fehlende Kartenwerte kommen dazu, bei eingetragenen gilt der günstigere Preis. Als nicht vorrätig markierte Werte (x) bleiben draußen."><span><input name="card_market" type="checkbox" ${s.card_market ? "checked" : ""}> Kartenpreise von gg.deals lesen</span></label>
     <label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label>
     <label class="f" title="Pakete je Land: Unter dieser Ersparnis gegenüber Deutschland steht ein Land als „unter Schwelle“. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Ersparnis, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label>
@@ -981,7 +983,7 @@ function viewSettings(){
 }
 function settingsBody(form){
   const body = {countries:{}, tier_min_saving:{}};
-  for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","refresh_hours","lang_rule"])
+  for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","shop_fee_eur","refresh_hours","lang_rule"])
     body[k] = form.elements[k].value;
   body.card_market = form.elements.card_market.checked;
   for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;

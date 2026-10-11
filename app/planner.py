@@ -219,9 +219,12 @@ class Context:
             if not rate:
                 continue
             # Der Shop zeigt den Preis ohne seine Servicegebühr, die kommt an der Kasse dazu
+            # Je Karte gerechnet: Bei mehreren Karten in einer Bestellung fällt der feste
+            # Teil nur einmal an, die Rechnung liegt dann etwas zu hoch
             fee = float(self.settings.get("shop_fee_pct") or 0)
-            x.update(manual=x["cost"], cost=round(e["price"] / rate * (1 + fee / 100), 2),
-                     live=e["checked"], fee=fee)
+            fee_eur = float(self.settings.get("shop_fee_eur") or 0)
+            x.update(manual=x["cost"], cost=round(e["price"] / rate * (1 + fee / 100) + fee_eur, 2),
+                     live=e["checked"], fee=fee, fee_eur=fee_eur)
         return cards
 
     def _market_cards(self, code, cards, rate, cfg):
@@ -251,7 +254,7 @@ class Context:
             mine = x["cost"] if x["cost"] is not None else face / 100 / rate * (1 + markup / 100)
             if m["price"] < mine - 0.005:
                 x.update(manual=x["cost"], cost=m["price"], url=m["url"], market=e["checked"],
-                         live=None, fee=None)
+                         live=None, fee=None, fee_eur=None)
         return [by_face[k] for k in sorted(by_face)]
 
     # ---- Europreis je Währungseinheit
@@ -317,13 +320,13 @@ class Context:
             out["via"] = "giftcard" if card else "eur"
             if card:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee"),
+                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur"),
                                "market": card.get("market")}
         elif gift:
             card = self._gift(c)[1]
             if card and card["cost"] is not None:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee"),
+                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur"),
                                "market": card.get("market")}
         return out
 
