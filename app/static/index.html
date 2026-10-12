@@ -365,6 +365,7 @@ dialog.vl h2{margin:0;font-size:18px;flex:1}
 .vl td small{display:block;color:var(--muted);font-size:11px}
 button.mini{color:var(--muted);font-size:10px;margin-left:5px;border:1px solid var(--line);border-radius:3px;padding:0 3px;background:none;line-height:1.3}
 @media (max-width:375px){nav button{padding:6px 5px;font-size:13px}}
+th.grp{text-align:left;padding-top:12px;font-weight:600}
 </style>
 </head>
 <body>
@@ -1484,10 +1485,11 @@ function langSection(){
     <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `Nintendo sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
       : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="Gelesen: ${esc(t.text || "–")}">von Nintendo geprüft${t.text ? `: ${esc(t.text)}` : ""}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
+  const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
   const head = `<thead><tr><th>Titel</th><th>Region</th><th title="Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder">Preis</th><th></th><th>Deutsch?</th></tr></thead>`;
   h += need.length ? `<div class="scroll"><table>${head}<tbody>${need.map(row).join("")}</tbody></table></div>` : `<p class="hint">Keine Prüfung nötig: Nirgends wäre eine ungeprüfte Fassung billiger als der Bestpreis.</p>`;
   if(rest.length || done.length || auto.length)
-    h += `<details><summary class="hint">Weitere ${auto.length + done.length + rest.length}: ${auto.length} automatisch geprüft, ${done.length} von dir bestätigt, ${rest.length} egal, weil dort nicht günstiger</summary><div class="scroll"><table>${head}<tbody>${done.concat(auto, rest).map(row).join("")}</tbody></table></div></details>`;
+    h += `<details><summary class="hint">Weitere ${auto.length + done.length + rest.length}: ${auto.length} automatisch geprüft, ${done.length} von dir bestätigt, ${rest.length} egal, weil dort nicht günstiger</summary><div class="scroll"><table>${head}<tbody>${group(done, "Von dir bestätigt")}${group(auto, "Von Nintendo geprüft")}${group(rest, "Ungeprüft, aber egal: dort nicht günstiger als der Bestpreis")}</tbody></table></div></details>`;
   return h;
 }
 async function saveSettings(form, rerender){
