@@ -5,6 +5,7 @@ import urllib.parse
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -776,6 +777,37 @@ class PlanTest(unittest.TestCase):
                                   now=t0 + day * 86400)
         read = {u for u in urls if self.data["card_prices"].get(u, {}).get("price")}
         self.assertEqual(read, set(urls))
+
+    def test_card_prices_of_the_plan_first(self):
+        # Die Karten der Länder im Kaufplan zählen gerade: Sie kommen vor den ältesten dran
+        old, plan = "https://shop.example/jp1000", "https://shop.example/br50"
+        self.settings["countries"]["JP"]["cards"] = f"1000 | {old}"
+        self.settings["countries"]["BR"]["cards"] = f"50 | {plan}"
+        t0, calls = NOW.timestamp(), []
+        self.data["card_prices"] = {old: {"checked": t0 - 9 * 86400, "price": 6.0, "currency": "EUR"},
+                                    plan: {"checked": t0 - 2 * 86400, "price": 8.9, "currency": "EUR"}}
+
+        def once(url, ua=None):
+            calls.append(url)
+            raise sources.FetchError(url, 429)
+        with mock.patch.object(sync, "_plan_card_urls", return_value={plan}):
+            sync.sync_card_prices(self.data, self.settings, once, lambda s: None, now=t0)
+        self.assertEqual(calls, [plan])
+        calls.clear()
+        with mock.patch.object(sync, "_plan_card_urls", return_value=set()):
+            sync.sync_card_prices(self.data, self.settings, once, lambda s: None, now=t0)
+        self.assertEqual(calls, [old])
+
+    def test_plan_card_urls(self):
+        u, j = "https://shop.example/br50", "https://shop.example/jp1000"
+        self.settings["current_country"] = "DE"
+        self.settings["countries"]["BR"]["cards"] = f"50 | {u}\n25 8,90\n15 5,50"
+        self.settings["countries"]["JP"]["cards"] += f"\n1000 | {j}"
+        self.data["card_prices"] = {u: {"checked": NOW.timestamp(), "price": 8.9, "currency": "EUR"}}
+        steps = planner.purchase_plan(self.data, self.settings, now=NOW)["steps"]
+        self.assertIn("BR", [p["code"] for p in steps])
+        self.assertNotIn("JP", [p["code"] for p in steps])
+        self.assertEqual(sync._plan_card_urls(self.data, self.settings, NOW.timestamp()), {u})
 
     def test_fixed_shop_fee_once_per_order(self):
         url = "https://shop.example/br50"
