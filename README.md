@@ -20,6 +20,7 @@ sucht pro Titel die Nintendo-IDs (ein Abruf pro Sekunde) und dauert bei
 Danach gleicht das Tool im eingestellten Abstand ab (Standard 6 Stunden) und
 zusätzlich fünf Minuten nach jedem Start, etwa nach einem Update. Lief der
 letzte Abgleich vor weniger als 30 Minuten, entfällt der beim Start.
+Ein Klick auf den Namen oben links lädt die Startseite neu.
 
 Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 
@@ -345,6 +346,14 @@ letzte Angebot tiefer als der Median, gilt dieses: Nintendo senkt
 Angebotspreise oft dauerhaft, und der Median würde dann noch den alten Preis
 zeigen. Je Titel zählt das günstigste Land, in Euro zum heutigen Kurs.
 Er steht nur zur Information in den Einzelheiten und im Verlauf; das Urteil misst am Bestpreis.
+
+Aus denselben Phasen zeigen die Einzelheiten unter "Angebote" den Rhythmus je
+Land: wie viele Angebote es gab, in welchen Abständen, wann das letzte lief und
+in welche Monate sie meist fielen. Eine Vorhersage ist das nicht. Nur wenn es
+mindestens vier Angebote gab und alle Abstände höchstens 30 % vom Schnitt
+abweichen, steht dabei, wann das nächste nach diesem Muster üblich wäre, als
+Schätzung gekennzeichnet. Das Ende eines Angebots kennt das Tool ab 0.31, für
+ältere Einträge erst, wenn es die Seite wieder liest.
 
 Den Verlauf lädt das Tool mit dem Tiefstpreis. Für Titel, deren Tiefstpreis
 schon bekannt ist, holt es die Seite nur während eines Angebots nach,

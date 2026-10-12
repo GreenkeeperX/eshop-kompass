@@ -24,6 +24,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .narrow{max-width:1280px}
 header.top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:14px 0 6px}
 header.top h1{font-size:19px;margin:0;letter-spacing:-.01em}
+header.top h1 a.home{color:inherit;text-decoration:none}
 header.top .meta{color:var(--muted);font-size:13px;flex:1;min-width:200px}
 button,select,input{font:inherit;color:inherit}
 button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
@@ -372,7 +373,7 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>eShop-Kompass</h1>
+    <h1><a class="home" href="/" title="Startseite, lädt die Seite neu">eShop-Kompass</a></h1>
     <div class="meta" id="meta"></div>
     <button class="help" data-act="legend" title="Legende: Urteil, Farben, Begriffe">?</button>
     <button class="primary" id="syncBtn" data-act="sync">Aktualisieren</button>
@@ -838,6 +839,8 @@ function titleDetail(r){
       <span class="mut">${c.sale ? `−${c.pct} %${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${c.low_eur !== null && c.low_eur !== undefined ? ` · Landestief ${eur(c.low_eur)}` : ""}</span><span>${extra}</span></div>`;
   }).join("") + (na.length ? `<div class="mut nc"><span></span><span></span><span>${na.map(([code, c]) => esc(country(code).name) + (c.nolang ? " (ohne Deutsch)" : "")).join(", ")}</span><span>nicht kaufbar</span></div>` : "") + `</div>`;
   h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}` : ""}</span>`;
+  const rh = rhythmLines(r.rhythm || []);
+  if(rh) h += `<span>Angebote</span><span>${rh}</span>`;
   const now = Math.min(...[r.easy, r.hard].filter(Boolean).map(b => b.eur));
   const sug = r.target === null && ce && (!isFinite(now) || ce.eur < now - 0.005) ? ce.eur : null;
   h += `<span>Zielpreis</span><span><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="–">
@@ -849,6 +852,21 @@ function titleDetail(r){
   const pk = packLine(r.slug);
   if(pk) h += `<span>Pakete</span><span>${pk}</span>`;
   return h + `</div>`;
+}
+/* Angebotsrhythmus je Land aus den DekuDeals-Verläufen, ohne Vorhersage */
+const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+function rhythmLines(list){
+  const join = a => a.length > 1 ? a.slice(0, -1).join(", ") + " und " + a[a.length - 1] : a.join("");
+  return list.map(x => {
+    let t = `<b>${esc(x.name)}</b>: ${x.count === 1 ? "1 Angebot" : `${x.count} Angebote`} seit ${esc(x.since.slice(5, 7) + "." + x.since.slice(0, 4))}`;
+    if(x.gap !== null) t += `, im Schnitt alle ${x.gap} Wochen${x.gap_min !== x.gap_max ? ` (${x.gap_min} bis ${x.gap_max})` : ""}`;
+    t += x.running ? `. Das letzte läuft seit ${dm(x.last_start)}`
+      : x.last_end ? `. Das letzte lief vom ${dm(x.last_start)} bis ${dm(x.last_end)}, Beginn vor ${x.weeks_ago} Wochen`
+      : `. Das letzte begann am ${dmy(x.last_start)}, vor ${x.weeks_ago} Wochen`;
+    if(x.months.length) t += `. Meist im ${join(x.months.map(m => MONTHS[m - 1]))}`;
+    if(x.next) t += `. ${new Date(x.next) < new Date() ? "Nach diesem Muster wäre das nächste schon fällig" : `Nach diesem Muster wäre das nächste ab etwa ${dmy(x.next)} üblich`} <span class="mut">(Schätzung)</span>`;
+    return (t + ".").replace(/\.\.$/, ".");
+  }).join("<br>");
 }
 function packChip(slug){
   const p = ((S.state.bundles || {}).packs || {})[slug];

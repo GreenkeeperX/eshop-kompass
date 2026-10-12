@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.30"
+VERSION = "0.31"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -239,7 +239,7 @@ def parse_history(page_html):
 
 
 def sale_runs(series, since=None):
-    """Angebotsphasen eines Tagesverlaufs: [[Beginn, Tiefstwert], ...].
+    """Angebotsphasen eines Tagesverlaufs: [[Beginn, Tiefstwert, letzter Tag], ...].
 
     Normalpreis ist der häufigste Preis im Zeitraum, ein Angebot jede Strecke
     mindestens 3 % darunter. Steigt der Normalpreis, zählt der häufigere.
@@ -255,8 +255,9 @@ def sale_runs(series, since=None):
     for d, v in series:
         if v < regular * 0.97:
             if run is None:
-                run = [d, v]
+                run = [d, v, d]
             run[1] = min(run[1], v)
+            run[2] = d
         elif run is not None:
             runs.append(run)
             run = None
