@@ -779,6 +779,47 @@ def diagnose():
                 f"Titel „{sources.page_title(t)[:60]}“, Anfang: {sources.visible_text(t)[:160]}, "
                 f"Verweise: {' '.join(refs)}")
     probe(f"Sprachen Japan ({jp})", sources.JP_STORE_URL.format(nsuid=jp), None, jp_info)
+    # Zweite Quelle für Japan (4.6): nintendo.co.jp. Erst robots.txt, dann die Liste aller
+    # Switch-Titel und eine Titelseite daraus. Drei Abrufe, nur im Verbindungstest.
+    jp_ids = {n for it in data["items"].values() if it.get("active")
+              for n in (it.get("ids") or {}).get("JP") or []}
+    r = sources.request("https://www.nintendo.co.jp/robots.txt", None, timeout=20)
+    banned = [ln.split(":", 1)[1].strip() for ln in r["text"].splitlines()
+              if ln.lower().startswith("disallow:")] if not r["error"] else []
+    lines.append(f"nintendo.co.jp robots.txt: HTTP {r['status'] or r['error']}, gesperrt: "
+                 + (", ".join(banned[:12]) or "nichts"))
+    allowed = lambda path: not any(b and path.startswith(b) for b in banned)
+    if allowed("/data/software/xml/switch.xml"):
+        def xml_info(t):
+            tags = sorted(set(sources.re.findall(r"<([A-Za-z]+)>", t)))[:20]
+            hits = [n for n in jp_ids if n in t]
+            links = sources.re.findall(r"<LinkURL>([^<]+)</LinkURL>", t)
+            return (f"{len(t)} Zeichen, Einträge {t.count('<TitleInfo>')}, Felder {' '.join(tags)}, "
+                    f"{len(hits)} von {len(jp_ids)} deiner Japan-IDs gefunden, "
+                    f"{len(links)} Links, davon auf nintendo.co.jp "
+                    f"{sum(1 for x in links if 'nintendo.co.jp' in x or x.startswith('/'))}, "
+                    f"Anfang: {t[:300]}")
+        rx = probe("nintendo.co.jp Titelliste", "https://www.nintendo.co.jp/data/software/xml/switch.xml",
+                   None, xml_info)
+        # Eine Titelseite mit eigener Seite auf nintendo.co.jp: deine zuerst
+        page = None
+        for block in sources.re.findall(r"<TitleInfo>(.*?)</TitleInfo>", rx["text"], sources.re.S):
+            m = sources.re.search(r"<LinkURL>([^<]+)</LinkURL>", block)
+            if not m or "store-jp" in m.group(1):
+                continue
+            url = m.group(1) if m.group(1).startswith("http") else "https://www.nintendo.co.jp" + m.group(1)
+            if any(n in block for n in jp_ids):
+                page = url
+                break
+            page = page or url
+        if page and allowed(urllib.parse.urlsplit(page).path):
+            probe(f"nintendo.co.jp Titelseite ({page[-60:]})", page, None,
+                  lambda t: f"{len(t)} Zeichen, Sprachen: {sources.parse_langs_jp(t)}, "
+                            f"Titel „{sources.page_title(t)[:60]}“")
+        else:
+            lines.append("nintendo.co.jp Titelseite: keine geeignete Seite in der Liste")
+    else:
+        lines.append("nintendo.co.jp Titelliste: per robots.txt gesperrt, nicht abgerufen")
 
     # Amerika: Weiterleitung auf nintendo.com, Sprachen aus Seitendaten oder Text
     am = next((it["ids"]["AM"][0] for it in data["items"].values()
