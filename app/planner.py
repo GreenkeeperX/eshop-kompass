@@ -1465,7 +1465,7 @@ def _paid(b):
     return b.get("games") if b.get("games") is not None else b.get("cost")
 
 
-def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None):
+def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None, fill=None):
     """Ein Gesamtvorschlag: welche Titel jetzt in welchem Land, in welcher Reihenfolge.
 
     Kandidaten sind die Titel mit dem Urteil "kaufen" (wahlweise auch "gutes Angebot").
@@ -1481,8 +1481,13 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     Wechsel blockiert (Amerika), ist ein Wechsel danach nicht ausführbar (Entscheidung 12.10.2026):
     So ein Land kommt nur als letzter Schritt, höchstens eins je Plan, und steht das
     Konto dort mit Guthaben, plant der Plan nur dort.
+
+    Füllartikel: Bleibt in einem Schritt ein Rest, nennt der Plan bis zu drei
+    Wishlist-Titel, die hineinpassen, möglichst nahe am Rest, egal welches Urteil.
+    Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt.
     """
     ctx = Context(data, settings, now)
+    fill = {code: [s for s in slugs if s in ctx.items] for code, slugs in (fill or {}).items()}
     ok_grades = ("buy", "good") if include_good else ("buy",)
     rows = radar(data, settings, targets, now)
     # Schon gekauft, aber noch auf der Wishlist: nicht noch einmal einplanen
@@ -1537,6 +1542,18 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 groups.setdefault(best[1], []).append(slug)
             else:
                 later.append(slug)
+        # Übernommene Füllartikel kommen in ihren Schritt, solange es ihn gibt
+        taken = {x for g in groups.values() for x in g}
+        for code, slugs in fill.items():
+            if code not in groups:
+                continue
+            offers = ctx.countries[code]["offers"]
+            for s in slugs:
+                if s not in taken and s not in done and s in offers and ctx.decides(offers[s]):
+                    groups[code].append(s)
+                    taken.add(s)
+        later = [s for s in later if s not in taken]
+        nowhere = [s for s in nowhere if s not in taken]
         return groups, nowhere, later
 
     def first_end(p):
@@ -1641,8 +1658,11 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         lock = {"code": cur_code, "name": countries.BY_CODE[cur_code]["name"],
                 "currency": (cur_c or {}).get("currency"), "balance": cur_balance / 100,
                 "left": left, "fits": fit[:5]}
+    skip = done | {x["slug"] for x in s2_skip}
     for p in steps:
         c = ctx.countries[p["code"]]
+        p["fill_slugs"] = [i["slug"] for i in p["items"] if i["slug"] in fill.get(p["code"], [])]
+        p["fill"] = _rest_fill(ctx, c, p, planned, skip)
         p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
         # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
         # deutschen Schritt (dort ist die Ersparnis dann 0)
@@ -1671,6 +1691,28 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "bought_saving": _r(sum((b.get("de") or 0) - _paid(b) for b in (bought or [])
                                     if b.get("de") is not None and _paid(b) is not None)),
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
+
+
+def _rest_fill(ctx, c, p, planned, skip, limit=3):
+    """Wishlist-Titel, die in den Rest dieses Schritts passen, der kleinste Abstand zuerst.
+    Ein DLC nur, wenn sein Hauptspiel in der Sammlung oder im Plan steht."""
+    rest = round((p.get("rest") or 0) * 100)
+    if rest <= 0 or p.get("is_ref"):
+        return []
+    out = []
+    for s in ctx.order:
+        o = c["offers"].get(s)
+        if not o or s in planned or s in skip or s in ctx.owned or not ctx.decides(o):
+            continue
+        parent = ctx.items[s].get("parent")
+        if parent and parent not in ctx.owned and parent not in planned:
+            continue
+        if o["local"] > rest:
+            continue
+        out.append({"slug": s, "title": ctx.title(s), "short": ctx.short(s),
+                    "local": o["local"] / 100, "eur": _r(o["local"] / 100 / c["rate"]) if c.get("rate") else None,
+                    "left": (rest - o["local"]) / 100, "sale": bool(o.get("sale")), "dlc": bool(parent)})
+    return sorted(out, key=lambda f: (f["left"], f["title"]))[:limit]
 
 
 def price_history(data, settings, history, slug, now=None):

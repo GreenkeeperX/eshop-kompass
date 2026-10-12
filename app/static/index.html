@@ -366,6 +366,7 @@ dialog.vl h2{margin:0;font-size:18px;flex:1}
 button.mini{color:var(--muted);font-size:10px;margin-left:5px;border:1px solid var(--line);border-radius:3px;padding:0 3px;background:none;line-height:1.3}
 @media (max-width:375px){nav button{padding:6px 5px;font-size:13px}}
 th.grp{text-align:left;padding-top:12px;font-weight:600}
+.fillrow{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
 </style>
 </head>
 <body>
@@ -1042,7 +1043,7 @@ function restLine(p, last){
   if(p.rest === null) return `<span class="warnc">Rest unbekannt</span>`;
   if(!p.rest) return `<span>kein Rest</span>`;
   const blocked = !last && p.warnings.some(w => w.startsWith("Rest blockiert"));
-  const fits = p.fillers.filter(f => f.slugs.length === 1 && f.extra < 0.005);
+  const fits = (p.fill || []).length ? [] : p.fillers.filter(f => f.slugs.length === 1 && f.extra < 0.005);
   return `<span class="${blocked ? "bad" : p.rest_value >= 5 ? "warnc" : ""}">${money(p.rest, p.currency)} (${eur(p.rest_value ?? p.rest_eur)})</span>` +
     (fits.length ? ` · passt hinein: ${fits.map(f => esc(f.shorts[0])).join(", ")}` : "");
 }
@@ -1095,7 +1096,9 @@ function planCard(p, step){
       p.items.map(i => {
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
         const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
-        const first = step ? `<td class="t" title="${esc(tip)}">${nm}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
+        const filled = step && (p.fill_slugs || []).includes(i.slug)
+          ? ` <button class="link" data-act="planunfill" data-c="${p.code}" data-s="${esc(i.slug)}" title="Von dir als Füllartikel übernommen. Klick nimmt ihn wieder heraus.">Füller ×</button>` : "";
+        const first = step ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
         return `<tr>${first}${wide ? `<td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
           <td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
           <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : i.eur - i.champ < 0.005 ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">am Bestpreis</span>` : `<span class="g-${i.grade || "wait"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
@@ -1112,6 +1115,10 @@ function planCard(p, step){
         `<button data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: ${esc(money(f.local, cur))}, Aufpreis ${eur(f.extra)}, ohne den Wechsel ${eur(f.ref)}">
           <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)}, sonst ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>spart ${eur(f.gain)}</b></button>`));
     if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.ui.dense ? 3 : 99).join("")}</div>`;
+  } else if((p.fill || []).length){
+    h += `<div class="fillrow"><span class="mut">Passt in den Rest:</span> ` + p.fill.map(f =>
+      `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`).join(" ") +
+      `</div>`;
   } else if(p.fillers[0]){
     const f = p.fillers[0];
     h += `<p class="restline" style="margin-top:6px">Passt dazu: + ${f.shorts.map(esc).join(" + ")} für ${eur(f.extra)}, sonst ${eur(f.ref)}${f.rest !== null && f.rest !== undefined ? `, Rest dann ${money(f.rest, cur)}` : ""}</p>`;
@@ -1565,7 +1572,15 @@ document.addEventListener("click", async e => {
       if(!confirm(`Kauf in ${p.name} vermerken? Dein Konto steht danach dort${p.rest ? `, Rest ${money(p.rest, p.currency)}` : ""}.`)) return;
       await api("/api/bought", {code: p.code, slugs: p.items.map(i => i.slug), titles: p.items.map(i => i.short),
         cost: p.cost, games: p.games_paid, de: p.de_now, rest: p.rest, currency: p.currency});
+      if(S.ui.plan_fill && S.ui.plan_fill[p.code]){ delete S.ui.plan_fill[p.code]; await saveUi(); }
       toast(`Kauf in ${p.name} vermerkt`); await refresh(); S.kauf = await api("/api/kaufplan"); render();
+    }
+    else if(a === "planfill" || a === "planunfill"){
+      const f = S.ui.plan_fill = S.ui.plan_fill || {}, list = f[d.c] || [];
+      f[d.c] = a === "planfill" ? list.concat(d.s) : list.filter(x => x !== d.s);
+      if(!f[d.c].length) delete f[d.c];
+      await saveUi(); S.kauf = await api("/api/kaufplan"); render();
+      toast(a === "planfill" ? "Füllartikel im Plan" : "Füllartikel herausgenommen");
     }
     else if(a === "unbought"){ await api("/api/bought/undo", {}); toast("Letzter Kauf zurückgenommen"); await refresh(); S.kauf = await api("/api/kaufplan"); render(); }
     else if(a === "vlclose"){ $("verlauf").close(); }

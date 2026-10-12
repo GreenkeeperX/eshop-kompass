@@ -35,7 +35,7 @@ DEFAULT_SETTINGS = {
 
 # Was die Oberfläche sich merkt, für alle Geräte gleich
 DEFAULT_UI = {"basket": None, "overrides": {}, "targets": {}, "hidden": [],
-              "sort": "optimum", "dense": True, "plan_good": False}
+              "sort": "optimum", "dense": True, "plan_good": False, "plan_fill": {}}
 
 EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {},
               "fx": {"rates": {"EUR": 1.0}, "updated": ""}, "last_sync": None}
@@ -270,6 +270,10 @@ def save_ui(new):
             ui["dense"] = bool(new["dense"])
         if "plan_good" in new:
             ui["plan_good"] = bool(new["plan_good"])
+        if isinstance(new.get("plan_fill"), dict):
+            ui["plan_fill"] = {str(code): [str(x) for x in slugs][:20]
+                               for code, slugs in new["plan_fill"].items()
+                               if isinstance(slugs, list) and slugs}
         _save("ui.json", ui)
         return ui
 
