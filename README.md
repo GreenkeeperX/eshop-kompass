@@ -110,6 +110,15 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   sofern beides auf der Wishlist steht. Die Edition gehört zum Spiel, dessen
   Kürzel sie bei DekuDeals um "nintendo-switch-2-edition" verlängert; das
   Paket ist ein DLC dieses Spiels.
+- Pakete: Steht eine Komplett-Edition oder ein Paket auf der Wishlist, nennen
+  die Einzelheiten die bekannten Teile und vergleichen den Paketpreis mit dem,
+  was die fehlenden Teile einzeln jetzt kosten ("Paket spart" oder "einzeln
+  günstiger"). Teile in deiner Sammlung zählen nicht ("hättest du doppelt").
+  Die Teile kommen aus "Contains" der Paketseite und "Included In" der Seiten
+  der Teile; DekuDeals nennt dort oft nur das Hauptspiel. Ist nur ein Teil
+  bekannt oder fehlt einem Teil der Preis (nicht auf der Wishlist), gibt es
+  keinen Vergleich. Bei einem Titel steht außerdem, in welchen Paketen er
+  steckt.
 - Titel, Tabelle: alle Titel mal alle Länder in Euro, Spalten nach Stufe
   gruppiert (Länder, in denen gerade nichts zählt, am Ende). Angebote mit dem
   Urteil "kaufen" sind dunkelgrün hinterlegt, "gut" hellgrün; gold umrandet ist

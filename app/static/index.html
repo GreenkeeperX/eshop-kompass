@@ -797,7 +797,7 @@ function titleRow(r){
   const marks = (r.cashback ? ` <span class="ok" title="Mit ${String(r.cashback.pct).replace(".", ",")} % Cashback des Kartenshops wären es in ${esc(country(r.cashback.code).name)} etwa ${eur(r.cashback.eur)}, also Bestpreis. Cashback gibt es nicht immer, bitte beim Kauf prüfen.">✱</span>` : "") +
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
-  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(r.title)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(r.title)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>
     <td class="kb-c"><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
@@ -835,7 +835,34 @@ function titleDetail(r){
   h += `<span>Urteil</span><span>${pill(r.verdict)} ${esc(r.reason)}</span>`;
   const s2 = s2Line(r.slug);
   if(s2) h += `<span>Switch 2</span><span>${s2}</span>`;
+  const pk = packLine(r.slug);
+  if(pk) h += `<span>Pakete</span><span>${pk}</span>`;
   return h + `</div>`;
+}
+function packChip(slug){
+  const p = ((S.state.bundles || {}).packs || {})[slug];
+  if(!p) return "";
+  if(p.have.length) return ` <span class="chip w" title="${esc(p.have.join(", "))} steht schon in deiner Sammlung">Teil schon da</span>`;
+  if(!p.partial && p.saving > 0.005) return ` <span class="chip" title="Das Paket kostet weniger als die Teile einzeln">Paket spart ${eur(p.saving)}</span>`;
+  if(!p.partial && p.saving < -0.005) return ` <span class="chip w" title="Die Teile einzeln kosten weniger als das Paket">einzeln günstiger</span>`;
+  return "";
+}
+/* Komplett-Edition gegen Einzelkauf, und in welchen Paketen ein Titel steckt */
+function packLine(slug){
+  const b = S.state.bundles || {}, p = (b.packs || {})[slug], ins = (b.in || {})[slug] || [];
+  const out = [];
+  if(p){
+    const parts = p.parts.map(k => `${esc(k.title)}${k.owned ? ` <span class="mut">✓ hast du</span>` : k.eur !== null && k.eur !== undefined ? ` ${eur(k.eur)}` : ` <span class="mut">ohne Preis</span>`}`).join(", ");
+    let cmp = "";
+    if(p.partial) cmp = ` <span class="mut">DekuDeals nennt nicht alle Teile, deshalb kein Vergleich.</span>`;
+    else if(p.saving !== null && p.saving !== undefined)
+      cmp = ` · einzeln ${eur(p.alone)}${p.have.length ? " (ohne, was du hast)" : ""}, als Paket ${p.est ? "ca. " : ""}${eur(p.eur)}: ` +
+        (p.saving > 0.005 ? `<b>Paket spart ${eur(p.saving)}</b>` : p.saving < -0.005 ? `<span class="warnc">einzeln ${eur(-p.saving)} günstiger</span>` : "gleich teuer");
+    else if(p.unpriced.length) cmp = ` <span class="mut">Für den Vergleich fehlt der Preis von ${p.unpriced.map(esc).join(", ")} (nicht auf der Wishlist).</span>`;
+    out.push(`Enthält, soweit bekannt: ${parts}${cmp}${p.have.length ? `. <span class="warnc">${p.have.map(esc).join(", ")} hättest du doppelt.</span>` : ""}`);
+  }
+  if(ins.length) out.push(`Auch enthalten in: ${ins.map(i => i.wish ? `<button class="link" data-act="gotitle" data-s="${esc(i.slug)}">${esc(i.title)}</button>` : `<a class="tl" href="${esc(deku(i.slug))}" target="_blank" rel="noopener">${esc(i.title)}</a>`).join(", ")}`);
+  return out.join("<br>");
 }
 /* Switch-2-Edition: reicht das Upgrade-Paket zum Spiel, das du schon hast? */
 function s2Line(slug){

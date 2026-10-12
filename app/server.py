@@ -29,6 +29,7 @@ def state():
         "radar": radar,
         "collection": planner.collection(data, settings, rows=radar),
         "s2": planner.switch2_paths(data, radar),
+        "bundles": planner.bundles(data, radar),
         "levels": planner.price_levels(data, settings),
         "pay": planner.pay_info(data, settings),
         "card_status": planner.card_status(data, settings),

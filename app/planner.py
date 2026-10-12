@@ -1185,6 +1185,53 @@ def switch2_paths(data, rows):
     return out
 
 
+def bundles(data, rows):
+    """Komplett-Editionen und Pakete gegen Einzelkauf.
+
+    Was ein Paket enthält, nennt DekuDeals lückenhaft: der Abschnitt "Contains" der
+    Paketseite (oft nur das Hauptspiel) und "Included In" auf den Seiten der Teile.
+    Beides zusammen ergibt die bekannten Teile. Verglichen wird mit dem, was die
+    fehlenden Teile einzeln jetzt kosten, sofern jedes einen Preis hat (Wishlist).
+    Teile in der Sammlung zählen nicht, du hättest sie doppelt.
+    {"packs": {Paket: Angaben}, "in": {Titel: [{slug, title, wish}]}}"""
+    rel = data.get("rel") or {}
+    owned = set(data.get("owned") or [])
+    by = {r["slug"]: r for r in rows}
+    items = data.get("items") or {}
+    parts, names = {}, {}
+    for slug, e in rel.items():
+        for b_slug, b_title in e.get("in") or []:
+            parts.setdefault(b_slug, {})[slug] = e.get("title") or slug
+            names.setdefault(b_slug, b_title)
+        for p_slug, p_title in e.get("has") or []:
+            parts.setdefault(slug, {}).setdefault(p_slug, p_title)
+    title = lambda s: (by.get(s) or {}).get("title") or (rel.get(s) or {}).get("title") or names.get(s) or s
+    packs, inside = {}, {}
+    for b_slug, ps in parts.items():
+        known = [{"slug": p, "title": title(p) if p in by or p in rel else t, "owned": p in owned,
+                  "eur": _now_eur(by.get(p))[0], "wish": p in by} for p, t in ps.items()]
+        for k in known:
+            if k["wish"] and b_slug != k["slug"]:
+                inside.setdefault(k["slug"], []).append(
+                    {"slug": b_slug, "title": title(b_slug), "wish": b_slug in by})
+        if b_slug not in by:
+            continue
+        missing = [k for k in known if not k["owned"]]
+        priced = all(k["eur"] is not None for k in missing)
+        alone = _r(sum(k["eur"] for k in missing)) if missing and priced else None
+        pack_eur, pack_name, est = _now_eur(by[b_slug])
+        # Ein Paket hat mindestens zwei Teile: Ist nur eines bekannt, fehlt der Rest
+        # in den Daten, und ein Vergleich wäre schief
+        if len(known) < 2:
+            alone = None
+        packs[b_slug] = {"parts": known, "have": [k["title"] for k in known if k["owned"]],
+                         "partial": len(known) < 2,
+                         "alone": alone, "eur": pack_eur, "name": pack_name, "est": est,
+                         "unpriced": [k["title"] for k in missing if k["eur"] is None],
+                         "saving": _r(alone - pack_eur) if alone is not None and pack_eur is not None else None}
+    return {"packs": packs, "in": inside}
+
+
 def collection(data, settings, targets=None, now=None, rows=None):
     """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
 
