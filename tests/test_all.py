@@ -1517,39 +1517,17 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(set(seen), {None})                # immer die eigene Kennung
 
 
-    def test_japan_probe_respects_robots(self):
+    def test_diagnose_skips_nintendo_co_jp(self):
+        # 4.6 entschieden (13.10.2026): nintendo.co.jp kennt kaum Titel, der Test fragt es nicht mehr
         store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
-        xml = ("<TitleInfoList><TitleInfo><TitleName>A</TitleName><LinkURL>https://store-jp.nintendo.com/x"
-               "</LinkURL></TitleInfo><TitleInfo><TitleName>B</TitleName><LinkURL>/switch/abcd/index.html"
-               "</LinkURL></TitleInfo></TitleInfoList>")
-        jp_page = "<title>B</title><dt>対応言語</dt><dd>日本語、英語、ドイツ語</dd>"
         urls = []
 
-        def fake(robots):
-            def request(url, ua=None, timeout=25):
-                urls.append(url)
-                text = (robots if url.endswith("robots.txt") else xml if url.endswith("switch.xml")
-                        else jp_page if "/switch/abcd/" in url else "")
-                return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
-            return request
-        with mock.patch.object(sources, "request", fake("User-agent: *\nDisallow: /cgi-bin/")):
-            text = "\n".join(sync.diagnose())
-        self.assertIn("nintendo.co.jp Titelliste: HTTP 200", text)
-        self.assertIn("Einträge 2", text)
-        self.assertIn("Sprachen: 日本語, 英語, ドイツ語", text)
-        self.assertIn("https://www.nintendo.co.jp/switch/abcd/index.html", urls)
-        urls.clear()
-        with mock.patch.object(sources, "request", fake("User-agent: *\nDisallow: /data/")):
-            text = "\n".join(sync.diagnose())
-        self.assertIn("per robots.txt gesperrt", text)
-        self.assertFalse(any("switch.xml" in u for u in urls))
-        # Ein "Disallow: /" für einen einzelnen Bot gilt nicht für uns (bis 0.37 falsch gelesen)
-        urls.clear()
-        with mock.patch.object(sources, "request", fake("User-agent: GPTBot\nDisallow: /\n\n"
-                                                        "User-agent: *\nDisallow: /cgi-bin/")):
-            text = "\n".join(sync.diagnose())
-        self.assertIn("für uns Titelliste erlaubt", text)
-        self.assertTrue(any("switch.xml" in u for u in urls))
+        def request(url, ua=None, timeout=25):
+            urls.append(url)
+            return {"url": url, "status": 200, "text": "", "enc": "", "server": "t", "error": ""}
+        with mock.patch.object(sources, "request", request):
+            sync.diagnose()
+        self.assertFalse(any("nintendo.co.jp" in u for u in urls))
 
     def test_diagnose_reads_history_from_item_page(self):
         # Bis 0.37 suchte der Verbindungstest den Verlauf in robots.txt statt in der Artikelseite
@@ -2197,6 +2175,29 @@ class ExtraDlcTest(unittest.TestCase):
             calls.clear()
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120)
             self.assertEqual(calls, [])
+
+    def test_japan_language_checked_monthly(self):
+        # Japan: nach einer leeren Seite gleich monatlich, Amerika noch am nächsten Tag
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP", "US")
+        data = {"items": {"t": {"title": "T", "active": True, "ids": {"JP": ["1"], "AM": ["2"]}}},
+                "prices": {}, "langs_jp_reset": 1}
+        calls = []
+
+        def page(n, fetch=None):
+            calls.append(n)
+            return None
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_langs_jp", page), mock.patch.object(sources, "fetch_langs_am", page):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0)
+            self.assertEqual(sorted(calls), ["1", "2"])
+            calls.clear()
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 86400)
+            self.assertEqual(calls, ["2"])
+            calls.clear()
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 31 * 86400)
+            self.assertIn("1", calls)
 
     def test_languages_are_cleaned_up(self):
         settings = {"lang_confirm": {"gone": {"JP": True}, "rl": {"JP": False}, "rl-w": {"AM": True}}}

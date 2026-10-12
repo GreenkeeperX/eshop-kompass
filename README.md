@@ -328,7 +328,7 @@ Sicherung und Protokoll.
   nintendo.com über ec.nintendo.com), höchstens 40 Seiten je Region und
   Abgleich (beide Durchgänge eines Abgleichs zusammen), ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
   Titel kommt beim nächsten Abgleich wieder dran. Liefert eine gelesene Seite
-  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika und Japan liefern Angaben (Japan anfangs oft leere Seiten, 0.36 fragt solche Titel einmal neu). DLC übernimmt
+  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika liefert Angaben. Japan liefert fast immer nur eine JavaScript-Seite: Dort fragt das Tool je Titel nur monatlich, die Sprache bestätigst du von Hand. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
   Spiel und Region. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
@@ -411,11 +411,7 @@ Das Tool fragt immer mit seiner eigenen Kennung an (`eshop-kompass/<Version>`),
 macht Pausen zwischen den Abrufen und hört bei einer Sperre (HTTP 403 oder 429)
 oder einer Prüfseite auf, statt sich als Browser auszugeben. Der Rest folgt
 beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
-auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Für
-Japan prüft er zusätzlich nintendo.co.jp: erst die robots.txt (gelesen je Kennung,
-wie es Crawler tun; ein Verbot nur für einzelne Bots gilt nicht für uns), dann,
-wenn sie es erlaubt, die Liste aller Switch-Titel und eine Titelseite daraus. Er zeigt, wie
-viele deiner Japan-IDs die Liste kennt und ob die Seite Sprachen (対応言語) nennt.
+auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?).
 
 Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so
 keine Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen

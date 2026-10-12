@@ -101,14 +101,13 @@ Reihenfolge und Begründung:
   je Abgleich. Die Preise kommen mit derselben Preisabfrage. Daraus die Summe der fehlenden
   DLC je Spiel und insgesamt in der Sammlung und Füllartikel Stufe 2: fehlende DLC deiner
   Spiele als Vorschlag für den Rest. Übernehmen lassen sie sich erst von der Wishlist.
-- [ ] 4.6 Sprache in Japan: eine Probe für nintendo.co.jp in den Verbindungstest. Liefert
-  sie Sprachangaben für einen guten Teil der Titel, wird dieser Teil automatisch, sonst
-  bleibt es bei der Bestätigung von Hand. Probe gebaut (0.34): robots.txt, die Liste aller
-  Switch-Titel und eine Titelseite daraus. Der Verbindungstest 0.35.2 meldete die Liste als
-  gesperrt, las die robots.txt aber falsch (ein Verbot für einzelne Bots galt für alle);
-  seit 0.38 richtig. Zugleich liefert store-jp inzwischen Sprachen. Offen: der nächste
-  Abgleich (wie viele Japan-Titel store-jp klärt) und ein neuer Verbindungstest, dann die
-  Entscheidung.
+- [ ] 4.6 Sprache in Japan: eine zuverlässige Quelle. Geprüft und verworfen: die
+  store-jp-Produktseite (fast immer nur die JavaScript-Hülle, einmal eine volle Seite,
+  vermutlich aus einem Zwischenspeicher), die Suche von nintendo.jp (robots.txt),
+  nintendo.co.jp (Titelliste kennt nur einen kleinen Teil, kaum Titelseiten), DekuDeals (nicht
+  je Region), eine Schätzung aus Amerika oder Europa (Entscheidung 13.10.2026). Bis dahin
+  fragt das Tool store-jp je Titel nur monatlich (0.38.1). Offen: die Datenquelle, aus der
+  die store-jp-Seite ihre Angaben lädt, sonst titledb (Sammlung der eShop-Daten je Region).
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle
@@ -147,9 +146,8 @@ Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
 
 ## Ohne Arbeit für uns
 
-- **Sprache in Japan:** Der japanische Store liefert die Sprachen inzwischen für einzelne
-  Titelseiten (Verbindungstest 0.35.2). Wie viele Titel damit geklärt werden, zeigt der
-  nächste Abgleich mit 0.36. Siehe 4.6.
+- **Sprache in Japan:** Bis eine verlässliche Quelle gefunden ist, bestätigst du von Hand
+  (siehe 4.6). Liefert store-jp eine Seite mit Sprachen, übernimmt das Tool sie.
 - **Südafrika:** Ob Kartenzahlung dort geht, ist ungetestet. Bis dahin gilt „leicht, Karte“.
 - **Tests der Oberfläche:** Es gibt keine automatischen Tests. Prüfung per Screenshots
   mit Testdaten, weil das Tool ohne Zusatzpakete auskommen soll.
