@@ -580,7 +580,10 @@ class PlanTest(unittest.TestCase):
         # Preisgüte, das Land und seine Stufe stehen dabei; ob sich der Weg lohnt, sagt der Kaufplan
         self.assertEqual((hades["verdict"], hades["reason"]), ("buy", "Bestpreis in Brasilien (schwer)"))
         self.assertEqual(hades["at"], {"code": "BR", "name": "Brasilien", "tier": 3})
-        self.assertEqual(rows["good-job"]["verdict"], "none")
+        # Good-Job hat nirgends Rabatt, ist in Brasilien aber dauerhaft am Bestpreis: kaufen
+        self.assertEqual((rows["good-job"]["verdict"], rows["good-job"]["reason"]),
+                         ("buy", "Bestpreis in Brasilien (schwer), Normalpreis"))
+        self.assertEqual(rows["good-job"]["hard"]["mark"], "best")
         self.assertEqual(rows["good-job"]["easy"]["code"], "DE")      # nur DE und BR, leicht ist DE
         self.assertEqual(rows["spiritfarer"]["easy"]["code"], "DE")   # in DE im Angebot
         # Zielpreis: Nidhogg 2 kostet in DE 14,99 €, Ziel 15 € gilt als erreicht
@@ -964,7 +967,13 @@ class PlanTest(unittest.TestCase):
         hades = {r["slug"]: r for r in cell["rows"]}["hades"]["cells"]["BR"]
         self.assertEqual(hades["alone"]["eur"], 7.8)
 
+    def without_lasting(self):
+        # Ohne die beiden Titel, die in Brasilien dauerhaft am Bestpreis sind
+        for slug in ("good-job", "nidhogg-2"):
+            del self.data["items"][slug]
+
     def test_purchase_plan_drops_weak_countries(self):
+        self.without_lasting()
         plan = planner.purchase_plan(self.data, self.settings, now=NOW)
         steps = [(s["code"], [i["slug"] for i in s["items"]]) for s in plan["steps"]]
         # Hades liegt nur in Brasilien am Bestpreis aller Länder. Brasilien spart 19,64 €
@@ -979,6 +988,7 @@ class PlanTest(unittest.TestCase):
 
     def test_ui_fields_for_signals(self):
         # Die Oberfläche färbt Preise nach dem Urteil und nennt Titel, deren Wechsel nicht lohnt
+        self.without_lasting()
         plan = planner.purchase_plan(self.data, self.settings, now=NOW)
         self.assertEqual(len(plan["dropped"][0]["slugs"]), len(plan["dropped"][0]["titles"]))
         self.assertIn("hades", plan["dropped"][0]["slugs"])
@@ -1019,6 +1029,7 @@ class PlanTest(unittest.TestCase):
     def test_purchase_plan_keeps_country_above_threshold(self):
         # Gegenüber Deutschland spart Brasilien 19,65 €, gegenüber Japan und Norwegen nur
         # 2,60 €: Bei einer Schwelle von 15 € lohnt der Wechsel nach Amerika nicht
+        self.without_lasting()
         self.settings["tier_min_saving"]["3"] = 15
         plan = planner.purchase_plan(self.data, self.settings, now=NOW)
         self.assertEqual([s["code"] for s in plan["steps"]], ["DE"])
@@ -1037,17 +1048,73 @@ class PlanTest(unittest.TestCase):
                                                now=NOW)["count"], 3)
 
     def test_purchase_plan_counts_rest_before_a_switch(self):
-        # Konto steht in Brasilien: Brasilien kommt zuerst, danach Deutschland. Der Rest in
-        # Brasilien verfällt beim Wechsel und zählt deshalb als Kosten
+        # Konto steht in Japan (Stufe mittel): Japan kommt zuerst, danach Deutschland. Der Rest
+        # in Japan verfällt beim Wechsel und zählt deshalb als Kosten
+        self.without_lasting()
+        self.settings["current_country"] = "JP"
+        self.settings["countries"]["JP"]["cards"] = "1000 2000"
+        self.data["prices"]["JP"]["hades"]["discount"] = 1100
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertEqual([s["code"] for s in plan["steps"]], ["JP", "DE"])
+        jp = plan["steps"][0]
+        self.assertEqual(jp["rest"], 900)
+        self.assertGreater(jp["rest_lost"], 4)
+        self.assertAlmostEqual(jp["games_cost"], 2000 / 177.3267 * 1.0175, places=1)
+        self.assertAlmostEqual(plan["rest_lost"], jp["rest_lost"])
+        self.assertNotIn("rest_lost", plan["steps"][1])         # letzter Schritt: Rest bleibt
+
+    def test_blocking_rest_only_in_the_last_step(self):
+        # Echter Fall: Konto in Brasilien ohne Guthaben. Ein Rest in Brasilien blockiert den
+        # Wechsel, also kommt Brasilien zuletzt; dorthin ist es dann ein Wechsel wie jeder andere
         self.settings["current_country"] = "BR"
         plan = planner.purchase_plan(self.data, self.settings, now=NOW)
-        self.assertEqual([s["code"] for s in plan["steps"]], ["BR", "DE"])
-        br = plan["steps"][0]
-        self.assertAlmostEqual(br["rest_lost"], 0.47, places=2)
-        self.assertAlmostEqual(br["games_cost"], 7.8)          # die Karten ganz
-        self.assertAlmostEqual(plan["rest_lost"], 0.47, places=2)
-        self.assertAlmostEqual(plan["saving"], round(19.65 - 0.47, 2), places=1)
-        self.assertNotIn("rest_lost", plan["steps"][1])         # letzter Schritt: Rest bleibt
+        self.assertEqual([s["code"] for s in plan["steps"]], ["DE", "BR"])
+        br = plan["steps"][-1]
+        self.assertFalse(br["current"])
+        self.assertTrue(br["worth"])                             # 24,61 € über 20 €
+        self.assertEqual(plan["rest_lost"], 0)
+        self.assertIsNone(plan["lock"])
+
+    def test_two_blocking_countries_keep_the_stronger(self):
+        sale = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
+        self.settings["tier_min_saving"]["3"] = 1
+        self.settings["countries"]["MX"]["enabled"] = True
+        self.settings["countries"]["MX"]["cards"] = "100=5.00 200=9.80 500=24.00"
+        self.data["fx"]["rates"]["MXN"] = 21.5
+        self.data["prices"]["MX"] = {"spiritfarer": {"status": "onsale", "currency": "MXN",
+                                                     "regular": 400, "discount": 80, **sale}}
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertEqual([s["code"] for s in plan["steps"]], ["BR"])
+        self.assertEqual([(d["code"], d["blocked_by"]) for d in plan["dropped"]], [("MX", ["Brasilien"])])
+
+    def test_balance_in_blocking_country_locks_the_plan(self):
+        # Am Tag nach dem Kauf in Brasilien: 2,41 R$ liegen dort. Ein Wechsel geht erst, wenn
+        # sie aufgebraucht sind, also plant der Plan nur in Brasilien
+        self.settings["current_country"] = "BR"
+        self.settings["countries"]["BR"]["balance"] = 2.41
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW,
+                                     bought=[{"slugs": ["hades", "vs-foscari"], "code": "BR"}])
+        self.assertEqual([(s["code"], [i["slug"] for i in s["items"]]) for s in plan["steps"]],
+                         [("BR", ["good-job", "nidhogg-2"])])
+        self.assertEqual([h["slug"] for h in plan["held"]], ["spiritfarer"])
+        self.assertEqual((plan["lock"]["code"], plan["lock"]["balance"]), ("BR", 2.41))
+        # Auch ohne Preise im Kontoland (oder abgeschaltet) bleibt das Konto gesperrt
+        self.settings["current_country"] = "MX"
+        self.settings["countries"]["BR"]["balance"] = 0
+        self.settings["countries"]["MX"]["balance"] = 50
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertEqual(plan["steps"], [])
+        self.assertEqual((len(plan["held"]), plan["nowhere"]), (5, []))
+
+    def test_balance_left_behind_counts_as_cost(self):
+        # Konto in Japan mit 1000 Yen, der Plan kauft nur woanders: Das Guthaben verfällt
+        self.settings["current_country"] = "JP"
+        self.settings["countries"]["JP"]["balance"] = 1000
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        first = plan["steps"][0]
+        self.assertEqual(first["code"], "DE")
+        self.assertAlmostEqual(first["balance_lost"], round(1000 / 177.3267 * 1.0175, 2), places=2)
+        self.assertAlmostEqual(plan["rest_lost"], first["balance_lost"])
 
     def test_verdict_same_rule_in_every_country(self):
         # Echter Fall: ein DLC in Brasilien wenige Cent über dem Bestpreis war "warten", weil schwere
@@ -1086,14 +1153,31 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(out["radar"]["verdict"], "buy")
 
     def test_lasting_cheaper_regular_price(self):
-        # Good-Job ist in Brasilien dauerhaft günstiger. Ein Angebot in Deutschland, das
-        # darüber liegt, heißt "warten", mit dem richtigen Grund
+        # Good-Job ist in Brasilien dauerhaft günstiger. Ein teureres Angebot in Deutschland
+        # macht daraus kein "warten": Das Urteil gilt dem günstigsten Preis jetzt
         sale = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
         de = self.data["prices"]["DE"]
         de["good-job"] = dict(de["good-job"], discount=15.99, **sale)
         r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
-        self.assertEqual(r["verdict"], "wait")
-        self.assertEqual(r["reason"], "in Brasilien dauerhaft 11,98 €")
+        self.assertEqual((r["verdict"], r["at"]["code"]), ("buy", "BR"))
+        self.assertEqual(r["reason"], "Bestpreis in Brasilien (schwer), Normalpreis")
+
+    def test_lasting_prices_make_a_switch_worth_it(self):
+        # Review 0.18, Fall F10: Mit den dauerhaft günstigen Titeln schafft Brasilien die
+        # Schwelle von 20 €; ohne sie wären Hades und VS Foscari am Bestpreis "lieber warten"
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        steps = [(s["code"], [i["slug"] for i in s["items"]]) for s in plan["steps"]]
+        self.assertEqual(steps, [("DE", ["spiritfarer"]),
+                                 ("BR", ["hades", "vs-foscari", "good-job", "nidhogg-2"])])
+        self.assertAlmostEqual(plan["steps"][1]["gain"], 24.61)
+        self.assertEqual((plan["dropped"], plan["later"]), ([], []))
+
+    def test_no_price_known_is_no_verdict(self):
+        for slug in list(self.data["prices"]["BR"]):
+            self.data["prices"]["BR"][slug] = {"status": "not_found"}
+        self.data["prices"]["DE"]["good-job"] = {"status": "not_found"}
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
+        self.assertEqual((r["verdict"], r["reason"]), ("none", "nirgends kaufbar"))
 
 
 class StoreTest(unittest.TestCase):

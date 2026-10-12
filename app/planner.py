@@ -565,6 +565,9 @@ class Context:
         out.update(champ=_r(best[0]), champ_code=best[1],
                    gap=max(0, round(100 * (eur / best[0] - 1))))
         if not o["sale"]:
+            # Ein Normalpreis am Bestpreis trägt die Bestpreis-Marke, sonst keine
+            if self.decides(o) and eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005:
+                out["mark"] = "best"
             return out
         if not self.decides(o):
             # Ungeprüfte Sprache bestimmt keinen Bestpreis, also auch keine Bestpreis-Marke
@@ -1077,10 +1080,11 @@ def radar(data, settings, targets=None, now=None):
             target = None
         both = [b for b in (easy, hard) if b]
         cheapest = min(both, key=lambda b: b["raw"]) if both else None
-        on_sale = [b for b in both if b["sale"]]
-        # Das Urteil gilt dem günstigsten zählenden Angebot, egal in welcher Stufe
-        top = min(on_sale, key=lambda b: b["raw"]) if on_sale else None
-        shown = top or cheapest           # das Angebot, dessen Abstand die Zeile zeigt
+        # Das Urteil gilt dem günstigsten zählenden Preis jetzt, egal in welcher Stufe und
+        # ob mit Rabatt: Ein dauerhaft günstiger Normalpreis am Bestpreis ist ein Kauf
+        # wie ein Angebot, ein teureres Angebot anderswo ändert daran nichts (Entscheidung 12.10.2026)
+        top = cheapest
+        shown = cheapest                  # das Angebot, dessen Abstand die Zeile zeigt
         diff = gap = None
         if shown and champ_all and champ_all[0]:
             diff = max(0.0, _r(shown["raw"] - champ_all[0]))
@@ -1093,7 +1097,7 @@ def radar(data, settings, targets=None, now=None):
 
         def where(b):
             return f" in {b['name']}" + (" (schwer)" if b["tier"] >= 3 else "")
-        verdict, reason, at = "none", "kein Angebot", None
+        verdict, reason, at = "none", "nirgends kaufbar", None
         if (unsure or nocard) and not both:
             why = ([", ".join(unsure) + ": Sprache ungeprüft"] if unsure else []) + \
                   ([", ".join(nocard) + ": keine Guthabenkarte mit Preis"] if nocard else [])
@@ -1103,20 +1107,17 @@ def radar(data, settings, targets=None, now=None):
         elif top:
             g = ctx.grade(top["raw"], slug)
             at = top
+            lasting = "" if top["sale"] else ", Normalpreis"
             if g == "buy":
                 verdict = "buy"
-                reason = ("Bestpreis" if top["mark"] == "best" else f"nur {_eur(diff)} über Bestpreis") + where(top)
+                reason = ("Bestpreis" if top["mark"] == "best" else f"nur {_eur(diff)} über Bestpreis") + where(top) + lasting
             elif g == "good":
-                verdict, reason = "good", f"{_eur(diff)} ({gap} %) über Bestpreis" + where(top)
+                verdict, reason = "good", f"{_eur(diff)} ({gap} %) über Bestpreis" + where(top) + lasting
+            elif g is None:
+                reason = "Bestpreis noch nicht bekannt"
             else:
                 verdict = "wait"
-                # Liegt der Bestpreis heute als Normalpreis vor, war er nicht nur einmal so:
-                # Dort ist der Titel dauerhaft günstiger
-                bc = champ_all and ctx.countries.get(champ_all[1])
-                bo = bc and bc["offers"].get(slug)
-                lasting = bool(bo and not bo["sale"] and abs(ctx.est(bc, bo["local"]) - champ_all[0]) < 0.01)
-                reason = (f"in {bc['meta']['name']} dauerhaft {_eur(champ_all[0])}" if lasting
-                          else f"war {_eur(diff)} günstiger" if diff else "war schon günstiger")
+                reason = f"war {_eur(diff)} günstiger" if diff else "war schon günstiger"
         # Cashback gibt es nicht immer: nur ein Hinweis, wenn es das Angebot unter den
         # Bestpreis drücken könnte (bezahlt mit Guthaben aus einem Kartenshop)
         cb = float(settings.get("cashback_pct") or 0)
@@ -1283,8 +1284,12 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     wiederholt sich, bis alle Länder ihre Schwelle erreichen. Ist ein Titel im neuen Land
     kein Kauf mehr (dieselbe Preisgüte wie im Radar), wartet er.
 
-    Ein Rest ist kein Verlust, solange du im Land bleibst. Folgt im Plan noch ein Wechsel,
-    verfällt er (Nintendo nimmt Guthaben nicht mit): Dann zählt er als Kosten.
+    Rest: Er ist kein Verlust, solange du im Land bleibst. Folgt im Plan noch ein Wechsel,
+    verfällt er (Nintendo nimmt Guthaben nicht mit) und zählt als Kosten, ebenso
+    Guthaben, das im Kontoland übrig bleibt, wenn der Plan es verlässt. Wo ein Rest den
+    Wechsel blockiert (Amerika), ist ein Wechsel danach nicht ausführbar (Entscheidung 12.10.2026):
+    So ein Land kommt nur als letzter Schritt, höchstens eins je Plan, und steht das
+    Konto dort mit Guthaben, plant der Plan nur dort.
     """
     ctx = Context(data, settings, now)
     ok_grades = ("buy", "good") if include_good else ("buy",)
@@ -1294,28 +1299,46 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     wanted = [r["slug"] for r in rows if r["verdict"] in ok_grades and r["slug"] not in done]
     reasons = {r["slug"]: r["reason"] for r in rows}
     target = {r["slug"]: r["target"] for r in rows}
-    ref_code, current = countries.REFERENCE, settings.get("current_country") or ""
+    current = settings.get("current_country") or ""
     allowed = [code for code, c in ctx.countries.items() if c["unit"] is not None]
     dropped = []
+
+    def blocks(code):
+        return bool(settings["countries"][code].get("rest_blocks"))
+
+    # Das Land, in dem das Konto steht, und was dort an Guthaben liegt, auch wenn das
+    # Land gerade keine Preise hat oder abgeschaltet ist
+    home = [code for code in countries.ORDER if countries.BY_CODE[code]["shop"] == current]
+    cur_code = (current if current in home else home[0]) if home else None
+    cur_c = ctx.countries.get(cur_code) if cur_code else None
+    cur_balance = cents(settings["countries"][cur_code].get("balance") or 0) if cur_code else 0
+    cur_unit = cur_c["unit"] if cur_c else None
+    # Guthaben in einem Land, dessen Rest den Wechsel blockiert: Das Konto kommt dort erst
+    # weg, wenn es aufgebraucht ist. Bis dahin plant der Plan nur dort.
+    locked = bool(cur_code and cur_balance > 0 and blocks(cur_code))
 
     def fits(slug, eur):
         t = target.get(slug)
         return (t is not None and eur <= t + 0.005) or ctx.grade(eur, slug) in ok_grades
+
+    def cheapest_in(slug, codes):
+        best = None
+        for code in codes:
+            c = ctx.countries[code]
+            o = c["offers"].get(slug)
+            if not o or not ctx.decides(o):
+                continue
+            eur = ctx.est(c, o["local"])
+            if best is None or eur < best[0] - 0.005:
+                best = (eur, code)
+        return best
 
     def assign():
         """Jeder Titel ins günstigste noch erlaubte Land. Ist er dort kein Kauf mehr,
         wartet er besser: Das Angebot lohnte nur in einem Land, dessen Wechsel sich nicht rechnet."""
         groups, nowhere, later = {}, [], []
         for slug in wanted:
-            best = None
-            for code in allowed:
-                c = ctx.countries[code]
-                o = c["offers"].get(slug)
-                if not o or not ctx.decides(o):
-                    continue
-                eur = ctx.est(c, o["local"])
-                if best is None or eur < best[0] - 0.005:
-                    best = (eur, code)
+            best = cheapest_in(slug, allowed)
             if not best:
                 nowhere.append(slug)
             elif fits(slug, best[0]):
@@ -1328,39 +1351,91 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         ends = [i["end"] for i in p["items"] if i.get("end")]
         return min(ends) if ends else "9999"
 
+    def stuck(p):
+        """Bleibt nach diesem Schritt ein Rest, der jeden weiteren Wechsel blockiert?"""
+        return blocks(p["code"]) and (p.get("rest") is None or p["rest"] > 0)
+
     def order(p):
-        # Erst das Land, in dem das Konto steht, dann nach Wechselstufe. Amerika
-        # zuletzt: Ein Rest dort blockiert jeden weiteren Wechsel. Innerhalb einer
-        # Stufe zuerst, wo ein Angebot am frühesten endet.
-        return (not p["current"], p["tier"] if not p["is_ref"] else 1, first_end(p), p["name"])
+        # Erst das Land, in dem das Konto steht, dann nach Wechselstufe. Ein Land, dessen
+        # Rest den Wechsel blockiert, zuletzt. Innerhalb einer Stufe zuerst, wo ein
+        # Angebot am frühesten endet.
+        return (stuck(p), not p["current"], p["tier"] if not p["is_ref"] else 1, first_end(p), p["name"])
+
+    held, everywhere = [], {}
+    if locked:
+        # Wohin die Titel ohne die Sperre gingen: Was nicht im Kontoland bleibt, wartet
+        everywhere = {s: cheapest_in(s, allowed) for s in wanted}
+        allowed = [cur_code] if cur_code in allowed else []
+        held = [s for s in wanted if everywhere[s] and everywhere[s][1] != cur_code
+                and fits(s, everywhere[s][0])]
 
     while True:
         groups, nowhere, later = assign()
+        if locked:
+            later = [s for s in later if s not in held]
+            nowhere = [s for s in nowhere if s not in held]
         plans_by = {code: plan_country(ctx, code, basket=slugs, allowed=allowed)
                     for code, slugs in groups.items()}
         steps = sorted(plans_by.values(), key=order)
+        for p in steps:
+            if p["current"] and steps[0] is not p:
+                # Das Kontoland kommt nach einem anderen Schritt: Dahin geht es zurück,
+                # das ist ein Wechsel wie jeder andere
+                p["current"] = False
+                p["worth"] = p["is_ref"] or p["gain"] >= p.get("threshold", 0)
         for p in steps[:-1]:
-            # Danach wechselt das Konto: Der Rest verfällt und zählt als Kosten
+            # Danach wechselt das Konto: Der Rest verfällt und zählt als Kosten. Im
+            # Kontoland verfällt auch das Guthaben, das der Kauf übrig lässt
             lost = p.get("rest_value") or 0.0
+            if p["code"] == cur_code and cur_unit is not None:
+                lost += max(0, cur_balance - round(p["total"] * 100)) * cur_unit
             if lost >= 0.005 and p.get("games_cost") is not None:
                 p["rest_lost"] = _r(lost)
                 p["games_cost"] = _r(p["games_cost"] + lost)
                 p["gain"] = _r(p["gain"] - lost)
                 p["saving"] = _r(p["saving"] - lost)
                 p["worth"] = p["is_ref"] or p["current"] or p["gain"] >= p.get("threshold", 0)
+        if steps and cur_balance > 0 and steps[0]["code"] != cur_code and cur_unit is not None:
+            # Der Plan verlässt das Kontoland, ohne dort zu kaufen: Das Guthaben verfällt
+            p = steps[0]
+            lost = cur_balance * cur_unit
+            p["balance_lost"] = _r(lost)
+            p["rest_lost"] = _r((p.get("rest_lost") or 0) + lost)
+            p["games_cost"] = _r(p["games_cost"] + lost)
+            p["gain"] = _r(p["gain"] - lost)
+            p["saving"] = _r(p["saving"] - lost)
+            p["worth"] = p["is_ref"] or p["current"] or p["gain"] >= p.get("threshold", 0)
         weak = [(p["gain"] - p.get("threshold", 0), code) for code, p in plans_by.items()
-                if code not in (ref_code, current) and not p.get("worth")]
+                if not p["is_ref"] and not p["current"] and not p.get("worth")]
+        # Zwei Länder mit blockierendem Rest gehen nicht nacheinander: Das schwächere fällt heraus
+        stuck_steps = [p for p in steps if stuck(p)]
+        if not weak and len(stuck_steps) > 1:
+            p = min(stuck_steps, key=lambda p: (p["gain"] - p.get("threshold", 0), p["code"]))
+            weak = [(None, p["code"])]
+            p["blocked_by"] = [x["name"] for x in stuck_steps if x is not p]
         if not weak:
             break
-        _, code = min(weak)
+        _, code = min(weak, key=lambda w: (w[0] is not None, w[0] or 0, w[1]))
         p = plans_by[code]
         dropped.append({"code": code, "name": p["name"], "tier_name": p["tier_name"],
                         "titles": [i["short"] for i in p["items"]],
                         "slugs": [i["slug"] for i in p["items"]],
                         "saving": p["saving"], "gain": p["gain"], "alt_codes": p.get("alt_codes", []),
-                        "threshold": p.get("threshold")})
+                        "threshold": p.get("threshold"), "blocked_by": p.get("blocked_by")})
         allowed.remove(code)
 
+    lock = None
+    if locked:
+        # Was das Guthaben aufbrauchen kann: Wishlist-Titel, die hineinpassen
+        step = plans_by.get(cur_code)
+        left = step["rest"] if step else cur_balance / 100
+        inside = {i["slug"] for i in step["items"]} if step else set()
+        offers = cur_c["offers"] if cur_c else {}
+        fit = [ctx.short(s) for s in ctx.order if s not in done and s not in inside and s in offers
+               and ctx.decides(offers[s]) and offers[s]["local"] <= round((left or 0) * 100)]
+        lock = {"code": cur_code, "name": countries.BY_CODE[cur_code]["name"],
+                "currency": (cur_c or {}).get("currency"), "balance": cur_balance / 100,
+                "left": left, "fits": fit[:5]}
     for p in steps:
         c = ctx.countries[p["code"]]
         p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
@@ -1372,6 +1447,10 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     games = sum(p.get("games_cost", p["cost"]) for p in steps if p["cost"] is not None)
     ref_total = sum(p["de_now"] for p in steps)
     return {"steps": steps, "dropped": dropped, "nowhere": [ctx.title(s) for s in nowhere],
+            "lock": lock, "held": [{"slug": s, "title": ctx.title(s), "short": ctx.short(s),
+                                    "code": everywhere[s][1],
+                                    "name": ctx.countries[everywhere[s][1]]["meta"]["name"]}
+                                   for s in held],
             "later": [{"slug": s, "title": ctx.title(s), "reason": reasons.get(s, "")} for s in later],
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
             "ref_total": _r(ref_total), "saving": _r(ref_total - games),

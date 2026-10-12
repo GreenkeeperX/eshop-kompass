@@ -31,14 +31,16 @@ Begriffe: Einkaufspreis ist, was du zahlst, mit Steuer, Kurs, Guthabenkarten
 und Gebühr. Bestpreis ist der niedrigste Einkaufspreis der letzten 24 Monate in
 einem zählenden Land, mit deinem heutigen Einkaufsweg gerechnet; Normalpreise
 zählen mit. Das Urteil misst nur die Preisgüte des günstigsten zählenden
-Angebots mit Rabatt, mit denselben Grenzen für jedes Land:
+Preises jetzt, mit oder ohne Rabatt, mit denselben Grenzen für jedes Land:
 - kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber) oder
   höchstens 0,50 € darüber,
 - gut: bis 15 % oder höchstens 2 € darüber,
-- warten: im Angebot, aber weiter weg.
-Gibt es in keinem zählenden Land einen Rabatt, heißt das Urteil "kein
-Angebot", auch wenn ein Normalpreis am Bestpreis liegt. Nur der Zielpreis
-gilt auch für Normalpreise.
+- warten: weiter weg.
+Ein dauerhaft günstiger Normalpreis am Bestpreis ist also "kaufen" wie ein
+Angebot (der Grund nennt dann "Normalpreis"), und ein teureres Angebot in einem
+anderen Land macht daraus kein "warten". Rabatt und Angebotsende stehen nur
+daneben. "kein Urteil" heißt: nirgends kaufbar, wo es zählt, oder der
+Bestpreis ist noch nicht bekannt.
 Die beiden Euro-Grenzen sind unter Einstellungen änderbar. Ob sich der Weg in
 ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
 
@@ -59,10 +61,17 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ein Rest ist kein
   Verlust, solange du im Land bleibst; folgt im Plan noch ein Wechsel, verfällt
   er (Nintendo nimmt Guthaben nicht mit) und zählt dort als Kosten ("Rest
-  verfällt"). Länder der Stufe schwer stehen am Ende, weil ein Rest dort
-  jeden weiteren Wechsel blockiert; bleibt einer, warnt die Karte nur ("Rest
-  blockiert"), der Plan rechnet weiter. Ist heute nichts auf "kaufen", nennt die Seite die Angebote, die
-  am nächsten am Bestpreis liegen.
+  verfällt"). Das gilt auch für Guthaben, das im Land deines Kontos liegt,
+  wenn der Plan es verlässt. Wo ein Rest den Wechsel blockiert (Einstellung
+  "Rest blockiert", ab Werk Amerika), plant der Plan keinen Wechsel danach:
+  So ein Land kommt nur als letzter Schritt, höchstens eins je Plan; das
+  schwächere fällt heraus ("nur ein Land mit blockierendem Rest je Plan").
+  Steht dein Konto in so einem Land und liegt dort Guthaben, plant der Plan
+  nur dort, nennt, was hineinpasst, und führt die übrigen Titel unter "Nicht
+  im Plan" ("Wechsel blockiert"), bis das Guthaben aufgebraucht ist oder der
+  Support es löst. Das gilt auch am Tag nach einem vermerkten Kauf. Ist heute
+  nichts auf "kaufen", nennt die Seite die Angebote, die am nächsten am
+  Bestpreis liegen.
   "gekauft" an einem Land vermerkt den Kauf im Kaufprotokoll
   (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort
   als Guthaben, Guthaben anderer Länder gilt als weg. Gekaufte Titel

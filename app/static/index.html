@@ -706,10 +706,10 @@ const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || {title:s
 const inBasket = slug => (S.ui.basket || []).includes(slug);
 
 /* ---------- Signale: ein Urteil, ein Wechsel, feste Farben ---------- */
-const VERDICT = {buy:"kaufen", good:"gut", wait:"warten", none:"kein Angebot"};
+const VERDICT = {buy:"kaufen", good:"gut", wait:"warten", none:"kein Urteil"};
 const TIER = {1:"leicht", 2:"mittel", 3:"schwer"};
 const tierTag = t => t && TIER[t] ? `<span class="tier" title="Wechselstufe">${TIER[t]}</span>` : "";
-const pill = v => v === "none" || !v ? `<span class="mut">kein Angebot</span>` : `<span class="vd ${v}">${VERDICT[v]}</span>`;
+const pill = v => v === "none" || !v ? `<span class="mut">kein Urteil</span>` : `<span class="vd ${v}">${VERDICT[v]}</span>`;
 const star = x => x && x.mark === "best" ? `<span class="star" title="Einkaufspreis erreicht den Bestpreis">★</span>` : "";
 /* Abstand zum Bestpreis als Text: am Bestpreis, +x €, mit Farbe der Preisgüte */
 function overBest(eurNow, champ, grade){
@@ -725,8 +725,10 @@ function planState(slug){
   const n = k.steps.findIndex(p => p.items.some(i => i.slug === slug));
   if(n >= 0) return `im Plan, Schritt ${n + 1} (${esc(k.steps[n].name)})`;
   const d = k.dropped.find(x => (x.slugs || []).includes(slug));
+  if(d && d.blocked_by) return `nicht im Plan: Rest in ${esc(d.name)} blockiert den Wechsel`;
   if(d) return `nicht im Plan: Wechsel nach ${esc(d.name)} lohnt nicht`;
   if(k.later.some(l => l.slug === slug)) return "nicht im Plan: lieber warten";
+  if((k.held || []).some(h => h.slug === slug) && k.lock) return `nicht im Plan: Konto in ${esc(k.lock.name)} gesperrt, bis das Guthaben aufgebraucht ist`;
   return "";
 }
 
@@ -760,7 +762,7 @@ function titleRow(r){
   const off = x || cheapest;
   const hit = r.target !== null && cheapest && cheapest.eur <= r.target + 0.005;
   const ps = r.verdict === "buy" || r.verdict === "good" ? planState(r.slug) : "";
-  const why = r.verdict === "none" && (r.lang_unsure || []).length ? esc(r.reason) : "";
+  const why = r.verdict === "none" ? esc(r.reason) : "";
   const price = off ? `${star(off)}${ax(off)}<b>${buyLink(off.code, off, eur(off.eur))}</b> ${off.sale ? `<span class="pct" title="${esc(markTip(off, off.currency))}">−${off.pct} %</span>` : `<span class="pct">Normalpreis</span>`}
       <small>${esc(off.name)} ${tierTag(off.tier)}${off.currency === "EUR" ? "" : " · " + priceLink(r.slug, off.code, money(off.local, off.currency), off, off.currency)}${off.sale && off.end ? " · " + endCell(off.end, "bis ") : ""}</small>` : `<span class="mut">–</span>`;
   const over = off && ce ? `${overBest(off.eur, ce.eur, r.verdict === "none" ? null : r.verdict)}<small>${r.gap ? r.gap + " % · " : ""}Bestpreis ${ce.est ? APPROX : ""}${eur(ce.eur)} ${esc(ce.code)}</small>` : `<span class="mut">–</span>`;
@@ -824,6 +826,7 @@ function viewKauf(){
   let h = `<div class="bar on"><b>Jetzt kaufen</b>${head}<span class="sp"></span>
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
     ${k.count ? `<button data-act="plan2basket" title="Alle Titel des Plans als gemeinsamen Korb in allen Ländern vergleichen">als Korb vergleichen</button>` : ""}</div>`;
+  if(k.lock) h += lockBox(k);
   if(k.steps.length) h += `<div class="grid">` + k.steps.map((p, n) => planCard(p, n + 1)).join("") + `</div>`;
   else h += emptyPlan();
   h += notPlanned(k) + boughtBox(k);
@@ -839,9 +842,23 @@ function emptyPlan(){
     return `<tr><td><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">${esc(r.title)}</button></td><td class="l">${pill(r.verdict)}</td><td>${ax(x)}${eur(x.eur)} ${esc(x.name)}</td><td>+${eur(r.diff || 0)} über Bestpreis</td><td>${x.end ? endCell(x.end, "bis ") : ""}</td></tr>`;
   }).join("") + `</table></div>`;
 }
+/* Konto in einem Land, dessen Rest den Wechsel blockiert: Der Plan bleibt dort */
+function lockBox(k){
+  const l = k.lock, cur = l.currency || "";
+  const step = k.steps.find(p => p.code === l.code);
+  const after = step ? (l.left ? ` Nach dem Kauf bleiben ${money(l.left, cur)}.` : " Der Kauf braucht es ganz auf, danach ist der Wechsel frei.") : "";
+  return `<p class="restline"><span class="bad">Konto steht in ${esc(l.name)} mit ${money(l.balance, cur)} Guthaben.</span> Ein Rest dort blockiert den Länderwechsel, deshalb plant der Kaufplan nur dort.${after}` +
+    ` Andere Länder kommen dran, wenn das Guthaben aufgebraucht ist oder der Support es löst.` +
+    (l.fits.length ? ` Passt hinein: ${l.fits.map(esc).join(", ")}.` : "") +
+    ((k.held || []).length ? ` Wartet deshalb: ${k.held.map(h => esc(h.short)).join(", ")}.` : "") + `</p>`;
+}
 function notPlanned(k){
   const rows = [];
-  for(const d of k.dropped)
+  for(const h of k.held || [])
+    rows.push(`<tr><td>${esc(h.title)}</td><td class="l">kaufen in <b>${esc(h.name)}</b>, aber <span class="bad">Wechsel blockiert</span>: Guthaben in ${esc(k.lock.name)} muss erst aufgebraucht sein</td></tr>`);
+  for(const d of k.dropped.filter(d => d.blocked_by))
+    rows.push(`<tr><td>${d.titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">nur ein Land mit blockierendem Rest je Plan</span>: ${esc(d.blocked_by.join(", "))} bringt mehr</td></tr>`);
+  for(const d of k.dropped.filter(d => !d.blocked_by))
     rows.push(`<tr><td>${d.titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">Wechsel lohnt nicht</span>: ${d.gain >= 0 ? `spart ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`} gegenüber ${esc(altNames(d.alt_codes))}, lohnt ab ${eur(d.threshold)}</td></tr>`);
   for(const l of k.later) rows.push(`<tr><td>${esc(l.title)}</td><td class="l">lieber warten: ${esc(l.reason)}; in den Ländern, deren Wechsel sich rechnet, kein Kauf</td></tr>`);
   if(k.nowhere.length) rows.push(`<tr><td>${k.nowhere.map(esc).join(", ")}</td><td class="l">nirgends kaufbar, wo es zählt</td></tr>`);
@@ -903,7 +920,9 @@ function cardsHtml(p){
 function priceLine(p){
   if(p.opt_gap === null || p.opt_gap === undefined) return `<span class="mut">Bestpreise noch nicht bekannt</span>`;
   const games = (p.games_cost ?? p.cost) - (p.rest_lost || 0);
-  const under = games < p.optimum - 0.5;
+  // Unter der Bestpreis-Summe nur mit Angeboten, die nicht zählen. Im Paket teilen sich die
+  // Titel die Karten und kommen oft etwas unter die einzeln gerechneten Bestpreise: Das ist richtig
+  const under = games < p.optimum - 0.5 && p.items.some(i => i.lang === "unknown" || i.nocard);
   const counts = ["buy", "good", "wait"].map(g => [g, p.items.filter(i => i.grade === g).length]).filter(([, n]) => n)
     .map(([g, n]) => `${n}× ${VERDICT[g]}`).join(", ");
   const spiele = p.rest_value >= 0.5 || p.balance_value ? `Spiele ${eur(games)} · ` : "";
@@ -913,35 +932,43 @@ function priceLine(p){
     : `<span class="g-${p.grade || "wait"}" title="${esc(tip)}">${p.opt_gap < 0.005 ? "am Bestpreis" : `+${eur(p.opt_gap)} über Bestpreis-Summe ${eur(p.optimum)}${p.opt_pct ? ` (${p.opt_pct} %)` : ""}`}</span>`;
   return `${spiele}${main}${counts ? ` <span class="mut">· ${counts}</span>` : ""}`;
 }
+/* Was beim Wechsel verfällt: Guthaben aus dem Kontoland, Rest dieses Schritts */
+function lostTxt(p){
+  const bal = p.balance_lost || 0, rest = (p.rest_lost || 0) - bal;
+  return [bal >= 0.005 ? `${eur(bal)} Guthaben im Kontoland, das beim Wechsel hierher verfällt` : "",
+          rest >= 0.005 ? `${eur(rest)} Rest, der beim nächsten Wechsel verfällt` : ""].filter(Boolean).join(" und ");
+}
 /* Zeile „Wechsel“: lohnt der Weg in dieses Land gegenüber der Alternative? */
 function switchLine(p){
   if(p.is_ref) return `<span class="mut" title="Deutschland zum Shop-Preis ist die Vergleichsbasis">Vergleichsbasis${p.saving ? ` · ${eur(Math.abs(p.saving))} unter dem Normalpreis` : ""}</span>`;
   if(p.gain === null || p.gain === undefined) return `<span class="mut">–</span>`;
   const tip = `Wechselgewinn: was diese Titel ohne den Wechsel kosten (${eur(p.alt_total)} in ${altNames(p.alt_codes)}) minus was sie hier kosten (${eur(p.games_cost)})` +
-    (p.rest_lost ? `, samt ${eur(p.rest_lost)} Rest, der beim nächsten Wechsel verfällt` : "") +
+    (p.rest_lost ? `, samt ${lostTxt(p)}` : "") +
     `. Gegenüber Deutschland: ${p.saving >= 0 ? "spart " : "kostet "}${eur(Math.abs(p.saving))}.`;
   const vs = `gegenüber ${esc(altNames((p.alt_codes || []).slice(0, 2)))}`;
   const amount = p.gain >= 0 ? `spart ${eur(p.gain)} ${vs}` : `kostet ${eur(-p.gain)} mehr als ${esc(altNames((p.alt_codes || []).slice(0, 2)))}`;
-  const lost = p.rest_lost ? ` · darin ${eur(p.rest_lost)} Rest, der beim nächsten Wechsel verfällt` : "";
+  const lost = p.rest_lost ? ` · darin ${lostTxt(p)}` : "";
   if(p.current) return `<span title="${esc(tip)}">Konto steht hier, kein Wechsel</span>`;
   if(p.worth) return `<span title="${esc(tip)}"><b>✓ lohnt</b> · ${amount}${lost}</span>`;
   return `<span title="${esc(tip)}"><b class="bad">lohnt nicht</b> · ${amount}, lohnt ab ${eur(p.threshold)}${lost}</span>`;
 }
 /* Zeile „Rest“: was übrig bleibt und ob ein Wishlist-Titel hineinpasst */
-function restLine(p){
+function restLine(p, last){
   if(p.is_ref || p.via === "card") return "";
   if(p.rest === null) return `<span class="warnc">Rest unbekannt</span>`;
   if(!p.rest) return `<span>kein Rest</span>`;
-  const blocked = p.warnings.some(w => w.startsWith("Rest blockiert"));
+  const blocked = !last && p.warnings.some(w => w.startsWith("Rest blockiert"));
   const fits = p.fillers.filter(f => f.slugs.length === 1 && f.extra < 0.005);
   return `<span class="${blocked ? "bad" : p.rest_value >= 5 ? "warnc" : ""}">${money(p.rest, p.currency)} (${eur(p.rest_eur)})</span>` +
     (fits.length ? ` · passt hinein: ${fits.map(f => esc(f.shorts[0])).join(", ")}` : "");
 }
 /* Hürden: was den Kauf hier erschwert, rot heißt nein, bernstein heißt prüfen */
-function hurdles(p){
+function hurdles(p, last){
   const out = [];
   for(const w of p.warnings){
-    if(w.startsWith("Rest blockiert")) out.push(`<span class="bad" title="${esc(w)}, bis das Guthaben 0 ist">Rest blockiert Wechsel</span>`);
+    // Im letzten Schritt des Kaufplans folgt kein Wechsel mehr: Der Rest bleibt, ein späterer Wechsel wartet auf ihn
+    if(w.startsWith("Rest blockiert") && last) out.push(`<span class="warnc" title="Der Kaufplan wechselt danach nicht mehr. Ein späterer Wechsel geht erst, wenn das Guthaben aufgebraucht ist.">Rest bleibt, blockiert spätere Wechsel</span>`);
+    else if(w.startsWith("Rest blockiert")) out.push(`<span class="bad" title="${esc(w)}, bis das Guthaben 0 ist">Rest blockiert Wechsel</span>`);
     else if(w.startsWith("Keine Guthabenkarten")) out.push(`<span class="warnc" title="${esc(w)}">Karten fehlen, geschätzt</span>`);
     else if(w.startsWith("DLC braucht")) out.push(`<span class="${p.family === country("DE").family_name || p.is_ref ? "mut" : "warnc"}" title="${esc(w)}">DLC braucht Region ${esc(p.family)}</span>`);
     else if(/ohne deutschen Vergleichspreis/.test(w)) out.push(`<span class="mut" title="${esc(w)}">${parseInt(w)} ohne DE-Preis</span>`);
@@ -974,9 +1001,10 @@ function planCard(p, step){
     h += `<div class="money" title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}${cur === "EUR" ? "" : `<small>${money(p.total, cur)}</small>`}</div>`;
     h += `<div class="ln"><span class="k">Preis</span>${priceLine(p)}</div>`;
     h += `<div class="ln"><span class="k">Wechsel</span>${switchLine(p)}</div>`;
-    const rl = restLine(p);
+    const last = !!(step && S.kauf && step === S.kauf.steps.length);
+    const rl = restLine(p, last);
     if(rl) h += `<div class="ln"><span class="k">Rest</span>${rl}</div>`;
-    const hd = hurdles(p);
+    const hd = hurdles(p, last);
     if(hd.length) h += `<div class="hurd">${hd.join(" · ")}</div>`;
     const wide = !S.ui.dense || step;
     h += `<table class="it"><thead><tr><th>Titel</th>${wide ? `<th title="Preis im eShop des Landes">Shop ${esc(cur || "")}</th>` : ""}<th>bis</th><th title="Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben">Einkaufspreis</th><th title="Einkaufspreis minus Bestpreis">über Bestpreis</th>${wide && !p.is_ref ? `<th title="Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land">sonst</th>` : ""}</tr></thead><tbody>` +
@@ -1068,11 +1096,11 @@ function openLegend(){
   d.innerHTML = `<header><h2>Legende</h2><button data-act="lgclose">Schließen</button></header><div class="lgd">
     <div><span class="vd buy">kaufen</span> Einkaufspreis höchstens ${eur(S.state.settings.deal_eur.buy)} oder 2 % über dem Bestpreis, oder dein Zielpreis ist erreicht.</div>
     <div><span class="vd good">gut</span> höchstens ${eur(S.state.settings.deal_eur.good)} oder 15 % über dem Bestpreis.</div>
-    <div><span class="vd wait">warten</span> im Angebot, aber weiter weg vom Bestpreis.</div>
+    <div><span class="vd wait">warten</span> weiter weg vom Bestpreis. Das Urteil gilt dem günstigsten Preis jetzt, mit oder ohne Rabatt: Ein dauerhaft günstiger Normalpreis am Bestpreis ist „kaufen“.</div>
     <div><b>Bestpreis</b>: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet. <b>Einkaufspreis</b>: was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr.</div>
     <div><span class="star">★</span> am Bestpreis. In der Tabelle: <span class="sw c-buy">9,99</span> „kaufen“, <span class="sw c-good">9,99</span> „gut“, <span class="sw champ">9,99</span> hier gab es den Bestpreis.</div>
     <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b class="bad">lohnt nicht</b> ist rot.</div>
-    <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> ein Rest blockiert den Wechsel.</div>
+    <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> ein Rest blockiert den Wechsel: Der Kaufplan wechselt danach nicht mehr, und liegt dort Guthaben, plant er nur dort.</div>
     <div><span class="pct">−60 %</span> Rabatt im Shop. <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
     <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch.</div>
     <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">bernstein</span> heißt prüfen, <span class="bad">rot</span> heißt nein. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
@@ -1326,7 +1354,7 @@ function viewSettings(){
     ${off.length ? `<details class="box fold" data-k="morecountries" ${S.folds.morecountries ? "open" : ""}><summary>weitere Länder (${off.length})</summary><p class="hint">Einschalten und aktualisieren; das Preisniveau zeigt, ob es sich lohnt.</p>${table(off)}</details>` : ""}
     <h3 class="sec" id="set-regeln">Regeln</h3>
     <p class="rule">„kaufen“ bis ${eur(de.buy)} oder 2 % über dem Bestpreis, „gut“ bis ${eur(de.good)} oder 15 %. Ein Wechsel lohnt ab ${eur(t["1"])} Gewinn in einem leichten, ${eur(t["2"])} in einem mittleren und ${eur(t["3"])} in einem schweren Land.</p>
-    <div class="fields"><label class="f" title="Liegt das günstigste zählende Angebot (in jedem Land, jeder Stufe) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
+    <div class="fields"><label class="f" title="Liegt der günstigste zählende Preis jetzt (in jedem Land, jeder Stufe, mit oder ohne Rabatt) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
     <div class="fields" style="margin-top:12px"><label class="f" title="Kaufplan und Pakete: Ein Land lohnt sich erst, wenn es gegenüber dem, was dieselben Titel ohne diesen Wechsel kosten (günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), so viel spart. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Gewinn, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label><label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label><label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label></div>
     <h3 class="sec" id="set-gebuehren">Gebühren</h3>
     <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label><label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label></div>
