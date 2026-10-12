@@ -96,7 +96,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Landestief, Angebotsende und Sprache. Die Tabelle scrollt in einem eigenen
   Fenster, Kopfzeile und Titelspalte bleiben stehen. "nur Angebote" blendet
   auch Länder ohne Angebot aus.
-- Länder, je Land: Länderkarten als dichtes Raster oder große Liste. Die
+- Länder, je Land: Länderkarten als dichtes Raster oder große Liste. Jede
+  Karte enthält die Angebote des Landes, die günstiger als in Deutschland
+  sind, und dauerhaft günstige Normalpreise mit dem Urteil "kaufen", also
+  dieselben Titel, mit denen auch der Kaufplan rechnet. Die
   Kopfzahl ist der Einkaufspreis des Pakets. Darunter drei Zeilen:
   "Preis" nennt den Abstand der Spiele zur Summe ihrer Bestpreise (grün, wenn
   jeder Titel "kaufen" ist) und zählt die Urteile; "Wechsel" sagt, ob sich der

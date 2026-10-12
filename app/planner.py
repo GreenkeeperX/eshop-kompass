@@ -756,7 +756,11 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
             if not o:
                 continue
             cheaper = slug not in ref or ctx.est(c, o["local"]) < ref[slug] - 0.005
-            if o["sale"] and cheaper:
+            # Angebote, und dauerhaft günstige Normalpreise, die das Urteil "kaufen" tragen:
+            # Sie zählen im Kaufplan, also auch hier (Entscheidung 12.10.2026)
+            lasting = not o["sale"] and not is_ref and ctx.decides(o) and \
+                ctx.grade(ctx.est(c, o["local"]), slug) == "buy"
+            if (o["sale"] or lasting) and cheaper:
                 chosen.append(slug)
         chosen = [s for s in chosen if s not in set(override.get("remove", []))]
         for slug in list(override.get("add", [])) + list(must):

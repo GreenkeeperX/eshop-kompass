@@ -322,6 +322,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(no["cards"], [])
 
     def test_giftcard_country_and_filler(self):
+        self.only_sales()
         br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
         self.assertEqual([i["slug"] for i in br["items"]], ["hades", "vs-foscari"])
         self.assertAlmostEqual(br["total"], 37.59)
@@ -344,6 +345,7 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(first["rest"], 50 - 45.09)
 
     def test_override_and_balance(self):
+        self.only_sales()
         self.settings["countries"]["BR"]["balance"] = 2.59
         plans = planner.plans(self.data, self.settings,
                               overrides={"BR": {"remove": ["vs-foscari"], "add": ["nidhogg-2"]}},
@@ -406,6 +408,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(self.by(again)["BR"]["cost"], by["BR"]["cost"])
 
     def test_trim_suggestion(self):
+        self.only_sales()
         # Spiritfarer kostet in DE 6,24 €. In Brasilien (99 BRL) löst er zwei
         # 50er-Karten aus: Paket 136,59 BRL = 26,80 € statt 7,80 € ohne ihn.
         plans = planner.plans(self.data, self.settings, now=NOW,
@@ -447,6 +450,7 @@ class PlanTest(unittest.TestCase):
         self.assertIsNone(cell["NO"]["low"])
 
     def test_cards_with_links_and_stock(self):
+        self.only_sales()
         self.settings["countries"]["BR"]["cards"] = (
             "15 = 3,00 | https://shop/15\n25=4.80 https://shop/25\nx 50 = 9,50 | https://shop/50")
         br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
@@ -467,17 +471,19 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(plan["cost"], round(100 / 10.7155 * 1.0175, 2))
 
     def test_tax_is_added(self):
+        self.only_sales()
         self.settings["countries"]["BR"]["tax_pct"] = 10
         br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
         hades = [i for i in br["items"] if i["slug"] == "hades"][0]
         self.assertAlmostEqual(hades["local"], 36.95)      # 33,59 + 10 %
         self.assertEqual(hades["pct"], 60)
         self.assertAlmostEqual(br["total"], 36.95 + 4.40)
-        self.data["lows"] = {"BR": {"hades": {"low": 33.59}}}
+        self.data.setdefault("lows", {}).update({"BR": {"hades": {"low": 33.59}}})
         br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
         self.assertTrue([i for i in br["items"] if i["slug"] == "hades"][0]["at_low"])
 
     def test_tier_threshold(self):
+        self.only_sales()
         self.settings["tier_min_saving"]["3"] = 25
         br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
         self.assertEqual((br["tier"], br["tier_name"], br["threshold"]), (3, "schwer", 25.0))
@@ -542,6 +548,7 @@ class PlanTest(unittest.TestCase):
         self.assertTrue(planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]["JP"]["nolang"])
 
     def test_package_distance_to_optimum(self):
+        self.only_sales()
         by = self.by(planner.plans(self.data, self.settings, now=NOW))
         br = by["BR"]
         # Hades und VS Foscari kosten in Brasilien so wenig wie nirgends sonst. Optimum ist
@@ -556,7 +563,7 @@ class PlanTest(unittest.TestCase):
 
     def test_best_price_marks(self):
         # Hades: BR 33,59 (Tief 33,59), NO 100 (Tief 80), JP 1400, DE 24,99
-        self.data["lows"] = {"BR": {"hades": {"low": 33.59}}, "NO": {"hades": {"low": 80.0}}}
+        self.data.setdefault("lows", {}).update({"BR": {"hades": {"low": 33.59}}, "NO": {"hades": {"low": 80.0}}})
         cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
         self.assertEqual(cells["BR"]["mark"], "best")          # Bestpreis über alle Länder
         self.assertEqual(cells["BR"]["champ_code"], "BR")
@@ -967,6 +974,12 @@ class PlanTest(unittest.TestCase):
         hades = {r["slug"]: r for r in cell["rows"]}["hades"]["cells"]["BR"]
         self.assertEqual(hades["alone"]["eur"], 7.8)
 
+    def only_sales(self):
+        # Good-Job und Nidhogg 2 waren in DE schon einmal billiger: In Brasilien sind sie dann
+        # kein Kauf, die Länderkarte zeigt dort wie bisher nur die Angebote
+        self.data.setdefault("lows", {}).setdefault("DE", {}).update(
+            {"good-job": {"low": 5.0}, "nidhogg-2": {"low": 0.5}})
+
     def without_lasting(self):
         # Ohne die beiden Titel, die in Brasilien dauerhaft am Bestpreis sind
         for slug in ("good-job", "nidhogg-2"):
@@ -1171,6 +1184,18 @@ class PlanTest(unittest.TestCase):
                                  ("BR", ["hades", "vs-foscari", "good-job", "nidhogg-2"])])
         self.assertAlmostEqual(plan["steps"][1]["gain"], 24.61)
         self.assertEqual((plan["dropped"], plan["later"]), ([], []))
+
+    def test_country_card_shows_lasting_prices(self):
+        # Die Länderkarte zeigt dieselben Titel wie der Kaufplan: auch dauerhaft günstige
+        # Normalpreise mit dem Urteil "kaufen". Der Wechsel lohnt dort dann wie im Plan
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        self.assertEqual([i["slug"] for i in br["items"]], ["hades", "vs-foscari", "good-job", "nidhogg-2"])
+        self.assertEqual((br["gain"], br["worth"]), (24.61, True))
+        self.assertEqual(br["fillers"], [])
+        # Deutschland zum Normalpreis bleibt draußen, Norwegen zeigt nur sein Angebot
+        by = self.by(planner.plans(self.data, self.settings, now=NOW))
+        self.assertEqual([i["slug"] for i in by["DE"]["items"]], ["spiritfarer"])
+        self.assertEqual([i["slug"] for i in by["NO"]["items"]], ["hades"])
 
     def test_no_price_known_is_no_verdict(self):
         for slug in list(self.data["prices"]["BR"]):
