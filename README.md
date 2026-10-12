@@ -102,6 +102,14 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   liest dafür die Artikelseiten von Sammlung und Wishlist, höchstens 40 je
   Abgleich und jede einmal im Monat; nach dem Update dauert es also einige
   Abgleiche, bis alle gelesen sind.
+- Switch 2: Steht eine Nintendo Switch 2 Edition auf der Wishlist und die
+  Switch-1-Fassung in deiner Sammlung, trägt der Titel die Marke "Upgrade
+  genügt", und die Einzelheiten nennen den Preis des Upgrade-Pakets und die
+  Ersparnis gegenüber der Edition (wenn das Paket auf der Wishlist steht). Ohne
+  die Switch-1-Fassung vergleicht die Zeile "Spiel plus Paket" mit der Edition,
+  sofern beides auf der Wishlist steht. Die Edition gehört zum Spiel, dessen
+  Kürzel sie bei DekuDeals um "nintendo-switch-2-edition" verlängert; das
+  Paket ist ein DLC dieses Spiels.
 - Titel, Tabelle: alle Titel mal alle Länder in Euro, Spalten nach Stufe
   gruppiert (Länder, in denen gerade nichts zählt, am Ende). Angebote mit dem
   Urteil "kaufen" sind dunkelgrün hinterlegt, "gut" hellgrün; gold umrandet ist

@@ -1131,6 +1131,60 @@ def is_upgrade(slug, title=""):
     return "upgrade pack" in t and "switch 2" in t
 
 
+_S2_SUFFIX = re.compile(r"-(?:nintendo-)?switch-2-edition(?:-.*)?$")
+
+
+def _now_eur(r):
+    """Einkaufspreis des Angebots, das das Urteil eines Radar-Titels trägt."""
+    shown = (r or {}).get("shown") or {}
+    best = next((b for b in ((r or {}).get("easy"), (r or {}).get("hard"))
+                 if b and b.get("code") == shown.get("code")), None)
+    return (best.get("eur"), shown.get("name"), bool(best.get("est"))) if best else (None, None, False)
+
+
+def switch2_paths(data, rows):
+    """Switch-2-Edition auf der Wishlist: Reicht das Upgrade-Paket?
+
+    Die Edition heißt bei DekuDeals wie das Switch-1-Spiel plus "Nintendo Switch 2
+    Edition", das Upgrade-Paket ist ein DLC des Switch-1-Spiels. Hast du das Spiel,
+    genügt das Paket; sonst steht der Weg Spiel plus Paket gegen die Edition, soweit
+    die Preise bekannt sind (beides auf der Wishlist). {Kürzel der Edition: Angaben}"""
+    rel = data.get("rel") or {}
+    owned = set(data.get("owned") or [])
+    by = {r["slug"]: r for r in rows}
+    items = data.get("items") or {}
+    out = {}
+    for r in rows:
+        slug = r["slug"]
+        if is_upgrade(slug, r["title"]) or "switch 2 edition" not in f"{slug} {r['title']}".lower().replace("-", " "):
+            continue
+        base = _S2_SUFFIX.sub("", slug)
+        if base == slug or not (base in owned or base in rel or base in items):
+            continue
+        cand = [(s, t) for s, t in (rel.get(base) or {}).get("dlc") or [] if is_upgrade(s, t)]
+        cand += [(s, it.get("title") or s) for s, it in items.items()
+                 if it.get("active") and is_upgrade(s, it.get("title") or "") and
+                 (it.get("parent") == base or s.startswith(base + "-"))]
+        up = cand[0] if cand else None
+        title = (rel.get(base) or {}).get("title") or (items.get(base) or {}).get("title") or base
+        info = {"base": base, "base_title": title, "base_owned": base in owned,
+                "upgrade": up[0] if up else None, "upgrade_title": up[1] if up else None,
+                "upgrade_owned": bool(up and up[0] in owned)}
+        ed_eur = _now_eur(r)[0]
+        up_eur, up_name, up_est = _now_eur(by.get(up[0])) if up else (None, None, False)
+        base_eur, base_name, base_est = _now_eur(by.get(base))
+        info.update(edition_eur=ed_eur, upgrade_eur=up_eur, upgrade_name=up_name,
+                    upgrade_verdict=(by.get(up[0]) or {}).get("verdict") if up else None,
+                    base_eur=base_eur, base_name=base_name, est=up_est or base_est)
+        # Was der Weg über das Upgrade kostet: nur das Paket, oder Spiel plus Paket
+        path = up_eur if info["base_owned"] else (
+            up_eur + base_eur if up_eur is not None and base_eur is not None else None)
+        info["path_eur"] = _r(path)
+        info["path_saving"] = _r(ed_eur - path) if path is not None and ed_eur is not None else None
+        out[slug] = info
+    return out
+
+
 def collection(data, settings, targets=None, now=None, rows=None):
     """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
 

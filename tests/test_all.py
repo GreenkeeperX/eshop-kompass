@@ -1652,6 +1652,40 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual((up["wish"], up["owned"], up["upgrade"]), (False, False, True))
 
 
+class Switch2Test(unittest.TestCase):
+    @staticmethod
+    def row(slug, title, eur, code="DE", name="Deutschland", verdict="buy"):
+        offer = {"code": code, "eur": eur, "est": False}
+        return {"slug": slug, "title": title, "verdict": verdict, "easy": offer, "hard": None,
+                "shown": {"code": code, "name": name}}
+
+    def test_upgrade_pack_against_edition(self):
+        ed, up = "zelda-totk-nintendo-switch-2-edition", "zelda-totk-nintendo-switch-2-edition-upgrade-pack"
+        data = {"owned": ["zelda-totk"], "items": {
+            ed: {"title": "Zelda TotK – Nintendo Switch 2 Edition", "active": True},
+            up: {"title": "Zelda TotK Nintendo Switch 2 Edition Upgrade Pack", "active": True,
+                 "parent": "zelda-totk"}},
+            "rel": {"zelda-totk": {"title": "Zelda TotK", "dlc": [[up, "Nintendo Switch 2 Edition Upgrade Pack"]]}}}
+        rows = [self.row(ed, data["items"][ed]["title"], 79.99),
+                self.row(up, data["items"][up]["title"], 9.99, "NO", "Norwegen")]
+        p = planner.switch2_paths(data, rows)
+        self.assertEqual(list(p), [ed])                 # das Paket selbst ist keine Edition
+        e = p[ed]
+        self.assertEqual((e["base"], e["base_owned"], e["upgrade"]), ("zelda-totk", True, up))
+        self.assertEqual((e["path_eur"], e["path_saving"], e["upgrade_name"]), (9.99, 70.0, "Norwegen"))
+        # Ohne das Spiel: Spiel plus Paket gegen die Edition, wenn beides einen Preis hat
+        data["owned"] = []
+        self.assertIsNone(planner.switch2_paths(data, rows)[ed]["path_eur"])
+        data["items"]["zelda-totk"] = {"title": "Zelda TotK", "active": True}
+        rows.append(self.row("zelda-totk", "Zelda TotK", 49.99))
+        e = planner.switch2_paths(data, rows)[ed]
+        self.assertEqual((e["base_owned"], e["path_eur"], e["path_saving"]), (False, 59.98, 20.01))
+        # Ein Titel ohne bekanntes Switch-1-Spiel bekommt keinen Hinweis
+        rows.append(self.row("mario-kart-world", "Mario Kart World", 79.99))
+        rows.append(self.row("other-nintendo-switch-2-edition", "Other – Nintendo Switch 2 Edition", 69.99))
+        self.assertEqual(list(planner.switch2_paths(data, rows)), [ed])
+
+
 class SelfCheckTest(unittest.TestCase):
     def test_self_check_flags_jumps_drops_and_odd_cards(self):
         data, settings = sample()

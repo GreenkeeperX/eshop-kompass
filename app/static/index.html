@@ -797,7 +797,7 @@ function titleRow(r){
   const marks = (r.cashback ? ` <span class="ok" title="Mit ${String(r.cashback.pct).replace(".", ",")} % Cashback des Kartenshops wären es in ${esc(country(r.cashback.code).name)} etwa ${eur(r.cashback.eur)}, also Bestpreis. Cashback gibt es nicht immer, bitte beim Kauf prüfen.">✱</span>` : "") +
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
-  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(r.title)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(r.title)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>
     <td class="kb-c"><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
@@ -833,7 +833,26 @@ function titleDetail(r){
     ${sug !== null ? `<button class="sm" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}">Bestpreis ${eur(sug)} übernehmen</button>` : ""}
     <small class="mut" style="display:inline">${r.target !== null ? "Ist er erreicht, heißt das Urteil „kaufen“." : "leer: Das Urteil misst am Bestpreis."}</small></span>`;
   h += `<span>Urteil</span><span>${pill(r.verdict)} ${esc(r.reason)}</span>`;
+  const s2 = s2Line(r.slug);
+  if(s2) h += `<span>Switch 2</span><span>${s2}</span>`;
   return h + `</div>`;
+}
+/* Switch-2-Edition: reicht das Upgrade-Paket zum Spiel, das du schon hast? */
+function s2Line(slug){
+  const p = (S.state.s2 || {})[slug];
+  if(!p) return "";
+  const ap = p.est ? "ca. " : "";
+  const up = "das Upgrade-Paket";
+  const cmp = p.path_saving !== null && p.path_saving !== undefined
+    ? (p.path_saving > 0.005 ? ` · <b>spart ${eur(p.path_saving)}</b> gegenüber der Edition (${eur(p.edition_eur)})`
+       : ` · die Edition (${eur(p.edition_eur)}) ist ${p.path_saving < -0.005 ? `${eur(-p.path_saving)} günstiger` : "gleich teuer"}`) : "";
+  if(p.base_owned && p.upgrade_owned) return `Die Switch-1-Fassung (${esc(p.base_title)}) und das Upgrade-Paket stehen in deiner Sammlung. Die Edition brauchst du nicht.`;
+  if(p.base_owned) return `Die Switch-1-Fassung (${esc(p.base_title)}) steht in deiner Sammlung. Das Upgrade-Paket genügt` +
+    (p.upgrade_eur !== null && p.upgrade_eur !== undefined ? `: jetzt ${ap}${eur(p.upgrade_eur)} in ${esc(p.upgrade_name)}${cmp}`
+     : `. Setz es auf die Wishlist${p.upgrade ? ` (<a class="tl" href="${esc(deku(p.upgrade))}" target="_blank" rel="noopener">DekuDeals</a>)` : ""}, dann rechnet das Tool den Preis.`);
+  if(p.path_eur !== null && p.path_eur !== undefined)
+    return `Statt der Edition: Switch-1-Fassung (${eur(p.base_eur)} in ${esc(p.base_name)}) plus ${up} (${eur(p.upgrade_eur)}), zusammen ${ap}${eur(p.path_eur)}${cmp}`;
+  return `Es gibt auch die Switch-1-Fassung (${esc(p.base_title)}) plus ${up}. Stehen beide auf der Wishlist, vergleicht das Tool diesen Weg mit der Edition.`;
 }
 
 /* ---------- Kaufplan: was jetzt wo kaufen ---------- */
