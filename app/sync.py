@@ -27,6 +27,7 @@ CARD_PAUSE = 3.0
 REL_RECHECK_SECONDS = 30 * 24 * 3600  # DLC und Pakete eines Titels monatlich auffrischen
 REL_PER_SYNC = 40                     # höchstens so viele Artikelseiten je Abgleich
 REL_V = 1                             # erhöht sich, wenn alle Seiten neu zu lesen sind
+EXTRA_PER_SYNC = 40                   # Artikelseiten je Abgleich für IDs fehlender DLC der Sammlung
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None, "boot_sync": None}
@@ -250,18 +251,23 @@ def sync_prices(data, settings, fetch, sleep, history=None):
             status["done"] += 1
             continue
         fam = countries.BY_CODE[code]["family"]
-        by_nsuid = {}
+        by_nsuid, extra_ids = {}, {}
         for slug, it in data["items"].items():
             if it.get("active"):
                 for n in it["ids"].get(fam, []):
                     by_nsuid[n] = slug
+        if settings["countries"][code]["enabled"]:
+            for slug, e in (data.get("extra") or {}).items():
+                for n in e["ids"].get(fam, []):
+                    if n not in by_nsuid:
+                        extra_ids[n] = slug
         active = settings["countries"][code]["enabled"]
         failed = data.setdefault("price_fail", {})
         if not by_nsuid or (not active and time.time() - failed.get(code, 0) < PRICE_FAIL_PAUSE):
             status["done"] += 1
             continue
         try:
-            res = sources.fetch_prices(code, list(by_nsuid), fetch=fetch,
+            res = sources.fetch_prices(code, list(by_nsuid) + list(extra_ids), fetch=fetch,
                                        lang=countries.BY_CODE[code]["lang"],
                                        pause=lambda: sleep(NINTENDO_PAUSE))
         except Exception as e:  # ein Land darf ausfallen, alte Preise bleiben
@@ -275,16 +281,17 @@ def sync_prices(data, settings, fetch, sleep, history=None):
                 failed[code] = time.time()    # abgeschaltetes Land: eine Woche Ruhe
             status["done"] += 1
             continue
-        table = {}
+        table, xtable = {}, {}
         for nsuid, p in res.items():
-            slug = by_nsuid.get(nsuid)
+            slug, t = (by_nsuid[nsuid], table) if nsuid in by_nsuid else (extra_ids.get(nsuid), xtable)
             if not slug:
                 continue
             p = dict(p, nsuid=nsuid, fetched=stamp)
-            cur = table.get(slug)
+            cur = t.get(slug)
             if cur is None or _better(p, cur):
-                table[slug] = p
+                t[slug] = p
         data["prices"][code] = table
+        data.setdefault("xprices", {})[code] = xtable     # fehlende DLC der Sammlung
         _track(data, history, code, table, stamp)
         buyable = sum(1 for p in table.values() if p["status"] == "onsale")
         if settings["countries"][code]["enabled"]:
@@ -606,6 +613,60 @@ def sync_related(data, settings, fetch, sleep, now=None):
          + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else ""))
 
 
+def sync_extra_ids(data, settings, fetch, sleep, now=None):
+    """Nintendo-IDs der DLC, die deinen Spielen fehlen und nicht auf der Wishlist stehen,
+    damit es für sie Preise gibt (Summe in der Sammlung, Vorschläge für den Rest).
+    Schonend: höchstens EXTRA_PER_SYNC Artikelseiten je Abgleich, Abbruch bei Sperren."""
+    now = now or time.time()
+    wanted = planner.extra_dlc(data, settings)
+    extra = data.setdefault("extra", {})
+    for slug in [s for s in extra if s not in wanted]:
+        del extra[slug]                     # gekauft, ignoriert oder jetzt auf der Wishlist
+    fams = needed_families(settings)
+    todo = []
+    for slug, (title, parent) in wanted.items():
+        e = extra.setdefault(slug, {"title": title, "parent": parent, "ids": {}, "ids_checked": {}})
+        e.update(title=title, parent=parent)
+        for fam in fams:
+            if not e["ids"].get(fam) and now - e["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS:
+                todo.append((bool(e["ids_checked"]), slug, fam))
+    if not todo:
+        return
+    todo.sort()
+    _step("IDs fehlender DLC suchen", min(len(todo), EXTRA_PER_SYNC))
+    pages, fails = 0, 0
+    for _, slug, fam in todo:
+        if pages >= EXTRA_PER_SYNC:
+            break
+        e, found, reached = extra[slug], [], False
+        for lookup in countries.FAMILY_LOOKUP[fam]:
+            if pages >= EXTRA_PER_SYNC:
+                break
+            pages += 1
+            try:
+                info = sources.fetch_item(slug, lookup, fetch=fetch)
+            except sources.FetchError as err:
+                fails += 1
+                if err.status in sources.BLOCKED or fails >= 4:
+                    _log(f"IDs fehlender DLC unterbrochen ({err}), Rest beim nächsten Abgleich")
+                    store.save_data(data)
+                    return
+                sleep(LOW_PAUSE)
+                continue
+            reached, fails = True, 0
+            sleep(LOW_PAUSE)
+            if info["nsuids"]:
+                found = info["nsuids"]
+                break
+        if reached:
+            e["ids"][fam] = found
+            e["ids_checked"][fam] = now
+        status["done"] += 1
+    store.save_data(data)
+    known = sum(1 for e in extra.values() if any(e["ids"].values()))
+    _log(f"Fehlende DLC der Sammlung: {len(extra)}, davon {known} mit eShop-ID")
+
+
 def _better(new, cur):
     """Bei mehreren Versionen eines Titels gewinnt die günstigste kaufbare."""
     if (new["status"] == "onsale") != (cur["status"] == "onsale"):
@@ -662,6 +723,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             _log("Tiefstpreise werden neu geladen (Lesefehler bei Spielen für Switch und Switch 2 behoben)")
         sync_lows(data, settings, fetch, sleep)
         sync_related(data, settings, fetch, sleep)
+        sync_extra_ids(data, settings, fetch, sleep)
         status["ok"] = True
         _step("Fertig")
     except Exception as e:
