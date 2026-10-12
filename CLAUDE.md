@@ -49,8 +49,14 @@ Alte Datendateien müssen nach einem Update weiter laden.
 `graphify-out/` ist ein lokal erzeugter Code-Graph und nicht versioniert. Fehlt er,
 etwa in Cloud-Sitzungen, normal mit Lesen und Suchen arbeiten.
 
-- Wenn `graphify-out/graph.json` existiert, Codefragen zuerst mit
-  `graphify query "<Frage>"`, `graphify explain "<Begriff>"` oder
-  `graphify path "<A>" "<B>"` eingrenzen, dann gezielt lesen.
-- `graphify-out/GRAPH_REPORT.md` nur für Architekturfragen lesen.
-- Nach Codeänderungen `graphify update .` (nur Code, ohne KI-Kosten).
+- Zur Orientierung nutzen, wenn es hilft: `graphify query "<Frage>"`,
+  `graphify explain "<Begriff>"`, `graphify path "<A>" "<B>"`. Für kleine,
+  klar umrissene Änderungen ist keine Abfrage nötig.
+- Der Graph ist unvollständig. Fehlende Knoten oder Kanten belegen nie, dass etwas
+  nicht existiert oder nicht aufgerufen wird. Maßgeblich ist der Code.
+- Nicht im Graphen: die Oberfläche `app/static/index.html` und der Datenfluss über
+  die JSON-Dateien (`sync.py` schreibt `data.json`, `server.py` liest sie). Beides
+  bei Bedarf direkt im Code prüfen.
+- Bei Änderungen an Rechenlogik, Datenfluss oder Darstellung die betroffenen Stellen
+  immer im Quellcode lesen, nicht nur im Graphen.
+- Nach Codeänderungen `graphify update .`, sofern Graphify installiert ist.
