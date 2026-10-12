@@ -897,6 +897,12 @@ class PlanTest(unittest.TestCase):
         self.assertIsNone(row["good-job"]["best"])                    # nirgends im Angebot
         self.assertTrue(row["good-job"]["cells"]["NO"]["na"])
         self.assertNotIn("JP", row["good-job"]["cells"])
+        # Landestief in Euro zum heutigen Kurs; ohne geladenen Tiefstpreis None
+        de = row["hades"]["cells"]["DE"]
+        self.assertTrue(de["low_eur"] is None or de["low_eur"] <= de["eur"])
+        self.data["lows"] = {"BR": {"hades": {"low": 30.0}}}
+        br = {r["slug"]: r for r in planner.matrix(self.data, self.settings, now=NOW)["rows"]}["hades"]["cells"]["BR"]
+        self.assertLess(br["low_eur"], br["eur"])
 
     def test_alone_bought(self):
         ctx = planner.Context(self.data, self.settings, NOW)

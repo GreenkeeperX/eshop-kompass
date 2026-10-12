@@ -168,7 +168,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .matrix td,.matrix th{padding:3px 8px}
 .matrix th{position:sticky;top:0;background:var(--card)}
 .matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);max-width:280px;white-space:normal}
-.matrix td.best{background:var(--best);font-weight:600}
+.mlegend{margin:0 0 10px;font-size:12px;color:var(--muted)}.mlegend summary{cursor:pointer;font-weight:600;color:var(--ink)}.mlegend .lg{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:4px 18px;margin-top:6px}.mlegend .lg>div{line-height:1.6}.mlegend .lg>div>span,.mlegend .lg>div>small{margin-right:6px}.mlegend .sw{display:inline-block;padding:1px 6px;border-radius:4px;font-weight:600;color:var(--ink)}.mlegend .sw.best{background:var(--best)}.mlegend .sw.champ{box-shadow:inset 0 0 0 2px var(--gold)}.mlegend .sw0{font-weight:600;color:var(--ink);font-size:12px}.matrix small.lo{display:block;color:var(--muted)}.matrix td.best{background:var(--best);font-weight:600}
 .matrix td.na{color:var(--muted)}
 .matrix td small{display:block;color:var(--muted);font-size:10.5px;line-height:1.2}
 .star{border:0;background:none;padding:0 6px 0 0;font-size:15px;color:var(--muted)}
@@ -201,7 +201,7 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .radar td small{display:block;color:var(--muted);font-size:11px}
 .radar td.na{color:var(--muted)}
 .radar tr.v-none td{opacity:.62}
-.tgt{width:62px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px;text-align:right;font-size:12px}
+.tgtc{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.tgtc button.mini{margin-left:0;min-width:72px}.mini-ph{display:inline-block;min-width:72px;font-size:11px;color:var(--muted);text-align:left}.tgt{width:62px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px;text-align:right;font-size:12px}
 .vd{display:inline-block;border-radius:999px;padding:0 8px;font-size:11.5px;white-space:nowrap}
 .vd.buy{background:var(--accent);color:var(--card);font-weight:700}
 .vd.good{background:var(--best);color:var(--accent);font-weight:600}
@@ -640,11 +640,17 @@ function viewRadar(){
       <td>${(() => {
         // Leeres Ziel: der Bestpreis aller Länder als Vorschlag, ein Klick übernimmt ihn
         // Nur sinnvoll, wenn der Bestpreis unter dem Preis jetzt liegt; sonst wäre das Ziel sofort erreicht
+        // Die Zelle hat immer dieselbe Breite, damit die Zeilen bündig bleiben
         const ce = r.champ;
         const sug = r.target === null && ce && (!r.easy || ce.eur < r.easy.eur - 0.005) ? ce.eur : null;
-        return `<input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="${sug === null ? "–" : num(sug)}">` +
-          (sug !== null ? `<button class="mini" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}" title="Bestpreis ${eur(sug)} als Zielpreis übernehmen">übernehmen</button>` : "") +
-          (hit ? ` <span class="ok">✓</span>` : "");
+        const ph = r.target !== null ? "" : ce ? num(ce.eur) : "–";
+        const tip = r.target !== null ? "Dein Zielpreis" : !ce ? "Bestpreis noch nicht bekannt: der Tiefstpreis wird beim nächsten Abgleich nachgeladen"
+          : sug === null ? `Bestpreis ${eur(ce.eur)} in ${country(ce.code).name}: der Preis jetzt liegt schon dort, ein Zielpreis darunter wäre nur Wunsch`
+          : `Vorschlag: Bestpreis ${eur(ce.eur)} in ${country(ce.code).name}`;
+        return `<span class="tgtc"><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="${ph}" title="${esc(tip)}">` +
+          (sug !== null ? `<button class="mini" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}" title="Bestpreis ${eur(sug)} als Zielpreis übernehmen">übernehmen</button>`
+            : `<span class="mini-ph">${hit ? `<span class="ok">✓ erreicht</span>` : ce && r.target === null ? "am Bestpreis" : ""}</span>`) +
+          (hit && sug !== null ? ` <span class="ok">✓</span>` : "") + `</span>`;
       })()}</td>
       <td>${r.cashback ? `<span class="ok" title="Mit ${String(r.cashback.pct).replace(".", ",")} % Cashback des Kartenshops wären es in ${esc(country(r.cashback.code).name)} etwa ${eur(r.cashback.eur)}, also Bestpreis. Cashback gibt es nicht immer, bitte beim Kauf prüfen.">✱</span> ` : ""}<span class="vd ${r.verdict}" title="${esc(r.reason)}">${VERDICT[r.verdict]}</span>${r.verdict !== "none" || (r.lang_unsure || []).length ? `<small>${esc(r.reason)}</small>` : ""}</td>
       <td><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
@@ -895,8 +901,20 @@ function viewMatrix(){
   const rows = mx.rows.filter(r => (!q || r.title.toLowerCase().includes(q)) &&
     (!S.onlySale || Object.values(r.cells).some(c => c.sale)));
   let h = `<div class="tools"><input type="search" id="q" placeholder="Titel filtern" value="${esc(S.filter)}">
-    <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>${LEGEND}
-    <span class="hint">Europreise enthalten Steuer, Kurs und deinen Zahlweg, der Tooltip zeigt die Rechnung. Grün: günstigstes Angebot jetzt. Gold umrandet: dort gab es den Bestpreis. DE✓: deutsche Fassung bestätigt. ★ legt den Titel in den gemeinsamen Korb.</span></div>
+    <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label></div>
+    <details class="mlegend" ${S.mLegend === false ? "" : "open"}><summary>Legende</summary><div class="lg">
+      <div><span class="sw best">9,99 €</span>Grün hinterlegt: günstigstes Angebot jetzt, über alle zählenden Länder.</div>
+      <div><span class="sw champ">9,99 €</span>Gold umrandet: In diesem Land gab es den Bestpreis aller Länder (Spalte „Bestpreis“).</div>
+      <div><span class="pct m-best">★−50%</span>Angebot jetzt erreicht den Bestpreis aller Länder (bis 2 % darüber).</div>
+      <div><span class="pct m-low">−50%</span>Angebot erreicht den Tiefstpreis dieses Landes, aber nicht den Bestpreis aller Länder.</div>
+      <div><span class="pct m-sale">−50%</span>Angebot, das Land war aber schon günstiger.</div>
+      <div><small class="sw0">Tief 7,49 €</small>Tiefstpreis dieses Landes, in Euro zum heutigen Kurs. „Tief ?“: noch nicht geladen.</div>
+      <div><span class="sw0">Bestpreis</span>Spalte: niedrigster Preis, den es je in einem zählenden Land gab, mit Land; darunter der typische Angebotspreis.</div>
+      <div><span class="approx">≈</span>geschätzt: Kurs plus Aufschlag statt gelesenem Kartenpreis.</div>
+      <div><span class="lgt de">DE✓</span>deutsche Fassung bestätigt. <span class="lgt no">andere Fassung</span> ohne Deutsch. <span class="hint">Sprache?</span> ungeprüft, zählt nicht.</div>
+      <div><span class="hint">ohne Karte</span>Guthaben dort nicht zu bekommen, zählt nicht. <span class="na">kein DE</span> keine deutsche Fassung, <span class="na">–</span> nicht kaufbar.</div>
+      <div>Alle Europreise mit Steuer, Kurs und deinem Zahlweg; der Tooltip einer Zelle zeigt die Rechnung. ★ vor dem Titel legt ihn in den gemeinsamen Korb.</div>
+    </div></details>
     <div class="matrix scroll"><table><thead><tr><th>Titel</th><th title="Niedrigster Preis, den es je gab, über alle aktiven Länder, zum heutigen Kurs. Das Land ist in der Zeile gold umrandet. Darunter der typische Angebotspreis.">Bestpreis</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><button class="star ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button><a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener">${esc(r.title)}</a><button class="mini" data-act="verlauf" data-s="${esc(r.slug)}" title="Preisverlauf aus der eigenen Aufzeichnung">Verlauf</button>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     `<td class="bp">${r.champ ? `${ax(r.champ)}<b>${eur(r.champ.eur)}</b> <small style="display:inline">${r.champ.code}</small>` : `<span class="na">–</span>`}${r.typical ? `<small title="Typischer Angebotspreis in ${esc(country(r.typical.code).name)}, aus ${r.typical.runs} Angeboten der letzten zwei Jahre">typisch ${ax(r.typical)}${eur(r.typical.eur)}</small>` : ""}</td>` +
@@ -905,7 +923,7 @@ function viewMatrix(){
       if(!x) return `<td class="na"></td>`;
       if(x.na) return `<td class="na" ${x.nolang ? `title="Hier gibt es keine deutsche Fassung"` : ""}>${x.nolang ? "kein DE" : "–"}</td>`;
       const champ = r.champ && r.champ.code === c.code;
-      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.nocard ? `<small class="hint" title="Für dieses Land ist keine Guthabenkarte mit Preis eingetragen oder gelesen: Guthaben ist dort nicht zu bekommen, das Angebot zählt nicht für Bestpreis, Urteil und Kaufplan">ohne Karte</small> ` : ""}${x.lang === "unknown" ? `<button class="link hint" style="font-size:11px" data-act="gosprachen" title="Unter Einstellungen einmal bestätigen">Sprache?</button> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
+      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.nocard ? `<small class="hint" title="Für dieses Land ist keine Guthabenkarte mit Preis eingetragen oder gelesen: Guthaben ist dort nicht zu bekommen, das Angebot zählt nicht für Bestpreis, Urteil und Kaufplan">ohne Karte</small> ` : ""}${x.lang === "unknown" ? `<button class="link hint" style="font-size:11px" data-act="gosprachen" title="Unter Einstellungen einmal bestätigen">Sprache?</button> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}<small class="lo" title="${x.low_eur === null || x.low_eur === undefined ? "Tiefstpreis dieses Landes noch nicht geladen" : `Tiefstpreis dieses Landes ${money(x.low, c.currency)} netto, mit Steuer und Zahlweg ${eur(x.low_eur)} zum heutigen Kurs`}">Tief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}${x.sale && x.end ? ` · ${endCell(x.end, "bis ")}` : ""}</small></td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
 }
@@ -1218,6 +1236,8 @@ $("verlauf").addEventListener("click", e => {   // Klick neben das Fenster schli
   const d = e.currentTarget, r = d.getBoundingClientRect();
   if(e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) d.close();
 });
+// Legende im Preisvergleich: auf- oder zugeklappt bleibt beim Neuzeichnen
+document.addEventListener("toggle", e => { if(e.target.classList && e.target.classList.contains("mlegend")) S.mLegend = e.target.open; }, true);
 document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });
 
 refresh().catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });

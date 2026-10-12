@@ -526,9 +526,15 @@ class Context:
         return {"eur": _r(r["cost"]), "rest": None if r["rest"] is None else r["rest"] / 100,
                 "cards": [{"face": f / 100, "count": n} for f, n in r["cards"]]}
 
+    def low_eur(self, c, slug, o):
+        """Landestief in Euro zum heutigen Kurs, mit Steuer; das Angebot jetzt zählt mit."""
+        low = self.low_value(c["code"], slug)
+        local = o["local"] if low is None else min(o["local"], round(cents(low) * (1 + c["tax"] / 100)))
+        return None if low is None else _r(self.est(c, local))
+
     def cell(self, c, slug, o):
         """Ein Angebot, wie es Tabellen und Karten anzeigen."""
-        return {"local": o["local"] / 100, "regular": o["regular"] / 100, "sale": o["sale"],
+        return {"low_eur": self.low_eur(c, slug, o),"local": o["local"] / 100, "regular": o["regular"] / 100, "sale": o["sale"],
                 "net": o.get("net", o["local"]) / 100,
                 "pct": round(100 * (1 - o["local"] / o["regular"])) if o["regular"] else 0,
                 "end": o["end"], "eur": _r(self.est(c, o["local"])), "est": c["estimated"],

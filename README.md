@@ -104,7 +104,9 @@ Angebot darüber. Der Bestpreis ist
 der niedrigste Preis, den es je gab, zum heutigen Kurs.
 
 Im Preisvergleich steht der Bestpreis je Titel in einer eigenen Spalte, das
-Land, in dem es ihn gab, ist gold umrandet. Grün hinterlegt ist das günstigste
+Land, in dem es ihn gab, ist gold umrandet. Jede Zelle zeigt darunter den
+Tiefstpreis des Landes in Euro ("Tief ?" heißt: noch nicht geladen). Eine
+aufklappbare Legende über der Tabelle erklärt alle Farben und Marken. Grün hinterlegt ist das günstigste
 Angebot jetzt; ein günstiger Normalpreis ohne Angebot wird nicht hervorgehoben.
 
 Der Landespreis verlinkt den Verlauf bei DekuDeals, der Europreis die
