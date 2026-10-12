@@ -161,10 +161,16 @@ eShop-Seite des Landes.
 
 ## Einrichten
 
-Unter Einstellungen, jede Änderung wird sofort gespeichert:
+Unter Einstellungen, jede Änderung wird sofort gespeichert. Eine Leiste oben
+springt zu den Abschnitten Länder, Regeln, Gebühren, Sprachen, Quellen sowie
+Sicherung und Protokoll.
 
-- Länder: beliebig ein- und ausschalten. Die Spalte Preisniveau zeigt für
-  jedes Land, wie es zu deiner Wishlist steht, auch wenn es abgeschaltet ist.
+- Länder: Die aktiven Länder stehen oben, ihre Guthabenkarten aufklappbar
+  direkt unter dem Land. Die übrigen stehen eingeklappt unter "weitere
+  Länder", mit Schalter. Die Spalte Preisniveau zeigt für jedes Land, wie es
+  zu deiner Wishlist steht, auch wenn es abgeschaltet ist.
+- Regeln: Urteilsgrenzen, Wechselschwellen je Stufe und die Sprachregel. Ein
+  Satz darüber fasst die aktuellen Werte zusammen.
 - Wechsel: leicht (Karte, kein Rest), mittel (Guthabenkarten, ein Rest
   verfällt beim Wechsel), schwer (Amerika: Guthaben muss vor dem Wechsel 0
   sein). Je Stufe gilt ein eigener Mindestgewinn gegenüber dem, was die Titel

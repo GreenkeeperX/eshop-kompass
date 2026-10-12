@@ -191,6 +191,7 @@ form.set{display:grid;gap:16px}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .fields .pair{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+label.f input[type=checkbox]{width:auto;margin:0 6px 0 0;vertical-align:-2px}
 label.f input,label.f select,.set td input[type=text],.set td input[type=number],.set td select{
   background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--ink);width:100%}
 .set td{text-align:left;vertical-align:middle;padding:4px 8px}
@@ -231,7 +232,17 @@ a.mini{color:var(--muted);font-size:10px;margin-left:5px;text-decoration:none;bo
 .cardsbox textarea{font:12px/1.4 ui-monospace,monospace;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:74px;resize:vertical;width:100%}
 .cardsbox small{color:var(--muted)}
 .saved{color:var(--accent);font-size:13px;margin-left:8px}
-h3.sec{margin:22px 0 8px;font-size:14px}
+h3.sec{margin:22px 0 8px;font-size:14px;scroll-margin-top:52px}
+.jump{position:sticky;top:0;z-index:4;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.jump a{color:var(--ink);text-decoration:none}
+.jump a:hover{text-decoration:underline}
+.set tr.cardrow td{border-top:0;padding:0 8px 6px;white-space:normal}
+.set tr.cardrow summary{cursor:pointer;font-size:12px;color:var(--muted)}
+.set tr.cardrow textarea{font:12px/1.4 ui-monospace,monospace;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:74px;resize:vertical;width:100%;max-width:640px;display:block;margin:4px 0}
+.set tr.cardrow small{display:block}
+.rule{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:13.5px}
+details.hint{margin:6px 0}
+details.hint summary{cursor:pointer}
 .lvl-neg{color:var(--accent);font-weight:600}
 .lvl-pos{color:var(--muted)}
 .set td input[type=number].sm{width:64px}
@@ -1273,38 +1284,10 @@ function cardInfo(text){
   return n ? `${n} ${n === 1 ? "Karte" : "Karten"} erkannt${out ? `, ${out} nicht vorrätig` : ""}` : "keine Karten eingetragen";
 }
 function viewSettings(){
-  const s = S.state.settings, st = S.state.status, lv = S.state.levels;
+  const s = S.state.settings, lv = S.state.levels;
   const sel = (v, cur, l) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${l}</option>`;
-  let h = `<form class="set" id="setForm"><div class="fields">
-    <h3 class="sec" style="grid-column:1/-1;margin:10px 0 0">Quellen</h3>
-    <div class="pair">
-    <label class="f">DekuDeals-Wishlist-Link<input name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label>
-    <label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label>
-    </div>
-    <label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label>
-    <label class="f" title="Liest einmal am Tag je Land mit Guthabenkarten die Kartenpreise von gg.deals: je Kartenwert den günstigsten Preis über alle Shops, in Euro. Fehlende Kartenwerte kommen dazu, bei eingetragenen gilt der günstigere Preis. Als nicht vorrätig markierte Werte (x) bleiben draußen."><span><input name="card_market" type="checkbox" ${s.card_market ? "checked" : ""}> Kartenpreise von gg.deals lesen</span></label>
-    <h3 class="sec" style="grid-column:1/-1;margin:10px 0 0">Konto und Bezahlen</h3>
-    <label class="f" title="Für dieses Land gilt keine Mindestersparnis, du bist ja schon dort.">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
-      [...S.state.countries].sort((x, y) => x.name.localeCompare(y.name, "de")).map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label>
-    <label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label>
-    <label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label>
-    <label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label>
-    <label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label>
-    <label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber im Radar mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label>
-    <h3 class="sec" style="grid-column:1/-1;margin:10px 0 0">Urteil</h3>
-    <label class="f" title="Liegt das günstigste zählende Angebot (in jedem Land, jeder Stufe) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label>
-    <label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gutes Angebot“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label>
-    <label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label>
-    <h3 class="sec" style="grid-column:1/-1;margin:10px 0 0">Wann sich ein Länderwechsel lohnt</h3>
-    <label class="f" title="Kaufplan und Pakete: Ein Land lohnt sich erst, wenn es gegenüber dem, was dieselben Titel ohne diesen Wechsel kosten (günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), so viel spart. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Gewinn, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label>
-    <label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label>
-    <label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label>
-    </div>
-    <p class="hint">Änderungen werden sofort gespeichert.<span class="saved" id="saved"></span></p>
-    <h3 class="sec">Länder</h3>
-    <p class="hint">Das Preisniveau vergleicht deine Wishlist mit Deutschland, auch für abgeschaltete Länder. Neu eingeschaltete Länder brauchen einen Abgleich.</p>
-    <div class="scroll"><table><thead><tr><th>Land</th><th title="Land in Radar, Paketen und Preisvergleich zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th><th title="Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt. schwer: Rest blockiert den Wechsel. Je Stufe gilt oben eine eigene Mindestersparnis.">Wechsel</th><th title="Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der eingetragenen Karten, sonst Kurs plus Aufschlag. Das Günstigere: wählt je Paket.">Bezahlen</th><th title="Aufschlag auf den Mittelkurs für Guthaben ohne eingetragenen Kartenpreis. Leer gilt der allgemeine Wert oben. 0 heißt: Guthaben zum Kurs, etwa bei Amazon Japan.">Aufschlag %</th><th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th><th title="Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.">Guthaben</th><th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er über den Support gelöst ist (Amerika). Sonst verfällt ein Rest nur und zählt als Kosten.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne Kartenpreis: der Aufschlag, als Schätzung.">Dein Kurs</th><th title="Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.">Preisniveau</th></tr></thead><tbody>`;
-  h += S.state.countries.map(c => {
+  const on = c => c.code === "DE" || s.countries[c.code].enabled;
+  const row = c => {
     const x = s.countries[c.code], ref = c.code === "DE", l = lv[c.code], pi = S.state.pay[c.code];
     const kurs = ref || !pi ? "" : `<span title="${pi.via === "card" ? "Kartenzahlung" : pi.card ? `beste Karte: ${money(pi.card.face, pi.currency)} für ${eur(pi.card.cost)}` : "Guthaben ohne Kartenpreis"} · 1 € = ${(1 / pi.unit).toLocaleString("de-DE", {maximumFractionDigits: 3})} ${esc(pi.currency)}" class="${pi.vs_mid < 0 ? "lvl-neg" : "lvl-pos"}">${pi.via === "giftcard" && !pi.card && !pi.at_rate ? "≈ " : ""}${pi.vs_mid > 0 ? "+" : ""}${String(pi.vs_mid).replace(".", ",")} %</span>`;
     const level = ref ? "Basis" : !l ? "–" : `<span class="${l.level < 0 ? "lvl-neg" : "lvl-pos"}" title="gemessen an ${l.titles} gemeinsamen Titeln">${l.level > 0 ? "+" : ""}${l.level} %</span> <small class="hint">${l.cheaper} günstiger, ${l.sale} im Angebot</small>`;
@@ -1317,27 +1300,46 @@ function viewSettings(){
       <td>${ref ? "" : `<input type="number" data-k="balance" step="0.01" min="0" value="${x.balance || 0}">`}</td>
       <td>${ref ? "" : `<input type="checkbox" data-k="rest_blocks" ${x.rest_blocks ? "checked" : ""}>`}</td>
       <td style="white-space:nowrap">${kurs}</td><td style="white-space:nowrap">${level}</td></tr>`;
-  }).join("");
-  h += `</tbody></table></div>
-    <h3 class="sec">Guthabenkarten</h3>
-    <p class="hint">Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag, so folgen die Kosten jedem neuen Kurs. Nur Werte wie <code>500 1000 3000</code> genügen, wenn du Guthaben zum Kurs kaufst (Amazon Japan): Dann zählt auch der Rest. Hat eine Karte einen Link, liest das Tool den Preis einmal am Tag von der Shopseite, sofern die Seite ihn ohne Browser verrät. Sonst gilt dein Wert.</p>
-    <div class="cardsbox">`;
-  h += S.state.countries.filter(c => c.code !== "DE" && (s.countries[c.code].enabled || s.countries[c.code].cards)).map(c => {
+  };
+  // Guthabenkarten aufklappbar unter ihrem Land
+  const cardRow = c => {
     const x = s.countries[c.code];
-    const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000;
-    return `<label>${esc(c.name)}${c.code === "DG" ? ` <small>(deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest bleibt auf dem Konto und wird ab 5 € gewarnt; Deutschland zum Shop-Preis bleibt die Vergleichsbasis)</small>` : ""}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>
-      <small><span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</small>
-      ${cardStatus(c.code, (S.state.pay[c.code] || {}).currency) ? `<small>${cardStatus(c.code, (S.state.pay[c.code] || {}).currency)}</small>` : ""}</label>`;
-  }).join("");
-  h += `</div></form>` + langSection() + `
-    <h3 class="sec">Sicherung</h3>
+    if(c.code === "DE" || (x.pay === "card" && !x.cards)) return "";
+    const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000, k = "cards:" + c.code;
+    const cs = cardStatus(c.code, (S.state.pay[c.code] || {}).currency);
+    return `<tr class="cardrow"><td colspan="10"><details data-k="${k}" ${S.folds[k] ? "open" : ""}><summary>Guthabenkarten: <span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</summary>
+      ${c.code === "DG" ? `<small class="hint">Deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest bleibt auf dem Konto und wird ab 5 € gewarnt; Deutschland zum Shop-Preis bleibt die Vergleichsbasis.</small>` : ""}
+      <textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>${cs ? `<small class="hint">${cs}</small>` : ""}</details></td></tr>`;
+  };
+  const table = list => `<div class="scroll"><table><thead><tr><th>Land</th><th title="Land in Titeln, Kaufplan und Ländern zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th><th title="Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt. schwer: Rest blockiert den Wechsel. Je Stufe gilt unter Regeln eine eigene Mindestersparnis.">Wechsel</th><th title="Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der eingetragenen Karten, sonst Kurs plus Aufschlag. Das Günstigere: wählt je Paket.">Bezahlen</th><th title="Aufschlag auf den Mittelkurs für Guthaben ohne eingetragenen Kartenpreis. Leer gilt der allgemeine Wert oben. 0 heißt: Guthaben zum Kurs, etwa bei Amazon Japan.">Aufschlag %</th><th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th><th title="Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.">Guthaben</th><th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er über den Support gelöst ist (Amerika). Sonst verfällt ein Rest nur und zählt als Kosten.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne Kartenpreis: der Aufschlag, als Schätzung.">Dein Kurs</th><th title="Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.">Preisniveau</th></tr></thead><tbody>${list.map(c => row(c) + cardRow(c)).join("")}</tbody></table></div>`;
+  const act = S.state.countries.filter(on), off = S.state.countries.filter(c => !on(c));
+  const t = s.tier_min_saving, de = s.deal_eur;
+  const jump = [["set-laender", "Länder"], ["set-regeln", "Regeln"], ["set-gebuehren", "Gebühren"], ["sprachen", "Sprachen"], ["set-quellen", "Quellen"], ["set-sicherung", "Sicherung und Protokoll"]];
+  let h = `<div class="jump">${jump.map(([id, l]) => `<a href="#${id}">${l}</a>`).join("")}<span class="saved" id="saved"></span></div>
+    <form class="set" id="setForm">
+    <h3 class="sec" id="set-laender">Länder</h3>
+    <div class="fields" style="max-width:380px"><label class="f" title="Für dieses Land gilt keine Mindestersparnis, du bist ja schon dort.">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
+      [...S.state.countries].sort((x, y) => x.name.localeCompare(y.name, "de")).map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label></div>
+    ${table(act)}
+    <p class="hint">Das Preisniveau vergleicht deine Wishlist mit Deutschland. Eine Guthabenkarte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>; mehr unter „So trägst du Karten ein“.</p>
+    <details class="hint" data-k="cardhelp" ${S.folds.cardhelp ? "open" : ""}><summary>So trägst du Karten ein</summary><p>Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Ohne Preis rechnet das Tool mit Kurs plus Aufschlag, so folgen die Kosten jedem neuen Kurs. Nur Werte wie <code>500 1000 3000</code> genügen, wenn du Guthaben zum Kurs kaufst (Amazon Japan): Dann zählt auch der Rest. Hat eine Karte einen Link, liest das Tool den Preis einmal am Tag von der Shopseite, sofern die Seite ihn ohne Browser verrät. Sonst gilt dein Wert.</p></details>
+    ${off.length ? `<details class="box fold" data-k="morecountries" ${S.folds.morecountries ? "open" : ""}><summary>weitere Länder (${off.length})</summary><p class="hint">Einschalten und aktualisieren; das Preisniveau zeigt, ob es sich lohnt.</p>${table(off)}</details>` : ""}
+    <h3 class="sec" id="set-regeln">Regeln</h3>
+    <p class="rule">„kaufen“ bis ${eur(de.buy)} oder 2 % über dem Bestpreis, „gut“ bis ${eur(de.good)} oder 15 %. Ein Wechsel lohnt ab ${eur(t["1"])} Gewinn in einem leichten, ${eur(t["2"])} in einem mittleren und ${eur(t["3"])} in einem schweren Land.</p>
+    <div class="fields"><label class="f" title="Liegt das günstigste zählende Angebot (in jedem Land, jeder Stufe) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
+    <div class="fields" style="margin-top:12px"><label class="f" title="Kaufplan und Pakete: Ein Land lohnt sich erst, wenn es gegenüber dem, was dieselben Titel ohne diesen Wechsel kosten (günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), so viel spart. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Gewinn, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label><label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label><label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label></div>
+    <h3 class="sec" id="set-gebuehren">Gebühren</h3>
+    <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label><label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label></div>
+    </form>` + langSection() + `
+    <h3 class="sec" id="set-quellen">Quellen</h3>
+    <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label><label class="f" title="Liest einmal am Tag je Land mit Guthabenkarten die Kartenpreise von gg.deals: je Kartenwert den günstigsten Preis über alle Shops, in Euro. Fehlende Kartenwerte kommen dazu, bei eingetragenen gilt der günstigere Preis. Als nicht vorrätig markierte Werte (x) bleiben draußen."><span><input form="setForm" name="card_market" type="checkbox" ${s.card_market ? "checked" : ""}> Kartenpreise von gg.deals lesen</span></label></div>
+    <p class="hint" style="margin-top:8px">Wechselkurse vom ${esc(fxStamp())}. Das Tool holt sie bei jedem Abgleich, die Quelle erneuert sie einmal am Tag ·
+      <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
+    <pre class="log" id="diag" ${S.diagText ? "" : "hidden"}>${esc(S.diagText || "")}</pre>
+    <h3 class="sec" id="set-sicherung">Sicherung und Protokoll</h3>
     <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise und Körbe. Preise und Verlauf holt das Tool selbst neu.</p>
     <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
       <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p>
-    <h3 class="sec">Letzter Abgleich</h3>
-    <p class="hint" style="margin-bottom:8px">Wechselkurse vom ${esc(fxStamp())}. Das Tool holt sie bei jedem Abgleich, die Quelle erneuert sie einmal am Tag ·
-      <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
-    <pre class="log" id="diag" ${S.diagText ? "" : "hidden"}>${esc(S.diagText || "")}</pre>
     <pre class="log" id="log" style="margin-top:8px"></pre>`;
   return h;
 }
@@ -1433,6 +1435,7 @@ document.addEventListener("click", async e => {
       go("laender");
     }
     else if(a === "gocards"){
+      S.folds["cards:" + d.c] = 1;
       go("settings", false);
       const t = document.querySelector(`textarea[data-cards="${CSS.escape(d.c || "")}"]`);
       if(t){ t.scrollIntoView({block:"center"}); t.focus(); }
@@ -1505,7 +1508,10 @@ document.addEventListener("change", async e => {
       await refresh();
       toast("Sicherung eingelesen");
     }
-    else if(el.closest("#setForm")){ await saveSettings($("setForm"), !!el.dataset.cards || ["pay", "tax_pct", "markup_pct"].includes(el.dataset.k)); }
+    else if(el.closest("#setForm") || (el.form && el.form.id === "setForm")){
+      await saveSettings($("setForm"), !!el.dataset.cards || ["pay", "tax_pct", "markup_pct"].includes(el.dataset.k) ||
+        ["deal_buy", "deal_good", "tier1", "tier2", "tier3"].includes(el.name));
+    }
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
     else if(a === "sort"){ S.ui.sort = el.value; saveUi(); render(); }
