@@ -376,6 +376,11 @@ class Context:
             if not text:
                 return None
             return "german" in text.lower() or "deutsch" in text.lower() or "ドイツ語" in text
+        if it.get("dlc_of"):
+            # fehlendes DLC deines Spiels: deine Angabe zum Spiel gilt auch für sein DLC
+            v = (conf.get(it["dlc_of"]) or {}).get(fam)
+            if isinstance(v, bool):
+                return v
         found = own(slug, it)
         if found is None and it.get("parent") in self.items:
             found = own(it["parent"], self.items[it["parent"]])
@@ -1360,8 +1365,12 @@ def extra_context(data, settings, now=None):
     extra = {s: e for s, e in (data.get("extra") or {}).items() if s in wanted}
     if not extra:
         return None
+    glangs = data.get("glangs") or {}
+    # Sprache: eigene Angabe des DLC (Europa), sonst die seines Spiels (eine Seite je Spiel)
     items = {s: {"title": e["title"], "parent": None, "dlc_of": e["parent"], "active": True,
-                 "order": i, "ids": e.get("ids") or {}} for i, (s, e) in enumerate(extra.items())}
+                 "order": i, "ids": e.get("ids") or {},
+                 "langs": dict((glangs.get(e["parent"]) or {}).get("langs") or {}, **(e.get("langs") or {}))}
+             for i, (s, e) in enumerate(extra.items())}
     return Context(dict(data, items=items, prices=data.get("xprices") or {}, lows={}),
                    settings, now)
 
@@ -1469,22 +1478,25 @@ LANG_CHECK_URL = {
 
 def lang_todo(data, settings, now=None):
     """Sprache je Titel und Region mit aktivem Land, für Titel mit deutscher Fassung in
-    Deutschland: von Nintendo geprüft, ungeprüft oder von Hand. Von Hand gilt vor Nintendo."""
+    Deutschland: Wishlist-Titel und die Spiele, denen DLC fehlt (Füllartikel). Jeder Titel
+    steht einmal je Region in der Liste, unabhängig vom Preis: von Nintendo gelesen, von
+    dir bestätigt oder offen. Von Hand gilt vor Nintendo."""
     ctx = Context(data, settings, now, include_all=True)
     live = Context(data, settings, now)       # Bestpreis nur über die aktiven Länder
+    xctx = extra_context(data, settings, now)
 
-    def cheapest(slug, codes):
+    def cheapest(slug, codes, c_=live):
         """Günstigster Preis jetzt oder je in diesen Ländern, in Euro."""
         best = None
         for code in codes:
-            c = live.countries.get(code)
+            c = c_.countries.get(code)
             o = c and c["offers"].get(slug)
             if not o or c["unit"] is None:
                 continue
-            local, low = o["local"], live.low_value(code, slug)
+            local, low = o["local"], c_.low_value(code, slug)
             if low is not None:
                 local = min(local, round(cents(low) * (1 + c["tax"] / 100)))
-            eur = live.est(c, local)
+            eur = c_.est(c, local)
             if best is None or eur < best[0]:
                 best = (eur, code)
         return best
@@ -1494,30 +1506,53 @@ def lang_todo(data, settings, now=None):
         if fam != "EU" and settings["countries"][c["code"]]["enabled"]:
             fams.setdefault(fam, []).append(c["code"])
     out, conf = [], settings.get("lang_confirm") or {}
+
+    def row(slug, title, fam, codes, nsuid, state, nintendo, text, here, champ, **more):
+        return dict({"slug": slug, "title": title, "family": fam,
+                     "here": None if not here else {"eur": _r(here[0]), "code": here[1]},
+                     "champ": None if not champ else {"eur": _r(champ[0]), "code": champ[1]},
+                     # dort gerade günstiger als der Bestpreis: die Antwort ändert jetzt etwas
+                     "matters": bool(here and (not champ or here[0] < champ[0] - 0.005)),
+                     "family_name": countries.FAMILIES[fam], "codes": codes,
+                     "url": LANG_CHECK_URL.get(fam, "").format(nsuid=nsuid),
+                     "state": state, "manual": isinstance((conf.get(slug) or {}).get(fam), bool),
+                     "text": text, "nintendo": nintendo}, **more)
     for slug in ctx.order:
         it = ctx.items[slug]
-        if it.get("parent") or ctx.german(it, "EU", slug) is not True:
+        # DLC mit Hauptspiel auf der Wishlist richtet sich nach dem Spiel
+        if it.get("parent") in ctx.items or ctx.german(it, "EU", slug) is not True:
             continue
         for fam, codes in fams.items():
             ids = (it.get("ids") or {}).get(fam) or []
-            if not ids:
+            if ids:
+                out.append(row(slug, it["title"], fam, codes, ids[0], ctx.german(it, fam, slug),
+                               ctx.german(it, fam, slug, by_hand=False),
+                               (it.get("langs") or {}).get(fam), cheapest(slug, codes),
+                               live.champ_all.get(slug)))
+    if xctx:
+        rel, games = data.get("rel") or {}, {}
+        for s in xctx.order:
+            games.setdefault(xctx.items[s]["dlc_of"], []).append(s)
+        for game, dlc in games.items():
+            if not any(xctx.german(xctx.items[s], "EU", s) is True for s in dlc):
                 continue
-            state = ctx.german(it, fam, slug)
-            manual = isinstance((conf.get(slug) or {}).get(fam), bool)
-            # Alle Titel stehen in der Liste: automatisch geprüfte mit der Angabe von
-            # Nintendo (Entscheidung 12.10.2026), ungeprüfte zum Bestätigen, eigene Angaben zum Zurücksetzen
-            # Prüfen lohnt nur, wo die Fassung den Bestpreis der zählenden Länder
-            # unterbieten würde; sonst ändert die Antwort nichts
-            here, champ = cheapest(slug, codes), live.champ_all.get(slug)
-            out.append({"slug": slug, "title": it["title"], "family": fam,
-                        "here": None if not here else {"eur": _r(here[0]), "code": here[1]},
-                        "champ": None if not champ else {"eur": _r(champ[0]), "code": champ[1]},
-                        "matters": bool(here and (not champ or here[0] < champ[0] - 0.005)),
-                        "family_name": countries.FAMILIES[fam], "codes": codes,
-                        "url": LANG_CHECK_URL.get(fam, "").format(nsuid=ids[0]),
-                        "state": state, "manual": manual,
-                        "text": (it.get("langs") or {}).get(fam),
-                        "nintendo": ctx.german(it, fam, slug, by_hand=False)})
+            for fam, codes in fams.items():
+                with_id = [s for s in dlc if (xctx.items[s].get("ids") or {}).get(fam)]
+                if not with_id:
+                    continue
+                first = xctx.items[with_id[0]]
+                prices, matters = [], False
+                for s in with_id:
+                    p = cheapest(s, codes, xctx)
+                    if p:
+                        prices.append(p)
+                        best = _extra_best(xctx, s)
+                        matters = matters or not best or p[0] < best["eur"] - 0.005
+                out.append(row(game, (rel.get(game) or {}).get("title") or game, fam, codes,
+                               first["ids"][fam][0], xctx.german(first, fam, with_id[0]),
+                               xctx.german(first, fam, with_id[0], by_hand=False),
+                               (first.get("langs") or {}).get(fam), min(prices) if prices else None,
+                               None, dlc=len(dlc), matters=matters))
     return out
 
 
