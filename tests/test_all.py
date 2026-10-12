@@ -107,6 +107,14 @@ class SourcesTest(unittest.TestCase):
         self.assertEqual(sources.parse_item_page(page)["history"], series)
         self.assertEqual(sources.parse_history("<html>ohne Verlauf</html>"), [])
 
+    def test_languages_americas(self):
+        page = ('<script id="__NEXT_DATA__">{"product":{"supportedLanguages":'
+                '["English","French","Spanish"]}}</script>')
+        self.assertEqual(sources.parse_langs_am(page), "english, french, spanish")
+        page = '<h3>Supported languages</h3><p>English, German</p>'
+        self.assertEqual(sources.parse_langs_am(page), "english, german")
+        self.assertIsNone(sources.parse_langs_am("<p>Nichts</p>"))
+
     def test_low_prefers_digital(self):
         both = ("<h3>Price history</h3><table><tr><td>All time low</td></tr>"
                 "<tr><td>Physical</td><td>€27,19</td><td>(-55%)</td></tr>"
@@ -301,7 +309,11 @@ class PlanTest(unittest.TestCase):
                                        {"face": 15.0, "count": 1, "url": ""}])
         self.assertAlmostEqual(br["cost"], 7.80)
         self.assertAlmostEqual(br["rest"], 2.41)
-        self.assertAlmostEqual(br["saving"], round(24.99 + 1.99 - 7.80, 2))
+        # Der Rest ist kein Verlust: 2,41 R$ zum Kartenkurs des Landes sind 0,46 €,
+        # die Spiele selbst also 7,34 €
+        self.assertAlmostEqual(br["rest_value"], 0.46, places=2)
+        self.assertAlmostEqual(br["games_cost"], 7.34)
+        self.assertAlmostEqual(br["saving"], round(24.99 + 1.99 - 7.34, 2))
         self.assertIn("Rest blockiert", " ".join(br["warnings"]))
         self.assertIn("DLC", " ".join(br["warnings"]))
         # Nidhogg 2 (7,50 BRL) braucht eine Karte mehr, spart aber gegenüber 14,99 € in DE
@@ -353,7 +365,10 @@ class PlanTest(unittest.TestCase):
         # 33,59 + 59,90 + 7,50 = 100,99 BRL -> 50 + 25 + 15 + 15 = 20,30 €
         self.assertAlmostEqual(by["BR"]["cost"], 20.30)
         self.assertAlmostEqual(by["BR"]["rest"], 105 - 100.99)
-        self.assertAlmostEqual(by["BR"]["saving"], round(24.99 + 19.99 + 14.99 - 20.3, 2))
+        # Rest 4,01 R$ zum Kartenkurs der 50er (9,50 €) zählt nicht als Kosten
+        self.assertAlmostEqual(by["BR"]["saving"],
+                               round(24.99 + 19.99 + 14.99 - 20.3 + by["BR"]["rest_value"], 2))
+        self.assertGreater(by["BR"]["rest_value"], 0.7)
         self.assertEqual([i["slug"] for i in by["DE"]["items"]], basket)
         # eigene Länder-Auswahl spielt im gemeinsamen Korb keine Rolle
         again = planner.plans(self.data, self.settings, basket=basket, now=NOW,
@@ -463,6 +478,32 @@ class PlanTest(unittest.TestCase):
         items["hades"]["langs"] = {"EU": "german", "JP": "日本語"}
         by = self.by(planner.plans(self.data, self.settings, now=NOW))
         self.assertIn("ohne deutsche Fassung", " ".join(by["JP"]["warnings"]))
+
+    def test_manual_language_confirmation(self):
+        items = self.data["items"]
+        items["hades"]["langs"] = {"EU": "english, german"}
+        items["hades"]["ids"].update(JP=["70010000000001"], AM=["70010000000002"])
+        todo = {(t["slug"], t["family"]) for t in planner.lang_todo(self.data, self.settings, now=NOW)}
+        self.assertEqual(todo, {("hades", "JP"), ("hades", "AM")})
+        # Von Hand: Japan ohne Deutsch fällt weg, Amerika mit Deutsch zählt
+        self.settings["lang_confirm"] = {"hades": {"JP": False, "AM": True}}
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertTrue(cells["JP"]["nolang"])
+        self.assertEqual(cells["BR"]["lang"], "de")
+        rows = planner.lang_todo(self.data, self.settings, now=NOW)
+        self.assertTrue(all(t["manual"] for t in rows))    # bleibt sichtbar, zum Zurücksetzen
+        # Von Hand geht vor Nintendo
+        items["hades"]["langs"]["JP"] = "日本語, ドイツ語"
+        self.assertTrue(planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]["JP"]["nolang"])
+
+    def test_package_distance_to_optimum(self):
+        by = self.by(planner.plans(self.data, self.settings, now=NOW))
+        br = by["BR"]
+        # Hades und VS Foscari kosten in Brasilien so wenig wie nirgends sonst: Optimum
+        self.assertEqual((br["opt_gap"], br["opt_at"], br["opt_known"]), (0.0, 2, 2))
+        no, hades_br = by["NO"], br["items"][0]["eur"]
+        self.assertAlmostEqual(no["opt_gap"], round(9.50 - hades_br, 2))   # Hades in NO 9,50 €
+        self.assertEqual(no["opt_at"], 0)
 
     def test_best_price_marks(self):
         # Hades: BR 33,59 (Tief 33,59), NO 100 (Tief 80), JP 1400, DE 24,99
@@ -819,11 +860,11 @@ class PlanTest(unittest.TestCase):
     def test_purchase_plan_drops_weak_countries(self):
         plan = planner.purchase_plan(self.data, self.settings, now=NOW)
         steps = [(s["code"], [i["slug"] for i in s["items"]]) for s in plan["steps"]]
-        # Brasilien spart 19,18 € und verfehlt die Schwelle von 20 € der Stufe schwer.
+        # Brasilien spart 19,64 € (ohne den Rest) und verfehlt die Schwelle von 20 € der Stufe schwer.
         # Hades wandert nach Japan, VS Foscari lohnte nur dort und wartet.
         self.assertEqual(steps, [("DE", ["spiritfarer"]), ("JP", ["hades"])])
         self.assertEqual([d["code"] for d in plan["dropped"]], ["BR"])
-        self.assertAlmostEqual(plan["dropped"][0]["saving"], 19.18)
+        self.assertAlmostEqual(plan["dropped"][0]["saving"], 19.64)
         self.assertEqual([x["slug"] for x in plan["later"]], ["vs-foscari"])
         self.assertAlmostEqual(plan["cost"], 14.27)
         self.assertAlmostEqual(plan["ref_total"], 31.23)
@@ -876,7 +917,11 @@ class StoreTest(unittest.TestCase):
                             "overrides": {"BR": {"add": ["x"], "remove": None}}})
         self.assertEqual(ui["basket"], ["a", "b"])
         self.assertEqual(ui["targets"], {"b": 7.5})          # nur gültige Zahlen
-        self.assertEqual((ui["sort"], ui["dense"], ui["hidden"]), ("saving", False, ["NZ"]))
+        self.assertEqual((ui["sort"], ui["dense"], ui["hidden"]), ("optimum", False, ["NZ"]))
+        s = store.save_settings({"lang_confirm": {"hades": {"JP": True, "AM": "x", "EU": False}}})
+        self.assertEqual(s["lang_confirm"], {"hades": {"JP": True}})
+        s = store.save_settings({"lang_confirm": {"hades": {"JP": None}}})
+        self.assertEqual(s["lang_confirm"], {})
         self.assertEqual(ui["overrides"], {"BR": {"add": ["x"], "remove": []}})
         self.assertIsNone(store.save_ui({"basket": []})["basket"])
         s = store.save_settings({"countries": {"US": {"tier": "9", "tax_pct": "7.5", "pay": "auto",

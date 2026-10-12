@@ -56,7 +56,7 @@ th:first-child,td:first-child{text-align:left}
 .lgt.no{background:var(--warn-bg);color:var(--warn)}
 .matrix td.champ{box-shadow:inset 0 0 0 2px var(--gold)}
 .matrix td.bp{white-space:nowrap}
-.pc .save.ref{color:var(--muted)}
+.pc .save.near{color:var(--gold)}
 .pc .line .cost{font-size:16px}
 .bad{color:var(--warn);font-weight:600}
 .over{color:var(--sale)}
@@ -642,7 +642,15 @@ function viewRadar(){
     return `<tr class="v-${r.verdict}"><td>${r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : ""}<a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen">${esc(r.title)}</a><a class="mini" href="${epSearch(r.title)}" target="_blank" rel="noopener" title="Bei eShop-Prices suchen">eP</a><button class="mini" data-act="verlauf" data-s="${esc(r.slug)}" title="Preisverlauf aus der eigenen Aufzeichnung">Verlauf</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
       ${bestCell(r.easy, r.slug, false)}${bestCell(r.hard, r.slug, true)}${champ}
       <td>${r.de === null ? `<span class="na">–</span>` : eur(r.de)}</td>
-      <td><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="–">${hit ? ` <span class="ok">✓</span>` : ""}</td>
+      <td>${(() => {
+        // Leeres Ziel: der Bestpreis der leicht erreichbaren Länder als Vorschlag, ein Klick übernimmt ihn
+        // Nur sinnvoll, wenn der Bestpreis unter dem Preis jetzt liegt; sonst wäre das Ziel sofort erreicht
+        const ce = r.champ_easy || r.champ;
+        const sug = r.target === null && ce && (!r.easy || ce.eur < r.easy.eur - 0.005) ? ce.eur : null;
+        return `<input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="${sug === null ? "–" : num(sug)}">` +
+          (sug !== null ? `<button class="mini" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}" title="Bestpreis ${eur(sug)} als Zielpreis übernehmen">übernehmen</button>` : "") +
+          (hit ? ` <span class="ok">✓</span>` : "");
+      })()}</td>
       <td><span class="vd ${r.verdict}" title="${esc(r.reason)}">${VERDICT[r.verdict]}</span>${r.verdict !== "none" || (r.lang_unsure || []).length ? `<small>${esc(r.reason)}</small>` : ""}</td>
       <td><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
   }).join("");
@@ -697,7 +705,8 @@ function kaufStep(p, n){
 function sortPlans(list){
   const endOf = p => Math.min(Infinity, ...p.items.filter(i => i.end).map(i => +new Date(i.end)));
   const sav = (a, b) => (b.saving ?? -1e9) - (a.saving ?? -1e9);
-  const by = {saving: sav, rest: (a, b) => (a.rest_eur ?? 1e9) - (b.rest_eur ?? 1e9) || sav(a, b),
+  const opt = (a, b) => (a.opt_gap ?? 1e9) - (b.opt_gap ?? 1e9) || sav(a, b);
+  const by = {optimum: opt, saving: sav, rest: (a, b) => (a.rest_eur ?? 1e9) - (b.rest_eur ?? 1e9) || sav(a, b),
               end: (a, b) => endOf(a) - endOf(b) || sav(a, b), tier: (a, b) => a.tier - b.tier || sav(a, b)}[S.ui.sort] || sav;
   return list.filter(p => !p.is_ref).sort(by).concat(list.filter(p => p.is_ref));
 }
@@ -710,7 +719,7 @@ function viewCards(){
   const opt = (v, l) => `<option value="${v}" ${S.ui.sort === v ? "selected" : ""}>${l}</option>`;
   let h = `<div class="bar"><b>Angebote je Land</b>
     <span class="seg"><button data-act="dense" data-v="1" class="${S.ui.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.ui.dense ? "" : "on"}">Liste</button></span>
-    <select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("saving","nach Ersparnis")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
+    <select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Optimum")}${opt("saving","nach Ersparnis gg. DE")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
     ${LEGEND}<span class="sp"></span>
     <span class="hint">„Korb für alle“ vergleicht einen Korb in allen Ländern.</span></div>`;
   const cards = [], empty = [];
@@ -735,17 +744,23 @@ function planCard(p){
   const payName = p.is_ref ? "Vergleichsbasis" : {card:"Karte", giftcard:"Guthabenkarte", auto:"Karte oder Guthaben"}[p.pay];
   const sub = [p.current ? "aktuelles Land" : null, payName, p.is_ref ? null : "Wechsel " + p.tier_name,
     p.family, `${p.available} kaufbar`].filter(Boolean).join(" · ");
-  let save = "";
+  // Kopfzahl: Abstand zum Optimum, also zu den Bestpreisen der Titel
+  let save = "", saveDe = "";
+  if(has && p.opt_gap !== null && p.opt_gap !== undefined){
+    const at = p.opt_gap < 0.005;
+    save = `<span class="save ${at ? "" : p.opt_gap <= 2 * p.opt_known + 0.005 ? "near" : "low"}" title="Abstand zum Optimum: Summe dessen, was jeder Titel hier über seinem Bestpreis liegt (dem niedrigsten Preis, den es je in einem Land gab, zum heutigen Kurs). ${p.opt_at} von ${p.opt_known} Titeln liegen am Bestpreis.">${at ? "Optimum" : "+" + eur(p.opt_gap)}<small>${p.opt_at}/${p.opt_known} am Bestpreis</small></span>`;
+  }
   if(has && p.saving !== null){
     const sign = p.saving >= 0 ? "−" : "+";
-    save = `<span class="save ${p.is_ref ? "ref" : p.saving < 0 ? "neg" : (p.worth ? "" : "low")}" title="${p.is_ref ? "Angebote in Deutschland gegenüber dem Normalpreis, kein Ländervergleich" : p.worth ? "Ersparnis gegenüber Deutschland" : `Ersparnis gegenüber Deutschland, unter deiner Schwelle von ${eur(p.threshold)} für die Stufe ${p.tier_name}`}">${sign}${eur(Math.abs(p.saving))}<small>${Math.abs(p.saving_pct)} %</small></span>`;
+    saveDe = `<span class="${p.is_ref ? "" : p.saving < 0 ? "bad" : (p.worth ? "ok" : "")}" title="${p.is_ref ? "Angebote in Deutschland gegenüber dem Normalpreis" : p.worth ? "Ersparnis gegenüber Deutschland jetzt, ohne Rest" : `Ersparnis gegenüber Deutschland jetzt, ohne Rest. Unter deiner Schwelle von ${eur(p.threshold)} für die Stufe ${p.tier_name}`}">${sign}${eur(Math.abs(p.saving))} ${p.is_ref ? "gg. normal" : "gg. DE"}</span>`;
   }
   let h = `<article class="pc ${p.current ? "cur" : ""}"><header><h2>${esc(p.name)}</h2><span>${save}${p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</span></header><p class="sub">${esc(sub)}</p>`;
 
   if(has){
     const parts = [`${cur === "EUR" ? "" : money(p.total, cur) + " → "}<b class="cost" title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}</b> statt ${eur(p.ref_total)}${p.is_ref ? " normal" : ""}`];
-    // Bleibt Guthaben übrig, steckt es in den Kosten: zeigen, was die Spiele allein kosten
-    if(!p.is_ref && p.rest_eur >= 0.5) parts.push(`<small title="Die Kosten enthalten ${eur(p.rest_eur)} Restguthaben, das auf dem Konto bleibt. Nutzt du es später für einen weiteren Kauf, kosten die Spiele selbst so viel.">Spiele allein ${eur(p.cost - p.rest_eur)}</small>`);
+    // Bleibt Guthaben übrig, steckt es im Kartenpreis: zeigen, was die Spiele selbst kosten
+    if(!p.is_ref && p.rest_value >= 0.5) parts.push(`<small title="Du zahlst ${eur(p.cost)} für die Karten. ${eur(p.rest_value)} davon bleiben als Rest auf dem Konto; die Spiele selbst kosten ${eur(p.games_cost)}. Die Ersparnis rechnet mit diesem Betrag.">Spiele ${eur(p.games_cost)}</small>`);
+    if(saveDe) parts.push(saveDe);
     if(p.cards.length) parts.push(cardsHtml(p));
     if(!p.is_ref) parts.push(restHtml(p));
     if(!p.worth && p.saving >= 0) parts.push(`<small title="Für Länder der Stufe ${esc(p.tier_name)} lohnt der Wechsel bei dir erst ab ${eur(p.threshold)} Ersparnis">unter Schwelle ${eur(p.threshold)}</small>`);
@@ -894,7 +909,7 @@ function viewMatrix(){
       if(!x) return `<td class="na"></td>`;
       if(x.na) return `<td class="na" ${x.nolang ? `title="Hier gibt es keine deutsche Fassung"` : ""}>${x.nolang ? "kein DE" : "–"}</td>`;
       const champ = r.champ && r.champ.code === c.code;
-      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.lang === "unknown" ? `<small class="hint">Sprache?</small> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
+      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.lang === "unknown" ? `<button class="link hint" style="font-size:11px" data-act="gosprachen" title="Unter Einstellungen einmal bestätigen">Sprache?</button> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
 }
@@ -1030,11 +1045,11 @@ function viewSettings(){
   h += S.state.countries.filter(c => c.code !== "DE" && (s.countries[c.code].enabled || s.countries[c.code].cards)).map(c => {
     const x = s.countries[c.code];
     const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000;
-    return `<label>${esc(c.name)}${c.code === "DG" ? ` <small>(deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest zählt wie in jedem Guthabenland als Kosten; Deutschland zum Shop-Preis bleibt die Vergleichsbasis)</small>` : ""}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>
+    return `<label>${esc(c.name)}${c.code === "DG" ? ` <small>(deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest bleibt auf dem Konto und wird ab 5 € gewarnt; Deutschland zum Shop-Preis bleibt die Vergleichsbasis)</small>` : ""}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>
       <small><span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</small>
       ${cardStatus(c.code, (S.state.pay[c.code] || {}).currency) ? `<small>${cardStatus(c.code, (S.state.pay[c.code] || {}).currency)}</small>` : ""}</label>`;
   }).join("");
-  h += `</div></form>
+  h += `</div></form>` + langSection() + `
     <h3 class="sec">Sicherung</h3>
     <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise und Körbe. Preise und Verlauf holt das Tool selbst neu.</p>
     <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
@@ -1062,6 +1077,19 @@ function settingsBody(form){
     (body.countries[el.dataset.cards] = body.countries[el.dataset.cards] || {}).cards = el.value;
   });
   return body;
+}
+/* Sprachen von Hand bestätigen: einmal je Titel und Region */
+function langSection(){
+  const todo = S.state.lang_todo || [];
+  const open = todo.filter(t => !t.manual), done = todo.filter(t => t.manual);
+  let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
+    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus Japan oder Amerika nur, wenn sie Deutsch enthält. Wo Nintendo keine Angabe liefert, steht hier der Titel: im Store nachsehen und einmal bestätigen. Deine Angabe gilt dauerhaft und geht der von Nintendo vor.</p>`;
+  if(!todo.length) return h + `<p class="hint">Alles geprüft.</p>`;
+  const row = t => `<tr><td>${esc(t.title)}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
+    <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
+    <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
+      : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
+  return h + `<div class="scroll"><table><thead><tr><th>Titel</th><th>Region</th><th></th><th>Deutsch?</th></tr></thead><tbody>${open.concat(done).map(row).join("")}</tbody></table></div>`;
 }
 async function saveSettings(form, rerender){
   const active = () => JSON.stringify(Object.entries(S.state.settings.countries).filter(e => e[1].enabled).map(e => e[0]));
@@ -1098,6 +1126,13 @@ document.addEventListener("click", async e => {
   try{
     if(a === "tab"){ S.tab = d.tab; render(); window.scrollTo(0, 0); }
     else if(a === "verlauf"){ await openVerlauf(d.s); }
+    else if(a === "gosprachen"){ S.tab = "settings"; render(); const t = $("sprachen"); if(t) t.scrollIntoView(); }
+    else if(a === "lang"){
+      await api("/api/settings", {lang_confirm: {[d.s]: {[d.f]: d.v === "" ? null : d.v === "1"}}});
+      S.state = await api("/api/state"); S.ui = S.state.ui; await loadPlans(); render();
+      toast(d.v === "" ? "Angabe zurückgesetzt" : "Sprache bestätigt");
+    }
+    else if(a === "tgtfill"){ S.ui.targets[d.s] = parseFloat(d.v); await saveUi(); await refresh(); toast("Zielpreis übernommen"); }
     else if(a === "bought"){
       const p = S.kauf.steps.find(x => x.code === d.c);
       if(!confirm(`Kauf in ${p.name} vermerken? Dein Konto steht danach dort${p.rest ? `, Rest ${money(p.rest, p.currency)}` : ""}.`)) return;

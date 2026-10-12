@@ -23,6 +23,8 @@ DEFAULT_SETTINGS = {
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
     # Maßstab des Urteils: typischer Angebotspreis (typical) oder Allzeit-Bestpreis (best)
     "verdict_ref": "typical",
+    # Sprachen von Hand bestätigt: {slug: {"JP": true, "AM": false}}
+    "lang_confirm": {},
     "refresh_hours": 6,
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
@@ -33,7 +35,7 @@ DEFAULT_SETTINGS = {
 
 # Was die Oberfläche sich merkt, für alle Geräte gleich
 DEFAULT_UI = {"basket": None, "overrides": {}, "targets": {}, "hidden": [],
-              "sort": "saving", "dense": True, "plan_good": False}
+              "sort": "optimum", "dense": True, "plan_good": False}
 
 EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {}, "card_market": {},
               "fx": {"rates": {"EUR": 1.0}, "updated": ""}, "last_sync": None}
@@ -120,6 +122,20 @@ def save_settings(new):
             s["lang_rule"] = new["lang_rule"]
         if new.get("verdict_ref") in ("typical", "best"):
             s["verdict_ref"] = new["verdict_ref"]
+        for slug, fams in (new.get("lang_confirm") or {}).items() if isinstance(
+                new.get("lang_confirm"), dict) else []:
+            if not isinstance(fams, dict) or not isinstance(slug, str) or len(slug) > 200:
+                continue
+            cur = s["lang_confirm"].setdefault(slug, {})
+            for fam, value in fams.items():
+                if fam not in ("JP", "AM", "AS"):
+                    continue
+                if isinstance(value, bool):
+                    cur[fam] = value
+                elif value is None:
+                    cur.pop(fam, None)
+            if not cur:
+                del s["lang_confirm"][slug]
         for tier, value in (new.get("tier_min_saving") or {}).items():
             if str(tier) in s["tier_min_saving"]:
                 try:
@@ -248,7 +264,7 @@ def save_ui(new):
             ui["targets"] = targets
         if isinstance(new.get("hidden"), list):
             ui["hidden"] = [str(x) for x in new["hidden"]][:60]
-        if new.get("sort") in ("saving", "rest", "end", "tier"):
+        if new.get("sort") in ("optimum", "saving", "rest", "end", "tier"):
             ui["sort"] = new["sort"]
         if "dense" in new:
             ui["dense"] = bool(new["dense"])

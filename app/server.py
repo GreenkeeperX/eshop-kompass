@@ -39,6 +39,7 @@ def state():
         "fx_updated": data["fx"].get("updated"),
         "item_count": sum(1 for it in data["items"].values() if it.get("active")),
         "matrix": planner.matrix(data, settings),
+        "lang_todo": planner.lang_todo(data, settings),
     }
 
 

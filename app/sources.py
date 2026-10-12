@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.11"
+VERSION = "0.12"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -411,6 +411,41 @@ def parse_langs_jp(page_html):
 
 def fetch_langs_jp(nsuid, fetch=fetch):
     return parse_langs_jp(fetch(JP_STORE_URL.format(nsuid=nsuid)))
+
+
+# Amerika: Die Titelseite des eShops leitet auf die Produktseite von nintendo.com
+# weiter. Dort stehen die Sprachen als "Supported languages" und in den
+# eingebetteten Seitendaten. Erlaubt laut robots.txt (User-agent *).
+AM_STORE_URL = "https://ec.nintendo.com/US/en/titles/{nsuid}"
+_LANG_NAMES = ["english", "french", "german", "italian", "spanish", "dutch", "portuguese",
+               "russian", "japanese", "korean", "chinese", "polish", "swedish", "danish",
+               "norwegian", "finnish", "czech", "hungarian", "greek", "turkish", "ukrainian",
+               "arabic", "thai"]
+_LANG_NAME_RE = re.compile(r"\b(" + "|".join(_LANG_NAMES) + r")\b", re.I)
+_AM_JSON_RE = re.compile(
+    r'"(?:supportedLanguages|supported_languages|languages)"\s*:\s*(\[[^\]]{0,1500}\]|"[^"]{0,600}")')
+_AM_TEXT_RE = re.compile(r"Supported languages?\s*:?\s*(.{0,250})", re.I)
+
+
+def _lang_words(text):
+    """Bekannte Sprachnamen in Reihenfolge, klein geschrieben. None, wenn keine."""
+    words = [w.lower() for w in _LANG_NAME_RE.findall(text or "")]
+    return ", ".join(dict.fromkeys(words)) or None
+
+
+def parse_langs_am(page_html):
+    """Sprachen von einer Produktseite von nintendo.com (Amerika)."""
+    page_html = _norm(html.unescape(page_html or ""))
+    for m in _AM_JSON_RE.finditer(page_html):
+        found = _lang_words(m.group(1))
+        if found:
+            return found
+    m = _AM_TEXT_RE.search(visible_text(page_html))
+    return _lang_words(m.group(1)) if m else None
+
+
+def fetch_langs_am(nsuid, fetch=fetch):
+    return parse_langs_am(fetch(AM_STORE_URL.format(nsuid=nsuid)))
 
 
 # ------------------------------------------------------------ Wechselkurse

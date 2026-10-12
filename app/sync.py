@@ -462,36 +462,41 @@ def sync_langs(data, settings, fetch, sleep, now=None):
                     it.setdefault("langs", {})["EU"] = found[nsuid]
             _log(f"Sprachen Europa: {len(found)} von {len(eu)} Titeln")
 
-    if settings["countries"]["JP"]["enabled"]:
-        # DLC übernimmt die Sprache des Hauptspiels, eigene Seiten braucht es dafür nicht
-        todo = [(s, it["ids"]["JP"][0]) for s, it in items.items()
-                if it["ids"].get("JP") and due(it, "JP") and not it.get("parent")]
+    # Japan und Amerika: eine Seite je Titel, einmal verlässlich, danach nur, wo sie fehlt.
+    # DLC übernimmt die Sprache des Hauptspiels, eigene Seiten braucht es dafür nicht.
+    per_title = [("JP", "Japan", sources.fetch_langs_jp), ("AM", "Amerika", sources.fetch_langs_am)]
+    for fam, name, fetch_one in per_title:
+        if not any(settings["countries"][code]["enabled"] for code in countries.ORDER
+                   if countries.BY_CODE[code]["family"] == fam):
+            continue
+        todo = [(s, it["ids"][fam][0]) for s, it in items.items()
+                if it["ids"].get(fam) and due(it, fam) and not it.get("parent")]
         got = fails = 0
         if todo:
-            _step("Sprachen Japan abrufen", len(todo))
+            _step(f"Sprachen {name} abrufen", len(todo))
         for slug, nsuid in todo:
             it = items[slug]
             try:
-                langs = sources.fetch_langs_jp(nsuid, fetch=fetch)
+                langs = fetch_one(nsuid, fetch=fetch)
             except sources.FetchError as e:
                 if e.status == 404:
                     langs = None           # keine Seite: als geprüft vermerken
                 else:
                     fails += 1
                     if e.status in (403, 429) or fails >= 5:
-                        _log(f"Sprachen Japan unterbrochen ({e})")
+                        _log(f"Sprachen {name} unterbrochen ({e})")
                         break
                     status["done"] += 1
                     sleep(DEKU_PAUSE)
                     continue
-            it.setdefault("langs_checked", {})["JP"] = now
+            it.setdefault("langs_checked", {})[fam] = now
             if langs:
-                it.setdefault("langs", {})["JP"] = langs
+                it.setdefault("langs", {})[fam] = langs
                 got += 1
             status["done"] += 1
             sleep(DEKU_PAUSE)
         if todo:
-            _log(f"Sprachen Japan: {got} von {len(todo)} Titeln")
+            _log(f"Sprachen {name}: {got} von {len(todo)} Titeln")
     store.save_data(data)
 
 
@@ -663,6 +668,17 @@ def diagnose():
                 f"Titel „{sources.page_title(t)[:60]}“, Anfang: {sources.visible_text(t)[:160]}, "
                 f"Verweise: {' '.join(refs)}")
     probe(f"Sprachen Japan ({jp})", sources.JP_STORE_URL.format(nsuid=jp), None, jp_info)
+
+    # Amerika: Weiterleitung auf nintendo.com, Sprachen aus Seitendaten oder Text
+    am = next((it["ids"]["AM"][0] for it in data["items"].values()
+               if it.get("active") and (it.get("ids") or {}).get("AM")), "70010000000025")
+
+    def am_info(t):
+        spots = [t[max(0, m.start() - 60):m.start() + 200].replace("\n", " ")
+                 for m in sources.re.finditer(r"(?i)supported.?languages|\"languages\"", t)][:3]
+        return (f"{len(t)} Zeichen, Sprachen: {sources.parse_langs_am(t)}, "
+                f"Titel „{sources.page_title(t)[:60]}“, Fundstellen: {' | '.join(spots) or 'keine'}")
+    probe(f"Sprachen Amerika ({am})", sources.AM_STORE_URL.format(nsuid=am), None, am_info)
 
     # Preisverlauf: DekuDeals liefert ihn als JSON in der Artikelseite (für Kurven im Tool)
     text = r["text"]

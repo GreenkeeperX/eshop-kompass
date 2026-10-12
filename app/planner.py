@@ -18,6 +18,7 @@ GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
 # Typischer Angebotspreis: Median der Tiefstwerte aller Angebotsphasen im
 # DekuDeals-Tagesverlauf dieses Zeitraums, erst ab so vielen Phasen
 TYPICAL_DAYS = 730
+HIGH_REST_EUR = 5.0      # ab diesem Rest in Euro warnt ein Paket
 TYPICAL_MIN_RUNS = 2
 # Gelesene Kartenpreise (Shopseite, gg.deals) zählen nur in diesem Bereich, gemessen am
 # Nennwert zum Mittelkurs. Ein Lesefehler (etwa ein Gebührenhinweis statt des Preises)
@@ -370,15 +371,24 @@ class Context:
 
     # ---- Sprachen
 
-    def german(self, it, fam):
+    def german(self, it, fam, slug=None):
         """Hat die Fassung dieser Region Deutsch? None, wenn unbekannt.
+        Deine Bestätigung von Hand geht vor, dann die Angabe von Nintendo.
         Ein DLC ohne eigene Angabe richtet sich nach seinem Hauptspiel."""
-        text = (it.get("langs") or {}).get(fam)
-        if not text and it.get("parent") in self.items:
-            text = (self.items[it["parent"]].get("langs") or {}).get(fam)
-        if not text:
-            return None
-        return "german" in text.lower() or "deutsch" in text.lower() or "ドイツ語" in text
+        conf = self.settings.get("lang_confirm") or {}
+
+        def own(s, item):
+            v = (conf.get(s) or {}).get(fam) if s else None
+            if isinstance(v, bool):
+                return v
+            text = (item.get("langs") or {}).get(fam)
+            if not text:
+                return None
+            return "german" in text.lower() or "deutsch" in text.lower() or "ドイツ語" in text
+        found = own(slug, it)
+        if found is None and it.get("parent") in self.items:
+            found = own(it["parent"], self.items[it["parent"]])
+        return found
 
     def _apply_language_rule(self):
         """Gibt es in Deutschland eine deutsche Fassung, kommen nur Regionen
@@ -390,13 +400,13 @@ class Context:
             fam = c["meta"]["family"]
             for slug in list(c["offers"]):
                 it = self.items[slug]
-                if self.german(it, "EU") is not True:
+                if self.german(it, "EU", slug) is not True:
                     continue
                 if fam == "EU":
                     # dasselbe Produkt wie im deutschen eShop
                     c["offers"][slug]["lang"] = "same"
                     continue
-                here = self.german(it, fam)
+                here = self.german(it, fam, slug)
                 if here is True:
                     c["offers"][slug]["lang"] = "de"
                 elif here is False and mode == "exclude":
@@ -666,24 +676,39 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
                   for f, n in base["cards"]],
         "rest": None if base["rest"] is None else base["rest"] / 100,
         "rest_eur": None if base["rest"] is None else _r(base["rest"] / 100 / c["rate"]),
+        # Was der Rest gekostet hat: zum Kurs, zu dem du das Guthaben bekommst
+        "rest_value": 0.0 if not base["rest"] or c["unit"] is None else base["rest"] * c["unit"],
         "ref_total": _r(ref_total),
     })
     if chosen:
         # Titel ohne deutschen Vergleichspreis zählen zum geschätzten Europreis
         ref_cmp = ref_total + sum(ctx.est(c, offers[s]["local"])
                                   for s in chosen if s not in ref)
-        out["saving"] = _r(ref_cmp - base["cost"])
-        out["saving_pct"] = round(100 * (ref_cmp - base["cost"]) / ref_cmp) if ref_cmp else 0
+        # Ein Rest bleibt auf dem Konto und ist kein Verlust: Ersparnis und
+        # Schwelle rechnen mit dem, was die Spiele selbst kosten (Entscheidung 12.10.2026).
+        # Ein hoher Rest wird gewarnt.
+        games = base["cost"] - out["rest_value"]
+        out["games_cost"] = _r(games)
+        out["saving"] = _r(ref_cmp - games)
+        out["saving_pct"] = round(100 * (ref_cmp - games) / ref_cmp) if ref_cmp else 0
         limit = float((ctx.settings.get("tier_min_saving") or {}).get(str(c["tier"]), 0))
         out["threshold"] = limit
         out["worth"] = is_ref or out["current"] or out["saving"] >= limit
 
+    # Abstand zum Optimum: je Titel, wie weit der Preis hier über dem Bestpreis
+    # liegt, den es je irgendwo gab (Entscheidung 12.10.2026: wichtiger als Deutschland)
+    known = [i for i in out["items"] if i.get("champ") is not None and i.get("eur") is not None]
+    out["opt_gap"] = _r(sum(max(0.0, i["eur"] - i["champ"]) for i in known)) if known else None
+    out["opt_at"] = sum(1 for i in known if i["eur"] <= i["champ"] * (1 + BEST_TOLERANCE) + 0.005)
+    out["opt_known"] = len(known)
     if no_ref:
         out["warnings"].append(f"{no_ref} Titel ohne deutschen Vergleichspreis")
     if c["cfg"]["pay"] == "giftcard" and not has_cards:
         out["warnings"].append("Keine Guthabenkarten eingetragen: Kosten geschätzt")
     if base["rest"] and chosen and c["cfg"]["rest_blocks"]:
         out["warnings"].append("Rest blockiert den Länderwechsel")
+    elif chosen and out["rest_value"] >= HIGH_REST_EUR:
+        out["warnings"].append(f"hoher Rest: {_eur(out['rest_value'])} bleiben auf dem Konto")
     if any(ctx.items[s].get("parent") and ctx.items[s]["parent"] not in chosen for s in chosen):
         out["warnings"].append(f"DLC braucht in der Regel das Hauptspiel aus {out['family']}")
     unknown = sum(1 for s in chosen if offers[s].get("lang") == "unknown")
@@ -957,6 +982,41 @@ def radar(data, settings, targets=None, now=None):
         return g if g is not None else 999
     rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]), gap(r)))
     return rows
+
+
+LANG_CHECK_URL = {
+    "JP": "https://store-jp.nintendo.com/item/software/D{nsuid}",
+    "AM": "https://ec.nintendo.com/US/en/titles/{nsuid}",
+    "AS": "https://ec.nintendo.com/SG/en/titles/{nsuid}",
+}
+
+
+def lang_todo(data, settings, now=None):
+    """Titel, deren Sprache in einer Region mit aktivem Land ungeprüft ist, obwohl
+    es in Deutschland eine deutsche Fassung gibt. Einmal von Hand bestätigt, gilt es."""
+    ctx = Context(data, settings, now, include_all=True)
+    fams = {}
+    for c in ctx.countries.values():
+        fam = c["meta"]["family"]
+        if fam != "EU" and settings["countries"][c["code"]]["enabled"]:
+            fams.setdefault(fam, []).append(c["code"])
+    out, conf = [], settings.get("lang_confirm") or {}
+    for slug in ctx.order:
+        it = ctx.items[slug]
+        if it.get("parent") or ctx.german(it, "EU", slug) is not True:
+            continue
+        for fam, codes in fams.items():
+            ids = (it.get("ids") or {}).get(fam) or []
+            if not ids:
+                continue
+            state = ctx.german(it, fam, slug)
+            manual = isinstance((conf.get(slug) or {}).get(fam), bool)
+            if state is None or manual:
+                out.append({"slug": slug, "title": it["title"], "family": fam,
+                            "family_name": countries.FAMILIES[fam], "codes": codes,
+                            "url": LANG_CHECK_URL.get(fam, "").format(nsuid=ids[0]),
+                            "state": state, "manual": manual})
+    return out
 
 
 def card_status(data, settings, now=None):

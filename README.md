@@ -30,6 +30,8 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
   - gutes Angebot: bis 15 % oder höchstens 2 € über dem Maßstab,
   - nur schwer: stark nur in einem Land der Stufe schwer,
   - warten: im Angebot, typischerweise aber günstiger.
+  Ein leeres Zielfeld zeigt den Bestpreis grau, wenn er unter dem Preis jetzt
+  liegt; "übernehmen" setzt ihn als Zielpreis.
   DE✓ am Preis heißt: deutsche Fassung bestätigt oder dasselbe Produkt wie im
   deutschen eShop; "andere Fassung" heißt: dort ohne Deutsch.
   Die beiden Euro-Grenzen sind unter Einstellungen änderbar.
@@ -52,7 +54,13 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
   und Guthaben wieder her.
 - Pakete, Angebote je Land: Länderkarten als dichtes Raster oder große Liste.
   Je Land die Wishlist-Angebote mit Kosten, Karten, Rest, Angebotsende und
-  Vorschlägen zum Dazunehmen (+) oder Weglassen (−).
+  Vorschlägen zum Dazunehmen (+) oder Weglassen (−). Die Kopfzahl ist der
+  Abstand zum Optimum: was die Titel hier zusammen über ihren Bestpreisen
+  liegen (grün "Optimum", gold bis 2 € je Titel darüber). Die Ersparnis
+  gegenüber Deutschland steht in der Zeile darunter und entscheidet weiter
+  über die Wechselschwelle. Ein Rest ist kein Verlust: Ersparnis und
+  Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €"); ab
+  5 € Rest warnt das Paket.
 - Pakete, gemeinsamer Korb: "Korb für alle" öffnet eine Vergleichstabelle,
   Titel als Zeilen, Länder als Spalten. Das günstigste Land ist hervorgehoben,
   aber nur unter Ländern, die den ganzen Korb anbieten.
@@ -140,16 +148,20 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
 - Deutschland: Die Vergleichsbasis ist immer der Preis im deutschen eShop.
   Wer mit günstigen deutschen Guthabenkarten (etwa von Eneba) zahlt, schaltet
   "Deutschland mit Guthaben" (DG) ein: dasselbe Konto und dieselben Preise,
-  gerechnet wie jedes Guthabenland. Ein Rest zählt dort als Kosten, denn
-  Nintendo nimmt Guthaben bei keinem Länderwechsel mit. Karten, die bis 0.9.2
+  gerechnet wie jedes Guthabenland. Ein Rest bleibt auf dem Konto und wird
+  ab 5 € gewarnt (Nintendo nimmt Guthaben bei keinem Länderwechsel mit). Karten, die bis 0.9.2
   bei Deutschland standen, wandern beim Update dorthin.
 - Datei einlesen: Unter `countries.<Land>.cards_add` ergänzt eine Datei
   Karten, ohne vorhandene zu ersetzen. Gibt es den Kartenwert schon, bekommt
   die Zeile nur den Link.
 - Sprachen: Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne
-  sie weg. Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft.
-  Ist für eine Region unbekannt, ob es Deutsch gibt (Amerika immer, Japan ohne
-  Angabe), bleibt das Angebot im Preisvergleich sichtbar („Sprache?“), zählt
+  sie weg. Europa gilt als dasselbe Produkt. Japan und Amerika prüft das Tool
+  je Titel einmal bei Nintendo (store-jp.nintendo.com, nintendo.com über
+  ec.nintendo.com) und danach nur, wo die Angabe fehlt. Was offen bleibt,
+  steht unter Einstellungen, "Sprachen prüfen", mit Link in den Store:
+  einmal "Deutsch ja" oder "nein" bestätigen, das gilt dauerhaft und geht der
+  Angabe von Nintendo vor. Ist für eine Region unbekannt, ob es Deutsch gibt,
+  bleibt das Angebot im Preisvergleich sichtbar („Sprache?“), zählt
   aber nicht für Bestpreis, Urteil und Kaufplan. Ist ein Titel nur dort
   kaufbar, sagt das Radar es als Grund. Mit „nur warnen“ zählen solche
   Angebote wie früher mit.
@@ -218,7 +230,8 @@ freigeben solltest du das Tool deshalb nicht.
 
 - Wishlist, Sammlung und Titel-IDs: dekudeals.com (öffentliche Wishlist, IDs werden dauerhaft gespeichert)
 - Preise und Verfügbarkeit: api.ec.nintendo.com/v1/price (inoffiziell)
-- Sprachen: search.nintendo-europe.com (Europa), store-jp.nintendo.com (Japan)
+- Sprachen: search.nintendo-europe.com (Europa), store-jp.nintendo.com (Japan),
+  nintendo.com-Produktseiten über ec.nintendo.com (Amerika), sonst deine Bestätigung
 - Wechselkurse: open.er-api.com, ersatzweise frankfurter.dev (EZB)
 
 ## Tests
