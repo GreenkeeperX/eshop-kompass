@@ -22,11 +22,13 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 
 - Radar: eine Zeile je Wishlist-Titel mit dem besten Preis jetzt (getrennt nach
   leicht und schwer erreichbaren Ländern), dem Abstand zum Maßstab des Urteils
-  in Euro, deinem Zielpreis und einem Urteil. Maßstab ist der typische
-  Angebotspreis (siehe unten), wo er fehlt der Bestpreis; beide stehen in der
-  Zelle und im Tooltip.
-  - kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber, gilt
-    immer) oder höchstens 0,50 € über dem Maßstab,
+  in Euro, deinem Zielpreis und einem Urteil. Maßstab ist der Bestpreis
+  aller Länder: der niedrigste Preis, den es für den Titel in einem
+  zählenden Land je gab, zum heutigen Kurs. Der typische Angebotspreis
+  (siehe unten) steht daneben; unter Einstellungen lässt sich das Urteil
+  auf ihn umstellen.
+  - kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber) oder
+    höchstens 0,50 € über dem Maßstab,
   - gutes Angebot: bis 15 % oder höchstens 2 € über dem Maßstab,
   - nur schwer: stark nur in einem Land der Stufe schwer,
   - warten: im Angebot, typischerweise aber günstiger.
@@ -55,8 +57,11 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 - Pakete, Angebote je Land: Länderkarten als dichtes Raster oder große Liste.
   Je Land die Wishlist-Angebote mit Kosten, Karten, Rest, Angebotsende und
   Vorschlägen zum Dazunehmen (+) oder Weglassen (−). Die Kopfzahl ist der
-  Abstand zum Optimum: was die Titel hier zusammen über ihren Bestpreisen
-  liegen (grün "Optimum", gold bis 2 € je Titel darüber). Die Ersparnis
+  Abstand zum Optimum. Optimum ist die Summe der Bestpreise aller Länder
+  für die Titel im Paket (Titel ohne bekannten Bestpreis zählen mit dem
+  Preis hier). Abstand ist, was das Paket hier ohne Rest kostet, minus
+  dieses Optimum, in Euro und Prozent (grün "Optimum", gold bis 15 % oder
+  2 € je Titel darüber). Die Ersparnis
   gegenüber Deutschland steht in der Zeile darunter und entscheidet weiter
   über die Wechselschwelle. Ein Rest ist kein Verlust: Ersparnis und
   Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €"); ab
@@ -94,8 +99,8 @@ Unter der Vergleichstabelle steht, was der Korb kostet, wenn jeder Titel im
 günstigsten Land mit Kartenzahlung gekauft wird. Dort kostet der Wechsel
 nichts und es bleibt kein Rest.
 
-Marken an jedem Angebot: ★ Bestpreis über alle Länder, ☆ Bestpreis der leicht
-erreichbaren Länder, grün Landestief, rot Angebot darüber. Der Bestpreis ist
+Marken an jedem Angebot: ★ Bestpreis über alle Länder, grün Landestief, rot
+Angebot darüber. Der Bestpreis ist
 der niedrigste Preis, den es je gab, zum heutigen Kurs.
 
 Im Preisvergleich steht der Bestpreis je Titel in einer eigenen Spalte, das
@@ -208,9 +213,9 @@ darunter) und merkt sich je Phase den tiefsten Preis. Typischer
 Angebotspreis ist der Median dieser Tiefstwerte, ab zwei Phasen. War das
 letzte Angebot tiefer als der Median, gilt dieses: Nintendo senkt
 Angebotspreise oft dauerhaft, und der Median würde dann noch den alten Preis
-zeigen. Je Titel zählt das günstigste leicht erreichbare Land, in Euro zum
-heutigen Kurs. Unter Einstellungen lässt sich das Urteil auf den
-Allzeit-Bestpreis zurückstellen.
+zeigen. Je Titel zählt das günstigste Land, in Euro zum heutigen Kurs.
+Standard für das Urteil ist der Bestpreis aller Länder; unter Einstellungen
+lässt sich auf den typischen Angebotspreis umstellen.
 
 Den Verlauf lädt das Tool mit dem Tiefstpreis. Für Titel, deren Tiefstpreis
 schon bekannt ist, holt es die Seite nur während eines Angebots nach,

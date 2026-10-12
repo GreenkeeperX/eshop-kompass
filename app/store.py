@@ -22,7 +22,7 @@ DEFAULT_SETTINGS = {
     "tier_min_saving": {"1": 3.0, "2": 8.0, "3": 20.0},
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
     # Maßstab des Urteils: typischer Angebotspreis (typical) oder Allzeit-Bestpreis (best)
-    "verdict_ref": "typical",
+    "verdict_ref": "best",
     # Sprachen von Hand bestätigt: {slug: {"JP": true, "AM": false}}
     "lang_confirm": {},
     # Cashback des Kartenshops in Prozent, wenn es eins gibt. Nur für einen Hinweis,

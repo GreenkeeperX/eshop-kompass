@@ -470,19 +470,19 @@ class Context:
         """Bestpreis je Titel: der niedrigste Preis, den es je gab, in Euro zum
         heutigen Kurs. Einmal über alle Länder, einmal nur über die leichten."""
         self.champ_all, self.champ_easy = {}, {}
-        # Typischer Angebotspreis: das günstigste leicht erreichbare Land
-        self.typ_easy = {}
+        # Typischer Angebotspreis: das günstigste Land, über alle Länder wie der Bestpreis
+        self.typ_all = {}
         for code, c in self.countries.items():
             if c["unit"] is None:
                 continue
             for slug, o in c["offers"].items():
                 if not self.decides(o):
                     continue
-                typ = self.typical_value(code, slug) if c["tier"] <= 2 else None
+                typ = self.typical_value(code, slug)
                 if typ:
                     eur = round(cents(typ[0]) * (1 + c["tax"] / 100)) * c["unit"]
-                    if slug not in self.typ_easy or eur < self.typ_easy[slug][0] - 1e-9:
-                        self.typ_easy[slug] = (eur, code, c["estimated"], typ[1])
+                    if slug not in self.typ_all or eur < self.typ_all[slug][0] - 1e-9:
+                        self.typ_all[slug] = (eur, code, c["estimated"], typ[1])
                 local = o["local"]
                 low = self.low_value(code, slug)
                 if low is not None:
@@ -502,14 +502,11 @@ class Context:
                    gap=max(0, round(100 * (eur / best[0] - 1))))
         if not o["sale"]:
             return out
-        easy = self.champ_easy.get(slug)
         if not self.decides(o):
             # Ungeprüfte Sprache bestimmt keinen Bestpreis, also auch keine Bestpreis-Marke
             out["mark"] = "low" if self.low(c["code"], slug, o)["at_low"] else "sale"
         elif eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005:
             out["mark"] = "best"
-        elif c["tier"] <= 2 and easy and eur <= easy[0] * (1 + BEST_TOLERANCE) + 0.005:
-            out["mark"] = "best_easy"
         elif self.low(c["code"], slug, o)["at_low"]:
             out["mark"] = "low"
         else:
@@ -713,10 +710,18 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
 
     # Abstand zum Optimum: je Titel, wie weit der Preis hier über dem Bestpreis
     # liegt, den es je irgendwo gab (Entscheidung 12.10.2026: wichtiger als Deutschland)
+    # Paket: Optimum ist die Summe der Bestpreise aller Länder je Titel, also was
+    # die Spiele gekostet hätten, wenn jedes zu seinem besten Zeitpunkt im besten Land
+    # gekauft worden wäre. Abstand: was das Paket hier wirklich kostet (ohne Rest) minus Optimum.
     known = [i for i in out["items"] if i.get("champ") is not None and i.get("eur") is not None]
-    out["opt_gap"] = _r(sum(max(0.0, i["eur"] - i["champ"]) for i in known)) if known else None
-    out["opt_at"] = sum(1 for i in known if i["eur"] <= i["champ"] * (1 + BEST_TOLERANCE) + 0.005)
     out["opt_known"] = len(known)
+    out["opt_at"] = sum(1 for i in known if i["eur"] <= i["champ"] * (1 + BEST_TOLERANCE) + 0.005)
+    out["optimum"] = out["opt_gap"] = out["opt_pct"] = None
+    if known and chosen and out.get("games_cost") is not None:
+        optimum = sum(i["champ"] for i in known) + sum(i["eur"] or 0 for i in out["items"] if i not in known)
+        out["optimum"] = _r(optimum)
+        out["opt_gap"] = _r(max(0.0, out["games_cost"] - optimum))
+        out["opt_pct"] = round(100 * out["opt_gap"] / optimum) if optimum else 0
     if no_ref:
         out["warnings"].append(f"{no_ref} Titel ohne deutschen Vergleichspreis")
     if c["cfg"]["pay"] == "giftcard" and not has_cards:
@@ -879,7 +884,7 @@ def matrix(data, settings, now=None):
             if eur is not None and o["sale"] and ctx.decides(o) and (
                     best is None or eur < cells[best]["eur"]):
                 best = code
-        champ, typ = ctx.champ_all.get(slug), ctx.typ_easy.get(slug)
+        champ, typ = ctx.champ_all.get(slug), ctx.typ_all.get(slug)
         rows.append({"slug": slug, "title": it["title"], "cells": cells, "best": best,
                      "champ": None if not champ else {"eur": _r(champ[0]), "code": champ[1],
                                                       "est": champ[2]},
@@ -931,10 +936,12 @@ def radar(data, settings, targets=None, now=None):
             target = float(targets.get(slug))
         except (TypeError, ValueError):
             target = None
+        # Maßstab ist der Bestpreis über alle Länder (Entscheidung 12.10.2026): wo war das
+        # Spiel bisher am günstigsten, und wie nah ist der beste Preis jetzt dran?
         gap_easy = diff_easy = diff_all = None
-        if easy and champ_easy and champ_easy[0]:
-            gap_easy = max(0, round(100 * (easy["raw"] / champ_easy[0] - 1)))
-            diff_easy = max(0.0, _r(easy["raw"] - champ_easy[0]))
+        if easy and champ_all and champ_all[0]:
+            gap_easy = max(0, round(100 * (easy["raw"] / champ_all[0] - 1)))
+            diff_easy = max(0.0, _r(easy["raw"] - champ_all[0]))
         if easy and champ_all:
             diff_all = max(0.0, _r(easy["raw"] - champ_all[0]))
         # Ein Angebot zählt als Kauf oder gutes Angebot, wenn es prozentual
@@ -943,8 +950,8 @@ def radar(data, settings, targets=None, now=None):
         buy_eur, good_eur = deal_eur["buy"], deal_eur["good"]
         # Maßstab des Urteils: der typische Angebotspreis, wo der Verlauf ihn
         # kennt, sonst der Bestpreis
-        typ = ctx.typ_easy.get(slug)
-        use_typ = settings.get("verdict_ref", "typical") == "typical" and typ is not None
+        typ = ctx.typ_all.get(slug)
+        use_typ = settings.get("verdict_ref", "best") == "typical" and typ is not None
         typ_diff = typ_gap = None
         if easy and typ:
             typ_diff = _r(easy["raw"] - typ[0])
@@ -956,13 +963,17 @@ def radar(data, settings, targets=None, now=None):
             reason = "nur dort kaufbar, wo es nicht zählt (" + "; ".join(why) + ")"
         if target is not None and easy and easy["raw"] <= target + 0.005:
             verdict, reason = "buy", "Zielpreis erreicht"
-        elif easy and easy["mark"] in ("best", "best_easy"):
+        elif easy and easy["mark"] == "best":
             verdict, reason = "buy", "Bestpreis"
         elif use_typ and easy and easy["sale"] and (
                 typ_diff <= buy_eur + 0.005 or easy["raw"] <= typ[0] * (1 + BEST_TOLERANCE) + 0.005):
             verdict, reason = "buy", ("unter typischem Angebotspreis" if typ_diff < -0.005
                                       else "typischer Angebotspreis" if typ_diff <= 0.005
                                       else f"nur {_eur(typ_diff)} über typischem Angebotspreis")
+        elif hard and hard["sale"] and (
+                (target is not None and hard["raw"] <= target + 0.005)
+                or (hard["mark"] == "best" and (not easy or hard["raw"] < easy["raw"] * 0.85))):
+            verdict, reason = "hard", f"stark nur in {hard['name']}"
         elif use_typ and easy and easy["sale"] and (typ_gap <= GOOD_GAP or typ_diff <= good_eur + 0.005):
             verdict, reason = "good", f"{_eur(typ_diff)} ({typ_gap} %) über typischem Angebotspreis"
         elif use_typ and easy and easy["sale"]:
@@ -972,10 +983,6 @@ def radar(data, settings, targets=None, now=None):
         elif not use_typ and easy and easy["sale"] and gap_easy is not None and (
                 gap_easy <= GOOD_GAP or diff_easy <= good_eur + 0.005):
             verdict, reason = "good", f"{_eur(diff_easy)} ({gap_easy} %) über Bestpreis"
-        elif hard and hard["sale"] and (
-                (target is not None and hard["raw"] <= target + 0.005)
-                or (hard["mark"] == "best" and (not easy or hard["raw"] < easy["raw"] * 0.85))):
-            verdict, reason = "hard", f"stark nur in {hard['name']}"
         elif (easy and easy["sale"]) or (hard and hard["sale"]):
             verdict, reason = "wait", (f"war {_eur(diff_easy)} günstiger" if diff_easy
                                        else "war schon günstiger")
@@ -1221,9 +1228,9 @@ def price_history(data, settings, history, slug, now=None):
     now = ctx.now
     out = {"slug": slug, "title": ctx.title(slug), "now": now.isoformat(timespec="seconds"),
            "since": None, "countries": []}
-    champ = ctx.champ_easy.get(slug)
-    out["champ_easy"] = None if not champ else {"eur": _r(champ[0]), "code": champ[1], "est": champ[2]}
-    typ = ctx.typ_easy.get(slug)
+    champ = ctx.champ_all.get(slug)
+    out["champ"] = None if not champ else {"eur": _r(champ[0]), "code": champ[1], "est": champ[2]}
+    typ = ctx.typ_all.get(slug)
     out["typical"] = None if not typ else {"eur": _r(typ[0]), "code": typ[1], "est": typ[2], "runs": typ[3]}
     for code, c in ctx.countries.items():
         series = (history.get(c["meta"]["shop"]) or {}).get(slug) or []

@@ -422,7 +422,7 @@ function costTip(p){
 }
 
 /* ---------- Deal-Güte ---------- */
-const MARK = {best:"Bestpreis über alle Länder", best_easy:"Bestpreis der leichten Länder", low:"Tiefstpreis dieses Landes", sale:"Angebot über dem Tiefstpreis"};
+const MARK = {best:"Bestpreis über alle Länder", low:"Tiefstpreis dieses Landes", sale:"Angebot über dem Tiefstpreis"};
 function markTip(x, cur){
   return [MARK[x.mark] || "kein Angebot",
     x.gap ? `${x.gap} % über Bestpreis` : "",
@@ -431,11 +431,11 @@ function markTip(x, cur){
 }
 function pctTag(x, cur){
   if(!x.sale) return "";
-  const star = x.mark === "best" ? "★" : x.mark === "best_easy" ? "☆" : "";
+  const star = x.mark === "best" ? "★" : "";
   return `<span class="pct m-${x.mark}" title="${esc(markTip(x, cur))}">${star}−${x.pct}%</span>`;
 }
 const gapTag = x => x.sale && x.gap > 0 ? `<span class="gap" title="über dem Bestpreis">+${x.gap} %</span>` : "";
-const LEGEND = `<span class="legend hint"><span class="pct m-best">★−50%</span>Bestpreis<span class="pct m-best_easy">☆−50%</span>Bestpreis leicht<span class="pct m-low">−50%</span>Landestief<span class="pct m-sale">−50%</span>Angebot darüber<span class="approx" style="margin-left:8px">≈</span>geschätzt</span>`;
+const LEGEND = `<span class="legend hint"><span class="pct m-best">★−50%</span>Bestpreis aller Länder<span class="pct m-low">−50%</span>Landestief<span class="pct m-sale">−50%</span>Angebot darüber<span class="approx" style="margin-left:8px">≈</span>geschätzt</span>`;
 function chipsFor(p){
   const out = [];
   for(const w of p.warnings){
@@ -613,29 +613,24 @@ function viewRadar(){
     <th>DE jetzt</th><th title="Dein Wunschpreis in Euro">Ziel €</th><th>Urteil</th><th>Korb</th></tr></thead><tbody>`;
   h += rows.map(r => {
     let champ = `<td class="na">–</td>`;
-    const ce = r.champ_easy || r.champ, ty = r.typical;
+    const ce = r.champ, ty = r.typical;
     if(r.ref === "typical" && ty){
       const tip = `Typischer Angebotspreis: ${eur(ty.eur)} in ${ty.name}, aus ${ty.runs} Angeboten der letzten zwei Jahre (DekuDeals)` +
-        (ce ? ` · Bestpreis: ${eur(ce.eur)} in ${ce.name}` : "") + (ty.est ? " · geschätzt, weil dort keine Guthabenkarte mit Preis eingetragen ist" : "");
+        (ce ? ` · Bestpreis über alle Länder: ${eur(ce.eur)} in ${ce.name}` : "") + (ty.est ? " · geschätzt, weil dort keine Guthabenkarte mit Preis eingetragen ist" : "");
       const d = r.typ_diff;
       const main = d === null ? `<span class="na">–</span>`
         : d >= 0.005 ? `+${eur(d)}`
         : d <= -0.005 ? `<span class="ok">−${eur(-d)}</span>` : `<span class="ok">typisch</span>`;
       const second = [d !== null && d >= 0.005 ? `${r.typ_gap} %` : null, `typisch ${eur(ty.eur)}`,
-        ce ? `Bestpreis ${eur(ce.eur)}` : null].filter(Boolean).join(" · ");
+        ce ? `Bestpreis ${eur(ce.eur)} ${ce.code}` : null].filter(Boolean).join(" · ");
       champ = `<td title="${esc(tip)}">${ty.est || (r.easy && r.easy.est) ? APPROX : ""}${main}<small>${second}</small></td>`;
     } else if(ce){
-      const differs = r.champ && r.champ_easy && r.champ_easy.code !== r.champ.code;
-      const tip = `Bestpreis leicht erreichbar: ${eur(ce.eur)} in ${ce.name}` +
-        (differs ? ` · über alle Länder: ${eur(r.champ.eur)} in ${r.champ.name}` : "") +
-        (ce.est || (r.champ && r.champ.est) ? " · Bestpreis geschätzt, weil dort keine Guthabenkarte mit Preis eingetragen ist" : "") +
-        (r.ref === "best" && ty ? ` · typischer Angebotspreis: ${eur(ty.eur)} in ${ty.name}` : "");
+      const tip = `Bestpreis über alle Länder: ${eur(ce.eur)} in ${ce.name}` + (ce.est ? " · geschätzt, weil dort keine Guthabenkarte mit Preis eingetragen ist" : "") +
+        (ty ? ` · typischer Angebotspreis: ${eur(ty.eur)} in ${ty.name}` : "");
       const main = r.diff_easy === null ? `<span class="na">–</span>`
         : r.diff_easy >= 0.005 ? `+${eur(r.diff_easy)}`
         : r.easy && r.easy.sale ? `<span class="ok">Bestpreis</span>` : `±0 €`;
-      const second = [r.diff_easy >= 0.005 ? `${r.gap_easy} %` : null,
-        differs && r.diff_all !== null && r.diff_all - (r.diff_easy || 0) > 0.005 ? `alle Länder +${eur(r.diff_all)}` : `Bestpreis ${eur(ce.eur)}`]
-        .filter(Boolean).join(" · ");
+      const second = [r.diff_easy >= 0.005 ? `${r.gap_easy} %` : null, `Bestpreis ${eur(ce.eur)} ${ce.code}`].filter(Boolean).join(" · ");
       champ = `<td title="${esc(tip)}">${ce.est || (r.easy && r.easy.est) ? APPROX : ""}${main}<small>${second}</small></td>`;
     }
     const hit = r.target !== null && r.easy && r.easy.eur <= r.target + 0.005;
@@ -643,9 +638,9 @@ function viewRadar(){
       ${bestCell(r.easy, r.slug, false)}${bestCell(r.hard, r.slug, true)}${champ}
       <td>${r.de === null ? `<span class="na">–</span>` : eur(r.de)}</td>
       <td>${(() => {
-        // Leeres Ziel: der Bestpreis der leicht erreichbaren Länder als Vorschlag, ein Klick übernimmt ihn
+        // Leeres Ziel: der Bestpreis aller Länder als Vorschlag, ein Klick übernimmt ihn
         // Nur sinnvoll, wenn der Bestpreis unter dem Preis jetzt liegt; sonst wäre das Ziel sofort erreicht
-        const ce = r.champ_easy || r.champ;
+        const ce = r.champ;
         const sug = r.target === null && ce && (!r.easy || ce.eur < r.easy.eur - 0.005) ? ce.eur : null;
         return `<input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="${sug === null ? "–" : num(sug)}">` +
           (sug !== null ? `<button class="mini" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}" title="Bestpreis ${eur(sug)} als Zielpreis übernehmen">übernehmen</button>` : "") +
@@ -748,7 +743,8 @@ function planCard(p){
   let save = "", saveDe = "";
   if(has && p.opt_gap !== null && p.opt_gap !== undefined){
     const at = p.opt_gap < 0.005;
-    save = `<span class="save ${at ? "" : p.opt_gap <= 2 * p.opt_known + 0.005 ? "near" : "low"}" title="Abstand zum Optimum: Summe dessen, was jeder Titel hier über seinem Bestpreis liegt (dem niedrigsten Preis, den es je in einem Land gab, zum heutigen Kurs). ${p.opt_at} von ${p.opt_known} Titeln liegen am Bestpreis.">${at ? "Optimum" : "+" + eur(p.opt_gap)}<small>${p.opt_at}/${p.opt_known} am Bestpreis</small></span>`;
+    const near = p.opt_pct <= 15 || p.opt_gap <= 2 * p.items.length + 0.005;
+    save = `<span class="save ${at ? "" : near ? "near" : "low"}" title="Optimum ${eur(p.optimum)}: die Summe der Bestpreise aller Länder für diese ${p.items.length} Titel, also was sie gekostet hätten, wenn jeder zu seinem günstigsten Zeitpunkt im günstigsten Land gekauft worden wäre (zum heutigen Kurs). Das Paket kostet hier ${eur(p.games_cost ?? p.cost)} ohne Rest. ${p.opt_at} von ${p.opt_known} Titeln liegen einzeln am Bestpreis.">${at ? "Optimum" : "+" + eur(p.opt_gap) + `<small>${p.opt_pct} %</small>`}<small>Summe Bestpreise ${eur(p.optimum)}</small></span>`;
   }
   if(has && p.saving !== null){
     const sign = p.saving >= 0 ? "−" : "+";
@@ -764,7 +760,7 @@ function planCard(p){
     if(p.cards.length) parts.push(cardsHtml(p));
     if(!p.is_ref) parts.push(restHtml(p));
     if(!p.worth && p.saving >= 0) parts.push(`<small title="Für Länder der Stufe ${esc(p.tier_name)} lohnt der Wechsel bei dir erst ab ${eur(p.threshold)} Ersparnis">unter Schwelle ${eur(p.threshold)}</small>`);
-    const stars = p.items.filter(i => i.mark === "best" || i.mark === "best_easy").length;
+    const stars = p.items.filter(i => i.mark === "best").length;
     if(stars) parts.push(`<small title="${stars} von ${p.items.length} Titeln zum Bestpreis">${stars}× Bestpreis</small>`);
     h += `<p class="line">${parts.join("<i>·</i>")}</p>`;
     h += `<table><colgroup><col><col class="c-l"><col class="c-t"><col class="c-b"><col class="c-e"><col class="c-d"></colgroup>
@@ -901,7 +897,7 @@ function viewMatrix(){
   let h = `<div class="tools"><input type="search" id="q" placeholder="Titel filtern" value="${esc(S.filter)}">
     <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>${LEGEND}
     <span class="hint">Europreise enthalten Steuer, Kurs und deinen Zahlweg, der Tooltip zeigt die Rechnung. Grün: günstigstes Angebot jetzt. Gold umrandet: dort gab es den Bestpreis. DE✓: deutsche Fassung bestätigt. ★ legt den Titel in den gemeinsamen Korb.</span></div>
-    <div class="matrix scroll"><table><thead><tr><th>Titel</th><th title="Niedrigster Preis, den es je gab, über alle aktiven Länder, zum heutigen Kurs. Das Land ist in der Zeile gold umrandet. Darunter der typische Angebotspreis der leicht erreichbaren Länder.">Bestpreis</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
+    <div class="matrix scroll"><table><thead><tr><th>Titel</th><th title="Niedrigster Preis, den es je gab, über alle aktiven Länder, zum heutigen Kurs. Das Land ist in der Zeile gold umrandet. Darunter der typische Angebotspreis.">Bestpreis</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><button class="star ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button><a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener">${esc(r.title)}</a><button class="mini" data-act="verlauf" data-s="${esc(r.slug)}" title="Preisverlauf aus der eigenen Aufzeichnung">Verlauf</button>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     `<td class="bp">${r.champ ? `${ax(r.champ)}<b>${eur(r.champ.eur)}</b> <small style="display:inline">${r.champ.code}</small>` : `<span class="na">–</span>`}${r.typical ? `<small title="Typischer Angebotspreis in ${esc(country(r.typical.code).name)}, aus ${r.typical.runs} Angeboten der letzten zwei Jahre">typisch ${ax(r.typical)}${eur(r.typical.eur)}</small>` : ""}</td>` +
     mx.cols.map(c => {
@@ -954,7 +950,7 @@ function chartSvg(v, color){
   const shown = v.countries.filter(c => S.vl.show.has(c.code));
   const t0 = +new Date(v.since), t1 = Math.max(+new Date(v.now), t0 + 864e5);
   const refs = [];
-  if(v.champ_easy) refs.push({y: v.champ_easy.eur, label: "Bestpreis leicht", col: "var(--gold)"});
+  if(v.champ) refs.push({y: v.champ.eur, label: "Bestpreis", col: "var(--gold)"});
   if(v.typical) refs.push({y: v.typical.eur, label: "typisch", col: "var(--muted)"});
   if(v.target !== null && v.target !== undefined) refs.push({y: v.target, label: "Ziel", col: "var(--accent)"});
   const top = Math.max(1, ...shown.map(c => Math.max(c.regular_eur, ...c.points.map(p => p[2]))), ...refs.map(r => r.y)) * 1.08;
@@ -1012,7 +1008,7 @@ function viewSettings(){
     <label class="f" title="Fester Teil der Servicegebühr je Bestellung. Das Tool rechnet ihn je Karte; kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label>
     <label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber im Radar mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label>
     <h3 class="sec" style="grid-column:1/-1;margin:10px 0 0">Urteil</h3>
-    <label class="f" title="Typischer Angebotspreis: Median der tiefsten Preise aller Angebote der letzten zwei Jahre laut DekuDeals-Verlauf; war das letzte Angebot tiefer, gilt dieses. Wo der Verlauf fehlt oder weniger als zwei Angebote kennt, gilt der Bestpreis. Ein Angebot zum Bestpreis ist immer „kaufen“.">Urteil misst am<select name="verdict_ref">${sel("typical", s.verdict_ref || "typical", "typischen Angebotspreis")}${sel("best", s.verdict_ref || "typical", "Allzeit-Bestpreis")}</select></label>
+    <label class="f" title="Typischer Angebotspreis: Median der tiefsten Preise aller Angebote der letzten zwei Jahre laut DekuDeals-Verlauf; war das letzte Angebot tiefer, gilt dieses. Wo der Verlauf fehlt oder weniger als zwei Angebote kennt, gilt der Bestpreis. Ein Angebot zum Bestpreis ist immer „kaufen“.">Urteil misst am<select name="verdict_ref">${sel("best", s.verdict_ref || "best", "Bestpreis aller Länder")}${sel("typical", s.verdict_ref || "best", "typischen Angebotspreis")}</select></label>
     <label class="f" title="Radar: Liegt der beste leicht erreichbare Angebotspreis höchstens so viel über dem Maßstab (typischer Angebotspreis oder Bestpreis, siehe oben), heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Maßstab, und wer den Bestpreis erreicht, ist immer ein Kauf.">Urteil „kaufen“ bis … € über Maßstab<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label>
     <label class="f" title="Radar: Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Maßstab.">Urteil „gutes Angebot“ bis … € über Maßstab<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label>
     <label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label>
