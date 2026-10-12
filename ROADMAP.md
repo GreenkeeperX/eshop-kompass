@@ -103,7 +103,9 @@ Reihenfolge und Begründung:
   Spiele als Vorschlag für den Rest. Übernehmen lassen sie sich erst von der Wishlist.
 - [ ] 4.6 Sprache in Japan: eine Probe für nintendo.co.jp in den Verbindungstest. Liefert
   sie Sprachangaben für einen guten Teil der Titel, wird dieser Teil automatisch, sonst
-  bleibt es bei der Bestätigung von Hand.
+  bleibt es bei der Bestätigung von Hand. Probe gebaut (0.34): robots.txt, die Liste aller
+  Switch-Titel und eine Titelseite daraus. Offen: Auswertung mit echten Daten, dann die
+  Entscheidung.
 
 Zurückgestellt: Füllartikel Stufe 3 (gute Spiele abseits der Wishlist). Es braucht dafür
 eine Quelle für „gut“, und ein Vorschlag für ein Spiel, das niemand wollte, hilft wenig.
