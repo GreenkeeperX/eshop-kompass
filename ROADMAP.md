@@ -70,6 +70,9 @@ Reihenfolge und Begründung:
 
 - [x] 4.0 Sicherung mit eigener Preisaufzeichnung (0.26): Sie ist das Einzige, was das Tool
   nicht neu laden kann. Beim Einlesen wird sie ergänzt, nicht ersetzt. Weiter ein Knopf.
+- [x] Kleinigkeiten aus dem Betrieb (0.27): €-Zeichen an jedem Eurobetrag, Grund bei
+  „kein Urteil“ (nicht erschienen, nur im Abo, kostenlos), Sprachliste klarer gezählt und
+  mit der gelesenen Angabe.
 - [ ] 4.1 Prüfung mit echten Daten: Verbindungstest, Protokoll und Kaufplan nach dem
   Update. Danach Korrekturen, vor allem an den DLC-Abschnitten und der Switch-2-Zuordnung.
 - [ ] 4.2 Füllartikel im Kaufplan, Stufe 1: Unter jedem Schritt mit Rest stehen bis zu drei

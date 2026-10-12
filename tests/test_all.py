@@ -1257,7 +1257,15 @@ class PlanTest(unittest.TestCase):
             self.data["prices"]["BR"][slug] = {"status": "not_found"}
         self.data["prices"]["DE"]["good-job"] = {"status": "not_found"}
         r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
-        self.assertEqual((r["verdict"], r["reason"]), ("none", "nirgends kaufbar"))
+        # Nintendo kennt den Titel nirgends als kaufbar: etwa nur im Abo oder in einem Paket
+        self.assertEqual((r["verdict"], r["reason"][:29]), ("none", "im eShop nicht einzeln kaufba"))
+        self.data["prices"]["DE"]["good-job"] = {"status": "unreleased"}
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
+        self.assertEqual(r["reason"], "noch nicht erschienen")
+        # Kostenlose Titel brauchen kein Urteil
+        self.data["prices"]["DE"]["good-job"] = {"status": "onsale", "currency": "EUR", "regular": 0}
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
+        self.assertEqual((r["verdict"], r["reason"]), ("none", "kostenlos"))
 
 
 class StoreTest(unittest.TestCase):
