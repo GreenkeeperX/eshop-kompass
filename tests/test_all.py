@@ -2020,6 +2020,56 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertEqual(asked, [("DE", ["1", "2"])])           # ein Abruf für beide
         self.assertEqual((list(data["prices"]["DE"]), list(data["xprices"]["DE"])), (["a"], ["x"]))
 
+    def test_languages_of_missing_dlc_once_per_game(self):
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "US", "JP")
+        data = self.data()
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["2"], "AM": ["12"], "JP": ["22"]}},
+                         "rl-c": {"title": "Car C", "parent": "rl", "ids": {"EU": ["3"], "AM": ["13"]}}}
+        am, jp = [], []
+        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: {"2": "english, german"}), \
+                mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: am.append(n) or "english, german"), \
+                mock.patch.object(sources, "fetch_langs_jp", lambda n, fetch=None: jp.append(n)):
+            sync.sync_langs(data, settings, None, lambda s: None, now=1736467200)
+            sync.sync_langs(data, settings, None, lambda s: None, now=1736467200 + 60)
+        # Europa je DLC, Amerika und Japan eine Seite je Spiel, und nur einmal
+        self.assertEqual(data["extra"]["rl-b"]["langs"], {"EU": "english, german"})
+        self.assertEqual((am, jp), (["12"], ["22"]))
+        self.assertEqual(data["glangs"]["rl"]["langs"], {"AM": "english, german"})
+        # Ein Eintrag je Spiel und Region, unabhängig vom Preis
+        rows = {(t["slug"], t["family"]): t for t in planner.lang_todo(data, settings)}
+        self.assertEqual(rows[("rl", "AM")]["state"], True)
+        self.assertEqual((rows[("rl", "JP")]["state"], rows[("rl", "JP")]["dlc"], rows[("rl", "JP")]["title"]),
+                         (None, 2, "Rocket League"))
+        # Deine Angabe zum Spiel gilt für seine DLC
+        settings["lang_confirm"] = {"rl": {"JP": False}}
+        xctx = planner.extra_context(data, settings)
+        self.assertIs(xctx.german(xctx.items["rl-b"], "JP", "rl-b"), False)
+        self.assertIs(xctx.german(xctx.items["rl-b"], "EU", "rl-b"), True)
+
+    def test_languages_are_cleaned_up(self):
+        settings = {"lang_confirm": {"gone": {"JP": True}, "rl": {"JP": False}, "rl-w": {"AM": True}}}
+        data = self.data()
+        data["items"]["gone"] = {"title": "Gone", "active": False, "langs": {"EU": "german"}, "langs_checked": {"EU": 1}}
+        data["items"]["rl-a"] = {"title": "Car A", "active": False, "langs": {"EU": "german"}}
+        data["glangs"] = {"rl": {"langs": {"AM": "german"}}, "old": {"langs": {"AM": "german"}}}
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {}}}
+        saved = []
+        with mock.patch.object(store, "save_settings", saved.append):
+            self.assertEqual(sync.prune_langs(data, settings), 1)
+        self.assertNotIn("langs", data["items"]["gone"])
+        self.assertIn("langs", data["items"]["rl-a"])                 # in der Sammlung: bleibt
+        self.assertEqual(list(data["glangs"]), ["rl"])
+        self.assertEqual(saved, [{"lang_confirm": {"gone": {"JP": None}}}])
+        self.assertEqual(set(settings["lang_confirm"]), {"rl", "rl-w"})
+        # Sammlung nie gelesen: Bestätigungen bleiben
+        del data["owned"]
+        settings["lang_confirm"]["gone"] = {"JP": True}
+        with mock.patch.object(store, "save_settings", saved.append):
+            self.assertEqual(sync.prune_langs(data, settings), 0)
+        self.assertIn("gone", settings["lang_confirm"])
+
 
 if __name__ == "__main__":
     unittest.main()

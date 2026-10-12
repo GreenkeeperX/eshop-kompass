@@ -106,6 +106,12 @@ Reihenfolge und Begründung:
   bleibt es bei der Bestätigung von Hand. Probe gebaut (0.34): robots.txt, die Liste aller
   Switch-Titel und eine Titelseite daraus. Offen: Auswertung mit echten Daten, dann die
   Entscheidung.
+- [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
+  geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
+  Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle
+  offenen Titel, nicht nur die gerade günstigeren; die Gruppe „ungeprüft, aber egal“ entfällt.
+  Angaben zu Titeln, die weder auf der Wishlist noch in der Sammlung stehen, räumt der
+  Abgleich ab.
 
 Zurückgestellt: Füllartikel Stufe 3 (gute Spiele abseits der Wishlist). Es braucht dafür
 eine Quelle für „gut“, und ein Vorschlag für ein Spiel, das niemand wollte, hilft wenig.
