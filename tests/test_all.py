@@ -333,6 +333,14 @@ class PlanTest(unittest.TestCase):
         # 41,09 BRL minus 2,59 Guthaben = 38,50 -> 15+25, Rest 1,50
         self.assertAlmostEqual(br["rest"], 1.50)
         self.assertAlmostEqual(br["cost"], 7.80)
+        # Das Guthaben ist schon bezahlt, zählt aber zum Kurs: sonst wirkte das Paket billiger
+        self.assertAlmostEqual(br["balance_value"], 0.49, places=2)
+        self.assertAlmostEqual(br["games_cost"], 7.80 * 38.50 / 40 + br["balance_value"], places=2)
+        # Deckt das Guthaben alles, kostet das Paket trotzdem nicht 0 €
+        self.settings["countries"]["BR"]["balance"] = 100
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        self.assertEqual(br["cost"], 0)
+        self.assertGreater(br["games_cost"], 6)
 
     def test_missing_cards_and_must(self):
         self.settings["countries"]["JP"]["cards"] = ""

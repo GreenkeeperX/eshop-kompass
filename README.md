@@ -67,7 +67,9 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
   positiv, rot wenn negativ. Ob sich der Wechsel lohnt, sagt der eigene
   Hinweis "Wechsel lohnt erst ab X €". Ein Rest ist kein Verlust: Ersparnis
   und Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €");
-  ab 5 € Rest warnt das Paket.
+  ab 5 € Rest warnt das Paket. Vorhandenes Guthaben ist schon bezahlt, zählt
+  aber zum Kurs mit ("dazu Guthaben X €"), sonst stünde ein Paket aus
+  Guthaben bei 0 € und damit scheinbar am Optimum.
 - Pakete, gemeinsamer Korb: "Korb für alle" öffnet eine Vergleichstabelle,
   Titel als Zeilen, Länder als Spalten. Das günstigste Land ist hervorgehoben,
   aber nur unter Ländern, die den ganzen Korb anbieten.

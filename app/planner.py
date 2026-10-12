@@ -747,6 +747,12 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
         # Schwelle rechnen mit dem, was die Spiele selbst kosten (Entscheidung 12.10.2026).
         # Ein hoher Rest wird gewarnt.
         games = base["cost"] - out["rest_value"]
+        # Vorhandenes Guthaben ist schon bezahlt, aber nicht umsonst: Es zählt mit
+        # dem Kurs, zu dem du es bekommst, sonst stünde ein Paket aus Guthaben bei 0 €
+        used = min(cfg_balance(c), total)
+        if used and c["unit"] is not None:
+            games += used * c["unit"]
+            out["balance_value"] = _r(used * c["unit"])
         out["games_cost"] = _r(games)
         # Im Paket teilen sich die Titel die Karten: Europreis je Titel anteilig
         if total and not base["estimated"] and base["via"] == "giftcard":

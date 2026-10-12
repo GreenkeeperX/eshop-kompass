@@ -779,6 +779,7 @@ function planCard(p){
     const parts = [`${cur === "EUR" ? "" : money(p.total, cur) + " → "}<b class="cost" title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}</b> statt ${eur(p.ref_total)}${p.is_ref ? " normal" : ""}`];
     // Bleibt Guthaben übrig, steckt es im Kartenpreis: zeigen, was die Spiele selbst kosten
     if(!p.is_ref && p.rest_value >= 0.5) parts.push(`<small title="Du zahlst ${eur(p.cost)} für die Karten. ${eur(p.rest_value)} davon bleiben als Rest auf dem Konto; die Spiele selbst kosten ${eur(p.games_cost)}. Die Ersparnis rechnet mit diesem Betrag.">Spiele ${eur(p.games_cost)}</small>`);
+    if(!p.is_ref && p.balance_value) parts.push(`<small title="Vorhandenes Guthaben ist schon bezahlt, zählt aber zum Kurs mit: sonst wirkte das Paket billiger, als es war. Die Spiele kosten so ${eur(p.games_cost)}.">dazu Guthaben ${eur(p.balance_value)}</small>`);
     if(saveDe) parts.push(saveDe);
     if(p.cards.length) parts.push(cardsHtml(p));
     if(!p.is_ref) parts.push(restHtml(p));
