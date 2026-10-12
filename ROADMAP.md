@@ -76,6 +76,7 @@ Reihenfolge und Begründung:
 - [x] Reiter „Sammlung“ (0.28): alle Spiele der Sammlung, oben die mit fehlenden DLC,
   darunter die ohne Zusatzinhalte und die noch nicht gelesenen. Vorher ein Filter im
   Reiter Titel, der schwer zu finden war.
+  Dazu: Die Sprachliste trennt geprüfte und ungeprüfte Titel sichtbar in Gruppen.
 - [x] 4.1 Prüfung mit echten Daten (mit 0.26): Abgleich ohne Sperren, DLC-Abschnitte im
   echten HTML wie gebaut, Japan-Store weiter nur JavaScript. Korrekturen in 0.27.
 - [ ] 4.2 Füllartikel im Kaufplan, Stufe 1: Unter jedem Schritt mit Rest stehen bis zu drei
