@@ -294,6 +294,19 @@ def sync_prices(data, settings, fetch, sleep, history=None):
         _log("Ohne Preise (abgeschaltete Länder): " + ", ".join(quiet))
 
 
+def _plan_card_urls(data, settings, now=None):
+    """Kartenlinks der Länder, in denen der Kaufplan gerade kauft."""
+    try:
+        ui = store.load_ui()
+        steps = planner.purchase_plan(data, settings, ui["targets"], include_good=ui["plan_good"],
+                                      bought=store.load_purchases(),
+                                      now=datetime.fromtimestamp(now, timezone.utc) if now else None)["steps"]
+    except Exception:
+        return set()
+    return {x["url"] for p in steps
+            for x in planner.parse_card_list(settings["countries"][p["code"]].get("cards")) if x["url"]}
+
+
 def sync_card_prices(data, settings, fetch, sleep, now=None):
     """Liest die Preise der Guthabenkarten, die einen Link haben, von der Shopseite.
 
@@ -314,9 +327,11 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
         if url not in urls:
             del prices[url]
     todo = [u for u in urls if now - (prices.get(u) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS]
-    # Der Shop sperrt nach einigen Abrufen: zuerst die Links, die am längsten nicht gelesen
-    # wurden, sonst kämen immer dieselben dran und die hinteren nie
-    todo.sort(key=lambda u: (prices.get(u) or {}).get("checked", 0))
+    # Der Shop sperrt nach einigen Abrufen: zuerst die Karten der Länder im Kaufplan, denn
+    # deren Preise zählen gerade. Danach und innerhalb davon die Links, die am längsten
+    # nicht gelesen wurden, sonst kämen immer dieselben dran und die hinteren nie
+    first = _plan_card_urls(data, settings, now)
+    todo.sort(key=lambda u: (u not in first, (prices.get(u) or {}).get("checked", 0)))
     if not todo:
         return
     _step("Kartenpreise lesen", len(todo))
