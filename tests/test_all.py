@@ -1466,6 +1466,33 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(set(seen), {None})                # immer die eigene Kennung
 
 
+    def test_japan_probe_respects_robots(self):
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
+        xml = ("<TitleInfoList><TitleInfo><TitleName>A</TitleName><LinkURL>https://store-jp.nintendo.com/x"
+               "</LinkURL></TitleInfo><TitleInfo><TitleName>B</TitleName><LinkURL>/switch/abcd/index.html"
+               "</LinkURL></TitleInfo></TitleInfoList>")
+        jp_page = "<title>B</title><dt>対応言語</dt><dd>日本語、英語、ドイツ語</dd>"
+        urls = []
+
+        def fake(robots):
+            def request(url, ua=None, timeout=25):
+                urls.append(url)
+                text = (robots if url.endswith("robots.txt") else xml if url.endswith("switch.xml")
+                        else jp_page if "/switch/abcd/" in url else "")
+                return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
+            return request
+        with mock.patch.object(sources, "request", fake("User-agent: *\nDisallow: /cgi-bin/")):
+            text = "\n".join(sync.diagnose())
+        self.assertIn("nintendo.co.jp Titelliste: HTTP 200", text)
+        self.assertIn("Einträge 2", text)
+        self.assertIn("Sprachen: 日本語, 英語, ドイツ語", text)
+        self.assertIn("https://www.nintendo.co.jp/switch/abcd/index.html", urls)
+        urls.clear()
+        with mock.patch.object(sources, "request", fake("User-agent: *\nDisallow: /data/")):
+            text = "\n".join(sync.diagnose())
+        self.assertIn("per robots.txt gesperrt", text)
+        self.assertFalse(any("switch.xml" in u for u in urls))
+
 class SyncTest(unittest.TestCase):
     def test_full_sync_with_fake_network(self):
         store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc",
