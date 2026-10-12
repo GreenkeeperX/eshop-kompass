@@ -848,6 +848,8 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
     # Paket-Güte mit denselben Grenzen wie das Urteil: buy, wenn jeder Titel "kaufen" ist,
     # good, wenn jeder mindestens "gut" ist
     grades = [ctx.grade(i["eur"], i["slug"]) for i in out["items"]]
+    for i, g in zip(out["items"], grades):
+        i["grade"] = g
     out["grade"] = None if not grades or None in grades else \
         "buy" if all(g == "buy" for g in grades) else "good" if "wait" not in grades else "wait"
     if known and chosen and out.get("games_cost") is not None:
@@ -1013,6 +1015,8 @@ def matrix(data, settings, now=None):
                 continue
             cells[code] = ctx.cell(c, slug, o)
             eur = cells[code]["eur"]
+            # Preisgüte wie im Urteil, nur für Angebote, die zählen (Zellfarbe im Preisvergleich)
+            cells[code]["grade"] = ctx.grade(eur, slug) if ctx.decides(o) else None
             # Hervorgehoben wird das günstigste Angebot, nicht der günstigste Normalpreis
             if eur is not None and o["sale"] and ctx.decides(o) and (
                     best is None or eur < cells[best]["eur"]):
@@ -1352,6 +1356,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         p = plans_by[code]
         dropped.append({"code": code, "name": p["name"], "tier_name": p["tier_name"],
                         "titles": [i["short"] for i in p["items"]],
+                        "slugs": [i["slug"] for i in p["items"]],
                         "saving": p["saving"], "gain": p["gain"], "alt_codes": p.get("alt_codes", []),
                         "threshold": p.get("threshold")})
         allowed.remove(code)

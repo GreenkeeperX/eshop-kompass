@@ -20,68 +20,88 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 
 ## Ansichten
 
-- Radar: eine Zeile je Wishlist-Titel mit dem besten Preis jetzt (getrennt nach
-  leicht und schwer erreichbaren Ländern), dem Abstand zum Bestpreis in Euro,
-  deinem Zielpreis und einem Urteil. Bestpreis ist der niedrigste Preis der
-  letzten 24 Monate in einem zählenden Land, mit deinem heutigen Einkaufsweg
-  (Kurs, Karten, Gebühren) gerechnet; Normalpreise zählen mit. Das Urteil misst
-  nur die Preisgüte des günstigsten zählenden Angebots, mit denselben Grenzen
-  für jedes Land, und nennt das Land samt Stufe:
-  - kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber) oder
-    höchstens 0,50 € darüber,
-  - gutes Angebot: bis 15 % oder höchstens 2 € darüber,
-  - warten: im Angebot, aber weiter weg ("war X € günstiger", oder "in Land Y
-    dauerhaft X €", wenn der Bestpreis dort der Normalpreis ist).
-  Ob sich der Weg in ein schweres Land lohnt, entscheiden Kaufplan und Pakete.
-  Der typische Angebotspreis (siehe unten) steht nur zur Information daneben.
-  Ein leeres Zielfeld zeigt den Bestpreis grau, wenn er unter dem Preis jetzt
-  liegt; "übernehmen" setzt ihn als Zielpreis.
-  DE✓ am Preis heißt: deutsche Fassung bestätigt oder dasselbe Produkt wie im
-  deutschen eShop; "andere Fassung" heißt: dort ohne Deutsch.
-  Die beiden Euro-Grenzen sind unter Einstellungen änderbar.
-- Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst.
-  Kandidaten sind die Titel mit dem Urteil "kaufen", per Schalter auch
-  "gutes Angebot". Jeder Titel geht ins Land, wo er am wenigsten kostet. Ein
-  Land bleibt nur im Plan, wenn sein Wechselgewinn die Mindestersparnis seiner
+Vier Reiter: Jetzt, Titel, Länder, Einstellungen. Das "?" oben rechts öffnet
+die Legende mit allen Farben, Marken und Begriffen. Die Farben haben je eine
+Bedeutung: Grün nur fürs Urteil, Gold (★, Umrandung) nur für den Bestpreis,
+Bernstein heißt prüfen, Rot heißt nein (Wechsel lohnt nicht, Rest blockiert,
+hier teurer als ohne den Wechsel). Rabatte stehen grau daneben.
+
+Begriffe: Einkaufspreis ist, was du zahlst, mit Steuer, Kurs, Guthabenkarten
+und Gebühr. Bestpreis ist der niedrigste Einkaufspreis der letzten 24 Monate in
+einem zählenden Land, mit deinem heutigen Einkaufsweg gerechnet; Normalpreise
+zählen mit. Das Urteil misst nur die Preisgüte des günstigsten zählenden
+Angebots, mit denselben Grenzen für jedes Land:
+- kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber) oder
+  höchstens 0,50 € darüber,
+- gut: bis 15 % oder höchstens 2 € darüber,
+- warten: im Angebot, aber weiter weg.
+Die beiden Euro-Grenzen sind unter Einstellungen änderbar. Ob sich der Weg in
+ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
+
+- Jetzt (Startseite): oben, in welchem Land dein Konto steht und mit wie viel
+  Guthaben, direkt änderbar. Darunter "Zu erledigen": ungeprüfte Sprachen, die
+  etwas ändern würden, Länder ohne Guthabenkarte mit Preis und Kartenpreise,
+  die älter als 30 Tage sind, jeweils mit Sprung an die richtige Stelle.
+  Dann der Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem
+  Land kaufst. Kandidaten sind die Titel mit dem Urteil "kaufen", per Schalter
+  auch "gut". Jeder Titel geht ins Land, wo er am wenigsten kostet. Ein Land
+  bleibt nur im Plan, wenn sein Wechselgewinn die Mindestersparnis seiner
   Wechselstufe schafft. Wechselgewinn ist, was dieselben Titel ohne diesen
   Wechsel kosten ("sonst": günstigstes zählendes Land gleicher oder leichterer
   Stufe, oder das Land, in dem dein Konto steht), minus was sie hier kosten.
-  Schafft ein Land das nicht, wandern seine Titel ins nächstbeste Land; sind sie
-  dort kein Kauf mehr (gleiche Grenzen wie im Radar), stehen sie unter "Lieber
-  warten". Reihenfolge: zuerst das Land, in dem dein Konto steht, dann leicht,
+  Schafft ein Land das nicht, wandern seine Titel ins nächstbeste Land; sind
+  sie dort kein Kauf mehr, stehen sie unter "Nicht im Plan" (zugeklappt), mit
+  Grund. Reihenfolge: zuerst das Land, in dem dein Konto steht, dann leicht,
   mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ein Rest ist kein
   Verlust, solange du im Land bleibst; folgt im Plan noch ein Wechsel, verfällt
   er (Nintendo nimmt Guthaben nicht mit) und zählt dort als Kosten ("Rest
-  verfällt"). "Passt dazu" nennt einen Titel, der den Rest nutzt.
-  "Als Korb vergleichen" übernimmt die Titel in den gemeinsamen Korb.
+  verfällt"). Ist heute nichts auf "kaufen", nennt die Seite die Angebote, die
+  am nächsten am Bestpreis liegen.
   "gekauft" an einem Land vermerkt den Kauf im Kaufprotokoll
   (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort
-  als Guthaben, Guthaben anderer Länder gilt als weg (Nintendo nimmt es beim
-  Wechsel nicht mit). Gekaufte Titel verschwinden aus dem Plan, auch solange
-  sie noch auf der Wishlist stehen. Unter dem Plan stehen die letzten Käufe
-  mit der Ersparnis gegenüber Deutschland; "letzten zurücknehmen" stellt Land
-  und Guthaben wieder her.
-- Pakete, Angebote je Land: Länderkarten als dichtes Raster oder große Liste.
-  Je Land die Wishlist-Angebote mit Kosten, Karten, Rest, Angebotsende und
-  Vorschlägen zum Dazunehmen (+) oder Weglassen (−). Die Kopfzahl ist der
-  Abstand zum Optimum (grün, wenn jeder Titel "kaufen" ist, gold, wenn jeder
-  mindestens "gut" ist, mit den Grenzen des Urteils). Optimum ist die Summe der Bestpreise aller Länder
-  für die Titel im Paket (Titel ohne bekannten Bestpreis zählen mit dem
-  Preis hier). Abstand ist, was das Paket hier ohne Rest kostet, minus
-  dieses Optimum, in Euro und Prozent. Gold "unter Optimum" heißt: Das Paket ist nur mit
-  Angeboten so billig, die nicht zählen (Sprache ungeprüft, ohne Karte).
-  Darunter steht der Wechselgewinn ("spart X € gg. Polen", wie im Kaufplan),
-  die Spalte "sonst" nennt je Titel den Preis ohne diesen Wechsel; die
-  Ersparnis gegenüber Deutschland steht im Tooltip. Ob sich der Wechsel lohnt,
-  sagt der Hinweis "Wechsel lohnt erst ab X €". Ein Rest ist kein Verlust:
-  Gewinn und Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €");
-  ab 5 € Rest warnt das Paket. Vorhandenes Guthaben ist schon bezahlt, zählt
-  aber zum Kurs mit ("dazu Guthaben X €"), sonst stünde ein Paket aus
-  Guthaben bei 0 € und damit scheinbar am Optimum.
-- Pakete, gemeinsamer Korb: "Korb für alle" öffnet eine Vergleichstabelle,
-  Titel als Zeilen, Länder als Spalten. Das günstigste Land ist hervorgehoben,
-  aber nur unter Ländern, die den ganzen Korb anbieten.
-- Preisvergleich: alle Titel mal alle Länder in Euro, mit Angebotsende.
+  als Guthaben, Guthaben anderer Länder gilt als weg. Gekaufte Titel
+  verschwinden aus dem Plan, auch solange sie noch auf der Wishlist stehen.
+  Unter "Gekauft" stehen die letzten Käufe; "letzten Kauf zurücknehmen" stellt
+  Land und Guthaben wieder her. "als Korb vergleichen" übernimmt die Titel in
+  den gemeinsamen Korb.
+- Titel, Liste: eine Zeile je Wishlist-Titel mit Urteil, Einkaufspreis samt
+  Land und Stufe, Abstand zum Bestpreis und, wenn das beste Angebot in einem
+  schweren Land liegt, der Alternative in einem leichten oder mittleren Land.
+  Unter dem Urteil steht, ob der Titel im Plan ist oder warum nicht. Filter
+  nach Urteil und Suche oben. Ein Klick auf den Titel klappt die Einzelheiten
+  auf: die Rechnung, alle Länder mit Preis, Stufe, Rabatt, Angebotsende und
+  Landestief (ungeprüfte Sprache direkt bestätigen), Bestpreis, typischer
+  Angebotspreis, Zielpreis (leer heißt: das Urteil misst am Bestpreis;
+  "Bestpreis übernehmen" setzt ihn) und die Links zu DekuDeals, eShop-Prices
+  und zum eigenen Verlauf.
+- Titel, Tabelle: alle Titel mal alle Länder in Euro, Spalten nach Stufe
+  gruppiert (Länder, in denen gerade nichts zählt, am Ende). Angebote mit dem
+  Urteil "kaufen" sind dunkelgrün hinterlegt, "gut" hellgrün; gold umrandet ist
+  das Land, in dem es den Bestpreis gab. "Details" zeigt in jeder Zelle
+  Landestief, Angebotsende und Sprache. Die Tabelle scrollt in einem eigenen
+  Fenster, Kopfzeile und Titelspalte bleiben stehen. "nur Angebote" blendet
+  auch Länder ohne Angebot aus.
+- Länder, je Land: Länderkarten als dichtes Raster oder große Liste. Die
+  Kopfzahl ist der Einkaufspreis des Pakets. Darunter drei Zeilen:
+  "Preis" nennt den Abstand der Spiele zur Summe ihrer Bestpreise (grün, wenn
+  jeder Titel "kaufen" ist) und zählt die Urteile; "Wechsel" sagt, ob sich der
+  Weg hierher lohnt ("✓ lohnt" oder rot "lohnt nicht", mit Gewinn gegenüber
+  "sonst" und der Schwelle der Stufe); "Rest" nennt, was als Guthaben bleibt
+  und was hineinpasst. Hürden (Rest blockiert, Karten fehlen, DLC braucht eine
+  andere Region) stehen darunter. Die Tabelle zeigt je Titel Einkaufspreis,
+  Abstand zum Bestpreis und den Preis ohne diesen Wechsel ("sonst").
+  Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen unter der Tabelle,
+  die ganze Rechnung unter "Rechnung". Ein Rest ist kein Verlust: Gewinn und
+  Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €").
+  Vorhandenes Guthaben ist schon bezahlt, zählt aber zum Kurs mit.
+- Länder, Korb: ein gemeinsamer Korb, verglichen in allen Ländern, Titel als
+  Zeilen, Länder als Spalten, darunter Einkaufspreis, Preis, Wechsel und Rest
+  wie auf den Karten. Das günstigste Land ist hervorgehoben, aber nur unter
+  Ländern, die den ganzen Korb anbieten. "+" in der Titelliste legt einen
+  Titel in den Korb.
+
+Die Ansicht (Reiter, Liste oder Tabelle, Filter, aufgeklappte Kästen) merkt
+sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.
 
 Jeder Europreis enthält alles, was der Kauf dich kostet: Shop-Preis, Steuer,
 Wechselkurs und den Weg zum Guthaben (Kartengebühr oder Preis der
@@ -100,7 +120,7 @@ Die Servicegebühr eines Kartenshops (Eneba: 0,40 € plus 7,75 % je Bestellung)
 steckt in jeder gelesenen Karte; besteht ein Paket aus mehreren Karten, zählt
 der feste Teil nur einmal. Cashback des Shops (Eneba gibt es manchmal) steht
 nicht in den Preisen. Mit "Mögliches Cashback" unter Einstellungen markiert
-das Radar mit ✱, wo es ein Angebot zum Bestpreis machen könnte.
+die Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte.
 
 Bei Guthabenkarten ist der Europreis ein Anteil: Preis je Guthabeneinheit der
 günstigsten Karte mal Shop-Preis. Kaufst du einen Titel allein, brauchst du
@@ -111,18 +131,10 @@ Unter der Vergleichstabelle steht, was der Korb kostet, wenn jeder Titel im
 günstigsten Land mit Kartenzahlung gekauft wird. Dort kostet der Wechsel
 nichts und es bleibt kein Rest.
 
-Marken an jedem Angebot: ★ Bestpreis über alle Länder, grün Landestief, rot
-Angebot darüber. Bestpreis und Landestief sind die niedrigsten Preise der
-letzten 24 Monate, zum heutigen Kurs und Einkaufsweg.
-
-Im Preisvergleich steht der Bestpreis je Titel in einer eigenen Spalte, das
-Land, in dem es ihn gab, ist gold umrandet. Jede Zelle zeigt darunter den
-Tiefstpreis des Landes in Euro ("Tief ?" heißt: noch nicht geladen). Eine
-aufklappbare Legende über der Tabelle erklärt alle Farben und Marken. Grün
-hinterlegt ist das günstigste Angebot jetzt; ein günstiger Normalpreis ohne
-Angebot wird nicht hervorgehoben. Die Tabelle scrollt in einem eigenen
-Fenster, Kopfzeile und Titelspalte bleiben stehen. "nur Angebote" blendet
-auch Länder ohne Angebot aus.
+Marken an jedem Angebot: ★ Bestpreis über alle Länder, rot: hier teurer als
+ohne den Wechsel, ? zählt nicht (Sprache ungeprüft oder ohne Guthabenkarte).
+Bestpreis und Landestief sind die niedrigsten Preise der letzten 24 Monate,
+zum heutigen Kurs und Einkaufsweg.
 
 Guthaben passend zum Einkauf: Jeder Europreis eines Guthabenlandes rechnet
 mit den Karten, die du für genau diesen Betrag kaufen würdest (die
@@ -219,9 +231,9 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   Hand gesetzten ("zurücksetzen" stellt die Angabe von Nintendo wieder her)
   und die ungeprüften ohne Folgen. Von Hand gilt dauerhaft und geht der
   Angabe von Nintendo vor. Ist für eine Region unbekannt, ob es Deutsch gibt,
-  bleibt das Angebot im Preisvergleich sichtbar („Sprache?“), zählt
+  bleibt das Angebot in der Titeltabelle sichtbar („Sprache?“), zählt
   aber nicht für Bestpreis, Urteil und Kaufplan. Ist ein Titel nur dort
-  kaufbar, sagt das Radar es als Grund. Mit „nur warnen“ zählen solche
+  kaufbar, nennt die Titelliste es als Grund. Mit „nur warnen“ zählen solche
   Angebote wie früher mit.
 - Sicherung: Einstellungen, Karten, Zielpreise und Körbe als Datei.
 
@@ -242,7 +254,7 @@ hat. Jeder Preiswechsel landet zusätzlich in `data/history.json`.
 (Preise, Tiefstwerte, Verlauf, Karten, Kurse, Einstellungen ohne Wishlist- und
 Sammlungslink). Damit lässt sich ein auffälliger Fall genau nachrechnen.
 
-"Verlauf" neben jedem Titel (Radar, Preisvergleich) zeigt diese Aufzeichnung
+"Verlauf" in den Einzelheiten jedes Titels zeigt diese Aufzeichnung
 als Kurve je Land und dazu: Preis jetzt, Normalpreis, tiefster
 aufgezeichneter Preis mit Datum, Zahl der Angebote, typische Dauer, Anteil der
 Zeit im Angebot und das letzte Angebot. Europreise rechnen mit dem heutigen
@@ -261,7 +273,7 @@ Angebotspreis ist der Median dieser Tiefstwerte, ab zwei Phasen. War das
 letzte Angebot tiefer als der Median, gilt dieses: Nintendo senkt
 Angebotspreise oft dauerhaft, und der Median würde dann noch den alten Preis
 zeigen. Je Titel zählt das günstigste Land, in Euro zum heutigen Kurs.
-Er steht nur zur Information im Radar und im Verlauf; das Urteil misst am Bestpreis.
+Er steht nur zur Information in den Einzelheiten und im Verlauf; das Urteil misst am Bestpreis.
 
 Den Verlauf lädt das Tool mit dem Tiefstpreis. Für Titel, deren Tiefstpreis
 schon bekannt ist, holt es die Seite nur während eines Angebots nach,

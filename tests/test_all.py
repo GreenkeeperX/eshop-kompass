@@ -977,6 +977,19 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(plan["cost"], 6.24)
         self.assertEqual(plan["count"], 1)
 
+    def test_ui_fields_for_signals(self):
+        # Die Oberfläche färbt Preise nach dem Urteil und nennt Titel, deren Wechsel nicht lohnt
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertEqual(len(plan["dropped"][0]["slugs"]), len(plan["dropped"][0]["titles"]))
+        self.assertIn("hades", plan["dropped"][0]["slugs"])
+        item = plan["steps"][0]["items"][0]
+        self.assertIn(item["grade"], ("buy", "good", "wait", "none"))
+        rows = {r["slug"]: r for r in planner.matrix(self.data, self.settings, now=NOW)["rows"]}
+        self.assertEqual(rows["hades"]["cells"]["BR"]["grade"], "buy")
+        for r in rows.values():
+            for c in r["cells"].values():
+                self.assertIn(c.get("grade"), ("buy", "good", "wait", "none", None))
+
     def test_price_history_from_own_records(self):
         h = {"BR": {"hades": [["2026-09-01T00:00:00+00:00", 83.99],
                               ["2026-09-10T00:00:00+00:00", 41.99],
