@@ -111,7 +111,8 @@ Reihenfolge und Begründung:
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle
   offenen Titel, nicht nur die gerade günstigeren; die Gruppe „ungeprüft, aber egal“ entfällt.
   Angaben zu Titeln, die weder auf der Wishlist noch in der Sammlung stehen, räumt der
-  Abgleich ab.
+  Abgleich ab. Schonend (0.35.1): höchstens 40 Seiten je Region und Abgleich, Sperren zählen
+  nicht als Versuch, Seiten ohne Sprachen werden noch zweimal am Folgetag gefragt.
 
 Zurückgestellt: Füllartikel Stufe 3 (gute Spiele abseits der Wishlist). Es braucht dafür
 eine Quelle für „gut“, und ein Vorschlag für ein Spiel, das niemand wollte, hilft wenig.
