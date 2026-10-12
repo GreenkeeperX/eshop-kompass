@@ -1686,6 +1686,34 @@ class Switch2Test(unittest.TestCase):
         self.assertEqual(list(planner.switch2_paths(data, rows)), [ed])
 
 
+class BundleTest(unittest.TestCase):
+    def test_bundle_against_parts(self):
+        row = Switch2Test.row
+        pack, game, dlc = "mk8-plus-bcp", "mk8", "mk8-bcp"
+        data = {"owned": [], "items": {}, "rel": {
+            pack: {"title": "MK8 + BCP", "has": [[game, "MK8"]], "in": []},
+            game: {"title": "MK8", "in": [[pack, "MK8 + BCP"]], "dlc": [[dlc, "BCP"]]},
+            dlc: {"title": "BCP", "parent": game, "in": [[pack, "MK8 + BCP"]]}}}
+        rows = [row(pack, "MK8 + BCP", 59.99), row(game, "MK8", 49.99), row(dlc, "BCP", 24.99)]
+        b = planner.bundles(data, rows)
+        p = b["packs"][pack]
+        # Teile aus "Contains" der Paketseite und "Included In" der Teile
+        self.assertEqual(sorted(k["slug"] for k in p["parts"]), [game, dlc])
+        self.assertEqual((p["alone"], p["eur"], p["saving"], p["partial"]), (74.98, 59.99, 14.99, False))
+        self.assertEqual([i["slug"] for i in b["in"][game]], [pack])
+        # Das Spiel ist schon da: nur der DLC zählt, das Paket brächte es doppelt
+        data["owned"] = [game]
+        p = planner.bundles(data, rows)["packs"][pack]
+        self.assertEqual((p["alone"], p["saving"], p["have"]), (24.99, -35.0, ["MK8"]))
+        # Ohne Preis für einen fehlenden Teil kein Vergleich; ist nur ein Teil bekannt auch nicht
+        data["owned"] = []
+        p = planner.bundles(data, rows[:2])["packs"][pack]
+        self.assertEqual((p["alone"], p["unpriced"]), (None, ["BCP"]))
+        del data["rel"][dlc]
+        p = planner.bundles(data, rows)["packs"][pack]
+        self.assertEqual((p["partial"], p["saving"]), (True, None))
+
+
 class SelfCheckTest(unittest.TestCase):
     def test_self_check_flags_jumps_drops_and_odd_cards(self):
         data, settings = sample()
