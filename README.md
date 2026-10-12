@@ -346,7 +346,10 @@ Sicherung und Protokoll.
   Findet das Tool unter einer ID keine Seite (oder nach drei Versuchen keine Sprache),
   sucht der nächste Abgleich die ID bei DekuDeals einmal neu: Eine andere ID ersetzt die
   alte und die Sprache wird neu gefragt, dieselbe gilt danach als geprüft. Für Japan meldet
-  das der Browser-Helfer („keine Seite“), weil das Tool selbst nur den Warteraum sieht. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
+  das der Browser-Helfer („keine Seite“), weil das Tool selbst nur den Warteraum sieht. Dazu
+  gleicht es jede Japan-ID einmal mit titledb ab: Die Programm-ID eines Spiels ist in allen
+  Regionen gleich; weicht sie bei Japan und Europa ab, sucht es die Japan-ID ebenfalls neu
+  (dafür lädt es einmal zusätzlich die deutsche titledb-Liste, rund 28 MB). Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
   Link in den Store und "Deutsch ja"/"nein"; wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:

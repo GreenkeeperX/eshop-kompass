@@ -2258,7 +2258,7 @@ class ExtraDlcTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             sources.parse_titledb([doc[:-40]], want)
         self.assertEqual(sources.fetch_titledb(["70010000000123"], fetch=lambda u: doc),
-                         {"70010000000123": "japanese, english"})
+                         {"70010000000123": {"langs": "japanese, english", "app": None}})
 
     def test_japan_waiting_room_stops_store_and_titledb_fills(self):
         # store-jp zeigt dem Tool den Warteraum: eine Probe, dann Schluss für diesen Abgleich.
@@ -2277,9 +2277,9 @@ class ExtraDlcTest(unittest.TestCase):
             calls.append(n)
             raise sources.FetchError("u", 503, "Warteraum")
 
-        def titledb(ids, fetch=None):
+        def titledb(ids, fetch=None, region="JP.ja"):
             tdb.append(sorted(ids))
-            return {"0": "japanese, german", "1": "japanese, english"}
+            return {"0": {"langs": "japanese, german"}, "1": {"langs": "japanese, english"}}
         t0 = 1736467200
         with mock.patch.object(sources, "fetch_langs_jp", jp), mock.patch.object(sources, "fetch_titledb", titledb):
             sync.sync_titledb(data, settings, None, now=t0)
@@ -2303,6 +2303,33 @@ class ExtraDlcTest(unittest.TestCase):
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 32 * 86400)
         self.assertEqual(items["t0"]["langs"]["JP"], "日本語, 英語")
         self.assertNotIn("JP", items["t0"]["langs_src"])
+
+    def test_titledb_checks_japan_id_against_europe(self):
+        # Die Programm-ID ist in allen Regionen gleich. Weicht sie ab, gehört die Japan-ID
+        # wohl zu einem anderen Titel: einmal neu suchen. Unbekannt in titledb: nichts tun.
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP")
+        lang = {"JP": "日本語, ドイツ語"}
+        data = {"items": {"ok": {"title": "Ok", "active": True, "ids": {"EU": ["e1"], "JP": ["j1"]}, "langs": dict(lang)},
+                          "bad": {"title": "Bad", "active": True, "ids": {"EU": ["e2"], "JP": ["j2"]}, "langs": dict(lang)},
+                          "new": {"title": "New", "active": True, "ids": {"EU": ["e3"], "JP": ["j3"]}, "langs": dict(lang)}},
+                "prices": {}}
+        regions = []
+
+        def titledb(ids, fetch=None, region="JP.ja"):
+            regions.append(region)
+            return ({"j1": {"app": "0100A"}, "j2": {"app": "0100B"}} if region == "JP.ja"
+                    else {"e1": {"app": "0100A"}, "e2": {"app": "0100C"}})
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_titledb", titledb):
+            sync.sync_titledb(data, settings, None, now=t0)
+            self.assertEqual(regions, ["JP.ja", "DE.de"])
+            items = data["items"]
+            self.assertEqual({s: it.get("ids_suspect") for s, it in items.items()},
+                             {"ok": None, "bad": {"JP": t0}, "new": None})
+            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
+            self.assertEqual(len(regions), 2)                   # jede ID nur einmal abgleichen
 
     def test_browser_helper_import(self):
         data = {"items": {"a": {"title": "A", "active": True, "ids": {"JP": ["70010000000001"]},

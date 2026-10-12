@@ -523,33 +523,56 @@ def game_ids(data, fam):
 
 
 def sync_titledb(data, settings, fetch, now=None):
-    """Japan-Sprachen aus titledb für Titel ohne Angabe. Lädt die Liste nur, wenn ein Titel
-    seit einem Monat nicht nachgesehen wurde, und höchstens einmal die Woche."""
+    """Japan über titledb: Sprachen für Titel ohne Angabe und ein Abgleich der Japan-ID.
+    titledb nennt zu jeder ID die Programm-ID, die in allen Regionen gleich ist. Weicht sie
+    bei Japan und Europa ab, gehört die Japan-ID vermutlich zu einem anderen Titel: Der
+    nächste Abgleich sucht sie einmal neu. Lädt nur, wenn etwas zu tun ist, und höchstens
+    einmal die Woche (Japan rund 24 MB, für den ID-Abgleich zusätzlich Deutschland)."""
     now = now or time.time()
     if not any(settings["countries"][code]["enabled"] for code in countries.ORDER
                if countries.BY_CODE[code]["family"] == "JP"):
         return
-    todo = {n: recs for n, recs in jp_targets(data).items()
+    targets = jp_targets(data)
+    todo = {n: recs for n, recs in targets.items()
             if any(not (r.get("langs") or {}).get("JP")
                    and now - r.get("tdb_checked", 0) > TITLEDB_RECHECK_SECONDS for r in recs)}
-    if not todo or now - data.get("titledb_at", 0) < TITLEDB_SECONDS:
+    verify = {}
+    for n, recs in targets.items():
+        for r in recs:
+            eu = ((r.get("ids") or {}).get("EU") or [None])[0]
+            if eu and (r.get("ids_tdb") or {}).get("JP") != n:
+                verify[n] = (r, str(eu))
+    if not (todo or verify) or now - data.get("titledb_at", 0) < TITLEDB_SECONDS:
         return
     _step("Sprachen Japan aus titledb")
     try:
-        found = sources.fetch_titledb(list(todo), fetch=fetch)
+        found = sources.fetch_titledb(list(set(todo) | set(verify)), fetch=fetch)
+        europe = sources.fetch_titledb([eu for _, eu in verify.values()], fetch=fetch,
+                                       region="DE.de") if verify else {}
     except Exception as e:
         _log(f"titledb nicht abrufbar ({e})")
         return
     data["titledb_at"] = now
     got = 0
     for nsuid, recs in todo.items():
+        langs = (found.get(nsuid) or {}).get("langs")
         for rec in recs:
             rec["tdb_checked"] = now
-            if nsuid in found and not (rec.get("langs") or {}).get("JP"):
-                rec.setdefault("langs", {})["JP"] = found[nsuid]
+            if langs and not (rec.get("langs") or {}).get("JP"):
+                rec.setdefault("langs", {})["JP"] = langs
                 rec.setdefault("langs_src", {})["JP"] = "titledb"
-        got += nsuid in found
-    _log(f"Sprachen Japan aus titledb: {got} von {len(todo)} Titeln")
+        got += bool(langs)
+    if todo:
+        _log(f"Sprachen Japan aus titledb: {got} von {len(todo)} Titeln")
+    odd = 0
+    for nsuid, (rec, eu) in verify.items():
+        a, b = (found.get(nsuid) or {}).get("app"), (europe.get(eu) or {}).get("app")
+        rec.setdefault("ids_tdb", {})["JP"] = nsuid       # einmal je ID, auch ohne Ergebnis
+        if a and b and a != b and suspect_id(rec, "JP", now):
+            odd += 1
+    if odd:
+        _log(f"Japan-IDs: bei {odd} Titeln passt die Programm-ID laut titledb nicht zu Europa, "
+             "der nächste Abgleich sucht die ID neu")
     store.save_data(data)
 
 

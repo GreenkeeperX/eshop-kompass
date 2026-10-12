@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.41.0"
+VERSION = "0.42.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -533,15 +533,21 @@ def jp_words(text):
 # vieler japanischer Fassungen. Keine Angabe von Nintendo, deshalb in der Oberfläche
 # benannt; store-jp und der Browser-Helfer gehen vor. Die Datei ist groß (rund 24 MB
 # gepackt), das Tool liest sie deshalb Stück für Stück und behält nur die eigenen IDs.
-TITLEDB_URL = "https://raw.githubusercontent.com/blawar/titledb/master/JP.ja.json"
+TITLEDB_URL = "https://raw.githubusercontent.com/blawar/titledb/master/{}.json"
 _TDB_LANGS = {"ja": "japanese", "en": "english", "es": "spanish", "fr": "french", "de": "german",
               "it": "italian", "nl": "dutch", "pt": "portuguese", "ru": "russian", "ko": "korean",
               "zh": "chinese", "pl": "polish", "th": "thai"}
 
 
 def parse_titledb(chunks, wanted):
-    """Liest titledb ({nsuid: {..., "languages": [...]}}) aus Textstücken und liefert
-    {nsuid: "japanese, english, …"} für die gesuchten IDs mit Sprachangabe."""
+    """{nsuid: "japanese, english, …"} für die gesuchten IDs mit Sprachangabe."""
+    return {n: e["langs"] for n, e in titledb_entries(chunks, wanted).items() if e["langs"]}
+
+
+def titledb_entries(chunks, wanted):
+    """Liest titledb ({nsuid: {..., "id": Programm-ID, "languages": [...]}}) aus Textstücken.
+    Liefert für die gesuchten IDs {nsuid: {"langs": "japanese, …" oder None, "app": Programm-ID}}.
+    Die Programm-ID ist in allen Regionen gleich, solange es dasselbe Spiel ist."""
     dec, buf, pos, out = json.JSONDecoder(), "", 0, {}
     chunks = iter(chunks)
 
@@ -579,10 +585,10 @@ def parse_titledb(chunks, wanted):
                 raise ValueError("titledb: Datei endet mitten in einem Eintrag")
             continue
         pos = end
-        if key in wanted and isinstance(val, dict) and isinstance(val.get("languages"), list):
-            langs = [_TDB_LANGS.get(str(l), str(l)) for l in val["languages"]]
-            if langs:
-                out[key] = ", ".join(dict.fromkeys(langs))
+        if key in wanted and isinstance(val, dict):
+            langs = val.get("languages") if isinstance(val.get("languages"), list) else []
+            out[key] = {"langs": ", ".join(dict.fromkeys(_TDB_LANGS.get(str(l), str(l)) for l in langs)) or None,
+                        "app": str(val.get("id") or "").upper() or None}
 
 
 def _stream(url, timeout=60):
@@ -606,10 +612,11 @@ def _stream(url, timeout=60):
         yield text.decode(unzip.flush() if unzip else b"", final=True)
 
 
-def fetch_titledb(nsuids, fetch=fetch):
-    """Sprachen japanischer Fassungen laut titledb für diese IDs."""
-    chunks = _stream(TITLEDB_URL) if fetch is _plain_fetch else [fetch(TITLEDB_URL)]
-    return parse_titledb(chunks, {str(n) for n in nsuids})
+def fetch_titledb(nsuids, fetch=fetch, region="JP.ja"):
+    """Einträge einer titledb-Region (JP.ja, DE.de, …) für diese IDs, siehe titledb_entries."""
+    url = TITLEDB_URL.format(region)
+    chunks = _stream(url) if fetch is _plain_fetch else [fetch(url)]
+    return titledb_entries(chunks, {str(n) for n in nsuids})
 
 
 # Amerika: Die Titelseite des eShops leitet auf die Produktseite von nintendo.com
