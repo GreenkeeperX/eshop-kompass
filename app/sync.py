@@ -473,14 +473,22 @@ def jp_targets(data):
         ids = (it.get("ids") or {}).get("JP")
         if it.get("active") and ids and not it.get("parent"):
             out.setdefault(str(ids[0]), []).append(it)
-    firsts = {}
-    for e in (data.get("extra") or {}).values():
-        ids = (e.get("ids") or {}).get("JP")
-        if ids and e.get("parent") and e["parent"] not in firsts:
-            firsts[e["parent"]] = str(ids[0])
     glangs = data.setdefault("glangs", {})
-    for game, nsuid in firsts.items():
-        out.setdefault(nsuid, []).append(glangs.setdefault(game, {}))
+    for game, nsuid in game_ids(data, "JP").items():
+        out.setdefault(str(nsuid), []).append(glangs.setdefault(game, {}))
+    return out
+
+
+def game_ids(data, fam):
+    """Je Spiel mit fehlenden DLC die ID, deren Seite die Sprache trägt: die des Spiels
+    selbst, wenn bekannt, sonst die des ersten DLC."""
+    glangs, out = data.get("glangs") or {}, {}
+    for e in (data.get("extra") or {}).values():
+        ids = (e.get("ids") or {}).get(fam)
+        game = e.get("parent")
+        if game and game not in out and (ids or ((glangs.get(game) or {}).get("ids") or {}).get(fam)):
+            own = ((glangs.get(game) or {}).get("ids") or {}).get(fam)
+            out[game] = own[0] if own else ids[0]
     return out
 
 
@@ -617,12 +625,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
             continue
         todo = [(it, it["ids"][fam][0]) for it in items.values()
                 if it["ids"].get(fam) and due(it, fam) and not it.get("parent")]
-        firsts = {}
-        for e in extra.values():
-            ids = (e.get("ids") or {}).get(fam)
-            if ids and e.get("parent") and e["parent"] not in firsts:
-                firsts[e["parent"]] = ids[0]
-        for game, nsuid in firsts.items():
+        for game, nsuid in game_ids(data, fam).items():
             rec = glangs.setdefault(game, {})
             if due(rec, fam):
                 todo.append((rec, nsuid))
@@ -800,16 +803,27 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
         e.update(title=title, parent=parent)
         for fam in fams:
             if not e["ids"].get(fam) and now - e["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS:
-                todo.append((bool(e["ids_checked"]), slug, fam))
+                todo.append((bool(e["ids_checked"]), slug, fam, e))
+    # Auch die IDs der Spiele selbst: Ihre Shopseite nennt die Sprachen, die eines DLC oft
+    # nicht (Japan: DLC-Seiten gibt es dort unter dieser Adresse gar nicht). Europa liest
+    # die Sprache je DLC, dafür braucht es keine.
+    glangs = data.setdefault("glangs", {})
+    for game in dict.fromkeys(parent for _, parent in wanted.values()):
+        g = glangs.setdefault(game, {})
+        g.setdefault("ids", {})
+        g.setdefault("ids_checked", {})
+        for fam in fams:
+            if fam != "EU" and not g["ids"].get(fam) and now - g["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS:
+                todo.append((bool(g["ids_checked"]), game, fam, g))
     if not todo:
         return
-    todo.sort()
+    todo.sort(key=lambda t: t[:3])
     _step("IDs fehlender DLC suchen", min(len(todo), EXTRA_PER_SYNC))
     pages, fails = 0, 0
-    for _, slug, fam in todo:
+    for _, slug, fam, e in todo:
         if pages >= EXTRA_PER_SYNC:
             break
-        e, found, reached = extra[slug], [], False
+        found, reached = [], False
         for lookup in countries.FAMILY_LOOKUP[fam]:
             if pages >= EXTRA_PER_SYNC:
                 break
@@ -832,6 +846,10 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
         if reached:
             e["ids"][fam] = found
             e["ids_checked"][fam] = now
+            if found and slug not in extra:
+                # Spiel-ID neu: Sprache dort gleich fragen, die DLC-Seite zählt nicht mehr
+                for k in ("langs_checked", "langs_tries"):
+                    (e.get(k) or {}).pop(fam, None)
         status["done"] += 1
     store.save_data(data)
     known = sum(1 for e in extra.values() if any(e["ids"].values()))

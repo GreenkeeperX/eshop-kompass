@@ -2117,6 +2117,41 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertIs(xctx.german(xctx.items["rl-b"], "JP", "rl-b"), False)
         self.assertIs(xctx.german(xctx.items["rl-b"], "EU", "rl-b"), True)
 
+    def test_missing_dlc_languages_from_game_page(self):
+        # Die Shopseite eines DLC nennt oft keine Sprachen (in Japan gibt es sie unter der
+        # Adresse gar nicht). Das Tool sucht deshalb die IDs des Spiels selbst und fragt dort.
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "US", "JP")
+        data = self.data()
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["2"], "AM": ["12"], "JP": ["22"]},
+                                  "ids_checked": {"EU": 1, "AM": 1, "JP": 1}}}
+        data["glangs"] = {"rl": {"langs_checked": {"JP": 1736467200}, "langs_tries": {"JP": 1}}}
+        pages = {("rl", "us"): ["111"], ("rl", "jp"): ["121"]}
+        asked = []
+
+        def item(slug, country, fetch=None):
+            asked.append((slug, country))
+            return {"nsuids": pages.get((slug, country), [])}
+        with mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}), \
+                mock.patch.object(sources, "fetch_item", item):
+            sync.sync_extra_ids(data, settings, None, lambda s: None, now=1736467200)
+        self.assertEqual(sorted(asked), [("rl", "jp"), ("rl", "us")])  # Europa je DLC, nicht nötig
+        g = data["glangs"]["rl"]
+        self.assertEqual(g["ids"], {"AM": ["111"], "JP": ["121"]})
+        self.assertNotIn("JP", g["langs_tries"])                         # gleich neu fragen
+        self.assertEqual(sync.jp_targets(data)["121"], [g])
+        jp, am = [], []
+        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: {}), \
+                mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: am.append(n) or "english, german"), \
+                mock.patch.object(sources, "fetch_langs_jp", lambda n, fetch=None: jp.append(n) or "日本語, ドイツ語"):
+            sync.sync_langs(data, settings, None, lambda s: None, now=1736467200 + 60)
+        self.assertEqual((am, jp), (["111"], ["121"]))
+        data["extra"]["rl-b"]["langs"] = {"EU": "english, german"}
+        with mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}):
+            row = {(t["slug"], t["family"]): t for t in planner.lang_todo(data, settings)}.get(("rl", "JP"))
+        self.assertIn("D121", row["url"])
+
     def test_language_blocks_do_not_count(self):
         settings = store.load_settings()
         for code in settings["countries"]:

@@ -340,7 +340,9 @@ Sicherung und Protokoll.
   Kopieren-Knopf ausgibt. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des
   Spiels, auf die sie verweist. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
-  Spiel und Region. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
+  Spiel und Region: die Shopseite des Spiels selbst, dessen IDs das Tool dafür einmal
+  bei DekuDeals sucht (DLC-Seiten nennen die Sprachen oft nicht, in Japan gibt es sie
+  unter dieser Adresse gar nicht); bis die IDs da sind, die Seite des ersten DLC. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
   Link in den Store und "Deutsch ja"/"nein"; wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:

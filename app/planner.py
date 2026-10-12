@@ -1552,7 +1552,9 @@ def lang_todo(data, settings, now=None):
                         best = _extra_best(xctx, s)
                         matters = matters or not best or p[0] < best["eur"] - 0.005
                 out.append(row(game, (rel.get(game) or {}).get("title") or game, fam, codes,
-                               first["ids"][fam][0], xctx.german(first, fam, with_id[0]),
+                               # Seite des Spiels, wenn seine ID bekannt ist (nennt die Sprachen)
+                               ((((data.get("glangs") or {}).get(game) or {}).get("ids") or {}).get(fam)
+                                or first["ids"][fam])[0], xctx.german(first, fam, with_id[0]),
                                xctx.german(first, fam, with_id[0], by_hand=False),
                                (first.get("langs") or {}).get(fam), min(prices) if prices else None,
                                None, (first.get("langs_src") or {}).get(fam), dlc=len(dlc), matters=matters))
