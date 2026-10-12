@@ -342,7 +342,11 @@ Sicherung und Protokoll.
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
   Spiel und Region: die Shopseite des Spiels selbst, dessen IDs das Tool dafür einmal
   bei DekuDeals sucht (DLC-Seiten nennen die Sprachen oft nicht, in Japan gibt es sie
-  unter dieser Adresse gar nicht); bis die IDs da sind, die Seite des ersten DLC. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
+  unter dieser Adresse gar nicht); bis die IDs da sind, die Seite des ersten DLC.
+  Findet das Tool unter einer ID keine Seite (oder nach drei Versuchen keine Sprache),
+  sucht der nächste Abgleich die ID bei DekuDeals einmal neu: Eine andere ID ersetzt die
+  alte und die Sprache wird neu gefragt, dieselbe gilt danach als geprüft. Für Japan meldet
+  das der Browser-Helfer („keine Seite“), weil das Tool selbst nur den Warteraum sieht. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
   Link in den Store und "Deutsch ja"/"nein"; wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:

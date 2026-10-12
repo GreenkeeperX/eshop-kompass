@@ -109,6 +109,9 @@ def sync_ids(data, settings, fetch, sleep, now=None):
         if not it.get("active"):
             continue
         for fam in fams:
+            if (it.get("ids_suspect") or {}).get(fam):
+                todo.append((slug, fam))      # Sprache nicht gefunden: ID neu suchen
+                continue
             if it["ids"].get(fam):
                 continue
             if now - it["ids_checked"].get(fam, 0) < ID_RECHECK_SECONDS:
@@ -149,7 +152,11 @@ def sync_ids(data, settings, fetch, sleep, now=None):
             if info["nsuids"]:
                 found = info["nsuids"]
                 break
-        it["ids"][fam] = found
+        if (it.get("ids_suspect") or {}).get(fam):
+            if reached:
+                settle_ids(it, fam, found, now, it.get("title") or slug)
+        else:
+            it["ids"][fam] = found
         if reached:  # bei Netzfehlern beim nächsten Abgleich erneut versuchen
             it["ids_checked"][fam] = now
         status["done"] += 1
@@ -465,6 +472,29 @@ def prune_langs(data, settings):
     return len(drop)
 
 
+def suspect_id(rec, fam, now):
+    """Keine Seite oder wiederholt keine Sprache: Vielleicht stimmt die ID nicht. Der nächste
+    Abgleich sucht sie bei DekuDeals neu, einmal je ID."""
+    nsuid = ((rec.get("ids") or {}).get(fam) or [None])[0]
+    if nsuid and (rec.get("ids_verified") or {}).get(fam) != nsuid:
+        rec.setdefault("ids_suspect", {})[fam] = now
+        return True
+    return False
+
+
+def settle_ids(rec, fam, found, now, title):
+    """Ergebnis einer Neusuche: andere ID übernehmen und die Sprache neu fragen, sonst die
+    alte als geprüft vermerken, damit es nicht immer wieder sucht."""
+    (rec.get("ids_suspect") or {}).pop(fam, None)
+    old = (rec.get("ids") or {}).get(fam) or []
+    if found and found[0] != (old or [None])[0]:
+        rec.setdefault("ids", {})[fam] = found
+        for k in ("langs_checked", "langs_tries", "langs", "langs_src"):
+            (rec.get(k) or {}).pop(fam, None)
+        _log(f"ID korrigiert: {title} ({countries.FAMILIES[fam]}) {old[0] if old else '–'} -> {found[0]}")
+    rec.setdefault("ids_verified", {})[fam] = (found or old or [None])[0]
+
+
 def jp_targets(data):
     """Japan-ID -> Einträge, die ihre Sprache tragen: Wishlist-Titel und je Spiel mit
     fehlenden DLC der erste DLC (gilt für alle DLC des Spiels), wie in sync_langs."""
@@ -539,11 +569,14 @@ def import_jp_langs(text, now=None):
         data = store.load_data()
         targets = jp_targets(data)
         now = now or time.time()
-        got = empty = unknown = 0
+        got = empty = unknown = gone = 0
         for nsuid, value in found.items():
             recs = targets.get(str(nsuid).strip())
             if not recs:
                 unknown += 1
+                continue
+            if str(value or "").strip() == "keine Seite":
+                gone += sum(1 for rec in recs if suspect_id(rec, "JP", now)) > 0
                 continue
             langs = sources.jp_words(str(value or ""))
             if not langs:
@@ -557,7 +590,7 @@ def import_jp_langs(text, now=None):
         store.save_data(data)
     finally:
         _lock.release()
-    return {"read": got, "empty": empty, "unknown": unknown}
+    return {"read": got, "empty": empty, "unknown": unknown, "gone": gone}
 
 
 def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
@@ -636,15 +669,16 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
         rest, todo = max(0, len(todo) - n), todo[:n]
         if budget is not None:
             budget[fam] = n - len(todo)
-        got = fails = 0
+        got = fails = suspects = 0
         if todo:
             _step(f"Sprachen {name} abrufen", len(todo))
         for rec, nsuid in todo:
+            gone = False
             try:
                 langs = fetch_one(nsuid, fetch=fetch)
             except sources.FetchError as e:
                 if e.status == 404:
-                    langs = None           # keine Seite: als geprüft vermerken
+                    langs, gone = None, True   # keine Seite: als geprüft vermerken
                 elif e.status == 503:
                     _log(f"Sprachen {name}: Der Store zeigt den Warteraum, nächster Versuch beim nächsten Abgleich")
                     break                  # zählt nicht als Versuch, die anderen Seiten bleiben ungefragt
@@ -663,10 +697,13 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
                 rec.setdefault("langs", {})[fam] = langs
                 (rec.get("langs_src") or {}).pop(fam, None)    # jetzt von Nintendo
                 got += 1
+            elif (gone or tries[fam] >= LANG_TRIES) and suspect_id(rec, fam, now):
+                suspects += 1
             status["done"] += 1
             sleep(DEKU_PAUSE)
         if todo:
-            _log(f"Sprachen {name}: {got} von {len(todo)} Titeln" + (f", {rest} folgen beim nächsten Abgleich" if rest else ""))
+            _log(f"Sprachen {name}: {got} von {len(todo)} Titeln" + (f", {rest} folgen beim nächsten Abgleich" if rest else "")
+                 + (f", bei {suspects} sucht der nächste Abgleich die ID neu" if suspects else ""))
     store.save_data(data)
 
 
@@ -813,7 +850,8 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
         g.setdefault("ids", {})
         g.setdefault("ids_checked", {})
         for fam in fams:
-            if fam != "EU" and not g["ids"].get(fam) and now - g["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS:
+            if fam != "EU" and ((g.get("ids_suspect") or {}).get(fam) or (
+                    not g["ids"].get(fam) and now - g["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS)):
                 todo.append((bool(g["ids_checked"]), game, fam, g))
     if not todo:
         return
@@ -843,7 +881,10 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
             if info["nsuids"]:
                 found = info["nsuids"]
                 break
-        if reached:
+        if reached and (e.get("ids_suspect") or {}).get(fam):
+            settle_ids(e, fam, found, now, ((data.get("rel") or {}).get(slug) or {}).get("title") or slug)
+            e["ids_checked"][fam] = now
+        elif reached:
             e["ids"][fam] = found
             e["ids_checked"][fam] = now
             if found and slug not in extra:

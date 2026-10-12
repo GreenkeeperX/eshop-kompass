@@ -108,6 +108,7 @@ Reihenfolge und Begründung:
   als automatischer Grundstock (gekennzeichnet) und ein Browser-Helfer als Lesezeichen, der die
   Seiten in deinem Browser liest; Nintendo geht titledb vor (Entscheidung 13.10.2026).
   Fehlende DLC deiner Spiele (0.40): Sprache und Store-Link über die Seite des Spiels selbst.
+  Falsche IDs (0.41): keine Seite oder wiederholt keine Sprache -> ID einmal neu suchen.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

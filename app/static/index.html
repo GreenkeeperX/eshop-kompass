@@ -1621,7 +1621,7 @@ const ids=[...new Set((prompt("Japan-IDs aus eShop-Kompass einfügen")||"").matc
 if(!ids.length)return;
 const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";document.body.appendChild(box);
 const wait=()=>new Promise(r=>setTimeout(r,2500));
-const read=async path=>{try{const r=await fetch(path,{credentials:"include"});if(r.status===404)return{v:""};if(!r.ok)return{v:null};
+const read=async path=>{try{const r=await fetch(path,{credentials:"include"});if(r.status===404)return{v:"",gone:true};if(!r.ok)return{v:null};
 const d=new DOMParser().parseFromString(await r.text(),"text/html");
 const th=[...d.querySelectorAll("th")].find(e=>e.textContent.trim()==="対応言語");
 if(th){const td=th.parentElement.querySelector("td");return{v:((td&&td.querySelector("p"))||td||th).textContent.trim()}}
@@ -1629,12 +1629,12 @@ return{v:d.querySelector("[data-testid^=ProductDetail]")?"":null,d}}catch(e){ret
 const out={};let bad=0,stop=false,viaGame=0;
 for(let i=0;i<ids.length;i++){
 box.textContent="eShop-Kompass: lese "+(i+1)+" von "+ids.length+" …";
-let{v,d}=await read("/item/software/D"+ids[i]);
+let{v,d,gone}=await read("/item/software/D"+ids[i]);if(gone)out[ids[i]]="keine Seite";
 if(v===""&&d){const a=[...d.querySelectorAll("a[href*='/item/software/D7001']")].map(e=>e.getAttribute("href").match(/D(7001\\d{10})/)).find(m=>m&&m[1]!==ids[i]);
 if(a){await wait();const g=await read("/item/software/D"+a[1]);if(g.v){v=g.v;viaGame++}}}
 if(v===null){if(++bad>=3){stop=true;break}}else{bad=0;if(v)out[ids[i]]=v}
 await wait()}
-const txt=JSON.stringify(out),n=Object.keys(out).length;
+const txt=JSON.stringify(out),n=Object.values(out).filter(x=>x!=="keine Seite").length;
 box.textContent="";const p=document.createElement("p");p.textContent=(stop?"Abgebrochen, der Store lässt gerade nicht durch. ":"Fertig. ")+n+" von "+ids.length+" Titeln mit Sprachen"+(viaGame?" ("+viaGame+" DLC über die Seite des Spiels)":"")+". Kopieren und im eShop-Kompass einfügen.";
 const ta=document.createElement("textarea");ta.value=txt;ta.readOnly=true;ta.style.cssText="width:100%;height:110px;margin:8px 0";
 const c=document.createElement("button");c.textContent="Kopieren";c.style.marginRight="8px";
@@ -1736,7 +1736,7 @@ document.addEventListener("click", async e => {
     else if(a === "jpimport"){
       const r = await api("/api/jp_langs", {text: $("jpimport").value});
       S.state.lang_todo = r.lang_todo; await refresh(); render();
-      toast(`${r.read} Titel übernommen` + (r.empty ? `, ${r.empty} ohne Sprachangabe` : "") + (r.unknown ? `, ${r.unknown} unbekannte IDs` : ""));
+      toast(`${r.read} Titel übernommen` + (r.empty ? `, ${r.empty} ohne Sprachangabe` : "") + (r.unknown ? `, ${r.unknown} unbekannte IDs` : "") + (r.gone ? `, bei ${r.gone} ohne Seite sucht der nächste Abgleich die ID neu` : ""));
     }
     else if(a === "lang"){
       await api("/api/settings", {lang_confirm: {[d.s]: {[d.f]: d.v === "" ? null : d.v === "1"}}});

@@ -2152,6 +2152,34 @@ class ExtraDlcTest(unittest.TestCase):
             row = {(t["slug"], t["family"]): t for t in planner.lang_todo(data, settings)}.get(("rl", "JP"))
         self.assertIn("D121", row["url"])
 
+    def test_language_not_found_searches_id_again(self):
+        # Keine Seite unter der ID: einmal bei DekuDeals neu suchen. Andere ID übernehmen und
+        # die Sprache neu fragen; dieselbe ID gilt danach als geprüft, keine Schleife.
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "US")
+        data = {"items": {"a": {"title": "A", "active": True, "ids": {"AM": ["1"]}, "ids_checked": {"AM": 1}},
+                          "b": {"title": "B", "active": True, "ids": {"AM": ["2"]}, "ids_checked": {"AM": 1}}},
+                "prices": {}}
+
+        def am(n, fetch=None):
+            raise sources.FetchError("u", 404)
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_langs_am", am):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0)
+        self.assertEqual({s: it.get("ids_suspect") for s, it in data["items"].items()},
+                         {"a": {"AM": t0}, "b": {"AM": t0}})
+        pages = {"a": ["11"], "b": ["2"]}
+        with mock.patch.object(sources, "fetch_item", lambda slug, c, fetch=None: {
+                "nsuids": pages[slug], "title": None, "parent": None, "low": None}), \
+                mock.patch.object(sync, "_store_low", lambda *a, **k: None):
+            sync.sync_ids(data, settings, None, lambda s: None, now=t0 + 60)
+        a, b = data["items"]["a"], data["items"]["b"]
+        self.assertEqual((a["ids"]["AM"], a["ids_suspect"], a.get("langs_tries", {})), (["11"], {}, {}))
+        self.assertEqual((b["ids"]["AM"], b["ids_verified"]["AM"]), (["2"], "2"))
+        self.assertFalse(sync.suspect_id(b, "AM", t0 + 120))         # dieselbe ID nicht noch einmal
+        self.assertFalse(sync.suspect_id(a, "AM", t0 + 120))
+
     def test_language_blocks_do_not_count(self):
         settings = store.load_settings()
         for code in settings["countries"]:
@@ -2286,7 +2314,11 @@ class ExtraDlcTest(unittest.TestCase):
         text = json.dumps({"70010000000001": "日本語, 英語, フランス語, ドイツ語",
                            "70010000000002": "", "70050000000003": "日本語", "70019999999999": "日本語"})
         res = sync.import_jp_langs(text, now=5)
-        self.assertEqual(res, {"read": 2, "empty": 1, "unknown": 1})
+        self.assertEqual(res, {"read": 2, "empty": 1, "unknown": 1, "gone": 0})
+        # Keine Seite unter der ID: der nächste Abgleich sucht sie neu
+        res = sync.import_jp_langs(json.dumps({"70010000000002": "keine Seite"}), now=6)
+        self.assertEqual(res["gone"], 1)
+        self.assertEqual(store.load_data()["items"]["b"]["ids_suspect"], {"JP": 6})
         d = store.load_data()
         self.assertEqual(d["items"]["a"]["langs"]["JP"], "日本語, 英語, フランス語, ドイツ語")
         self.assertEqual(d["items"]["a"]["langs_src"], {})
