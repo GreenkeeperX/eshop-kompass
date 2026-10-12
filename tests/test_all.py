@@ -1752,6 +1752,31 @@ class CollectionTabTest(unittest.TestCase):
         self.assertEqual(c["waiting"], [{"slug": "hades", "title": "Hades"}])     # noch nicht gelesen
 
 
+    def test_dlc_marked_by_hand(self):
+        data = {"owned": ["rl"], "items": {}, "rel": {
+            "rl": {"title": "Rocket League", "dlc": [["rl-a", "Car A"], ["rl-b", "Car B"], ["rl-c", "Car C"]]}}}
+        settings = {"dlc_marks": {"rl-a": "have", "rl-b": "ignore"}}
+        g = planner.collection(data, settings, rows=[])["games"][0]
+        self.assertEqual((g["have"], g["ignored"], g["missing"]), (1, 1, 1))
+        rows = {d["slug"]: d for d in g["dlc"]}
+        self.assertTrue(rows["rl-a"]["by_hand"] and rows["rl-b"]["ignored"])
+        # Alle DLC des Spiels ignorieren: der abgehakte zählt weiter als vorhanden
+        settings["dlc_marks"]["rl"] = "ignore_all"
+        g = planner.collection(data, settings, rows=[])["games"][0]
+        self.assertEqual((g["have"], g["ignored"], g["missing"], g["ignore_all"]), (1, 2, 0, True))
+        # Die DekuDeals-Sammlung geht vor
+        data["owned"].append("rl-b")
+        g = planner.collection(data, settings, rows=[])["games"][0]
+        self.assertEqual((g["have"], g["ignored"]), (2, 1))
+
+    def test_dlc_marks_are_saved(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(store, "DATA_DIR", d):
+            store.save_settings({"dlc_marks": {"rl-a": "have", "rl": "ignore_all", "x": "bogus"}})
+            self.assertEqual(store.load_settings()["dlc_marks"], {"rl-a": "have", "rl": "ignore_all"})
+            store.save_settings({"dlc_marks": {"rl-a": None}})
+            self.assertEqual(store.load_settings()["dlc_marks"], {"rl": "ignore_all"})
+
+
 class Switch2Test(unittest.TestCase):
     @staticmethod
     def row(slug, title, eur, code="DE", name="Deutschland", verdict="buy"):

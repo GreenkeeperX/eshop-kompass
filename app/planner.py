@@ -1334,7 +1334,9 @@ def collection(data, settings, targets=None, now=None, rows=None):
     """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
 
     Grundlage sind die Abschnitte "DLC" der DekuDeals-Artikelseiten (sync_related).
-    Ob du einen DLC hast, sagt die Sammlung, die du bei DekuDeals pflegst. Steht ein
+    Ob du einen DLC hast, sagt die Sammlung, die du bei DekuDeals pflegst; was sie nicht
+    kennt, hakst du hier ab („habe ich“), Unwichtiges blendest du aus („ignorieren“, je DLC
+    oder für alle DLC eines Spiels). Die DekuDeals-Sammlung geht vor. Steht ein
     fehlender DLC auf der Wishlist, gibt es Urteil und Einkaufspreis wie im Radar;
     sonst kennt das Tool keinen Preis (keine Nintendo-ID)."""
     rel = data.get("rel") or {}
@@ -1342,6 +1344,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
     owned = set(owned_list)
     by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
     items = data.get("items") or {}
+    marks = settings.get("dlc_marks") or {}
     games, unread, no_dlc, plain, waiting = [], 0, 0, [], []
 
     def name(slug, e=None):
@@ -1360,8 +1363,13 @@ def collection(data, settings, targets=None, now=None, rows=None):
             if "nintendo switch online" in f"{d_slug} {d_title}".lower().replace("-", " "):
                 continue                     # Abo-Inhalte gibt es nicht zu kaufen
             r = by.get(d_slug)
+            mark = marks.get(d_slug)
             row = {"slug": d_slug, "title": d_title, "owned": d_slug in owned,
                    "wish": r is not None, "upgrade": is_upgrade(d_slug, d_title)}
+            row["have"] = row["owned"] or mark == "have"
+            row["by_hand"] = not row["owned"] and mark == "have"
+            row["ignored"] = not row["have"] and (mark == "ignore" or marks.get(slug) == "ignore_all")
+            row["mark"] = mark
             if r:
                 shown = r.get("shown") or {}
                 best = next((b for b in (r.get("easy"), r.get("hard"))
@@ -1375,9 +1383,11 @@ def collection(data, settings, targets=None, now=None, rows=None):
             no_dlc += 1
             plain.append({"slug": slug, "title": name(slug, e)})
             continue
-        have = sum(1 for d in dlc if d["owned"])
+        have = sum(1 for d in dlc if d["have"])
+        ignored = sum(1 for d in dlc if d["ignored"])
         games.append({"slug": slug, "title": e.get("title") or slug, "dlc": dlc,
-                      "have": have, "missing": len(dlc) - have})
+                      "have": have, "ignored": ignored, "ignore_all": marks.get(slug) == "ignore_all",
+                      "missing": len(dlc) - have - ignored})
     games.sort(key=lambda g: (g["missing"] == 0, g["title"].lower()))
     plain.sort(key=lambda g: g["title"].lower())
     waiting.sort(key=lambda g: g["title"].lower())

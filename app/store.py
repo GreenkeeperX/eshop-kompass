@@ -22,6 +22,8 @@ DEFAULT_SETTINGS = {
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
     # Sprachen von Hand bestätigt: {slug: {"JP": true, "AM": false}}
     "lang_confirm": {},
+    # DLC in der Sammlung von Hand: {DLC: "have" | "ignore", Spiel: "ignore_all"}
+    "dlc_marks": {},
     # Cashback des Kartenshops in Prozent, wenn es eins gibt. Nur für einen Hinweis,
     # nicht in den Preisen: Es gibt es nicht immer
     "cashback_pct": 0.0,
@@ -135,6 +137,14 @@ def save_settings(new):
                     cur.pop(fam, None)
             if not cur:
                 del s["lang_confirm"][slug]
+        marks = new.get("dlc_marks")
+        for slug, value in marks.items() if isinstance(marks, dict) else []:
+            if not isinstance(slug, str) or len(slug) > 200:
+                continue
+            if value in ("have", "ignore", "ignore_all"):
+                s["dlc_marks"][slug] = value
+            elif value is None:
+                s["dlc_marks"].pop(slug, None)
         for tier, value in (new.get("tier_min_saving") or {}).items():
             if str(tier) in s["tier_min_saving"]:
                 try:

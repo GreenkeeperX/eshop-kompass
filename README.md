@@ -109,7 +109,12 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   und zum eigenen Verlauf.
 - Sammlung (eigener Reiter): alle Spiele deiner DekuDeals-Sammlung mit ihren
   Zusatzinhalten (Abschnitt "DLC" der DekuDeals-Artikelseite), je DLC "hast du"
-  oder "fehlt". Ob du einen DLC hast, sagt deine Sammlung bei DekuDeals. Steht
+  oder "fehlt". Ob du einen DLC hast, sagt deine Sammlung bei DekuDeals; was sie
+  nicht kennt, etwa einen DLC aus einem Paket, hakst du mit "habe ich" ab.
+  "ignorieren" (je DLC) und "alle DLC ignorieren" (je Spiel) blenden Inhalte aus,
+  die dich nicht interessieren: Sie zählen nicht als fehlend und stehen eingeklappt
+  unter dem Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der
+  Sicherung. Steht
   ein fehlender DLC auf deiner Wishlist, stehen Urteil, Einkaufspreis und Land
   dabei, sonst ein Link zu DekuDeals, um ihn auf die Wishlist zu setzen.
   Upgrade-Pakete für die Switch 2 sind markiert. Spiele mit fehlenden DLC
