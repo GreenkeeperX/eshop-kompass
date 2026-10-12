@@ -1836,6 +1836,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "rest_lost": _r(sum(p.get("rest_lost") or 0 for p in steps)),
             "include_good": include_good,
             "bought_waiting": [ctx.title(s) for s in ctx.order if s in done],
+            "bought_slugs": [s for s in ctx.order if s in done],
             "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "games", "de", "rest", "currency")}
                        for b in (bought or [])[-5:]][::-1],
             # Ein Rest bleibt als Guthaben und ist kein Verlust: Die Ersparnis rechnet mit

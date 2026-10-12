@@ -743,6 +743,9 @@ function planState(slug){
   if(d) return `nicht im Plan: Wechsel nach ${esc(d.name)} lohnt nicht`;
   if(k.later.some(l => l.slug === slug)) return "nicht im Plan: lieber warten";
   if((k.held || []).some(h => h.slug === slug) && k.lock) return `nicht im Plan: Konto in ${esc(k.lock.name)} gesperrt, bis das Guthaben aufgebraucht ist`;
+  const s2 = (k.s2_skip || []).find(x => x.slug === slug);
+  if(s2) return `nicht im Plan: nur ein Weg zur Switch 2: ${esc(s2.reason)}`;
+  if((k.bought_slugs || []).includes(slug)) return "nicht im Plan: schon gekauft, steht noch auf der Wishlist";
   return "";
 }
 

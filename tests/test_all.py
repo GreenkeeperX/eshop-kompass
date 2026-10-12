@@ -1651,6 +1651,20 @@ class PurchaseLogTest(unittest.TestCase):
                           s["countries"]["BR"]["balance"]), ("DE", 3.0, 0.0))
         self.assertEqual(store.load_purchases(), [])
 
+    def test_plan_passes_switch_2_skips_with_slug(self):
+        # Der Reiter Titel erkennt aussortierte Wege zur Switch 2 an der Kennung
+        data, settings = sample()
+        plan = planner.purchase_plan(data, settings, now=NOW)
+        planned = [i["slug"] for p in plan["steps"] for i in p["items"]]
+        self.assertIn("hades", planned)
+        def skip_hades(data, rows, wanted):
+            return [s for s in wanted if s != "hades"], [{"slug": "hades", "reason": "Grund"}]
+        with mock.patch.object(planner, "_switch2_choice", skip_hades):
+            plan = planner.purchase_plan(data, settings, now=NOW)
+        self.assertNotIn("hades", [i["slug"] for p in plan["steps"] for i in p["items"]])
+        self.assertEqual([(x["slug"], x["reason"]) for x in plan["s2_skip"]], [("hades", "Grund")])
+        self.assertEqual(plan["bought_slugs"], [])
+
     def test_plan_skips_bought_titles(self):
         data, settings = sample()
         bought = [{"at": "2026-10-11T20:00:00+00:00", "code": "JP", "slugs": ["hades"],
@@ -1658,6 +1672,8 @@ class PurchaseLogTest(unittest.TestCase):
         plan = planner.purchase_plan(data, settings, now=NOW, bought=bought)
         self.assertNotIn("hades", [i["slug"] for p in plan["steps"] for i in p["items"]])
         self.assertEqual(plan["bought_waiting"], ["Hades"])
+        # Für den Hinweis im Reiter Titel: gekaufte Titel auch als Kennung
+        self.assertEqual(plan["bought_slugs"], ["hades"])
         self.assertAlmostEqual(plan["bought_saving"], 16.99)
         # Mit dem Preis der Spiele (ohne den Rest, der als Guthaben bleibt) rechnet die
         # Ersparnis wie der Kaufplan
