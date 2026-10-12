@@ -311,6 +311,9 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
         if url not in urls:
             del prices[url]
     todo = [u for u in urls if now - (prices.get(u) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS]
+    # Der Shop sperrt nach einigen Abrufen: zuerst die Links, die am längsten nicht gelesen
+    # wurden, sonst kämen immer dieselben dran und die hinteren nie
+    todo.sort(key=lambda u: (prices.get(u) or {}).get("checked", 0))
     if not todo:
         return
     _step("Kartenpreise lesen", len(todo))
@@ -333,57 +336,6 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
         sleep(CARD_PAUSE)
     _log(f"Kartenpreise: {got} von {len(todo)} gelesen" +
          ("" if got == len(todo) else ", für die übrigen gilt der Wert von Hand"))
-
-
-def sync_card_market(data, settings, fetch, sleep, now=None):
-    """Kartenpreise je Land von gg.deals: eine Seite je Land, höchstens einmal am Tag.
-
-    Die Seite nennt je Kartenwert den günstigsten Preis über alle Shops in Euro.
-    Bei 403 oder 429 endet das Lesen, die bisherigen Werte gelten weiter.
-    """
-    now = now or time.time()
-    market = data.setdefault("card_market", {})
-    if not settings.get("card_market", True):
-        return
-    todo = []
-    for code in countries.ORDER:
-        cfg = settings["countries"][code]
-        slug = countries.GGDEALS.get(code)
-        if not slug or not cfg["enabled"] or cfg["pay"] == "card":
-            continue
-        if now - (market.get(code) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS:
-            todo.append((code, slug))
-    if not todo:
-        return
-    _step("Kartenpreise bei gg.deals", len(todo))
-    got = 0
-    for code, slug in todo:
-        url = sources.GGDEALS_URL.format(slug)
-        currency = slug.split("-")[0].upper()
-        old = market.get(code) or {}
-        try:
-            cards = sources.parse_ggdeals_group(fetch(url), currency)
-        except sources.FetchError as e:
-            if e.status in sources.BLOCKED:
-                # Sperre (bei gg.deals eine Cloudflare-Prüfung, die einen Browser verlangt):
-                # nicht umgehen, für heute alle Länder ruhen lassen und es deutlich sagen
-                _log(f"Kartenpreise: gg.deals sperrt Abrufe ohne Browser (HTTP {e.status}), "
-                     "bisherige Werte gelten weiter. Abschaltbar unter Einstellungen")
-                for c, _ in todo:
-                    market[c] = dict(market.get(c) or {}, checked=now,
-                                     error=f"gg.deals sperrt Abrufe ohne Browser (HTTP {e.status})")
-                break
-            market[code] = dict(old, checked=now, error=f"HTTP {e.status or 'Fehler'}")
-        else:
-            if cards:
-                market[code] = {"checked": now, "url": url,
-                                "cards": {str(f): {"price": p, "url": u} for f, (p, u) in cards.items()}}
-                got += 1
-            else:
-                market[code] = dict(old, checked=now, error="Seite nennt keine Kartenpreise")
-        status["done"] += 1
-        sleep(CARD_PAUSE)
-    _log(f"Kartenpreise gg.deals: {got} von {len(todo)} Ländern gelesen")
 
 
 UNIT_JUMP = 0.15        # mehr Änderung je Währungseinheit seit dem letzten Abgleich ist auffällig
@@ -420,7 +372,7 @@ def self_check(data, settings, now=None):
         name = c["meta"]["name"]
         for i in c["implausible"]:
             warnings.append(f"{name}: Kartenpreis {planner.num_txt(i['face'])} {c['currency'] or ''} für "
-                            f"{planner._eur(i['price'])} ({i['src']}) unglaubhaft, ignoriert")
+                            f"{planner._eur(i['price'])} vom Shop unglaubhaft, ignoriert")
         if c["unit"]:
             units[code] = c["unit"] * 100
             old = (prev.get("units") or {}).get(code)
@@ -629,7 +581,6 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_prices(data, settings, fetch, sleep, history)
         store.save_history(history)
         sync_card_prices(data, settings, fetch, sleep)
-        sync_card_market(data, settings, fetch, sleep)
         self_check(data, settings)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
@@ -656,14 +607,6 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
                       finished=datetime.now(timezone.utc).isoformat(timespec="seconds"))
         _lock.release()
     return True
-
-
-def gg_excerpt(page_html):
-    """HTML rund um die erste Kartenkachel, gekürzt: zeigt, wie Link und Preis stehen."""
-    i = page_html.find("/gift-card/")
-    if i < 0:
-        return sources.visible_text(page_html)[:200]
-    return re.sub(r"\s+", " ", page_html[max(0, i - 200):i + 900])
 
 
 def diagnose():
@@ -761,11 +704,6 @@ def diagnose():
                         f"Cashback: {cashback_spots(t)}")
     else:
         lines.append("Guthabenkarte: keine Karte mit Link eingetragen, Eneba nicht geprüft")
-    # gg.deals: Kartenwerte und Preise einer Gruppenseite, dazu ein Ausschnitt zum Nachbessern
-    probe("Kartenpreise gg.deals (BR)", sources.GGDEALS_URL.format("brl-brazil"), None,
-          lambda t: f"{len(t)} Zeichen, Titel „{sources.page_title(t)[:60]}“, gelesen: "
-                    f"{ {f: p for f, (p, _) in sorted(sources.parse_ggdeals_group(t, 'BRL').items())} }, "
-                    f"Ausschnitt: {gg_excerpt(t)}")
     probe("Wechselkurse", sources.FX_URL, None, lambda t: t[:80])
     return lines
 

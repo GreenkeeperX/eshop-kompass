@@ -23,7 +23,7 @@ TYPICAL_MIN_RUNS = 2
 # Bestpreis und Landestief: tiefster Preis dieses Zeitraums aus dem DekuDeals-Verlauf. Ältere
 # Tiefstwerte, zum heutigen Kurs gerechnet, zeigen Preise, die es so nie gab (Entscheidung 12.10.2026)
 BEST_MONTHS = 24
-# Gelesene Kartenpreise (Shopseite, gg.deals) zählen nur in diesem Bereich, gemessen am
+# Gelesene Kartenpreise (Shopseite) zählen nur in diesem Bereich, gemessen am
 # Nennwert zum Mittelkurs. Ein Lesefehler (etwa ein Gebührenhinweis statt des Preises)
 # würde sonst als „günstiger“ alle Vergleiche kippen. Kleine Karten mit Servicegebühr
 # liegen bei rund 135 %, deutsche Karten unter Nennwert bei rund 90 %.
@@ -191,7 +191,6 @@ class Context:
         rates = data["fx"]["rates"]
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
-        self.card_market = data.get("card_market") or {}
         self._payers, self._shares = {}, {}
         self.countries = {}
         for code in countries.ORDER:
@@ -221,7 +220,6 @@ class Context:
                  "cards": parse_card_list(cfg.get("cards")), "implausible": []}
             if c["rate"]:
                 c["cards"] = self._live_cards(c["cards"], c["rate"], c["implausible"])
-                c["cards"] = self._market_cards(code, c["cards"], c["rate"], cfg, c["implausible"])
             c["unit"] = self._unit(c)
             c["estimated"] = self.estimated(c)
             # Guthabenland ohne Karte mit Preis: Dort kommst du nicht an Guthaben, der
@@ -238,7 +236,6 @@ class Context:
         # Vergleichsbasis mit allen Kosten: günstigere Guthabenkarten senken auch sie
         unit = ref.get("unit") or 0.01
         self.ref = {s: o["local"] * unit for s, o in ref["offers"].items()}
-        self.ref_regular = {s: o["regular"] * unit for s, o in ref["offers"].items()}
         self._champions()
 
     def _live_cards(self, cards, country_rate, implausible):
@@ -263,40 +260,6 @@ class Context:
                 continue
             x.update(manual=x["cost"], cost=cost, live=e["checked"], fee=fee, fee_eur=fee_eur)
         return cards
-
-    def _market_cards(self, code, cards, rate, cfg, implausible):
-        """Ergänzt die Kartenliste um die Preise von gg.deals, solange sie frisch sind.
-
-        Ein Kartenwert, den du nicht eingetragen hast, kommt dazu. Bei einem
-        eingetragenen gilt der günstigere Preis; ohne Preis zählt dort Kurs plus
-        Aufschlag. Als nicht vorrätig markierte Werte bleiben draußen, unglaubhafte
-        Preise (siehe CARD_PLAUSIBLE) ebenso.
-        """
-        if not self.settings.get("card_market", True):
-            return cards
-        e = self.card_market.get(code) or {}
-        if not e.get("cards") or self.now.timestamp() - e.get("checked", 0) > CARD_PRICE_MAX_AGE:
-            return cards
-        markup = float(self.settings["gift_markup_pct"] if cfg.get("markup_pct") in ("", None)
-                       else cfg["markup_pct"])
-        by_face = {x["face"]: x for x in cards}
-        for face_txt, m in e["cards"].items():
-            face = cents(float(face_txt))
-            if not plausible_card(m.get("price"), face, rate):
-                implausible.append({"face": face / 100, "price": m.get("price"), "src": "gg.deals"})
-                continue
-            x = by_face.get(face)
-            if x is None:
-                by_face[face] = {"face": face, "cost": m["price"], "url": m["url"], "stock": True,
-                                 "market": e["checked"]}
-                continue
-            if not x["stock"]:
-                continue
-            mine = x["cost"] if x["cost"] is not None else face / 100 / rate * (1 + markup / 100)
-            if m["price"] < mine - 0.005:
-                x.update(manual=x["cost"], cost=m["price"], url=m["url"], market=e["checked"],
-                         live=None, fee=None, fee_eur=None)
-        return [by_face[k] for k in sorted(by_face)]
 
     # ---- Europreis je Währungseinheit
 
@@ -363,14 +326,12 @@ class Context:
             out["via"] = "giftcard" if card else "eur"
             if card:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur"),
-                               "market": card.get("market")}
+                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur")}
         elif gift:
             card = self._gift(c)[1]
             if card and card["cost"] is not None:
                 out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur"),
-                               "market": card.get("market")}
+                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur")}
         return out
 
     def estimated(self, c):
@@ -725,7 +686,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
     c = ctx.countries[code]
     override = override or {}
     is_ref = code == countries.REFERENCE
-    ref = ctx.ref_regular if is_ref else ctx.ref
+    ref = ctx.ref
     offers = c["offers"]
     out = {"code": code, "name": c["meta"]["name"], "currency": c["currency"],
            "family": countries.FAMILIES[c["meta"]["family"]],
@@ -735,7 +696,9 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
            "note": c["meta"]["note"], "items": [], "fillers": [], "warnings": [],
            "available": len(offers), "saving": None, "missing": [], "trims": [],
            "current": bool(ctx.settings.get("current_country"))
-                      and c["meta"]["shop"] == ctx.settings.get("current_country")}
+                      and c["meta"]["shop"] == ctx.settings.get("current_country"),
+           # Ohne eingetragenes Kontoland gilt Deutschland als Konto: kein Wechsel
+           "home": is_ref and not ctx.settings.get("current_country")}
     if not c["rate"]:
         if not c["known"]:
             out["warnings"].append("Noch keine Preise abgerufen")
@@ -755,10 +718,11 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
             o = offers.get(slug)
             if not o:
                 continue
-            cheaper = slug not in ref or ctx.est(c, o["local"]) < ref[slug] - 0.005
+            # Deutschland misst sich nicht an sich selbst: Dort zählt jedes Angebot
+            cheaper = is_ref or slug not in ref or ctx.est(c, o["local"]) < ref[slug] - 0.005
             # Angebote, und dauerhaft günstige Normalpreise, die das Urteil "kaufen" tragen:
             # Sie zählen im Kaufplan, also auch hier (Entscheidung 12.10.2026)
-            lasting = not o["sale"] and not is_ref and ctx.decides(o) and \
+            lasting = not o["sale"] and ctx.decides(o) and \
                 ctx.grade(ctx.est(c, o["local"]), slug) == "buy"
             if (o["sale"] or lasting) and cheaper:
                 chosen.append(slug)
@@ -797,7 +761,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
             "ref": _r(r), "dlc_of": ctx.parent_title(slug), "forced": slug in must,
             "alt": _r(alt.get(slug)), "alt_code": alt_code.get(slug),
             **ctx.owned_flags(slug),
-            "over": bool(not is_ref and slug in alt and ctx.est(c, o["local"]) > alt[slug] + 0.005),
+            "over": bool(slug in alt and ctx.est(c, o["local"]) > alt[slug] + 0.005),
             **ctx.cell(c, slug, o),
         })
     ref_total = sum(ref.get(s, 0) for s in chosen)
@@ -827,6 +791,9 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
             games += used * c["unit"]
             out["balance_value"] = _r(used * c["unit"])
         out["games_cost"] = _r(games)
+        # Was dieser Kauf kostet, wenn er stattfindet: Spiele ohne den Rest, der als
+        # Guthaben bleibt (fürs Kaufprotokoll; ein späterer Wechsel zählt dort nicht)
+        out["games_paid"] = _r(games)
         # Im Paket teilen sich die Titel die Karten: Europreis je Titel anteilig
         if total and not base["estimated"] and base["via"] == "giftcard":
             for i in out["items"]:
@@ -841,7 +808,9 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
         out["alt_codes"] = sorted(dict.fromkeys(codes), key=lambda k: -codes.count(k))
         limit = float((ctx.settings.get("tier_min_saving") or {}).get(str(c["tier"]), 0))
         out["threshold"] = limit
-        out["worth"] = is_ref or out["current"] or out["gain"] >= limit
+        # Auch der Weg zurück nach Deutschland ist ein Wechsel der Stufe leicht und muss
+        # die Schwelle schaffen, außer das Konto steht dort (Entscheidung 12.10.2026)
+        out["worth"] = out["current"] or out["home"] or out["gain"] >= limit
 
     # Abstand zum Optimum: je Titel, wie weit der Preis hier über dem Bestpreis
     # liegt, den es je irgendwo gab (Entscheidung 12.10.2026: wichtiger als Deutschland)
@@ -1228,18 +1197,11 @@ def card_status(data, settings, now=None):
                 continue
             e = ctx.card_prices.get(x["url"]) or {}
             error = e.get("error")
-            if x["face"] in odd_shop and not x.get("market"):
+            if x["face"] in odd_shop:
                 error = f"gelesen {_eur(odd_shop[x['face']])}, unglaubhaft, ignoriert"
             rows.append({"face": x["face"] / 100, "cost": x["cost"], "live": x.get("live"),
                          "manual": x.get("manual", x["cost"]), "checked": e.get("checked"),
-                         "error": error, "market": x.get("market")})
-        odd_gg = [i for i in c["implausible"] if i["src"] == "gg.deals"]
-        if odd_gg:
-            rows.append({"face": None, "checked": None, "market_error": "unglaubhafte Preise ignoriert: " + ", ".join(
-                f"{num_txt(i['face'])} für {_eur(i['price'])}" for i in odd_gg)})
-        m = ctx.card_market.get(code) or {}
-        if m.get("error"):
-            rows.append({"face": None, "market_error": m["error"], "checked": m.get("checked")})
+                         "error": error})
         if rows:
             out[code] = rows
     return out
@@ -1277,6 +1239,11 @@ def price_levels(data, settings, now=None):
 
 
 # ---------------------------------------------------------------- Kaufplan
+
+def _paid(b):
+    """Was ein vermerkter Kauf gekostet hat: die Spiele ohne Rest, sonst die Kartenkosten."""
+    return b.get("games") if b.get("games") is not None else b.get("cost")
+
 
 def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None):
     """Ein Gesamtvorschlag: welche Titel jetzt in welchem Land, in welcher Reihenfolge.
@@ -1386,7 +1353,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 # Das Kontoland kommt nach einem anderen Schritt: Dahin geht es zurück,
                 # das ist ein Wechsel wie jeder andere
                 p["current"] = False
-                p["worth"] = p["is_ref"] or p["gain"] >= p.get("threshold", 0)
+                p["worth"] = p["home"] or p["gain"] >= p.get("threshold", 0)
         for p in steps[:-1]:
             # Danach wechselt das Konto: Der Rest verfällt und zählt als Kosten. Im
             # Kontoland verfällt auch das Guthaben, das der Kauf übrig lässt
@@ -1398,19 +1365,20 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 p["games_cost"] = _r(p["games_cost"] + lost)
                 p["gain"] = _r(p["gain"] - lost)
                 p["saving"] = _r(p["saving"] - lost)
-                p["worth"] = p["is_ref"] or p["current"] or p["gain"] >= p.get("threshold", 0)
+                p["worth"] = p["home"] or p["current"] or p["gain"] >= p.get("threshold", 0)
         if steps and cur_balance > 0 and steps[0]["code"] != cur_code and cur_unit is not None:
             # Der Plan verlässt das Kontoland, ohne dort zu kaufen: Das Guthaben verfällt
             p = steps[0]
             lost = cur_balance * cur_unit
             p["balance_lost"] = _r(lost)
+            p["games_paid"] = _r(p["games_paid"] + lost)   # verfällt durch diesen Kauf
             p["rest_lost"] = _r((p.get("rest_lost") or 0) + lost)
             p["games_cost"] = _r(p["games_cost"] + lost)
             p["gain"] = _r(p["gain"] - lost)
             p["saving"] = _r(p["saving"] - lost)
-            p["worth"] = p["is_ref"] or p["current"] or p["gain"] >= p.get("threshold", 0)
+            p["worth"] = p["home"] or p["current"] or p["gain"] >= p.get("threshold", 0)
         weak = [(p["gain"] - p.get("threshold", 0), code) for code, p in plans_by.items()
-                if not p["is_ref"] and not p["current"] and not p.get("worth")]
+                if not p["home"] and not p["current"] and not p.get("worth")]
         # Zwei Länder mit blockierendem Rest gehen nicht nacheinander: Das schwächere fällt heraus
         stuck_steps = [p for p in steps if stuck(p)]
         if not weak and len(stuck_steps) > 1:
@@ -1427,6 +1395,18 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                         "saving": p["saving"], "gain": p["gain"], "alt_codes": p.get("alt_codes", []),
                         "threshold": p.get("threshold"), "blocked_by": p.get("blocked_by")})
         allowed.remove(code)
+
+    # Jeder Titel steht nur einmal unter "Nicht im Plan", mit dem Grund, der zählt: Fiel
+    # sein günstigstes Land heraus und kam er nirgends sonst in den Plan, dort; sonst
+    # unter "lieber warten" oder "nirgends kaufbar"
+    planned = {i["slug"] for p in steps for i in p["items"]}
+    shown = set()
+    for d in dropped:
+        d["open_slugs"] = [s for s in d["slugs"] if s not in planned and s not in shown]
+        d["open_titles"] = [ctx.short(s) for s in d["open_slugs"]]
+        shown.update(d["open_slugs"])
+    later = [s for s in later if s not in shown]
+    nowhere = [s for s in nowhere if s not in shown]
 
     lock = None
     if locked:
@@ -1462,10 +1442,12 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "rest_lost": _r(sum(p.get("rest_lost") or 0 for p in steps)),
             "include_good": include_good,
             "bought_waiting": [ctx.title(s) for s in ctx.order if s in done],
-            "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "de", "rest", "currency")}
+            "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "games", "de", "rest", "currency")}
                        for b in (bought or [])[-5:]][::-1],
-            "bought_saving": _r(sum((b.get("de") or 0) - (b.get("cost") or 0) for b in (bought or [])
-                                    if b.get("de") is not None and b.get("cost") is not None)),
+            # Ein Rest bleibt als Guthaben und ist kein Verlust: Die Ersparnis rechnet mit
+            # dem, was die Spiele kosten. Ältere Einträge kennen nur die Kartenkosten.
+            "bought_saving": _r(sum((b.get("de") or 0) - _paid(b) for b in (bought or [])
+                                    if b.get("de") is not None and _paid(b) is not None)),
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
 
 
@@ -1558,6 +1540,5 @@ def case_export(data, settings, history, slug, now=None):
         "lows": {s: (data.get("lows") or {}).get(s, {}).get(slug) for s in shops
                  if (data.get("lows") or {}).get(s, {}).get(slug)},
         "history": {s: (history.get(s) or {}).get(slug) for s in shops if (history.get(s) or {}).get(slug)},
-        "fx": data.get("fx"), "card_prices": data.get("card_prices"),
-        "card_market": data.get("card_market"), "settings": keep, "radar": row,
+        "fx": data.get("fx"), "card_prices": data.get("card_prices"), "settings": keep, "radar": row,
     }

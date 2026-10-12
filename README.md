@@ -55,9 +55,11 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Wechselstufe schafft. Wechselgewinn ist, was dieselben Titel ohne diesen
   Wechsel kosten ("sonst": günstigstes zählendes Land gleicher oder leichterer
   Stufe, oder das Land, in dem dein Konto steht), minus was sie hier kosten.
+  Das gilt auch für den Weg zurück nach Deutschland, wenn dein Konto woanders
+  steht. Ohne eingetragenes Kontoland gilt Deutschland als Konto.
   Schafft ein Land das nicht, wandern seine Titel ins nächstbeste Land; sind
   sie dort kein Kauf mehr, stehen sie unter "Nicht im Plan" (zugeklappt), mit
-  Grund. Reihenfolge: zuerst das Land, in dem dein Konto steht, dann leicht,
+  Grund, jeder Titel nur einmal. Reihenfolge: zuerst das Land, in dem dein Konto steht, dann leicht,
   mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ein Rest ist kein
   Verlust, solange du im Land bleibst; folgt im Plan noch ein Wechsel, verfällt
   er (Nintendo nimmt Guthaben nicht mit) und zählt dort als Kosten ("Rest
@@ -76,7 +78,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort
   als Guthaben, Guthaben anderer Länder gilt als weg. Gekaufte Titel
   verschwinden aus dem Plan, auch solange sie noch auf der Wishlist stehen.
-  Unter "Gekauft" stehen die letzten Käufe; "letzten Kauf zurücknehmen" stellt
+  Unter "Gekauft" stehen die letzten Käufe, die Ersparnis rechnet wie der Plan
+  mit dem, was die Spiele kosten (ein Rest bleibt Guthaben). "letzten Kauf zurücknehmen" stellt
   Land und Guthaben wieder her. "als Korb vergleichen" übernimmt die Titel in
   den gemeinsamen Korb.
 - Titel, Liste: eine Zeile je Wishlist-Titel mit Urteil, Einkaufspreis samt
@@ -219,25 +222,17 @@ Sicherung und Protokoll.
   wird sie erst an der Kasse. Bei Eneba trafen diese Werte im Oktober 2026
   acht Käufe zwischen 5,57 und 93,03 € auf den Cent. Bei mehreren Karten in
   einer Bestellung fällt der feste Teil nur einmal an. Von
-  Hand eingetragene Preise bleiben, wie du sie einträgst.
-- gg.deals: Für jedes aktive Land mit Guthabenkarten liest
-  das Tool einmal am Tag die Kartengruppe bei gg.deals, eine Seite je Land.
-  Sie nennt je Kartenwert den günstigsten Preis über alle Shops in Euro;
-  gg.deals rechnet dort mit Gebühr und teils mit einem Rabattcode, den die
-  Kartenseite nennt (der Tooltip verlinkt sie). Fehlende Kartenwerte kommen
-  dazu, bei eingetragenen gilt der günstigere Preis, mit x markierte bleiben
-  draußen. Werte älter als drei Tage zählen nicht. Abschaltbar unter
-  Einstellungen. Stand Oktober 2026 verlangt gg.deals eine Cloudflare-Prüfung
-  im Browser (HTTP 403). Das Tool umgeht sie nicht: Es meldet die Sperre,
-  versucht es einmal am Tag wieder und rechnet mit den übrigen Preisen.
-- Glaubhaft: Ein gelesener Kartenpreis (Shopseite oder gg.deals) zählt nur
+  Hand eingetragene Preise bleiben, wie du sie einträgst. Sperrt der Shop nach
+  einigen Abrufen, kommen beim nächsten Mal zuerst die Links dran, die am
+  längsten nicht gelesen wurden.
+- Glaubhaft: Ein gelesener Kartenpreis zählt nur
   zwischen 70 und 160 % des Nennwerts zum Mittelkurs. Alles andere ist fast
   sicher ein Lesefehler, etwa ein Gebührenhinweis statt des Preises. Solche
   Werte stehen mit „unglaubhaft, ignoriert“ unter der Kartenliste und im
   Protokoll, es gilt dein Eintrag.
 - Deutschland: Die Vergleichsbasis ist immer der Preis im deutschen eShop.
   Wer mit günstigen deutschen Guthabenkarten (etwa von Eneba) zahlt, schaltet
-  "Deutschland mit Guthaben" (DG) ein: dasselbe Konto und dieselben Preise,
+  "Deutschland (Guthaben)" (DG) ein: dasselbe Konto und dieselben Preise,
   gerechnet wie jedes Guthabenland. Ein Rest bleibt auf dem Konto und wird
   ab 5 € gewarnt (Nintendo nimmt Guthaben bei keinem Länderwechsel mit). Karten, die bis 0.9.2
   bei Deutschland standen, wandern beim Update dorthin.
