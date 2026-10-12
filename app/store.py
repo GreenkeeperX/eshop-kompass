@@ -13,7 +13,6 @@ DEFAULT_SETTINGS = {
     "collection_url": "",     # leer = Sammlung mit derselben Kennung wie die Wishlist
     "card_fee_pct": 1.75,     # Fremdwährungsgebühr der eigenen Karte
     "gift_markup_pct": 5.0,   # Aufschlag für Guthabenkarten ohne eigenen Preis
-    "card_market": True,      # Kartenpreise je Land von gg.deals lesen
     # Servicegebühr des Kartenshops auf gelesene Preise: fester Betrag plus Anteil.
     # Eneba, Okt. 2026: acht Käufe von 5,57 bis 93,03 € passen auf den Cent zu 0,40 € + 7,75 %
     "shop_fee_pct": 7.75,
@@ -38,7 +37,7 @@ DEFAULT_SETTINGS = {
 DEFAULT_UI = {"basket": None, "overrides": {}, "targets": {}, "hidden": [],
               "sort": "optimum", "dense": True, "plan_good": False}
 
-EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {}, "card_market": {},
+EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {},
               "fx": {"rates": {"EUR": 1.0}, "updated": ""}, "last_sync": None}
 
 lock = threading.RLock()
@@ -69,6 +68,7 @@ def load_settings():
         s = _load("settings.json", DEFAULT_SETTINGS)
         for k, v in DEFAULT_SETTINGS.items():
             s.setdefault(k, json.loads(json.dumps(v)))
+        s.pop("card_market", None)    # gg.deals ist seit 0.20 ausgebaut
         for group in ("tier_min_saving", "deal_eur"):
             for k, value in DEFAULT_SETTINGS[group].items():
                 s[group].setdefault(k, value)
@@ -119,8 +119,6 @@ def save_settings(new):
         s["cashback_pct"] = min(50.0, s["cashback_pct"])
         if new.get("current_country") in list(s["countries"]) + [""]:
             s["current_country"] = new["current_country"]
-        if isinstance(new.get("card_market"), bool):
-            s["card_market"] = new["card_market"]
         if new.get("lang_rule") in ("exclude", "warn", "off"):
             s["lang_rule"] = new["lang_rule"]
         for slug, fams in (new.get("lang_confirm") or {}).items() if isinstance(
@@ -227,6 +225,7 @@ def load_data():
         d = _load("data.json", EMPTY_DATA)
         for k, v in EMPTY_DATA.items():
             d.setdefault(k, json.loads(json.dumps(v)))
+        d.pop("card_market", None)    # gg.deals ist seit 0.20 ausgebaut
         return d
 
 

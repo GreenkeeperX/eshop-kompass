@@ -140,6 +140,7 @@ class Handler(BaseHTTPRequestHandler):
                          "code": str(body.get("code") or ""), "slugs": slugs,
                          "titles": [str(x) for x in (body.get("titles") or [])][:200],
                          "cost": _num(body.get("cost")), "de": _num(body.get("de")),
+                         "games": _num(body.get("games")),
                          "rest": _num(body.get("rest")), "currency": str(body.get("currency") or "")}
                 self._send(200, {"purchases": store.record_purchase(entry)})
             elif path == "/api/bought/undo":

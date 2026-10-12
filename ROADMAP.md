@@ -8,25 +8,25 @@ Diese Datei liegt in einem öffentlichen Repository. Sie enthält deshalb keine 
 Wishlist-Links oder -Kennungen, Hostnamen, Adressen und keine Angaben aus dem eigenen
 Konto (siehe [CLAUDE.md](CLAUDE.md)).
 
-## Phase 1 und 2: Aufräumen und Kaufprotokoll
+## Phase 1 und 2: Aufräumen und Kaufprotokoll (0.20)
 
-- [ ] **Rückkehr nach Deutschland wie jedes leichte Land.** Steht das Konto in einem
+- [x] **Rückkehr nach Deutschland wie jedes leichte Land.** Steht das Konto in einem
   anderen Land, muss der Weg nach Deutschland dieselbe Schwelle schaffen wie jedes
   leichte Land, gemessen gegen die Alternative. Wechsel für ein paar Cent fallen weg. Ist
   kein Kontoland eingetragen, gilt Deutschland als Konto und braucht keine Schwelle. Die
   Anzeige „unter dem Normalpreis“ entfällt.
-- [ ] **gg.deals ausbauen.** Seit 0.9 sperrt Cloudflare jeden Abruf (HTTP 403), und eine
+- [x] **gg.deals ausbauen.** Seit 0.9 sperrt Cloudflare jeden Abruf (HTTP 403), und eine
   Lösung ohne Tarnung gibt es nicht. Es kamen nie Daten. Kartenpreise kommen weiter
   über Shop-Links (Eneba) oder von Hand.
-- [ ] **„Deutschland mit Guthaben“ bleibt** und heißt künftig „Deutschland (Guthaben)“.
+- [x] **„Deutschland mit Guthaben“ bleibt** und heißt künftig „Deutschland (Guthaben)“.
   Deutschland zum Shop-Preis bleibt die Vergleichsbasis. Das Guthaben-Land zeigt, ob
   deutsche Karten unter Nennwert sogar andere Länder schlagen.
-- [ ] **Kartenpreise reihum lesen.** Der Shop sperrt nach etwa elf Abrufen. Bisher kamen
+- [x] **Kartenpreise reihum lesen.** Der Shop sperrt nach etwa elf Abrufen. Bisher kamen
   immer dieselben Links dran, künftig zuerst die am längsten nicht gelesenen.
-- [ ] **Kleinigkeiten:** Der Tooltip „Rest blockiert“ folgt der Regel seit 0.12, der Rest
+- [x] **Kleinigkeiten:** Der Tooltip „Rest blockiert“ folgt der Regel seit 0.12, der Rest
   wird nur noch in einem Euro-Wert gezeigt, und „Nicht im Plan“ nennt jeden Titel nur
   einmal.
-- [ ] **Ersparnis im Kaufprotokoll ohne Rest.** Ein Rest bleibt als Guthaben und ist kein
+- [x] **Ersparnis im Kaufprotokoll ohne Rest.** Ein Rest bleibt als Guthaben und ist kein
   Verlust. Die Ersparnis rechnet deshalb wie der Kaufplan mit dem, was die Spiele kosten.
 
 Gestrichen: Ein Feld für den tatsächlich bezahlten Betrag. Das Kaufprotokoll ist nur
