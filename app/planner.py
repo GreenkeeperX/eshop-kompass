@@ -1125,6 +1125,55 @@ def radar(data, settings, targets=None, now=None):
     return rows
 
 
+def is_upgrade(slug, title=""):
+    """Upgrade-Paket für die Switch 2: DekuDeals führt es als DLC des Switch-1-Spiels."""
+    t = f"{slug} {title}".lower().replace("-", " ")
+    return "upgrade pack" in t and "switch 2" in t
+
+
+def collection(data, settings, targets=None, now=None, rows=None):
+    """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
+
+    Grundlage sind die Abschnitte "DLC" der DekuDeals-Artikelseiten (sync_related).
+    Ob du einen DLC hast, sagt die Sammlung, die du bei DekuDeals pflegst. Steht ein
+    fehlender DLC auf der Wishlist, gibt es Urteil und Einkaufspreis wie im Radar;
+    sonst kennt das Tool keinen Preis (keine Nintendo-ID)."""
+    rel = data.get("rel") or {}
+    owned_list = list(dict.fromkeys(data.get("owned") or []))
+    owned = set(owned_list)
+    by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
+    games, unread, no_dlc = [], 0, 0
+    for slug in owned_list:
+        e = rel.get(slug)
+        if not e:
+            unread += 1
+            continue
+        if e.get("parent"):
+            continue                         # selbst ein DLC, steht beim Hauptspiel
+        dlc = []
+        for d_slug, d_title in e.get("dlc") or []:
+            r = by.get(d_slug)
+            row = {"slug": d_slug, "title": d_title, "owned": d_slug in owned,
+                   "wish": r is not None, "upgrade": is_upgrade(d_slug, d_title)}
+            if r:
+                shown = r.get("shown") or {}
+                best = next((b for b in (r.get("easy"), r.get("hard"))
+                             if b and b.get("code") == shown.get("code")), None)
+                row.update(verdict=r["verdict"], reason=r.get("reason"),
+                           eur=best.get("eur") if best else None, est=bool(best and best.get("est")),
+                           code=shown.get("code"), name=shown.get("name"),
+                           end=best.get("end") if best and best.get("sale") else None)
+            dlc.append(row)
+        if not dlc:
+            no_dlc += 1
+            continue
+        have = sum(1 for d in dlc if d["owned"])
+        games.append({"slug": slug, "title": e.get("title") or slug, "dlc": dlc,
+                      "have": have, "missing": len(dlc) - have})
+    games.sort(key=lambda g: (g["missing"] == 0, g["title"].lower()))
+    return {"games": games, "owned": len(owned_list), "unread": unread, "no_dlc": no_dlc}
+
+
 LANG_CHECK_URL = {
     "JP": "https://store-jp.nintendo.com/item/software/D{nsuid}",
     "AM": "https://ec.nintendo.com/US/en/titles/{nsuid}",

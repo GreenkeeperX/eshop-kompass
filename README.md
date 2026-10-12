@@ -92,6 +92,16 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Angebotspreis, Zielpreis (leer heißt: das Urteil misst am Bestpreis;
   "Bestpreis übernehmen" setzt ihn) und die Links zu DekuDeals, eShop-Prices
   und zum eigenen Verlauf.
+- Titel, Sammlung: die Spiele deiner DekuDeals-Sammlung mit ihren
+  Zusatzinhalten (Abschnitt "DLC" der DekuDeals-Artikelseite), je DLC "hast du"
+  oder "fehlt". Ob du einen DLC hast, sagt deine Sammlung bei DekuDeals. Steht
+  ein fehlender DLC auf deiner Wishlist, stehen Urteil, Einkaufspreis und Land
+  dabei, sonst ein Link zu DekuDeals, um ihn auf die Wishlist zu setzen.
+  Upgrade-Pakete für die Switch 2 sind markiert. Spiele mit fehlenden DLC
+  stehen oben, "nur Spiele mit fehlenden" blendet die übrigen aus. Das Tool
+  liest dafür die Artikelseiten von Sammlung und Wishlist, höchstens 40 je
+  Abgleich und jede einmal im Monat; nach dem Update dauert es also einige
+  Abgleiche, bis alle gelesen sind.
 - Titel, Tabelle: alle Titel mal alle Länder in Euro, Spalten nach Stufe
   gruppiert (Länder, in denen gerade nichts zählt, am Ende). Angebote mit dem
   Urteil "kaufen" sind dunkelgrün hinterlegt, "gut" hellgrün; gold umrandet ist
