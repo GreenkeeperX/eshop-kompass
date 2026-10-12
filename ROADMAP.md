@@ -129,9 +129,13 @@ Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
   ganzen Abgleich. Verlauf zählt Angebote laut DekuDeals (24 Monate). eShop-Prices-Suche ohne
   Sonderzeichen. Planschritte und Raster laufen nicht mehr über den Rand, die gelesenen
   Sprachen stehen im Tooltip. Raster: Kontoland vorn, „alle zurücksetzen“.
-- [ ] 5.2 Sortieren per Klick auf Spaltenköpfe, wo Tabellen sind (Titel-Tabelle, Verlauf,
-  Länder-Einstellungen, Sammlung, Sprachliste). Länderspalten der Titel-Tabelle wahlweise
-  nach Zahl der Bestpreise, Deutschland bleibt vorn.
+- [x] 5.2 Sortieren (0.37): Klick auf einen Spaltenkopf sortiert aufsteigend, der zweite
+  absteigend, der dritte stellt die gewohnte Reihenfolge wieder her; leere Werte stehen am
+  Ende. Gilt für Titel-Liste, Titel-Tabelle (auch je Land), Warenkörbe in Kaufplan und Ländern,
+  Verlauf, Länder-Einstellungen und Sprachliste; die Sammlung bekommt eine Auswahl. Die
+  Länderspalten der Titel-Tabelle stehen ab Werk nach Stufe und darin nach Zahl der
+  Bestpreise, wahlweise nur nach Bestpreisen oder nur nach Stufe; Deutschland bleibt vorn.
+  Die Wahl merkt sich der Browser.
 
 ## Ohne Arbeit für uns
 

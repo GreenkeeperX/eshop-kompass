@@ -157,8 +157,17 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   bekannt oder fehlt einem Teil der Preis (nicht auf der Wishlist), gibt es
   keinen Vergleich. Bei einem Titel steht außerdem, in welchen Paketen er
   steckt.
+- Sortieren: Ein Klick auf einen Spaltenkopf sortiert aufsteigend, der zweite
+  absteigend, der dritte stellt die gewohnte Reihenfolge wieder her; leere Werte
+  stehen am Ende. Das geht in der Titel-Liste (dazu eine Auswahl, auch nach
+  Angebotsende), in der Titel-Tabelle (auch nach dem Preis in einem Land), in
+  den Warenkörben von Kaufplan und Ländern, im Verlauf, in der Länderliste der
+  Einstellungen und in der Sprachliste. Die Sammlung hat eine Auswahl (Name,
+  Zahl, Preis oder Angebote fehlender DLC). Die Wahl merkt sich der Browser.
 - Titel, Tabelle: alle Titel mal alle Länder in Euro, Spalten nach Stufe
-  gruppiert (Länder, in denen gerade nichts zählt, am Ende). Angebote mit dem
+  gruppiert und darin nach der Zahl der Bestpreise (im Spaltenkopf mit ★),
+  wahlweise nur nach Bestpreisen oder nur nach Stufe; Deutschland bleibt vorn,
+  Länder, in denen gerade nichts zählt, am Ende. Angebote mit dem
   Urteil "kaufen" sind dunkelgrün hinterlegt, "gut" hellgrün; gold umrandet ist
   das Land, in dem es den Bestpreis gab. "Details" zeigt in jeder Zelle
   Landestief, Angebotsende und Sprache. Die Tabelle scrollt in einem eigenen

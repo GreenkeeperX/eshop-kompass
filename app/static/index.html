@@ -45,6 +45,10 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
 td{padding:6px 8px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
 .scroll{overflow-x:auto}
+th.sth{cursor:pointer;user-select:none}
+th.sth:hover{color:var(--ink)}
+th.sth .sa{font-size:9px;margin-left:2px}
+th small.bc{display:block;font-weight:400;color:var(--muted)}
 .pct{color:var(--muted);font-size:11px;margin-left:3px}
 .pct.m-low{background:var(--accent);color:var(--card);border-radius:4px;padding:0 2px;font-weight:600}
 .pct.m-best{background:var(--gold);color:var(--gold-ink);border-radius:4px;padding:0 2px;font-weight:700}
@@ -392,16 +396,34 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 "use strict";
 /* Ansicht je Browser: Reiter, Titelansicht, Filter, aufgeklappte Kästen */
 function loadView(){ try{ return JSON.parse(localStorage.getItem("ek.view") || "{}") || {}; }catch(e){ return {}; } }
-function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails})); }catch(e){} }
+function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder})); }catch(e){} }
 const TABS = [["jetzt","Jetzt"],["titel","Titel"],["sammlung","Sammlung"],["laender","Länder"],["settings","Einstellungen"]];
 const V0 = loadView();
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
 const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? V0.tab : "jetzt",
            onlySale:false, collMissing:false, rq:"", vf:V0.vf || "all", tview:V0.tview === "table" ? "table" : "list",
            openTitle:null, folds:V0.folds || {}, mDetails:!!V0.mDetails,
+           sorts:V0.sorts && typeof V0.sorts === "object" ? V0.sorts : {}, colOrder:V0.colOrder || "tierbest",
            timer:null, step:"", lastSync:null};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+/* Sortieren per Klick auf Spaltenköpfe: S.sorts[Tabelle] = {k, dir}. Erster Klick aufsteigend,
+   zweiter absteigend, dritter zurück zur gewohnten Reihenfolge. Leere Werte stehen immer am Ende. */
+function sth(t, k, label, title = "", cls = ""){
+  const s = S.sorts[t], on = !!(s && s.k === k);
+  return `<th class="sth ${on ? "on" : ""} ${cls}" data-act="tsort" data-t="${t}" data-k="${esc(k)}" title="${esc(title ? title + " · " : "")}Klick sortiert"${on ? ` aria-sort="${s.dir > 0 ? "ascending" : "descending"}"` : ""}>${label}<span class="sa">${on ? (s.dir > 0 ? "▲" : "▼") : ""}</span></th>`;
+}
+function sortRows(t, arr, keys){
+  const s = S.sorts[t], f = s && keys[s.k];
+  if(!f) return arr;
+  const empty = v => v === null || v === undefined || v === "" || (typeof v === "number" && !isFinite(v));
+  return arr.map((x, i) => [x, f(x), i]).sort((a, b) => {
+    const ea = empty(a[1]), eb = empty(b[1]);
+    if(ea || eb) return (ea - eb) || (a[2] - b[2]);
+    const c = typeof a[1] === "string" ? a[1].localeCompare(b[1], "de") : a[1] - b[1];
+    return c * s.dir || (a[2] - b[2]);
+  }).map(x => x[0]);
+}
 
 async function api(path, body){
   const r = await fetch(path, body === undefined ? {} :
@@ -747,7 +769,7 @@ function planState(slug){
   if((k.held || []).some(h => h.slug === slug) && k.lock) return `nicht im Plan: Konto in ${esc(k.lock.name)} gesperrt, bis das Guthaben aufgebraucht ist`;
   const s2 = (k.s2_skip || []).find(x => x.slug === slug);
   if(s2) return `nicht im Plan: nur ein Weg zur Switch 2: ${esc(s2.reason)}`;
-  if((k.bought_slugs || []).includes(slug)) return "nicht im Plan: schon gekauft, steht noch auf der Wishlist";
+  if((k.bought_slugs || []).includes(slug)) return (S.state.radar.find(r => r.slug === slug) || {}).owned ? "nicht im Plan: steht schon in deiner Sammlung" : "nicht im Plan: schon gekauft, steht noch auf der Wishlist";
   return "";
 }
 
@@ -790,12 +812,16 @@ function collGame(g){
 function viewCollection(){
   const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
   const hit = t => !q || t.toLowerCase().includes(q);
-  const games = c.games.filter(g => (hit(g.title) || g.dlc.some(d => hit(d.title))) && (!S.collMissing || g.missing));
+  const games = sortRows("sammlung", c.games.filter(g => (hit(g.title) || g.dlc.some(d => hit(d.title))) && (!S.collMissing || g.missing)),
+    {title: g => g.title, missing: g => -g.missing, eur: g => g.missing_eur, sale: g => -g.missing_sale});
+  const cs = S.sorts.sammlung, cv = cs ? cs.k : "";
+  const co = (v, l) => `<option value="${v ? v + ":1" : ""}" ${cv === v ? "selected" : ""}>${l}</option>`;
   const plain = S.collMissing ? [] : (c.plain || []).filter(g => hit(g.title));
   const waiting = S.collMissing ? [] : (c.waiting || []).filter(g => hit(g.title));
   const missing = c.games.reduce((n, g) => n + g.missing, 0);
   let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
-    <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden DLC</label></div>`;
+    <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden DLC</label>
+    <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "erst mit fehlenden DLC, dann nach Name")}${co("title", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   const total = c.missing_eur !== null && c.missing_eur !== undefined
     ? ` ${c.missing_priced < missing ? `Für ${c.missing_priced} davon ist ein Preis bekannt: zusammen` : "Zusammen"} jetzt ${eur(c.missing_eur)}${c.missing_sale ? `, ${c.missing_sale} im Angebot` : ""}, jeweils im günstigsten zählenden Land.` : "";
@@ -810,16 +836,27 @@ function viewCollection(){
 }
 function viewTitles(){
   const q = S.rq.toLowerCase(), f = S.vf || "all";
-  const rows = S.state.radar.filter(r => (!q || r.title.toLowerCase().includes(q)) && (f === "all" || r.verdict === f));
-  let h = `<div class="tools"><input type="search" id="rq" placeholder="Titel filtern" value="${esc(S.rq)}">${titleFilterBar()}${viewSeg()}</div>
-    <div class="radar"><table><thead><tr><th>Titel</th><th class="l">Urteil</th><th title="Was du im günstigsten zählenden Land zahlst: mit Steuer, Kurs, Guthabenkarten und Gebühr">Einkaufspreis</th>
-    <th title="Einkaufspreis minus Bestpreis. Bestpreis: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet">über Bestpreis</th>
-    <th title="Liegt das beste Angebot in einem Land der Stufe schwer: das beste Angebot in einem leichten oder mittleren Land">Alternative</th><th>Korb</th></tr></thead><tbody>`;
+  const off = r => shownOffer(r) || [r.easy, r.hard].filter(Boolean).sort((a, b) => a.eur - b.eur)[0] || null;
+  const rows = sortRows("titel", S.state.radar.filter(r => (!q || r.title.toLowerCase().includes(q)) && (f === "all" || r.verdict === f)), {
+    title: r => r.title, verdict: r => VORDER[r.verdict], price: r => off(r)?.eur,
+    over: r => off(r) && r.champ ? off(r).eur - r.champ.eur : null, end: r => off(r)?.sale && off(r).end ? +new Date(off(r).end) : null,
+    alt: r => { const x = shownOffer(r); return x && x.tier >= 3 && r.easy ? r.easy.eur : null; }});
+  let h = `<div class="tools"><input type="search" id="rq" placeholder="Titel filtern" value="${esc(S.rq)}">${titleFilterBar()}${titleSortSel()}${viewSeg()}</div>
+    <div class="radar"><table><thead><tr>${sth("titel", "title", "Titel")}${sth("titel", "verdict", "Urteil", "", "l")}${sth("titel", "price", "Einkaufspreis", "Was du im günstigsten zählenden Land zahlst: mit Steuer, Kurs, Guthabenkarten und Gebühr")}
+    ${sth("titel", "over", "über Bestpreis", "Einkaufspreis minus Bestpreis. Bestpreis: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet")}
+    ${sth("titel", "alt", "Alternative", "Liegt das beste Angebot in einem Land der Stufe schwer: das beste Angebot in einem leichten oder mittleren Land")}<th>Korb</th></tr></thead><tbody>`;
   h += rows.map(titleRow).join("");
   if(!rows.length) h += `<tr><td colspan="6" class="mut">Kein Titel passt zum Filter.</td></tr>`;
   h += `</tbody></table></div>`;
   if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="gobasket">Korb in allen Ländern vergleichen</button></p>`;
   return h;
+}
+const VORDER = {buy: 0, good: 1, wait: 2, none: 3};
+// Angebotsende hat keine eigene Spalte: Auswahl neben dem Filter, gemeinsam mit den Spaltenköpfen
+function titleSortSel(){
+  const s = S.sorts.titel, v = s ? `${s.k}:${s.dir}` : "";
+  const o = (val, l) => `<option value="${val}" ${v === val ? "selected" : ""}>${l}</option>`;
+  return `<select class="srt" data-act="tsortsel" data-t="titel" title="Reihenfolge der Titel">${o("", "nach Urteil und Nähe zum Bestpreis")}${o("title:1", "nach Titel")}${o("price:1", "nach Einkaufspreis")}${o("over:1", "nach Abstand zum Bestpreis")}${o("end:1", "nach Angebotsende")}${!["", "title:1", "price:1", "over:1", "end:1"].includes(v) ? o(v, "eigene Sortierung") : ""}</select>`;
 }
 function titleRow(r){
   const x = shownOffer(r), open = S.openTitle === r.slug, ce = r.champ;
@@ -1139,8 +1176,10 @@ function planCard(p, step){
     const hd = hurdles(p, last);
     if(hd.length) h += `<div class="hurd">${hd.join(" · ")}</div>`;
     const wide = !S.ui.dense || step;
-    h += `<div class="scroll"><table class="it"><thead><tr><th>Titel</th>${wide ? `<th title="Preis im eShop des Landes">Shop ${esc(cur || "")}</th>` : ""}<th>bis</th><th title="Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben">Einkaufspreis</th><th title="Einkaufspreis minus Bestpreis">über Bestpreis</th>${wide && !p.is_ref ? `<th title="Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land">sonst</th>` : ""}</tr></thead><tbody>` +
-      p.items.map(i => {
+    const T = step ? "schritt" : "land";     // eine Sortierung für alle Karten einer Ansicht
+    h += `<div class="scroll"><table class="it"><thead><tr>${sth(T, "title", "Titel")}${wide ? sth(T, "local", `Shop ${esc(cur || "")}`, "Preis im eShop des Landes") : ""}${sth(T, "end", "bis")}${sth(T, "eur", "Einkaufspreis", "Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben")}${sth(T, "over", "über Bestpreis", "Einkaufspreis minus Bestpreis")}${wide && !p.is_ref ? sth(T, "alt", "sonst", "Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land") : ""}</tr></thead><tbody>` +
+      sortRows(T, p.items, {title: i => i.short, local: i => i.local, end: i => i.sale && i.end ? +new Date(i.end) : null, eur: i => i.eur,
+        over: i => i.champ === null || i.champ === undefined ? null : i.eur - i.champ, alt: i => i.alt}).map(i => {
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
         const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
         const filled = step && (p.fill_slugs || []).includes(i.slug)
@@ -1331,25 +1370,33 @@ function viewCompare(){
 function viewMatrix(){
   const mx = S.state.matrix, q = S.rq.toLowerCase(), f = S.vf || "all";
   const verdictOf = Object.fromEntries(S.state.radar.map(r => [r.slug, r.verdict]));
-  const rows = mx.rows.filter(r => (!q || r.title.toLowerCase().includes(q)) && (f === "all" || verdictOf[r.slug] === f) &&
-    (!S.onlySale || Object.values(r.cells).some(c => c.sale)));
+  const cellEur = (r, code) => { const x = r.cells[code]; return x && !x.na ? x.eur : null; };
+  const rows = sortRows("matrix", mx.rows.filter(r => (!q || r.title.toLowerCase().includes(q)) && (f === "all" || verdictOf[r.slug] === f) &&
+    (!S.onlySale || Object.values(r.cells).some(c => c.sale))), new Proxy({title: r => r.title, best: r => r.champ ? r.champ.eur : null},
+    {get: (o, k) => o[k] || (r => cellEur(r, k))}));
   // Mit „nur Angebote“ fallen auch Länder ohne ein Angebot in den gezeigten Zeilen weg
   let cols = S.onlySale ? mx.cols.filter(c => rows.some(r => r.cells[c.code] && r.cells[c.code].sale)) : mx.cols;
   // Spalten nach Wechselstufe; Länder, in denen gerade nichts zählt (ohne Karte), ans Ende
   const dead = c => rows.length && rows.every(r => !r.cells[c.code] || r.cells[c.code].na || r.cells[c.code].nocard);
   const tierOf = c => c.code === "DE" ? 0 : c.tier;
-  cols = [...cols].sort((a, b) => (dead(a) - dead(b)) || (tierOf(a) - tierOf(b)));
+  // Bestpreise je Land in den gezeigten Zeilen. Deutschland bleibt vorn.
+  const bests = Object.fromEntries(cols.map(c => [c.code, rows.filter(r => r.champ && r.champ.code === c.code).length]));
+  const byBest = (a, b) => (b.code === "DE") - (a.code === "DE") || bests[b.code] - bests[a.code];
+  cols = [...cols].sort(S.colOrder === "best" ? (a, b) => (dead(a) - dead(b)) || byBest(a, b)
+    : S.colOrder === "tier" ? (a, b) => (dead(a) - dead(b)) || (tierOf(a) - tierOf(b))
+    : (a, b) => (dead(a) - dead(b)) || (tierOf(a) - tierOf(b)) || byBest(a, b));
   const groups = [];
   for(const c of cols){
-    const g = dead(c) ? "zählt gerade nicht" : TIER[Math.max(1, tierOf(c))];
+    const g = dead(c) ? "zählt gerade nicht" : S.colOrder === "best" ? (c.code === "DE" ? "" : "nach Bestpreisen") : TIER[Math.max(1, tierOf(c))];
     if(groups.length && groups[groups.length - 1][0] === g) groups[groups.length - 1][1]++; else groups.push([g, 1]);
   }
   const det = !!S.mDetails;
   let h = `<div class="tools"><input type="search" id="rq" placeholder="Titel filtern" value="${esc(S.rq)}">${titleFilterBar()}
     <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>
-    <label title="Landestief, Angebotsende und Sprache in jeder Zelle"><input type="checkbox" data-act="mdet" ${det ? "checked" : ""}> Details</label>${viewSeg()}</div>
+    <label title="Landestief, Angebotsende und Sprache in jeder Zelle"><input type="checkbox" data-act="mdet" ${det ? "checked" : ""}> Details</label>
+    <select class="srt" data-act="colorder" title="Reihenfolge der Länderspalten">${[["tierbest", "Länder nach Stufe, darin Bestpreise"], ["best", "Länder nach Bestpreisen"], ["tier", "Länder nach Stufe"]].map(([v, l]) => `<option value="${v}" ${S.colOrder === v ? "selected" : ""}>${l}</option>`).join("")}</select>${viewSeg()}</div>
     <div class="matrix scroll ${det ? "" : "compact"}"><table><thead><tr class="grp"><th></th><th></th>${groups.map(([g, n]) => `<th colspan="${n}">${g}</th>`).join("")}</tr>
-    <tr><th>Titel</th><th title="Niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden Länder. Das Land ist in der Zeile gold umrandet.">Bestpreis</th>${cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
+    <tr>${sth("matrix", "title", "Titel")}${sth("matrix", "best", "Bestpreis", "Niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden Länder. Das Land ist in der Zeile gold umrandet.")}${cols.map(c => sth("matrix", c.code, `${c.code}${bests[c.code] ? `<small class="bc">${bests[c.code]}★</small>` : ""}`, `${c.name} · ${bests[c.code] === 1 ? "1 Bestpreis" : `${bests[c.code]} Bestpreise`} in den gezeigten Titeln`)).join("")}</tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><button class="tbtn" data-act="gotitle" data-s="${esc(r.slug)}" title="Einzelheiten in der Liste">${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r.title)}</button>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     `<td class="bp">${r.champ ? `${ax(r.champ)}<b>${eur(r.champ.eur)}</b> <small style="display:inline">${r.champ.code}</small>` : `<span class="mut">–</span>`}${det && r.typical ? `<small title="Typischer Angebotspreis in ${esc(country(r.typical.code).name)}, aus ${r.typical.runs} Angeboten der letzten zwei Jahre">typisch ${ax(r.typical)}${eur(r.typical.eur)}</small>` : ""}</td>` +
     cols.map(c => {
@@ -1396,8 +1443,11 @@ function drawVerlauf(){
   h += `<p class="hint">Aufgezeichnet seit ${dmy(v.since)} (${Math.round(days)} ${Math.round(days) === 1 ? "Tag" : "Tage"}). Europreise zum heutigen Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar sind. Die Aufzeichnung kennt nur Zeiten, in denen das Tool lief.${days < 30 ? " Noch wenig Daten: Die Kurven werden mit jedem Abgleich aussagekräftiger." : ""}</p>`;
   h += `<div class="lg">` + v.countries.map(c => `<button class="${S.vl.show.has(c.code) ? "" : "off"}" data-act="vltoggle" data-c="${c.code}" title="ein- oder ausblenden"><i style="background:${color(c.code)}"></i>${esc(c.name)}</button>`).join("") + `</div>`;
   h += chartSvg(v, color);
-  h += `<div class="scroll"><table><thead><tr><th>Land</th><th>jetzt</th><th>normal</th><th title="Niedrigster aufgezeichneter Preis">tiefster</th><th title="Angebote der letzten 24 Monate laut DekuDeals. Fehlt diese Angabe: wie oft der Titel in der eigenen Aufzeichnung unter dem heutigen Normalpreis lag">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der aufgezeichneten Zeit im Angebot">im Angebot</th><th>zuletzt</th></tr></thead><tbody>` +
-    v.countries.map(c => {
+  const V = "verlauf", vrows = sortRows(V, v.countries, {name: c => c.name, now: c => c.now_eur, regular: c => c.regular_eur,
+    low: c => c.low_eur, sales: c => c.deku_sales ?? c.sale_count, days: c => c.typical_days, pct: c => c.on_sale_pct,
+    last: c => { const l = c.sales[c.sales.length - 1]; return l ? -new Date(l.start) : null; }});
+  h += `<div class="scroll"><table><thead><tr>${sth(V, "name", "Land")}${sth(V, "now", "jetzt")}${sth(V, "regular", "normal")}${sth(V, "low", "tiefster", "Niedrigster aufgezeichneter Preis")}${sth(V, "sales", "Angebote", "Angebote der letzten 24 Monate laut DekuDeals. Fehlt diese Angabe: wie oft der Titel in der eigenen Aufzeichnung unter dem heutigen Normalpreis lag")}${sth(V, "days", "Dauer", "Mittlere Dauer der abgeschlossenen Angebote")}${sth(V, "pct", "im Angebot", "Anteil der aufgezeichneten Zeit im Angebot")}${sth(V, "last", "zuletzt")}</tr></thead><tbody>` +
+    vrows.map(c => {
       const a = c.est ? APPROX : "", last = c.sales[c.sales.length - 1];
       const lastTxt = !last ? "–" : last.end ? `${dm(last.start)}–${dm(last.end)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>` : `läuft seit ${dm(last.start)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>`;
       return `<tr><td>${esc(c.name)}</td><td>${c.now_eur === null ? "–" : a + eur(c.now_eur)}</td><td>${a}${eur(c.regular_eur)}</td>
@@ -1478,7 +1528,9 @@ function viewSettings(){
       ${c.code === "DG" ? `<small class="hint">Deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest bleibt auf dem Konto und wird ab 5 € gewarnt; Deutschland zum Shop-Preis bleibt die Vergleichsbasis.</small>` : ""}
       <textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>${cs ? `<small class="hint">${cs}</small>` : ""}</details></td></tr>`;
   };
-  const table = list => `<div class="scroll"><table><thead><tr><th>Land</th><th title="Land in Titeln, Kaufplan und Ländern zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th><th title="Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt beim nächsten Wechsel. schwer: ein Rest blockiert den Wechsel. Je Stufe gilt unter Regeln eine eigene Mindestersparnis.">Wechsel</th><th title="Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der eingetragenen Karten, sonst Kurs plus Aufschlag. Das Günstigere: wählt je Paket.">Bezahlen</th><th title="Aufschlag auf den Mittelkurs für Guthaben ohne eingetragenen Kartenpreis. Leer gilt der allgemeine Wert oben. 0 heißt: Guthaben zum Kurs, etwa bei Amazon Japan.">Aufschlag %</th><th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th><th title="Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.">Guthaben</th><th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er aufgebraucht oder über den Support gelöst ist (Amerika). Sonst bleibt ein Rest Guthaben, solange du im Land bleibst, und verfällt erst beim Wechsel.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne Kartenpreis: der Aufschlag, als Schätzung.">Dein Kurs</th><th title="Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.">Preisniveau</th></tr></thead><tbody>${list.map(c => row(c) + cardRow(c)).join("")}</tbody></table></div>`;
+  const table = list => `<div class="scroll"><table><thead><tr>${sth("laender", "name", "Land")}<th title="Land in Titeln, Kaufplan und Ländern zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th>${sth("laender", "tier", "Wechsel", "Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt beim nächsten Wechsel. schwer: Wechsel mit Guthaben nur über den Support. Je Stufe gilt unter Regeln eine eigene Mindestersparnis.")}${sth("laender", "pay", "Bezahlen", "Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der eingetragenen Karten, sonst Kurs plus Aufschlag. Das Günstigere: wählt je Paket.")}<th title="Aufschlag auf den Mittelkurs für Guthaben ohne eingetragenen Kartenpreis. Leer gilt der allgemeine Wert oben. 0 heißt: Guthaben zum Kurs, etwa bei Amazon Japan.">Aufschlag %</th><th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th>${sth("laender", "balance", "Guthaben", "Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.")}<th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er aufgebraucht oder über den Support gelöst ist. Ab Werk nirgends angehakt. Sonst bleibt ein Rest Guthaben, solange du im Land bleibst, und verfällt erst beim Wechsel.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne Kartenpreis: der Aufschlag, als Schätzung.">Dein Kurs</th>${sth("laender", "level", "Preisniveau", "Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.")}</tr></thead><tbody>${sortRows("laender", list, {name: c => c.name, tier: c => c.code === "DE" ? 0 : s.countries[c.code].tier,
+    pay: c => c.code === "DE" ? "" : s.countries[c.code].pay, balance: c => c.code === "DE" ? null : +s.countries[c.code].balance || 0,
+    level: c => c.code === "DE" ? 0 : lv[c.code] ? lv[c.code].level : null}).map(c => row(c) + cardRow(c)).join("")}</tbody></table></div>`;
   const act = S.state.countries.filter(on), off = S.state.countries.filter(c => !on(c));
   const t = s.tier_min_saving, de = s.deal_eur;
   const jump = [["set-laender", "Länder"], ["set-regeln", "Regeln"], ["set-gebuehren", "Gebühren"], ["sprachen", "Sprachen"], ["set-quellen", "Quellen"], ["set-sicherung", "Sicherung und Protokoll"]];
@@ -1542,11 +1594,12 @@ function langSection(){
       : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline;text-decoration:underline dotted" title="Gelesen: ${esc(t.text || "–")}">von Nintendo gelesen</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
   const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
-  const head = `<thead><tr><th>Titel</th><th>Region</th><th title="Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder">Preis</th><th></th><th>Deutsch?</th></tr></thead>`;
-  h += open.length ? `${now ? `<p class="hint">Bei ${now} davon wäre die Fassung gerade günstiger, sie stehen oben.</p>` : ""}<div class="scroll"><table>${head}<tbody>${open.map(row).join("")}</tbody></table></div>`
+  const L = "sprachen", srt = arr => sortRows(L, arr, {title: t => t.title, region: t => t.family_name, price: t => t.here ? t.here.eur : null});
+  const head = `<thead><tr>${sth(L, "title", "Titel")}${sth(L, "region", "Region")}${sth(L, "price", "Preis", "Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder")}<th></th><th>Deutsch?</th></tr></thead>`;
+  h += open.length ? `${now ? `<p class="hint">Bei ${now} davon wäre die Fassung gerade günstiger, sie stehen oben.</p>` : ""}<div class="scroll"><table>${head}<tbody>${srt(open).map(row).join("")}</tbody></table></div>`
     : `<p class="hint">Alles geprüft ✓</p>`;
   if(done.length || auto.length)
-    h += `<details><summary class="hint">Geprüft ${auto.length + done.length}: ${auto.length} von Nintendo gelesen, ${done.length} von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(done, "Von dir bestätigt")}${group(auto, "Von Nintendo gelesen")}</tbody></table></div></details>`;
+    h += `<details><summary class="hint">Geprüft ${auto.length + done.length}: ${auto.length} von Nintendo gelesen, ${done.length} von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(srt(done), "Von dir bestätigt")}${group(srt(auto), "Von Nintendo gelesen")}</tbody></table></div></details>`;
   return h;
 }
 async function saveSettings(form, rerender){
@@ -1589,6 +1642,14 @@ document.addEventListener("click", async e => {
     else if(a === "vf"){ S.vf = d.v; saveView(); render(); }
     else if(a === "tview"){ S.tview = d.v; saveView(); render(); }
     else if(a === "mdet"){ S.mDetails = !S.mDetails; saveView(); render(); }
+    else if(a === "tsort"){
+      const cur = S.sorts[d.t];
+      if(!cur || cur.k !== d.k) S.sorts[d.t] = {k: d.k, dir: 1};
+      else if(cur.dir > 0) cur.dir = -1;
+      else delete S.sorts[d.t];
+      saveView();
+      if(d.t === "verlauf") drawVerlauf(); else render();
+    }
     else if(a === "topen"){ S.openTitle = S.openTitle === d.s ? null : d.s; render(); }
     else if(a === "gotitle"){
       S.openTitle = d.s; S.tview = "list"; S.vf = "all"; S.rq = ""; go("titel", false);
@@ -1698,6 +1759,8 @@ document.addEventListener("change", async e => {
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
     else if(a === "sort"){ S.ui.sort = el.value; saveUi(); render(); }
+    else if(a === "tsortsel"){ if(el.value){ const [k, dir] = el.value.split(":"); S.sorts[el.dataset.t] = {k, dir: +dir}; } else delete S.sorts[el.dataset.t]; saveView(); render(); }
+    else if(a === "colorder"){ S.colOrder = el.value; saveView(); render(); }
     else if(a === "onlysale"){ S.onlySale = el.checked; render(); }
     else if(a === "acct" || a === "bal"){
       const s = S.state.settings, cur = s.current_country;
