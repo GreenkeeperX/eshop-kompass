@@ -671,7 +671,8 @@ function renderHead(){
   } else {
     const last = S.state.last_sync ? new Date(S.state.last_sync) : null;
     const stale = last && Date.now() - last > 2 * hours * 3600000;
-    const next = last ? new Date(+last + hours * 3600000) : null;
+    let next = last ? new Date(+last + hours * 3600000) : null;
+    if(st.boot_sync && (!next || new Date(st.boot_sync) < next)) next = new Date(st.boot_sync);   // einmal nach dem Start
     m.innerHTML = `<span class="${stale ? "warnc" : ""}" title="${last ? esc(last.toLocaleString("de-DE")) : ""}">Stand ${ago(S.state.last_sync)}</span>` +
       (next ? ` · nächster Abgleich ${next < new Date() ? "in Kürze" : "ca. " + clock(next)}` : "") +
       ` · ${S.state.item_count} Titel · v${esc(S.state.version)}`;

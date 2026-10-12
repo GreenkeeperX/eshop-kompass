@@ -17,6 +17,10 @@ Danach http://<server>:8787 öffnen. Der erste Abgleich startet von selbst,
 sucht pro Titel die Nintendo-IDs (ein Abruf pro Sekunde) und dauert bei
 44 Titeln rund drei Minuten. Spätere Läufe brauchen Sekunden.
 
+Danach gleicht das Tool im eingestellten Abstand ab (Standard 6 Stunden) und
+zusätzlich fünf Minuten nach jedem Start, etwa nach einem Update. Lief der
+letzte Abgleich vor weniger als 30 Minuten, entfällt der beim Start.
+
 Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 
 ## Ansichten

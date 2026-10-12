@@ -4,7 +4,7 @@ import threading
 import time
 import traceback
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from . import countries, planner, sources, store
 
@@ -29,7 +29,7 @@ REL_PER_SYNC = 40                     # höchstens so viele Artikelseiten je Abg
 REL_V = 1                             # erhöht sich, wenn alle Seiten neu zu lesen sind
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
-          "log": [], "started": None, "finished": None, "ok": None}
+          "log": [], "started": None, "finished": None, "ok": None, "boot_sync": None}
 _lock = threading.Lock()
 
 
@@ -793,25 +793,45 @@ def start_sync():
     return True
 
 
+BOOT_DELAY = 300          # Abgleich so lange nach jedem Start, etwa nach einem Update
+BOOT_MIN_AGE = 1800       # außer der letzte ist jünger, so bleibt es bei Neustarts schonend
+
+
+def sync_due(last_sync, refresh_hours, now, boot_at=None, failed_at=None):
+    """Ist ein Abgleich fällig? Nach Ablauf des Intervalls oder einmal nach dem Start,
+    nach einem Fehlschlag frühestens eine Stunde später."""
+    if failed_at and (now - datetime.fromisoformat(failed_at)).total_seconds() < 3600:
+        return False
+    if not last_sync:
+        return True
+    age = (now - datetime.fromisoformat(last_sync)).total_seconds()
+    if boot_at and now >= boot_at and age >= BOOT_MIN_AGE:
+        return True
+    return age >= max(1.0, refresh_hours) * 3600
+
+
 def scheduler():
-    """Läuft im Hintergrund und gleicht nach Ablauf des Intervalls ab."""
+    """Läuft im Hintergrund und gleicht nach Ablauf des Intervalls ab, außerdem
+    einmal einige Minuten nach jedem Start."""
+    boot_at = datetime.now(timezone.utc) + timedelta(seconds=BOOT_DELAY)
+    status["boot_sync"] = boot_at.isoformat(timespec="seconds")
     time.sleep(5)
     while True:
         try:
             settings = store.load_settings()
             data = store.load_data()
-            due = True
-            if data.get("last_sync"):
-                last = datetime.fromisoformat(data["last_sync"])
-                age = (datetime.now(timezone.utc) - last).total_seconds()
-                due = age >= max(1.0, settings["refresh_hours"]) * 3600
-            if status["ok"] is False and status["finished"]:
-                # nach einem Fehlschlag frühestens nach einer Stunde erneut
-                last_try = datetime.fromisoformat(status["finished"])
-                if (datetime.now(timezone.utc) - last_try).total_seconds() < 3600:
-                    due = False
-            if due and settings["wishlist_url"] and not status["running"]:
+            now = datetime.now(timezone.utc)
+            if boot_at and data.get("last_sync") and \
+                    (now - datetime.fromisoformat(data["last_sync"])).total_seconds() < BOOT_MIN_AGE:
+                boot_at = None                 # gerade erst abgeglichen
+            failed = status["finished"] if status["ok"] is False else None
+            if sync_due(data.get("last_sync"), settings["refresh_hours"], now, boot_at, failed) \
+                    and settings["wishlist_url"] and not status["running"]:
                 run_sync()
+                boot_at = None
+            if boot_at is None:
+                status["boot_sync"] = None
         except Exception:
             traceback.print_exc()
-        time.sleep(300)
+        time.sleep(min(300, max(5, (boot_at - datetime.now(timezone.utc)).total_seconds() + 1))
+                   if boot_at else 300)
