@@ -39,7 +39,7 @@ COUNTRIES = [
     ("GB", "Großbritannien", "EU", "card", 1, 0, False, False, "en", ""),
     ("CH", "Schweiz", "EU", "card", 1, 0, False, False, "de", ""),
     ("ZA", "Südafrika", "EU", "card", 1, 0, False, True, "en", "Kartenzahlung unsicher"),
-    ("NZ", "Neuseeland", "EU", "giftcard", 2, 0, False, True, "en", "Kartenzahlung ungeklärt"),
+    ("NZ", "Neuseeland", "EU", "giftcard", 2, 0, False, False, "en", "keine Guthabenkarten zu bekommen"),
     ("AU", "Australien", "EU", "giftcard", 2, 0, False, False, "en", ""),
     ("JP", "Japan", "JP", "giftcard", 2, 0, False, True, "ja", "keine ausländischen Karten"),
     ("SG", "Singapur", "AS", "giftcard", 2, 0, False, False, "en", ""),

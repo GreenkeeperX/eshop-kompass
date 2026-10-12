@@ -25,6 +25,9 @@ DEFAULT_SETTINGS = {
     "verdict_ref": "typical",
     # Sprachen von Hand bestätigt: {slug: {"JP": true, "AM": false}}
     "lang_confirm": {},
+    # Cashback des Kartenshops in Prozent, wenn es eins gibt. Nur für einen Hinweis,
+    # nicht in den Preisen: Es gibt es nicht immer
+    "cashback_pct": 0.0,
     "refresh_hours": 6,
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
@@ -108,12 +111,14 @@ def save_settings(new):
             s["wishlist_url"] = new["wishlist_url"].strip()
         if isinstance(new.get("collection_url"), str):
             s["collection_url"] = new["collection_url"].strip()
-        for k in ("card_fee_pct", "gift_markup_pct", "shop_fee_pct", "shop_fee_eur", "refresh_hours"):
+        for k in ("card_fee_pct", "gift_markup_pct", "shop_fee_pct", "shop_fee_eur", "refresh_hours",
+                  "cashback_pct"):
             if k in new:
                 try:
                     s[k] = max(0.0, float(new[k]))
                 except (TypeError, ValueError):
                     pass
+        s["cashback_pct"] = min(50.0, s["cashback_pct"])
         if new.get("current_country") in list(s["countries"]) + [""]:
             s["current_country"] = new["current_country"]
         if isinstance(new.get("card_market"), bool):

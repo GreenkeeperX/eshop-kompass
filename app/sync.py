@@ -415,6 +415,10 @@ def self_check(data, settings, now=None):
                 warnings.append(f"{name}: Preis je {c['currency']} seit dem letzten Abgleich "
                                 f"{round(100 * (units[code] / old - 1)):+d} %, bitte Kurs und Kartenpreise prüfen")
         n = sum(1 for p in data["prices"].get(code, {}).values() if p.get("status") == "onsale")
+        if n and c["currency"] and not c["rate"]:
+            warnings.append(f"{name}: kein Wechselkurs für {c['currency']}, Land fehlt in allen Vergleichen")
+        if n and c.get("nocard"):
+            _log(f"Prüfung: {name} hat keine Guthabenkarte mit Preis, Angebote dort zählen nicht")
         buyable[code] = n
         old_n = (prev.get("buyable") or {}).get(code)
         if old_n and old_n >= 5 and n < old_n / 2:
@@ -582,7 +586,12 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         _step("Wechselkurse abrufen")
         try:
             rates, updated = sources.fetch_fx(fetch=fetch)
-            data["fx"] = {"rates": rates, "updated": updated}
+            # Fehlt in der Antwort eine Währung (Ersatzquelle EZB kennt weniger), gilt der letzte Kurs
+            old = (data.get("fx") or {}).get("rates") or {}
+            kept = sorted(set(old) - set(rates))
+            if kept:
+                _log(f"Wechselkurse: {len(kept)} Währungen ohne neuen Kurs, letzter Stand bleibt")
+            data["fx"] = {"rates": dict(old, **rates), "updated": updated}
         except Exception as e:
             _log(f"Wechselkurse nicht aktualisiert ({e})")
         history = store.load_history()
@@ -703,6 +712,12 @@ def diagnose():
         probe("Sammlung", f"https://www.dekudeals.com/collection/{cid}?page=1", None, sources.describe)
     except ValueError as e:
         lines.append(f"Sammlung: {e}")
+    # Steht Cashback in der Seite? Dann ließe es sich je Karte prüfen
+    def cashback_spots(t):
+        spots = [t[max(0, m.start() - 80):m.start() + 120].replace("\n", " ")
+                 for m in sources.re.finditer(r"(?i)cash.?back", t)][:3]
+        return " | ".join(spots) or "nicht gefunden"
+
     # Guthabenkarten: liefert die erste eingetragene Shopseite einen lesbaren Preis?
     links = [(code, x["url"]) for code in countries.ORDER
              for x in planner.parse_card_list(settings["countries"][code].get("cards")) if x["url"]]
@@ -711,7 +726,8 @@ def diagnose():
         probe(f"Guthabenkarte {code} ({urllib.parse.urlsplit(url).netloc})", url, None,
               lambda t: f"{len(t)} Zeichen, Titel „{sources.page_title(t)[:60]}“, "
                         f"Preis in Produktdaten: {sources.parse_ld_price(t)}, alle Angaben: "
-                        f"{sorted(sources.ld_prices(t))[:12]}, Anfang: {sources.visible_text(t)[:100]}")
+                        f"{sorted(sources.ld_prices(t))[:12]}, Anfang: {sources.visible_text(t)[:100]}, "
+                        f"Cashback: {cashback_spots(t)}")
     else:
         lines.append("Guthabenkarte: keine Karte mit Link eingetragen, Eneba nicht geprüft")
     # gg.deals: Kartenwerte und Preise einer Gruppenseite, dazu ein Ausschnitt zum Nachbessern

@@ -217,6 +217,14 @@ class Context:
                 c["cards"] = self._market_cards(code, c["cards"], c["rate"], cfg, c["implausible"])
             c["unit"] = self._unit(c)
             c["estimated"] = self.estimated(c)
+            # Guthabenland ohne Karte mit Preis: Dort kommst du nicht an Guthaben, der
+            # Europreis wäre geraten. Gezeigt wird das Angebot, entschieden wird damit nicht.
+            c["nocard"] = c["estimated"] and cfg["pay"] == "giftcard"
+            # Mit Karten aus einem Shop gekauft: Dort gibt es manchmal Cashback
+            c["shop_cards"] = any(x.get("live") for x in c["cards"])
+            if c["nocard"]:
+                for o in c["offers"].values():
+                    o["nocard"] = True
             self.countries[code] = c
         self._apply_language_rule()
         ref = self.countries.get(countries.REFERENCE, {"offers": {}})
@@ -237,9 +245,9 @@ class Context:
             rate = 1.0 if e.get("currency") == "EUR" else self.rates.get(e.get("currency"))
             if not rate:
                 continue
-            # Der Shop zeigt den Preis ohne seine Servicegebühr, die kommt an der Kasse dazu
-            # Je Karte gerechnet: Bei mehreren Karten in einer Bestellung fällt der feste
-            # Teil nur einmal an, die Rechnung liegt dann etwas zu hoch
+            # Der Shop zeigt den Preis ohne seine Servicegebühr, die kommt an der Kasse dazu.
+            # Der feste Teil steckt hier in jeder Karte; ein Paket aus mehreren Karten
+            # (eine Bestellung) rechnet ihn in make_payer nur einmal
             fee = float(self.settings.get("shop_fee_pct") or 0)
             fee_eur = float(self.settings.get("shop_fee_eur") or 0)
             cost = round(e["price"] / rate * (1 + fee / 100) + fee_eur, 2)
@@ -421,6 +429,8 @@ class Context:
         """Darf dieses Angebot Bestpreis, Urteil und Kaufplan bestimmen? Nicht, wenn
         die Sprachregel gilt und für die Region unbekannt ist, ob es Deutsch gibt:
         Gezeigt wird es weiter, entschieden wird damit nicht."""
+        if o.get("nocard"):
+            return False
         return not (self.settings.get("lang_rule", "exclude") == "exclude"
                     and o.get("lang") == "unknown")
 
@@ -525,7 +535,7 @@ class Context:
                 "net": o.get("net", o["local"]) / 100,
                 "pct": round(100 * (1 - o["local"] / o["regular"])) if o["regular"] else 0,
                 "end": o["end"], "eur": _r(self.est(c, o["local"])), "est": c["estimated"],
-                "lang": o.get("lang"), "nsuid": o.get("nsuid"), "alone": self.alone(c, o["local"]),
+                "lang": o.get("lang"), "nocard": bool(o.get("nocard")), "nsuid": o.get("nsuid"), "alone": self.alone(c, o["local"]),
                 **self.low(c["code"], slug, o), **self.mark(c, slug, o)}
 
     # ---- Titel
@@ -570,6 +580,9 @@ def make_payer(ctx, c):
     if stocked and mode in ("giftcard", "auto"):
         solver = CardSolver(stocked, c["rate"], ctx.markup(c))
     urls = {x["face"]: x["url"] for x in c["cards"]}
+    # Der feste Teil der Servicegebühr fällt je Bestellung an, nicht je Karte: Jede
+    # gelesene Karte trägt ihn im Preis, bei mehreren Karten zählt er nur einmal
+    fixed = {x["face"]: x["fee_eur"] for x in c["cards"] if x.get("fee_eur")}
 
     def by_card(need, left):
         return {"cost": need * card_unit, "cards": [], "rest": left, "estimated": False,
@@ -579,6 +592,9 @@ def make_payer(ctx, c):
         if solver:
             try:
                 r = solver.solve(need)
+                fees = [fixed[f] for f, n in r["cards"] if f in fixed for _ in range(n)]
+                if len(fees) > 1:
+                    r["cost"] -= sum(fees) - max(fees)
                 return {"cost": r["cost"], "cards": r["cards"], "rest": r["rest"] + left,
                         "estimated": False, "via": "giftcard"}
             except ValueError:
@@ -889,19 +905,20 @@ def radar(data, settings, targets=None, now=None):
     rows = []
     for slug in ctx.order:
         best = {"easy": None, "hard": None}
-        unsure = []
+        unsure, nocard = [], []
         for code, c in ctx.countries.items():
             o = c["offers"].get(slug)
             if not o or c["unit"] is None:
                 continue
             if not ctx.decides(o):
-                unsure.append(code)
+                (nocard if o.get("nocard") else unsure).append(code)
                 continue
             raw = ctx.est(c, o["local"])
             group = "easy" if c["tier"] <= 2 else "hard"
             if best[group] is None or raw < best[group]["raw"] - 0.005:
                 best[group] = dict(ctx.cell(c, slug, o), code=code, name=c["meta"]["name"],
-                                   currency=c["currency"], raw=raw, lang_code=c["meta"]["lang"])
+                                   currency=c["currency"], raw=raw, lang_code=c["meta"]["lang"],
+                                   shop_cards=c["shop_cards"] and c["unit"] != ctx._units(c)[0])
         easy, hard = best["easy"], best["hard"]
         champ_all, champ_easy = ctx.champ_all.get(slug), ctx.champ_easy.get(slug)
 
@@ -933,8 +950,10 @@ def radar(data, settings, targets=None, now=None):
             typ_diff = _r(easy["raw"] - typ[0])
             typ_gap = round(100 * (easy["raw"] / typ[0] - 1)) if typ[0] else 0
         verdict, reason = "none", "kein Angebot"
-        if unsure and not easy and not hard:
-            reason = "nur in " + ", ".join(unsure) + " kaufbar, Sprache dort ungeprüft"
+        if (unsure or nocard) and not easy and not hard:
+            why = ([", ".join(unsure) + ": Sprache ungeprüft"] if unsure else []) + \
+                  ([", ".join(nocard) + ": keine Guthabenkarte mit Preis"] if nocard else [])
+            reason = "nur dort kaufbar, wo es nicht zählt (" + "; ".join(why) + ")"
         if target is not None and easy and easy["raw"] <= target + 0.005:
             verdict, reason = "buy", "Zielpreis erreicht"
         elif easy and easy["mark"] in ("best", "best_easy"):
@@ -960,6 +979,17 @@ def radar(data, settings, targets=None, now=None):
         elif (easy and easy["sale"]) or (hard and hard["sale"]):
             verdict, reason = "wait", (f"war {_eur(diff_easy)} günstiger" if diff_easy
                                        else "war schon günstiger")
+        # Cashback gibt es nicht immer: nur ein Hinweis, wenn es das Angebot unter den
+        # Bestpreis drücken könnte (bezahlt mit Guthaben aus einem Kartenshop)
+        cb = float(settings.get("cashback_pct") or 0)
+        cashback = None
+        if cb > 0 and champ_all and verdict not in ("buy",):
+            for b in (easy, hard):
+                if b and b["sale"] and b.get("shop_cards"):
+                    with_cb = b["raw"] * (1 - cb / 100)
+                    if with_cb <= champ_all[0] * (1 + BEST_TOLERANCE) + 0.005 and (
+                            cashback is None or with_cb < cashback["eur"]):
+                        cashback = {"eur": _r(with_cb), "code": b["code"], "pct": cb}
         for b in (easy, hard):
             if b:
                 b.pop("raw")
@@ -972,10 +1002,10 @@ def radar(data, settings, targets=None, now=None):
                      "typical": None if not typ else {
                          "eur": _r(typ[0]), "code": typ[1], "est": typ[2], "runs": typ[3],
                          "name": countries.BY_CODE[typ[1]]["name"]},
-                     "typ_diff": typ_diff, "typ_gap": typ_gap,
+                     "typ_diff": typ_diff, "typ_gap": typ_gap, "cashback": cashback,
                      "ref": "typical" if use_typ else "best",
                      "target": target, "verdict": verdict,
-                     "lang_unsure": [] if (easy or hard) else unsure,
+                     "lang_unsure": [] if (easy or hard) else unsure + nocard,
                      "reason": reason, "no_ids": not any(it.get("ids", {}).values())})
     def gap(r):
         g = r["typ_gap"] if r["ref"] == "typical" else r["gap_easy"]
@@ -1162,11 +1192,13 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     steps.sort(key=lambda p: (not p["current"], p["tier"] if not p["is_ref"] else 1,
                               first_end(p), p["name"]))
     total = sum(p["cost"] for p in steps if p["cost"] is not None)
+    games = sum(p.get("games_cost", p["cost"]) for p in steps if p["cost"] is not None)
     ref_total = sum(p["de_now"] for p in steps)
     return {"steps": steps, "dropped": dropped, "nowhere": [ctx.title(s) for s in nowhere],
             "later": [{"slug": s, "title": ctx.title(s), "reason": reasons.get(s, "")} for s in later],
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
-            "ref_total": _r(ref_total), "saving": _r(ref_total - total),
+            "ref_total": _r(ref_total), "saving": _r(ref_total - games),
+            "rest_value": _r(total - games),
             "include_good": include_good,
             "bought_waiting": [ctx.title(s) for s in ctx.order if s in done],
             "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "de", "rest", "currency")}

@@ -75,6 +75,16 @@ pauschalem Aufschlag.
 Auch Kartenzahlung ist eine Näherung (Mittelkurs plus Fremdwährungsgebühr),
 die Bank rechnet mit ihrem eigenen Kurs.
 
+Ein Guthabenland ohne Karte mit Preis (weder eingetragen noch gelesen) zählt
+nicht für Bestpreis, Urteil und Kaufplan: Dort ist Guthaben nicht zu bekommen,
+der Europreis wäre geraten. Die Angebote bleiben sichtbar ("ohne Karte").
+
+Die Servicegebühr eines Kartenshops (Eneba: 0,40 € plus 7,75 % je Bestellung)
+steckt in jeder gelesenen Karte; besteht ein Paket aus mehreren Karten, zählt
+der feste Teil nur einmal. Cashback des Shops (Eneba gibt es manchmal) steht
+nicht in den Preisen. Mit "Mögliches Cashback" unter Einstellungen markiert
+das Radar mit ✱, wo es ein Angebot zum Bestpreis machen könnte.
+
 Bei Guthabenkarten ist der Europreis ein Anteil: Preis je Guthabeneinheit der
 günstigsten Karte mal Shop-Preis. Kaufst du einen Titel allein, brauchst du
 meist mehr Guthaben, als er kostet. Was das kostet, steht im Tooltip als

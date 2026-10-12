@@ -651,7 +651,7 @@ function viewRadar(){
           (sug !== null ? `<button class="mini" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}" title="Bestpreis ${eur(sug)} als Zielpreis übernehmen">übernehmen</button>` : "") +
           (hit ? ` <span class="ok">✓</span>` : "");
       })()}</td>
-      <td><span class="vd ${r.verdict}" title="${esc(r.reason)}">${VERDICT[r.verdict]}</span>${r.verdict !== "none" || (r.lang_unsure || []).length ? `<small>${esc(r.reason)}</small>` : ""}</td>
+      <td>${r.cashback ? `<span class="ok" title="Mit ${String(r.cashback.pct).replace(".", ",")} % Cashback des Kartenshops wären es in ${esc(country(r.cashback.code).name)} etwa ${eur(r.cashback.eur)}, also Bestpreis. Cashback gibt es nicht immer, bitte beim Kauf prüfen.">✱</span> ` : ""}<span class="vd ${r.verdict}" title="${esc(r.reason)}">${VERDICT[r.verdict]}</span>${r.verdict !== "none" || (r.lang_unsure || []).length ? `<small>${esc(r.reason)}</small>` : ""}</td>
       <td><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
   }).join("");
   h += `</tbody></table></div>`;
@@ -909,7 +909,7 @@ function viewMatrix(){
       if(!x) return `<td class="na"></td>`;
       if(x.na) return `<td class="na" ${x.nolang ? `title="Hier gibt es keine deutsche Fassung"` : ""}>${x.nolang ? "kein DE" : "–"}</td>`;
       const champ = r.champ && r.champ.code === c.code;
-      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.lang === "unknown" ? `<button class="link hint" style="font-size:11px" data-act="gosprachen" title="Unter Einstellungen einmal bestätigen">Sprache?</button> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
+      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.nocard ? `<small class="hint" title="Für dieses Land ist keine Guthabenkarte mit Preis eingetragen oder gelesen: Guthaben ist dort nicht zu bekommen, das Angebot zählt nicht für Bestpreis, Urteil und Kaufplan">ohne Karte</small> ` : ""}${x.lang === "unknown" ? `<button class="link hint" style="font-size:11px" data-act="gosprachen" title="Unter Einstellungen einmal bestätigen">Sprache?</button> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
 }
@@ -1010,6 +1010,7 @@ function viewSettings(){
     <label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label>
     <label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label>
     <label class="f" title="Fester Teil der Servicegebühr je Bestellung. Das Tool rechnet ihn je Karte; kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label>
+    <label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber im Radar mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label>
     <h3 class="sec" style="grid-column:1/-1;margin:10px 0 0">Urteil</h3>
     <label class="f" title="Typischer Angebotspreis: Median der tiefsten Preise aller Angebote der letzten zwei Jahre laut DekuDeals-Verlauf; war das letzte Angebot tiefer, gilt dieses. Wo der Verlauf fehlt oder weniger als zwei Angebote kennt, gilt der Bestpreis. Ein Angebot zum Bestpreis ist immer „kaufen“.">Urteil misst am<select name="verdict_ref">${sel("typical", s.verdict_ref || "typical", "typischen Angebotspreis")}${sel("best", s.verdict_ref || "typical", "Allzeit-Bestpreis")}</select></label>
     <label class="f" title="Radar: Liegt der beste leicht erreichbare Angebotspreis höchstens so viel über dem Maßstab (typischer Angebotspreis oder Bestpreis, siehe oben), heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Maßstab, und wer den Bestpreis erreicht, ist immer ein Kauf.">Urteil „kaufen“ bis … € über Maßstab<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label>
@@ -1063,7 +1064,7 @@ function viewSettings(){
 }
 function settingsBody(form){
   const body = {countries:{}, tier_min_saving:{}};
-  for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","shop_fee_eur","refresh_hours","lang_rule","verdict_ref"])
+  for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","shop_fee_eur","refresh_hours","lang_rule","verdict_ref","cashback_pct"])
     body[k] = form.elements[k].value;
   body.card_market = form.elements.card_market.checked;
   for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;

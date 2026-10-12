@@ -255,6 +255,7 @@ def sample():
     for code, c in settings["countries"].items():
         c["enabled"] = code in ("DE", "NO", "BR", "JP")
     settings["countries"]["BR"]["cards"] = "15=3.00 25=4.80 50=9.50"
+    settings["countries"]["JP"]["cards"] = "500 1000 2000 3000 5000 9000"   # zum Kurs, wie im echten Einsatz
     items = {}
     for i, (slug, parent) in enumerate([("hades", None), ("spiritfarer", None),
                                         ("vs-foscari", "vampire-survivors"), ("good-job", None),
@@ -334,6 +335,7 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(br["cost"], 7.80)
 
     def test_missing_cards_and_must(self):
+        self.settings["countries"]["JP"]["cards"] = ""
         plans = planner.plans(self.data, self.settings, must=["good-job"], now=NOW)
         by = self.by(plans)
         self.assertTrue(by["JP"]["estimated"])
@@ -590,12 +592,25 @@ class PlanTest(unittest.TestCase):
         self.assertEqual((r["verdict"], r["reason"]), ("buy", "Bestpreis"))
 
     def test_estimated_prices_are_flagged(self):
-        # Japan: Guthaben ohne eingetragene Karte, also Kurs plus Aufschlag geschätzt
+        # Japan ohne eingetragene Karte: Kurs plus Aufschlag geschätzt. Guthaben gibt es
+        # dort dann nicht zu kaufen, also zeigt das Tool das Angebot, entscheidet aber nicht
+        self.settings["countries"]["JP"]["cards"] = ""
         rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
-        self.assertTrue(rows["hades"]["easy"]["est"])
-        self.assertTrue(rows["hades"]["champ_easy"]["est"])
+        self.assertEqual(rows["hades"]["easy"]["code"], "NO")
+        self.assertNotEqual(rows["hades"]["champ_easy"]["code"], "JP")
         cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
         self.assertTrue(cells["JP"]["est"])
+        self.assertTrue(cells["JP"]["nocard"])
+        self.assertNotIn(cells["JP"]["mark"], ("best", "best_easy"))
+        # Nur dort kaufbar: kein Urteil, aber der Grund
+        for code in ("DE", "NO", "BR"):
+            self.data["prices"][code].pop("hades")
+        row = next(r for r in planner.radar(self.data, self.settings, now=NOW) if r["slug"] == "hades")
+        self.assertEqual(row["verdict"], "none")
+        self.assertIn("JP: keine Guthabenkarte mit Preis", row["reason"])
+        self.data, self.settings = sample()
+        self.settings["countries"]["JP"]["cards"] = ""
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
         self.assertFalse(cells["BR"]["est"])          # Karten mit Preis eingetragen
         self.assertFalse(cells["NO"]["est"])          # Kartenzahlung
         self.assertFalse(cells["DE"]["est"])
@@ -657,6 +672,34 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertNotIn("https://shop.example/br25", self.data["card_prices"])
         self.assertIn("lehnt Abrufe ab", sync.status["log"][-2])
+
+    def test_fixed_shop_fee_once_per_order(self):
+        url = "https://shop.example/br50"
+        self.settings["countries"]["BR"]["cards"] = f"50 | {url}"
+        self.data["card_prices"] = {url: {"checked": NOW.timestamp(), "price": 8.90, "currency": "EUR"}}
+        # Hades 33,59 + Good Job 59,90 = 93,49 R$: zwei 50er-Karten in einer Bestellung
+        by = {p["code"]: p for p in planner.plans(self.data, self.settings,
+                                                  basket=["hades", "good-job"], now=NOW)}
+        br = by["BR"]
+        self.assertEqual(br["cards"][0]["count"], 2)
+        self.assertAlmostEqual(br["cost"], round(2 * 8.90 * 1.0775 + 0.40, 2), places=2)
+
+    def test_cashback_hint(self):
+        url = "https://shop.example/br50"
+        self.settings["countries"]["BR"]["cards"] = f"50 | {url}"
+        self.data["card_prices"] = {url: {"checked": NOW.timestamp(), "price": 8.90, "currency": "EUR"}}
+        self.data["prices"]["JP"].pop("hades")
+        # Bestpreis 30 R$, jetzt 33,59 R$; in Norwegen war es auch schon günstiger
+        self.data["lows"] = {"BR": {"hades": {"low": 30.0}}, "NO": {"hades": {"low": 80.0}}}
+        row = lambda: next(r for r in planner.radar(self.data, self.settings, now=NOW)
+                           if r["slug"] == "hades")
+        self.assertIsNone(row()["cashback"])                       # Vorgabe 0 %: kein Hinweis
+        self.settings["cashback_pct"] = 7.4
+        self.assertIsNone(row()["cashback"])                       # 7,4 % reichen nicht
+        self.settings["cashback_pct"] = 15
+        cb = row()["cashback"]
+        self.assertEqual((cb["code"], cb["pct"]), ("BR", 15))
+        self.assertNotEqual(row()["verdict"], "buy")               # nur ein Hinweis
 
     def test_card_prices_from_ggdeals(self):
         page = ('<div class="tile"><a href="/de/gift-card/nintendo-eshop-gift-card-50-brl/"><img></a>'
@@ -738,7 +781,7 @@ class PlanTest(unittest.TestCase):
         row = next(r for r in planner.radar(self.data, self.settings, now=NOW) if r["slug"] == "hades")
         self.assertEqual(row["verdict"], "none")
         self.assertEqual(row["lang_unsure"], ["JP", "BR"])
-        self.assertIn("Sprache dort ungeprüft", row["reason"])
+        self.assertIn("JP, BR: Sprache ungeprüft", row["reason"])
         # „nur warnen“ entscheidet wie bisher mit
         self.settings["lang_rule"] = "warn"
         row = next(r for r in planner.radar(self.data, self.settings, now=NOW) if r["slug"] == "hades")
@@ -790,6 +833,7 @@ class PlanTest(unittest.TestCase):
         self.assertNotIn("JP", levels)                       # nur ein gemeinsamer Titel
 
     def test_price_composition_and_own_markup(self):
+        self.settings["countries"]["JP"]["cards"] = ""
         info = planner.pay_info(self.data, self.settings, now=NOW)
         self.assertEqual((info["NO"]["via"], info["NO"]["vs_mid"]), ("card", 1.8))   # Kartengebühr
         self.assertEqual(info["DE"]["via"], "eur")
@@ -866,7 +910,8 @@ class PlanTest(unittest.TestCase):
         self.assertEqual([d["code"] for d in plan["dropped"]], ["BR"])
         self.assertAlmostEqual(plan["dropped"][0]["saving"], 19.64)
         self.assertEqual([x["slug"] for x in plan["later"]], ["vs-foscari"])
-        self.assertAlmostEqual(plan["cost"], 14.27)
+        # Japan mit Karten zum Kurs: 1.400 ¥ brauchen 2.000 ¥ Guthaben, der Rest steckt in den Kosten
+        self.assertAlmostEqual(plan["cost"], 14.85)
         self.assertAlmostEqual(plan["ref_total"], 31.23)
         self.assertAlmostEqual(plan["saving"], 16.96)
         self.assertEqual(plan["count"], 2)
@@ -904,7 +949,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(steps, [("DE", ["spiritfarer"]), ("BR", ["hades", "vs-foscari"])])
         self.assertEqual(plan["dropped"], [])
         self.assertAlmostEqual(plan["cost"], 14.04)
-        self.assertAlmostEqual(plan["saving"], 19.18)
+        self.assertAlmostEqual(plan["saving"], 19.64)        # ohne den Rest in Brasilien
         # Gute Angebote gibt es im Beispiel nicht, der Schalter ändert nichts
         self.assertEqual(planner.purchase_plan(self.data, self.settings, include_good=True,
                                                now=NOW)["count"], 3)
