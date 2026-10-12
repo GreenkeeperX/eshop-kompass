@@ -1712,6 +1712,17 @@ class NsoItemsTest(unittest.TestCase):
         self.assertEqual(([d["slug"] for d in g["dlc"]], g["missing"]), (["acnh-happy-home-paradise"], 1))
 
 
+class CollectionTabTest(unittest.TestCase):
+    def test_all_games_of_the_collection(self):
+        data = {"owned": ["acnh", "celeste", "hades"], "items": {}, "rel": {
+            "acnh": {"title": "ACNH", "dlc": [["acnh-hhp", "Happy Home Paradise"]]},
+            "celeste": {"title": "Celeste", "dlc": []}}}
+        c = planner.collection(data, {}, rows=[])
+        self.assertEqual([g["slug"] for g in c["games"]], ["acnh"])
+        self.assertEqual(c["plain"], [{"slug": "celeste", "title": "Celeste"}])
+        self.assertEqual(c["waiting"], [{"slug": "hades", "title": "Hades"}])     # noch nicht gelesen
+
+
 class Switch2Test(unittest.TestCase):
     @staticmethod
     def row(slug, title, eur, code="DE", name="Deutschland", verdict="buy"):

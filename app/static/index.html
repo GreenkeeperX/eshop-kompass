@@ -220,6 +220,7 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .vd.good{background:var(--go-bg);color:var(--go);font-weight:600}
 .vd.wait,.vd.none{background:var(--chip);color:var(--muted)}
 .cg h3{font-size:14px;margin:2px 0 6px}
+.cg .cl{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;font-size:13px}
 .cg h3 .mut{font-weight:400;font-size:12.5px}
 .cg table{width:100%}
 .cg td{vertical-align:top;padding:4px 6px 4px 0;border-top:1px solid var(--line)}
@@ -322,7 +323,8 @@ dialog#legend{width:min(760px,calc(100vw - 32px))}
 
 @media (max-width:700px){
   header.top{gap:6px 10px}
-  nav button{padding:6px 9px}
+  nav{gap:0}
+  nav button{padding:6px 7px;font-size:14px}
   .radar thead{display:none}
   .radar table,.radar tbody,.radar td{display:block}
   .radar tr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 10px;border-top:1px solid var(--line)}
@@ -362,6 +364,7 @@ dialog.vl h2{margin:0;font-size:18px;flex:1}
 .vl table td:first-child,.vl table th:first-child{text-align:left}
 .vl td small{display:block;color:var(--muted);font-size:11px}
 button.mini{color:var(--muted);font-size:10px;margin-left:5px;border:1px solid var(--line);border-radius:3px;padding:0 3px;background:none;line-height:1.3}
+@media (max-width:375px){nav button{padding:6px 5px;font-size:13px}}
 </style>
 </head>
 <body>
@@ -382,8 +385,9 @@ button.mini{color:var(--muted);font-size:10px;margin-left:5px;border:1px solid v
 /* Ansicht je Browser: Reiter, Titelansicht, Filter, aufgeklappte Kästen */
 function loadView(){ try{ return JSON.parse(localStorage.getItem("ek.view") || "{}") || {}; }catch(e){ return {}; } }
 function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails})); }catch(e){} }
-const TABS = [["jetzt","Jetzt"],["titel","Titel"],["laender","Länder"],["settings","Einstellungen"]];
+const TABS = [["jetzt","Jetzt"],["titel","Titel"],["sammlung","Sammlung"],["laender","Länder"],["settings","Einstellungen"]];
 const V0 = loadView();
+if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
 const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? V0.tab : "jetzt",
            onlySale:false, collMissing:false, rq:"", vf:V0.vf || "all", tview:V0.tview === "table" ? "table" : "list",
            openTitle:null, folds:V0.folds || {}, mDetails:!!V0.mDetails,
@@ -699,7 +703,8 @@ function render(){
   const m = $("main");
   m.className = S.tab === "settings" ? "narrow" : "";
   if(S.tab === "jetzt") m.innerHTML = banners() + viewJetzt();
-  else if(S.tab === "titel") m.innerHTML = banners() + (S.vf === "coll" ? viewCollection() : S.tview === "table" ? viewMatrix() : viewTitles());
+  else if(S.tab === "titel") m.innerHTML = banners() + (S.tview === "table" ? viewMatrix() : viewTitles());
+  else if(S.tab === "sammlung") m.innerHTML = banners() + viewCollection();
   else if(S.tab === "laender") m.innerHTML = banners() + (S.ui.basket ? viewCompare() : viewCards());
   else { m.innerHTML = viewSettings(); showLog(S.state.status.log); }
 }
@@ -742,9 +747,7 @@ function titleFilterBar(){
   const n = v => S.state.radar.filter(r => r.verdict === v).length;
   const f = S.vf || "all";
   const b = (v, l, c) => `<button class="fb ${f === v ? "on" : ""}" data-act="vf" data-v="${v}">${l} ${c}</button>`;
-  const coll = S.state.collection || {games: []};
-  return b("buy", "kaufen", n("buy")) + b("good", "gut", n("good")) + b("wait", "warten", n("wait")) + b("all", "alle", S.state.radar.length) +
-    (coll.owned ? `<button class="fb ${f === "coll" ? "on" : ""}" data-act="vf" data-v="coll" title="Spiele deiner Sammlung mit ihren Zusatzinhalten">Sammlung · ${coll.games.reduce((n, g) => n + g.missing, 0)} DLC fehlen</button>` : "");
+  return b("buy", "kaufen", n("buy")) + b("good", "gut", n("good")) + b("wait", "warten", n("wait")) + b("all", "alle", S.state.radar.length);
 }
 /* ---------- Sammlung: Zusatzinhalte zu Spielen, die du hast ---------- */
 function collDlc(d){
@@ -756,18 +759,22 @@ function collDlc(d){
   return `<tr><td class="l">${esc(d.title)}${tag}</td><td class="l">${state}</td></tr>`;
 }
 function viewCollection(){
-  const c = S.state.collection || {games: []}, q = S.rq.toLowerCase();
-  const games = c.games.filter(g => (!q || g.title.toLowerCase().includes(q) || g.dlc.some(d => d.title.toLowerCase().includes(q)))
-    && (!S.collMissing || g.missing));
-  let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">${titleFilterBar()}
-    <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden</label></div>`;
-  h += `<p class="hint" style="margin:0 0 8px">Zusatzinhalte zu den Spielen deiner DekuDeals-Sammlung. Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals.
+  const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
+  const hit = t => !q || t.toLowerCase().includes(q);
+  const games = c.games.filter(g => (hit(g.title) || g.dlc.some(d => hit(d.title))) && (!S.collMissing || g.missing));
+  const plain = S.collMissing ? [] : (c.plain || []).filter(g => hit(g.title));
+  const waiting = S.collMissing ? [] : (c.waiting || []).filter(g => hit(g.title));
+  const missing = c.games.reduce((n, g) => n + g.missing, 0);
+  let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
+    <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden DLC</label></div>`;
+  if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
+  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung${missing ? `, ${missing} DLC fehlen` : ""}. Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals.
     Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
   h += games.map(g => `<section class="box cg"><h3>${esc(g.title)} <span class="mut">${g.have} von ${g.dlc.length}${g.missing ? `, ${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : ", alle da"}</span></h3><table class="mini-t">${g.dlc.map(collDlc).join("")}</table></section>`).join("");
-  if(!games.length) h += `<p class="mut">${c.games.length ? "Kein Spiel passt zum Filter." : "Noch keine Zusatzinhalte bekannt."}</p>`;
-  const notes = [c.unread ? `${c.unread} Titel der Sammlung noch nicht gelesen, sie folgen bei den nächsten Abgleichen` : "",
-                 c.no_dlc ? `${c.no_dlc} ${c.no_dlc === 1 ? "Spiel" : "Spiele"} ohne Zusatzinhalte` : ""].filter(Boolean);
-  if(notes.length) h += `<p class="hint" style="margin-top:8px">${notes.join(" · ")}.</p>`;
+  const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">${esc(g.title)}</a>`).join("")}</div></section>` : "";
+  h += list(plain, "Ohne Zusatzinhalte", "");
+  h += list(waiting, "Noch nicht gelesen", "Das Tool liest je Abgleich höchstens 40 Artikelseiten, diese folgen bei den nächsten Abgleichen.");
+  if(!games.length && !plain.length && !waiting.length) h += `<p class="mut">${q || S.collMissing ? "Kein Spiel passt zum Filter." : "Noch keine Spiele bekannt."}</p>`;
   return h;
 }
 function viewTitles(){
