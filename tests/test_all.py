@@ -1931,5 +1931,68 @@ class SaleRhythmTest(unittest.TestCase):
         self.assertEqual(planner.sale_rhythm(self.ctx([]), "hades"), [])
 
 
+class ExtraDlcTest(unittest.TestCase):
+    def data(self):
+        return {"owned": ["rl", "rl-a"], "items": {"rl-w": {"title": "Car W", "active": True, "ids": {}}},
+                "rel": {"rl": {"title": "Rocket League", "dlc": [
+                    ["rl-a", "Car A"], ["rl-b", "Car B"], ["rl-c", "Car C"], ["rl-w", "Car W"],
+                    ["rl-nso", "Nintendo Switch Online - Items"]]}},
+                "fx": {"rates": {"EUR": 1.0}}, "prices": {}}
+
+    def test_which_dlc_need_prices(self):
+        data, settings = self.data(), {"dlc_marks": {"rl-c": "ignore"}}
+        # rl-a hast du, rl-c ignoriert, rl-w steht auf der Wishlist, Abo-Inhalte zählen nicht
+        self.assertEqual(planner.extra_dlc(data, settings), {"rl-b": ("Car B", "rl")})
+        settings["dlc_marks"]["rl"] = "ignore_all"
+        self.assertEqual(planner.extra_dlc(data, settings), {})
+
+    def test_ids_politely_and_prices_in_the_collection(self):
+        settings = store.load_settings()
+        data = self.data()
+        got, orig = [], sources.fetch_item
+        sources.fetch_item = lambda slug, country, fetch=None: (
+            got.append((slug, country)) or {"nsuids": ["70050000000001"] if country == "de" else []})
+        try:
+            with mock.patch.object(sync, "EXTRA_PER_SYNC", 1):
+                sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200)
+            self.assertEqual(len(got), 1)                       # höchstens so viele Seiten
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200)
+            self.assertEqual(data["extra"]["rl-b"]["ids"]["EU"], ["70050000000001"])
+            n = len(got)
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 60)
+            self.assertEqual(len(got), n)                       # gefunden: kein neuer Abruf
+        finally:
+            sources.fetch_item = orig
+        # Preis aus der Preisabfrage (xprices), in der Sammlung mit Summe
+        data["xprices"] = {"DE": {"rl-b": {"status": "onsale", "currency": "EUR", "regular": 3.99,
+                                           "nsuid": "70050000000001"}}}
+        c = planner.collection(data, settings, rows=[])
+        g = c["games"][0]
+        row = {d["slug"]: d for d in g["dlc"]}["rl-b"]
+        self.assertEqual((row["eur"], row["code"]), (3.99, "DE"))
+        self.assertEqual((g["missing"], g["missing_eur"], g["missing_priced"]), (3, 3.99, 1))   # B, C und W fehlen, B mit Preis
+        self.assertEqual(c["missing_eur"], 3.99)
+        # Ignoriert: fällt aus der Liste und aus der Summe
+        settings["dlc_marks"] = {"rl-b": "ignore", "rl-c": "ignore"}
+        self.assertIsNone(planner.collection(data, settings, rows=[])["missing_eur"])
+        self.assertIsNone(planner.extra_context(data, settings))
+
+    def test_prices_of_missing_dlc_are_fetched_separately(self):
+        settings = store.load_settings()
+        data = {"items": {"a": {"active": True, "ids": {"EU": ["1"]}}},
+                "extra": {"x": {"title": "X", "parent": "g", "ids": {"EU": ["2"]}, "ids_checked": {}}},
+                "prices": {}}
+        asked = []
+
+        def prices(code, ids, fetch=None, lang=None, pause=None):
+            asked.append((code, sorted(ids)))
+            return {n: {"status": "onsale", "currency": "EUR", "regular": 5.0} for n in ids}
+        with mock.patch.object(sources, "fetch_prices", prices), \
+                mock.patch.object(countries, "ORDER", ["DE"]):
+            sync.sync_prices(data, settings, None, lambda s: None, {})
+        self.assertEqual(asked, [("DE", ["1", "2"])])           # ein Abruf für beide
+        self.assertEqual((list(data["prices"]["DE"]), list(data["xprices"]["DE"])), (["a"], ["x"]))
+
+
 if __name__ == "__main__":
     unittest.main()
