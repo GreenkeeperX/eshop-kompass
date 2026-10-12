@@ -51,7 +51,7 @@ Reihenfolge und Begründung:
    bekannt sind und Preise haben, also auf der Wishlist stehen. Teile, die schon in der
    Sammlung sind, zählen nicht mit.
 
-- [ ] 3.1 Sammlung mit Zusatzinhalten: Artikelseiten der Sammlung schonend lesen
+- [x] 3.1 Sammlung mit Zusatzinhalten (0.21): Artikelseiten der Sammlung schonend lesen
   (höchstens 40 je Abgleich, monatlich auffrischen), Filter „Sammlung“ im Reiter Titel
   mit „hast du / fehlt“ je DLC. Steht ein DLC auf der Wishlist, zeigt die Ansicht sein
   Urteil und seinen Preis.

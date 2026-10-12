@@ -22,10 +22,12 @@ def state():
     settings = store.load_settings()
     data = store.load_data()
     ui = store.load_ui()
+    radar = planner.radar(data, settings, ui["targets"])
     return {
         "settings": settings,
         "ui": ui,
-        "radar": planner.radar(data, settings, ui["targets"]),
+        "radar": radar,
+        "collection": planner.collection(data, settings, rows=radar),
         "levels": planner.price_levels(data, settings),
         "pay": planner.pay_info(data, settings),
         "card_status": planner.card_status(data, settings),

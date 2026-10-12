@@ -24,6 +24,9 @@ LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu pr�
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
 CARD_PAUSE = 3.0
+REL_RECHECK_SECONDS = 30 * 24 * 3600  # DLC und Pakete eines Titels monatlich auffrischen
+REL_PER_SYNC = 40                     # höchstens so viele Artikelseiten je Abgleich
+REL_V = 1                             # erhöht sich, wenn alle Seiten neu zu lesen sind
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None}
@@ -541,6 +544,53 @@ def sync_lows(data, settings, fetch, sleep, now=None):
     _log(f"Tiefstpreise bekannt: {known}, Angebotsverläufe: {runs}, Seiten ohne Tiefstpreis: {missing}")
 
 
+def sync_related(data, settings, fetch, sleep, now=None):
+    """Liest DLC, Pakete ("Included In") und Inhalt ("Contains") der Artikelseiten von
+    Sammlung und Wishlist. Schonend: höchstens REL_PER_SYNC Seiten je Abgleich,
+    zuerst die noch nie gelesenen und die Sammlung, dann monatlich auffrischen."""
+    now = now or time.time()
+    rel = data.setdefault("rel", {})
+    owned = list(data.get("owned") or [])
+    wished = [s for s, it in data["items"].items() if it.get("active")]
+    todo = []
+    for pos, slug in enumerate(dict.fromkeys(owned + wished)):
+        e = rel.get(slug)
+        if e and e.get("v", 0) >= REL_V and now - e.get("checked", 0) < REL_RECHECK_SECONDS:
+            continue
+        todo.append((e is not None, e.get("checked", 0) if e else 0, pos, slug))
+    if not todo:
+        return
+    todo.sort()
+    todo = todo[:REL_PER_SYNC]
+    _step("DLC und Pakete lesen", len(todo))
+    fails = 0
+    for *_, slug in todo:
+        try:
+            info = sources.fetch_item(slug, "de", fetch=fetch)
+        except sources.FetchError as e:
+            if e.status in sources.BLOCKED or fails >= 4:
+                _log(f"DLC und Pakete unterbrochen ({e}), Rest beim nächsten Abgleich")
+                break
+            fails += 1
+            sleep(LOW_PAUSE)
+            continue
+        r = info.get("related") or {}
+        rel[slug] = {"checked": now, "v": REL_V, "title": info.get("title"),
+                     "parent": info.get("parent"),
+                     "dlc": [list(x) for x in r.get("dlc", []) if x[0] != slug],
+                     "in": [list(x) for x in r.get("included_in", []) if x[0] != slug],
+                     "has": [list(x) for x in r.get("contains", []) if x[0] != slug]}
+        status["done"] += 1
+        if status["done"] % 10 == 0:
+            store.save_data(data)
+        sleep(LOW_PAUSE)
+    store.save_data(data)
+    games = [s for s in owned if s in rel and not rel[s].get("parent")]
+    _log(f"DLC und Pakete: {len(games)} Spiele der Sammlung gelesen, "
+         f"{sum(1 for s in games if rel[s]['dlc'])} davon mit Zusatzinhalten"
+         + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else ""))
+
+
 def _better(new, cur):
     """Bei mehreren Versionen eines Titels gewinnt die günstigste kaufbare."""
     if (new["status"] == "onsale") != (cur["status"] == "onsale"):
@@ -596,6 +646,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             data["lows_v"] = LOWS_VERSION
             _log("Tiefstpreise werden neu geladen (Lesefehler bei Spielen für Switch und Switch 2 behoben)")
         sync_lows(data, settings, fetch, sleep)
+        sync_related(data, settings, fetch, sleep)
         status["ok"] = True
         _step("Fertig")
     except Exception as e:
@@ -686,6 +737,18 @@ def diagnose():
         probe("Sammlung", f"https://www.dekudeals.com/collection/{cid}?page=1", None, sources.describe)
     except ValueError as e:
         lines.append(f"Sammlung: {e}")
+    # DLC und Pakete: was die Artikelseite eines Spiels aus der Sammlung nennt
+    rel = data.get("rel") or {}
+    owned = data.get("owned") or []
+    game = next((s for s in owned if (rel.get(s) or {}).get("dlc")), owned[0] if owned else "mario-kart-8-deluxe")
+
+    def rel_info(t):
+        r = sources.parse_related(t)
+        m = sources.re.search(r"(?i)<h[1-6][^>]*>(?:(?!</h).)*?\bDLC\b", t, sources.re.S)
+        return ("; ".join(f"{k}: {len(v)} ({', '.join(n for _, n in v[:3])})" for k, v in r.items())
+                + (", Ausschnitt: " + sources.re.sub(r"\s+", " ", t[m.start():m.start() + 400]) if m else
+                   ", keine Überschrift DLC"))
+    probe(f"DLC und Pakete ({game})", f"https://www.dekudeals.com/items/{game}?country=de", None, rel_info)
     # Steht Cashback in der Seite? Dann ließe es sich je Karte prüfen
     def cashback_spots(t):
         spots = [t[max(0, m.start() - 80):m.start() + 120].replace("\n", " ")
