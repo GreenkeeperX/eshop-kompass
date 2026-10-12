@@ -1011,6 +1011,21 @@ def matrix(data, settings, now=None):
 VERDICTS = ["buy", "good", "wait", "none"]
 
 
+def _not_buyable(data, settings, slug, it):
+    """Warum ein Titel in keinem aktiven Land zu kaufen ist, nach der Antwort von Nintendo."""
+    if not any((it.get("ids") or {}).values()):
+        return "nicht im eShop gefunden"
+    states = {((data.get("prices") or {}).get(code) or {}).get(slug, {}).get("status")
+              for code, cfg in settings["countries"].items() if cfg.get("enabled")}
+    states.discard(None)
+    if "unreleased" in states or "pre_order" in states or "preorder" in states:
+        return "noch nicht erschienen"
+    if states and states <= {"not_found", "sales_termination", "unknown"}:
+        return ("nicht mehr im Verkauf" if "sales_termination" in states else
+                "im eShop nicht einzeln kaufbar (etwa nur im Abo oder in einem Paket)")
+    return "nirgends kaufbar"
+
+
 def radar(data, settings, targets=None, now=None):
     """Eine Zeile je Titel: bester Preis jetzt, Bestpreis, Urteil.
 
@@ -1070,7 +1085,7 @@ def radar(data, settings, targets=None, now=None):
 
         def where(b):
             return f" in {b['name']}" + (" (schwer)" if b["tier"] >= 3 else "")
-        verdict, reason, at = "none", "nirgends kaufbar", None
+        verdict, reason, at = "none", _not_buyable(data, settings, slug, ctx.items[slug]), None
         if (unsure or nocard) and not both:
             why = ([", ".join(unsure) + ": Sprache ungeprüft"] if unsure else []) + \
                   ([", ".join(nocard) + ": keine Guthabenkarte mit Preis"] if nocard else [])
@@ -1086,6 +1101,8 @@ def radar(data, settings, targets=None, now=None):
                 reason = ("Bestpreis" if top["mark"] == "best" else f"nur {_eur(diff)} über Bestpreis") + where(top) + lasting
             elif g == "good":
                 verdict, reason = "good", f"{_eur(diff)} ({gap} %) über Bestpreis" + where(top) + lasting
+            elif top["raw"] < 0.005:
+                reason = "kostenlos"
             elif g is None:
                 reason = "Bestpreis noch nicht bekannt"
             else:
@@ -1371,6 +1388,7 @@ def lang_todo(data, settings, now=None):
                         "family_name": countries.FAMILIES[fam], "codes": codes,
                         "url": LANG_CHECK_URL.get(fam, "").format(nsuid=ids[0]),
                         "state": state, "manual": manual,
+                        "text": (it.get("langs") or {}).get(fam),
                         "nintendo": ctx.german(it, fam, slug, by_hand=False)})
     return out
 

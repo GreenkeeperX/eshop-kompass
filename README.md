@@ -40,7 +40,12 @@ Ein dauerhaft günstiger Normalpreis am Bestpreis ist also "kaufen" wie ein
 Angebot (der Grund nennt dann "Normalpreis"), und ein teureres Angebot in einem
 anderen Land macht daraus kein "warten". Rabatt und Angebotsende stehen nur
 daneben. "kein Urteil" heißt: nirgends kaufbar, wo es zählt, oder der
-Bestpreis ist noch nicht bekannt.
+Bestpreis ist noch nicht bekannt. Der Grund sagt, was Nintendo meldet: "noch
+nicht erschienen", "nicht mehr im Verkauf", "im eShop nicht einzeln kaufbar"
+(etwa nur im Abo wie N64-Spiele oder nur in einem Paket), "nicht im eShop
+gefunden" (keine Nintendo-Kennung) oder "kostenlos".
+Eurobeträge tragen immer das €-Zeichen, Beträge in Landeswährung stehen ohne
+Zeichen in Spalten mit der Währung im Kopf oder mit Kürzel daneben.
 Die beiden Euro-Grenzen sind unter Einstellungen änderbar. Ob sich der Weg in
 ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
 
