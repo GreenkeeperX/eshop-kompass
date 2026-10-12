@@ -55,7 +55,7 @@ Reihenfolge und Begründung:
   (höchstens 40 je Abgleich, monatlich auffrischen), Filter „Sammlung“ im Reiter Titel
   mit „hast du / fehlt“ je DLC. Steht ein DLC auf der Wishlist, zeigt die Ansicht sein
   Urteil und seinen Preis.
-- [ ] 3.2 Switch-2-Upgrade-Pfade: Upgrade-Pakete als eigene Marke. Ein Hinweis erscheint,
+- [x] 3.2 Switch-2-Upgrade-Pfade (0.22): Upgrade-Pakete als eigene Marke. Ein Hinweis erscheint,
   wenn eine Switch-2-Edition auf der Wishlist steht und das Switch-1-Spiel in der
   Sammlung ist. Mit Preisvergleich, wenn das Upgrade-Paket auf der Wishlist steht.
 - [ ] 3.3 Komplett-Editionen: Hinweis „auch enthalten in …“ am Titel und Vergleich von
