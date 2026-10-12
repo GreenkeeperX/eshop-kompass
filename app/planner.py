@@ -4,7 +4,7 @@ Beträge in Landeswährung werden intern als ganze Hundertstel gerechnet.
 """
 import math
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from itertools import combinations
 
 from . import countries
@@ -446,7 +446,7 @@ class Context:
         e = self.lows.get(countries.BY_CODE[code]["shop"], {}).get(slug) or {}
         since = (self.now.timestamp() - TYPICAL_DAYS * 86400)
         since = datetime.fromtimestamp(since, timezone.utc).strftime("%Y-%m-%d")
-        runs = [(d, v) for d, v in e.get("sales") or [] if d >= since and v and v > 0]
+        runs = [(r[0], r[1]) for r in e.get("sales") or [] if r[0] >= since and r[1] and r[1] > 0]
         if len(runs) < TYPICAL_MIN_RUNS:
             return None
         lows, n = sorted(v for _, v in runs), len(runs)
@@ -1137,9 +1137,50 @@ def radar(data, settings, targets=None, now=None):
                      "typ_diff": typ_diff, "typ_gap": typ_gap, "cashback": cashback,
                      "target": target, "verdict": verdict, "at": at_info,
                      "lang_unsure": [] if both else unsure + nocard,
-                     "reason": reason, "no_ids": not any(it.get("ids", {}).values())})
+                     "reason": reason, "no_ids": not any(it.get("ids", {}).values()),
+                     "rhythm": sale_rhythm(ctx, slug)})
     rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]), r["gap"] if r["gap"] is not None else 999))
     return rows
+
+
+def sale_rhythm(ctx, slug, limit=4):
+    """Angebotsrhythmus je Land aus den DekuDeals-Angebotsphasen der letzten 24 Monate:
+    Zahl, übliche Abstände, das letzte Angebot und die Monate, in die sie meist fielen.
+    Eine Vorhersage gibt es nicht. Nur bei recht gleichmäßigen Abständen nennt der
+    Rhythmus, wann das nächste nach diesem Muster üblich wäre (Schätzung)."""
+    since = datetime.fromtimestamp(ctx.now.timestamp() - TYPICAL_DAYS * 86400,
+                                   timezone.utc).strftime("%Y-%m-%d")
+    today = ctx.now.strftime("%Y-%m-%d")
+    out = []
+    for code, c in ctx.countries.items():
+        e = ctx.lows.get(c["meta"]["shop"], {}).get(slug) or {}
+        runs = sorted(r for r in e.get("sales") or [] if r[0] >= since)
+        if not runs:
+            continue
+        starts = [datetime.strptime(r[0], "%Y-%m-%d") for r in runs]
+        gaps = [(b - a).days / 7 for a, b in zip(starts, starts[1:])]
+        last = runs[-1]
+        row = {"code": code, "name": c["meta"]["name"], "count": len(runs),
+               "since": max(e.get("sales_from") or since, since),
+               "last_start": last[0], "last_end": last[2] if len(last) > 2 else None,
+               "weeks_ago": round((ctx.now.replace(tzinfo=None) - starts[-1]).days / 7),
+               "gap": None, "gap_min": None, "gap_max": None, "months": [], "next": None}
+        if row["last_end"] and row["last_end"] >= (ctx.now - timedelta(days=2)).strftime("%Y-%m-%d"):
+            row["last_end"] = None          # läuft noch oder endete gerade: kein Ende bekannt
+            row["running"] = last[0] <= today
+        if gaps:
+            mean = sum(gaps) / len(gaps)
+            row.update(gap=round(mean), gap_min=round(min(gaps)), gap_max=round(max(gaps)))
+            # gleichmäßig: mindestens 4 Angebote, alle Abstände höchstens 30 % vom Schnitt
+            if len(runs) >= 4 and all(abs(g - mean) <= 0.3 * mean for g in gaps):
+                row["next"] = (starts[-1] + timedelta(weeks=mean)).strftime("%Y-%m-%d")
+        if len(runs) >= 3:
+            months = {}
+            for d in starts:
+                months[d.month] = months.get(d.month, 0) + 1
+            row["months"] = sorted(m for m, n in sorted(months.items(), key=lambda x: -x[1])[:3] if n >= 2)
+        out.append(row)
+    return sorted(out, key=lambda r: (-r["count"], r["name"]))[:limit]
 
 
 def is_upgrade(slug, title=""):

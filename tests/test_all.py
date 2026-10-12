@@ -103,8 +103,8 @@ class SourcesTest(unittest.TestCase):
         series = sources.parse_history(page)
         self.assertEqual((len(series), series[3]), (10, ("2024-05-04", 6.65)))
         runs = sources.sale_runs(series)
-        self.assertEqual(runs, [["2024-05-04", 6.65], ["2024-05-09", 7.99]])
-        self.assertEqual(sources.sale_runs(series, since="2024-05-06"), [["2024-05-09", 7.99]])
+        self.assertEqual(runs, [["2024-05-04", 6.65, "2024-05-05"], ["2024-05-09", 7.99, "2024-05-09"]])
+        self.assertEqual(sources.sale_runs(series, since="2024-05-06"), [["2024-05-09", 7.99, "2024-05-09"]])
         self.assertEqual(sources.parse_item_page(page)["history"], series)
         self.assertEqual(sources.parse_history("<html>ohne Verlauf</html>"), [])
 
@@ -1587,7 +1587,7 @@ class SyncTest(unittest.TestCase):
             self.assertEqual(got, ["a", "b"])
             self.assertEqual(data["lows"]["DE"]["b"]["hist"], [["2025-01", 10]])
             e = data["lows"]["DE"]["a"]
-            self.assertEqual((e["sales"], e["sales_at"]), ([["2025-01-02", 10], ["2025-01-05", 12]], 1736467200))
+            self.assertEqual((e["sales"], e["sales_at"]), ([["2025-01-02", 10, "2025-01-02"], ["2025-01-05", 12, "2025-01-05"]], 1736467200))
             sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 86400)
             self.assertEqual(got, ["a", "b"])                  # frisch: kein zweiter Abruf
             # Seite mit Tiefstpreisen für Switch und Switch 2: Verlauf gilt nicht als Bestpreis
@@ -1877,6 +1877,33 @@ class BootSyncTest(unittest.TestCase):
         self.assertFalse(sync.sync_due(iso(now - timedelta(minutes=10)), 6, now, boot))  # gerade erst
         self.assertFalse(sync.sync_due(iso(now - timedelta(hours=7)), 6, now, boot,
                                        iso(now - timedelta(minutes=20))))              # Fehlschlag
+
+
+class SaleRhythmTest(unittest.TestCase):
+    def ctx(self, sales):
+        t = PlanTest("test_owned_flags")
+        t.setUp()
+        t.data["lows"] = {"BR": {"hades": {"sales": sales, "sales_from": "2024-10-01"}}}
+        return planner.Context(t.data, t.settings, NOW)
+
+    def test_regular_sales_give_an_estimate(self):
+        sales = [["2025-03-01", 30.0, "2025-03-14"], ["2025-06-01", 30.0, "2025-06-14"],
+                 ["2025-09-01", 28.0, "2025-09-14"], ["2025-12-01", 28.0, "2025-12-14"],
+                 ["2026-03-01", 28.0, "2026-03-14"], ["2026-06-01", 25.0, "2026-06-14"],
+                 ["2026-09-01", 25.0, "2026-09-14"]]
+        r = planner.sale_rhythm(self.ctx(sales), "hades")[0]
+        self.assertEqual((r["code"], r["count"], r["gap"], r["gap_min"], r["gap_max"]), ("BR", 7, 13, 13, 13))
+        self.assertEqual((r["last_start"], r["last_end"], r["weeks_ago"]), ("2026-09-01", "2026-09-14", 6))
+        self.assertEqual(r["months"], [3, 6, 9])
+        self.assertTrue(r["next"].startswith("2026-11") or r["next"].startswith("2026-12"))
+
+    def test_irregular_sales_without_estimate(self):
+        sales = [["2025-01-01", 30.0], ["2025-02-01", 30.0], ["2025-11-01", 30.0], ["2026-08-01", 30.0]]
+        r = planner.sale_rhythm(self.ctx(sales), "hades")[0]
+        self.assertIsNone(r["next"])                     # Abstände 4 bis 39 Wochen
+        self.assertIsNone(r["last_end"])                 # alter Eintrag ohne Ende
+        self.assertEqual(r["months"], [])
+        self.assertEqual(planner.sale_rhythm(self.ctx([]), "hades"), [])
 
 
 if __name__ == "__main__":
