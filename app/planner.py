@@ -188,6 +188,7 @@ class Context:
         self.order = sorted(self.items, key=lambda s: self.items[s].get("order", 0))
         self.lows = data.get("lows", {})
         self.owned = set(data.get("owned") or [])
+        self.rel = data.get("rel") or {}
         rates = data["fx"]["rates"]
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
@@ -1330,6 +1331,55 @@ def bundles(data, rows):
     return {"packs": packs, "in": inside}
 
 
+def _nso(slug, title):
+    return "nintendo switch online" in f"{slug} {title}".lower().replace("-", " ")
+
+
+def extra_dlc(data, settings):
+    """DLC deiner Spiele, die fehlen und nicht auf der Wishlist stehen: {DLC: (Titel, Spiel)}.
+    Ohne Abo-Inhalte, ohne abgehakte und ignorierte."""
+    rel, owned = data.get("rel") or {}, set(data.get("owned") or [])
+    marks = settings.get("dlc_marks") or {}
+    wished = {s for s, it in (data.get("items") or {}).items() if it.get("active")}
+    out = {}
+    for game in dict.fromkeys(data.get("owned") or []):
+        e = rel.get(game)
+        if not e or e.get("parent") or marks.get(game) == "ignore_all":
+            continue
+        for d_slug, d_title in e.get("dlc") or []:
+            if d_slug in owned or d_slug in wished or marks.get(d_slug) or _nso(d_slug, d_title):
+                continue
+            out.setdefault(d_slug, (d_title, game))
+    return out
+
+
+def extra_context(data, settings, now=None):
+    """Rechnet die fehlenden DLC der Sammlung wie Wishlist-Titel: eigene Angebote je Land
+    aus ihren Preisen (xprices), dieselben Karten und Kurse. None ohne solche DLC."""
+    wanted = extra_dlc(data, settings)
+    extra = {s: e for s, e in (data.get("extra") or {}).items() if s in wanted}
+    if not extra:
+        return None
+    items = {s: {"title": e["title"], "parent": None, "dlc_of": e["parent"], "active": True,
+                 "order": i, "ids": e.get("ids") or {}} for i, (s, e) in enumerate(extra.items())}
+    return Context(dict(data, items=items, prices=data.get("xprices") or {}, lows={}),
+                   settings, now)
+
+
+def _extra_best(xctx, slug):
+    """Günstigstes zählendes Angebot eines fehlenden DLC in Euro."""
+    best = None
+    for code, c in xctx.countries.items():
+        o = c["offers"].get(slug)
+        if not o or c["unit"] is None or not xctx.decides(o):
+            continue
+        eur = xctx.est(c, o["local"])
+        if best is None or eur < best["eur"] - 0.005:
+            best = {"eur": _r(eur), "code": code, "name": c["meta"]["name"], "est": c["estimated"],
+                    "sale": o["sale"], "end": o.get("end") if o["sale"] else None}
+    return best
+
+
 def collection(data, settings, targets=None, now=None, rows=None):
     """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
 
@@ -1345,6 +1395,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
     by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
     items = data.get("items") or {}
     marks = settings.get("dlc_marks") or {}
+    xctx = extra_context(data, settings, now)
     games, unread, no_dlc, plain, waiting = [], 0, 0, [], []
 
     def name(slug, e=None):
@@ -1360,7 +1411,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
             continue                         # selbst ein DLC, steht beim Hauptspiel
         dlc = []
         for d_slug, d_title in e.get("dlc") or []:
-            if "nintendo switch online" in f"{d_slug} {d_title}".lower().replace("-", " "):
+            if _nso(d_slug, d_title):
                 continue                     # Abo-Inhalte gibt es nicht zu kaufen
             r = by.get(d_slug)
             mark = marks.get(d_slug)
@@ -1378,6 +1429,11 @@ def collection(data, settings, targets=None, now=None, rows=None):
                            eur=best.get("eur") if best else None, est=bool(best and best.get("est")),
                            code=shown.get("code"), name=shown.get("name"),
                            end=best.get("end") if best and best.get("sale") else None)
+            elif xctx and not row["have"] and not row["ignored"]:
+                best = _extra_best(xctx, d_slug)
+                if best:
+                    row.update(eur=best["eur"], est=best["est"], code=best["code"],
+                               name=best["name"], end=best["end"], sale=best["sale"])
             dlc.append(row)
         if not dlc:
             no_dlc += 1
@@ -1385,14 +1441,23 @@ def collection(data, settings, targets=None, now=None, rows=None):
             continue
         have = sum(1 for d in dlc if d["have"])
         ignored = sum(1 for d in dlc if d["ignored"])
+        open_ = [d for d in dlc if not d["have"] and not d["ignored"]]
+        priced = [d for d in open_ if d.get("eur") is not None]
         games.append({"slug": slug, "title": e.get("title") or slug, "dlc": dlc,
                       "have": have, "ignored": ignored, "ignore_all": marks.get(slug) == "ignore_all",
-                      "missing": len(dlc) - have - ignored})
+                      "missing": len(dlc) - have - ignored,
+                      "missing_eur": _r(sum(d["eur"] for d in priced)) if priced else None,
+                      "missing_priced": len(priced),
+                      "missing_sale": sum(1 for d in priced if d.get("sale") or d.get("end"))})
     games.sort(key=lambda g: (g["missing"] == 0, g["title"].lower()))
     plain.sort(key=lambda g: g["title"].lower())
     waiting.sort(key=lambda g: g["title"].lower())
+    priced = [g for g in games if g["missing_priced"]]
     return {"games": games, "owned": len(owned_list), "unread": unread, "no_dlc": no_dlc,
-            "plain": plain, "waiting": waiting}
+            "plain": plain, "waiting": waiting,
+            "missing_eur": _r(sum(g["missing_eur"] for g in priced)) if priced else None,
+            "missing_priced": sum(g["missing_priced"] for g in priced),
+            "missing_sale": sum(g["missing_sale"] for g in priced)}
 
 
 LANG_CHECK_URL = {
@@ -1710,10 +1775,11 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 "currency": (cur_c or {}).get("currency"), "balance": cur_balance / 100,
                 "left": left, "fits": fit[:5]}
     skip = done | {x["slug"] for x in s2_skip}
+    xctx = extra_context(data, settings, now)
     for p in steps:
         c = ctx.countries[p["code"]]
         p["fill_slugs"] = [i["slug"] for i in p["items"] if i["slug"] in fill.get(p["code"], [])]
-        p["fill"] = _rest_fill(ctx, c, p, planned, skip)
+        p["fill"] = _rest_fill(ctx, c, p, planned, skip, xctx=xctx)
         p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
         # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
         # deutschen Schritt (dort ist die Ersparnis dann 0)
@@ -1744,9 +1810,10 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
 
 
-def _rest_fill(ctx, c, p, planned, skip, limit=3):
+def _rest_fill(ctx, c, p, planned, skip, limit=3, xctx=None):
     """Wishlist-Titel, die in den Rest dieses Schritts passen, der kleinste Abstand zuerst.
-    Ein DLC nur, wenn sein Hauptspiel in der Sammlung oder im Plan steht."""
+    Ein DLC nur, wenn sein Hauptspiel in der Sammlung oder im Plan steht. Dazu fehlende
+    DLC deiner Spiele (`xctx`), die nicht auf der Wishlist stehen."""
     rest = round((p.get("rest") or 0) * 100)
     if rest <= 0 or p.get("is_ref"):
         return []
@@ -1763,6 +1830,17 @@ def _rest_fill(ctx, c, p, planned, skip, limit=3):
         out.append({"slug": s, "title": ctx.title(s), "short": ctx.short(s),
                     "local": o["local"] / 100, "eur": _r(o["local"] / 100 / c["rate"]) if c.get("rate") else None,
                     "left": (rest - o["local"]) / 100, "sale": bool(o.get("sale")), "dlc": bool(parent)})
+    xc = xctx.countries.get(c["code"]) if xctx else None
+    for s, o in (xc or {}).get("offers", {}).items():
+        if o["local"] > rest or s in planned or not xctx.decides(o):
+            continue
+        it = xctx.items[s]
+        game = ((ctx.items.get(it["dlc_of"]) or {}).get("title")
+                or ((ctx.rel or {}).get(it["dlc_of"]) or {}).get("title") or it["dlc_of"])
+        out.append({"slug": s, "title": f"{it['title']} ({game})", "short": it["title"],
+                    "local": o["local"] / 100, "eur": _r(o["local"] / 100 / c["rate"]) if c.get("rate") else None,
+                    "left": (rest - o["local"]) / 100, "sale": bool(o.get("sale")), "dlc": True,
+                    "extra": True, "game": game})
     return sorted(out, key=lambda f: (f["left"], f["title"]))[:limit]
 
 

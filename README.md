@@ -97,6 +97,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Das Urteil zählt dabei nicht, Titel aus der Sammlung, gekaufte und DLC ohne
   Hauptspiel fehlen. Ein Klick nimmt den Titel in den Schritt, "Füller ×" nimmt
   ihn wieder heraus. Nach "gekauft" sind die Füller dieses Landes vergessen.
+  Auch fehlende DLC deiner Spiele erscheinen dort, als Link zu DekuDeals:
+  Übernehmen lassen sie sich, sobald sie auf der Wishlist stehen. Ein DLC gilt
+  nur in der Region, in der du das Hauptspiel hast.
 - Titel, Liste: eine Zeile je Wishlist-Titel mit Urteil, Einkaufspreis samt
   Land und Stufe, Abstand zum Bestpreis und, wenn das beste Angebot in einem
   schweren Land liegt, der Alternative in einem leichten oder mittleren Land.
@@ -114,7 +117,12 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   "ignorieren" (je DLC) und "alle DLC ignorieren" (je Spiel) blenden Inhalte aus,
   die dich nicht interessieren: Sie zählen nicht als fehlend und stehen eingeklappt
   unter dem Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der
-  Sicherung. Steht
+  Sicherung. Für fehlende DLC, die nicht auf der Wishlist stehen, sucht das Tool
+  die Nintendo-IDs über die DekuDeals-Artikelseiten (höchstens 40 Seiten je
+  Abgleich, Abbruch bei Sperren) und holt die Preise mit der üblichen
+  Preisabfrage. Dann steht der günstigste Preis dabei, je Spiel und insgesamt die
+  Summe der fehlenden DLC. Urteil und Bestpreis gibt es nur für die Wishlist.
+  Steht
   ein fehlender DLC auf deiner Wishlist, stehen Urteil, Einkaufspreis und Land
   dabei, sonst ein Link zu DekuDeals, um ihn auf die Wishlist zu setzen.
   Upgrade-Pakete für die Switch 2 sind markiert. Spiele mit fehlenden DLC

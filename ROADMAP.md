@@ -96,9 +96,11 @@ Reihenfolge und Begründung:
   „alle DLC ignorieren“ je Spiel für Inhalte, die nicht interessieren (etwa kosmetische
   Pakete). Ignorierte zählen nicht als fehlend und stehen eingeklappt. Eine Angabe der
   Sammlung geht vor. Alles wird mitgesichert.
-- [ ] 4.5 DLC-Preise: Für fehlende DLC der Sammlung die Nintendo-IDs schonend über die
-  Artikelseiten lesen. Daraus die Summe der fehlenden DLC je Spiel in der Sammlung und
-  Füllartikel Stufe 2 (fehlende DLC deiner Spiele in den Rest).
+- [x] 4.5 DLC-Preise (0.33): Für fehlende DLC der Sammlung (ohne abgehakte, ignorierte und
+  Wishlist-DLC) die Nintendo-IDs schonend über die Artikelseiten lesen, höchstens 40 Seiten
+  je Abgleich. Die Preise kommen mit derselben Preisabfrage. Daraus die Summe der fehlenden
+  DLC je Spiel und insgesamt in der Sammlung und Füllartikel Stufe 2: fehlende DLC deiner
+  Spiele als Vorschlag für den Rest. Übernehmen lassen sie sich erst von der Wishlist.
 - [ ] 4.6 Sprache in Japan: eine Probe für nintendo.co.jp in den Verbindungstest. Liefert
   sie Sprachangaben für einen guten Teil der Titel, wird dieser Teil automatisch, sonst
   bleibt es bei der Bestätigung von Hand.

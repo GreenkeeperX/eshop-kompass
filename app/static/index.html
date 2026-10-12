@@ -767,7 +767,7 @@ function collDlc(d){
   else if(d.ignored) state = `<span class="mut">ignoriert</span>${d.mark === "ignore" ? " · " + mk("", "zurücksetzen", "Wieder als fehlend zählen") : ""}`;
   else {
     if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
-    else state = `<span class="warnc">fehlt</span> · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool Preis und Urteil">bei DekuDeals ansehen</a>`;
+    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""} · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool auch Urteil und Bestpreis">bei DekuDeals ansehen</a>`;
     state += ` · ${mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht")} · ${mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend")}`;
   }
   return `<tr class="${d.ignored ? "ign" : ""}"><td class="l">${esc(d.title)}${tag}</td><td class="l">${state}</td></tr>`;
@@ -775,7 +775,8 @@ function collDlc(d){
 function collGame(g){
   const shown = g.dlc.filter(d => !d.ignored), ign = g.dlc.filter(d => d.ignored);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : ""].filter(Boolean).join(", ");
+  const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : "",
+    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(", ");
   const key = "ign:" + g.slug;
   return `<section class="box cg"><h3>${esc(g.title)} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>` +
     (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
@@ -791,7 +792,9 @@ function viewCollection(){
   let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
     <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden DLC</label></div>`;
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
-  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung${missing ? `, ${missing} DLC fehlen` : ""}. Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
+  const total = c.missing_eur !== null && c.missing_eur !== undefined
+    ? ` ${c.missing_priced < missing ? `Für ${c.missing_priced} davon ist ein Preis bekannt: zusammen` : "Zusammen"} jetzt ${eur(c.missing_eur)}${c.missing_sale ? `, ${c.missing_sale} im Angebot` : ""}, jeweils im günstigsten zählenden Land.` : "";
+  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung${missing ? `, ${missing} DLC fehlen` : ""}.${total} Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
   h += games.map(collGame).join("");
   const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">${esc(g.title)}</a>`).join("")}</div></section>` : "";
@@ -1153,8 +1156,9 @@ function planCard(p, step){
           <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)}, sonst ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>spart ${eur(f.gain)}</b></button>`));
     if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.ui.dense ? 3 : 99).join("")}</div>`;
   } else if((p.fill || []).length){
-    h += `<div class="fillrow"><span class="mut">Passt in den Rest:</span> ` + p.fill.map(f =>
-      `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`).join(" ") +
+    h += `<div class="fillrow"><span class="mut">Passt in den Rest:</span> ` + p.fill.map(f => f.extra
+      ? `<a class="btn sm" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Er steht nicht auf der Wishlist: Setz ihn bei DekuDeals darauf, dann lässt er sich hier übernehmen. DLC gelten nur in der Region des Hauptspiels.">${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></a>`
+      : `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`).join(" ") +
       `</div>`;
   } else if(p.fillers[0]){
     const f = p.fillers[0];
