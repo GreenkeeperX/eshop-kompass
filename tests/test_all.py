@@ -1703,6 +1703,15 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual((up["wish"], up["owned"], up["upgrade"]), (False, False, True))
 
 
+class NsoItemsTest(unittest.TestCase):
+    def test_subscription_items_are_no_missing_dlc(self):
+        data = {"owned": ["acnh"], "items": {}, "rel": {"acnh": {"title": "ACNH", "dlc": [
+            ["acnh-happy-home-paradise", "Happy Home Paradise"],
+            ["acnh-nintendo-switch-online-member-exclusive-items", "Nintendo Switch Online - Member-Exclusive Items"]]}}}
+        g = planner.collection(data, {}, rows=[])["games"][0]
+        self.assertEqual(([d["slug"] for d in g["dlc"]], g["missing"]), (["acnh-happy-home-paradise"], 1))
+
+
 class Switch2Test(unittest.TestCase):
     @staticmethod
     def row(slug, title, eur, code="DE", name="Deutschland", verdict="buy"):

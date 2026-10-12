@@ -1310,6 +1310,8 @@ def collection(data, settings, targets=None, now=None, rows=None):
             continue                         # selbst ein DLC, steht beim Hauptspiel
         dlc = []
         for d_slug, d_title in e.get("dlc") or []:
+            if "nintendo switch online" in f"{d_slug} {d_title}".lower().replace("-", " "):
+                continue                     # Abo-Inhalte gibt es nicht zu kaufen
             r = by.get(d_slug)
             row = {"slug": d_slug, "title": d_title, "owned": d_slug in owned,
                    "wish": r is not None, "upgrade": is_upgrade(d_slug, d_title)}
