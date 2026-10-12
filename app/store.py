@@ -21,8 +21,6 @@ DEFAULT_SETTINGS = {
     # ab dieser Ersparnis lohnt der Länderwechsel, je Stufe (leicht, mittel, schwer)
     "tier_min_saving": {"1": 3.0, "2": 8.0, "3": 20.0},
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
-    # Maßstab des Urteils: typischer Angebotspreis (typical) oder Allzeit-Bestpreis (best)
-    "verdict_ref": "best",
     # Sprachen von Hand bestätigt: {slug: {"JP": true, "AM": false}}
     "lang_confirm": {},
     # Cashback des Kartenshops in Prozent, wenn es eins gibt. Nur für einen Hinweis,
@@ -125,8 +123,6 @@ def save_settings(new):
             s["card_market"] = new["card_market"]
         if new.get("lang_rule") in ("exclude", "warn", "off"):
             s["lang_rule"] = new["lang_rule"]
-        if new.get("verdict_ref") in ("typical", "best"):
-            s["verdict_ref"] = new["verdict_ref"]
         for slug, fams in (new.get("lang_confirm") or {}).items() if isinstance(
                 new.get("lang_confirm"), dict) else []:
             if not isinstance(fams, dict) or not isinstance(slug, str) or len(slug) > 200:

@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.15.2"
+VERSION = "0.16"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -263,6 +263,17 @@ def sale_runs(series, since=None):
     if run is not None:
         runs.append(run)
     return runs
+
+
+def month_lows(series):
+    """Tiefster Preis je Monat eines Tagesverlaufs: [[JJJJ-MM, Tiefstwert], ...]. Klein genug
+    zum Speichern; der Bestpreis wählt daraus seinen Zeitraum."""
+    out = {}
+    for d, v in series:
+        m = d[:7]
+        if v and v > 0 and (m not in out or v < out[m]):
+            out[m] = v
+    return [[m, out[m]] for m in sorted(out)]
 
 
 def wishlist_id(url_or_id):

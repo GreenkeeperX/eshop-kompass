@@ -18,6 +18,8 @@ SALES_PER_SYNC = 40                   # höchstens so viele Seiten nur für den 
 SALES_MONTHS = 24                     # typischer Angebotspreis aus diesem Zeitraum
 LOW_PAGE_V = 2                        # Seiten ohne Tiefstpreis: mit Verlauf-Ersatz gelesen
 LOWS_VERSION = 3                      # 3: "Switch 2" wurde als Preis 2,00 gelesen                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
+# 1: Monatstiefstwerte aus dem Tagesverlauf gespeichert (Grundlage des Bestpreises, 0.16)
+HIST_V = 1
 LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu prüfen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
@@ -132,7 +134,7 @@ def sync_ids(data, settings, fetch, sleep, now=None):
                 if info["parent_title"]:
                     it["parent_title"] = info["parent_title"]
             _store_low(data, settings, lookup.upper(), slug, info["low"], now,
-                       info.get("history"))
+                       info.get("history") or [], platforms=len(info.get("lows") or []))
             sleep(DEKU_PAUSE)
             if info["nsuids"]:
                 found = info["nsuids"]
@@ -177,8 +179,10 @@ def merge_aliases(data):
     return dropped
 
 
-def _store_low(data, settings, code, slug, low, now, history=None):
-    """Merkt sich Tiefstpreis und Angebotsphasen von DekuDeals für ein aktives Land."""
+def _store_low(data, settings, code, slug, low, now, history=None, platforms=1):
+    """Merkt sich Tiefstpreis, Angebotsphasen und Monatstiefstwerte von DekuDeals für ein
+    aktives Land. Nennt die Seite Tiefstpreise für mehrere Plattformen (Switch und Switch 2),
+    ist offen, zu welcher Fassung der Verlauf gehört: Dann zählt er nicht für den Bestpreis."""
     cfg = settings["countries"].get(code)
     if not cfg or not cfg["enabled"]:
         return
@@ -192,6 +196,13 @@ def _store_low(data, settings, code, slug, low, now, history=None):
         e.pop("src", None)
     if history is not None:            # Seite gelesen: Verlauf merken, auch wenn sie keinen hat
         e["sales_at"] = now
+        e["hist_v"] = HIST_V
+        if platforms > 1:
+            e["hist_multi"] = True
+            e.pop("hist", None)
+        else:
+            e.pop("hist_multi", None)
+            e["hist"] = sources.month_lows(history)
         if history:
             since = datetime.fromtimestamp(now - SALES_MONTHS * 30.44 * 86400,
                                            timezone.utc).strftime("%Y-%m-%d")
@@ -522,7 +533,10 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             e = lows.get(code, {}).get(slug)
             # Seiten ohne Tiefstpreis aus der Zeit vor dem Verlauf-Ersatz einmal neu lesen
             fresh = "low" in e or e.get("lv", 0) >= LOW_PAGE_V if e else False
-            if e and fresh and ("low" in e or now - e.get("checked", 0) < LOW_RECHECK_SECONDS):
+            # Ohne Monatstiefstwerte (vor 0.16 gelesen): Seite einmal neu lesen, der
+            # Bestpreis rechnet seitdem mit dem Verlauf der letzten 24 Monate
+            hist_ok = bool(e) and e.get("hist_v", 0) >= HIST_V
+            if e and fresh and hist_ok and ("low" in e or now - e.get("checked", 0) < LOW_RECHECK_SECONDS):
                 # Tiefstpreis bekannt: Seite nur für den Angebotsverlauf erneut
                 # laden, wenn er fehlt oder alt ist und gerade ein Angebot läuft
                 if "discount" in p and now - e.get("sales_at", 0) >= SALES_RECHECK_SECONDS:
@@ -562,7 +576,8 @@ def sync_lows(data, settings, fetch, sleep, now=None):
         cur = p.get("discount", p.get("regular"))
         if low and cur is not None and cur < low:
             low = cur
-        _store_low(data, settings, code, slug, low, now, info.get("history"))
+        _store_low(data, settings, code, slug, low, now, info.get("history") or [],
+                   platforms=len(info.get("lows") or []))
         status["done"] += 1
         if status["done"] % 20 == 0:
             store.save_data(data)

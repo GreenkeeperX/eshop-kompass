@@ -21,32 +21,39 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 ## Ansichten
 
 - Radar: eine Zeile je Wishlist-Titel mit dem besten Preis jetzt (getrennt nach
-  leicht und schwer erreichbaren Ländern), dem Abstand zum Maßstab des Urteils
-  in Euro, deinem Zielpreis und einem Urteil. Maßstab ist der Bestpreis
-  aller Länder: der niedrigste Preis, den es für den Titel in einem
-  zählenden Land je gab, zum heutigen Kurs. Der typische Angebotspreis
-  (siehe unten) steht daneben; unter Einstellungen lässt sich das Urteil
-  auf ihn umstellen.
+  leicht und schwer erreichbaren Ländern), dem Abstand zum Bestpreis in Euro,
+  deinem Zielpreis und einem Urteil. Bestpreis ist der niedrigste Preis der
+  letzten 24 Monate in einem zählenden Land, mit deinem heutigen Einkaufsweg
+  (Kurs, Karten, Gebühren) gerechnet; Normalpreise zählen mit. Das Urteil misst
+  nur die Preisgüte des günstigsten zählenden Angebots, mit denselben Grenzen
+  für jedes Land, und nennt das Land samt Stufe:
   - kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber) oder
-    höchstens 0,50 € über dem Maßstab,
-  - gutes Angebot: bis 15 % oder höchstens 2 € über dem Maßstab,
-  - nur schwer: stark nur in einem Land der Stufe schwer,
-  - warten: im Angebot, typischerweise aber günstiger.
+    höchstens 0,50 € darüber,
+  - gutes Angebot: bis 15 % oder höchstens 2 € darüber,
+  - warten: im Angebot, aber weiter weg ("war X € günstiger", oder "in Land Y
+    dauerhaft X €", wenn der Bestpreis dort der Normalpreis ist).
+  Ob sich der Weg in ein schweres Land lohnt, entscheiden Kaufplan und Pakete.
+  Der typische Angebotspreis (siehe unten) steht nur zur Information daneben.
   Ein leeres Zielfeld zeigt den Bestpreis grau, wenn er unter dem Preis jetzt
   liegt; "übernehmen" setzt ihn als Zielpreis.
   DE✓ am Preis heißt: deutsche Fassung bestätigt oder dasselbe Produkt wie im
   deutschen eShop; "andere Fassung" heißt: dort ohne Deutsch.
   Die beiden Euro-Grenzen sind unter Einstellungen änderbar.
 - Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst.
-  Kandidaten sind die Titel mit dem Urteil "kaufen" oder "nur schwer",
-  per Schalter auch "gutes Angebot". Jeder Titel geht ins Land, wo er am
-  wenigsten kostet. Ein Land bleibt nur im Plan, wenn sein Paket die
-  Mindestersparnis seiner Wechselstufe schafft; sonst wandern seine Titel ins
-  nächstbeste Land. Ist ein Titel dort teurer als der Preis, der ihn zum
-  Angebot machte, steht er unter "Lieber warten". Reihenfolge: zuerst das
-  Land, in dem dein Konto steht, dann leicht, mittel, schwer, innerhalb einer
-  Stufe nach Angebotsende. "Als Korb vergleichen" übernimmt die Titel in den
-  gemeinsamen Korb.
+  Kandidaten sind die Titel mit dem Urteil "kaufen", per Schalter auch
+  "gutes Angebot". Jeder Titel geht ins Land, wo er am wenigsten kostet. Ein
+  Land bleibt nur im Plan, wenn sein Wechselgewinn die Mindestersparnis seiner
+  Wechselstufe schafft. Wechselgewinn ist, was dieselben Titel ohne diesen
+  Wechsel kosten ("sonst": günstigstes zählendes Land gleicher oder leichterer
+  Stufe, oder das Land, in dem dein Konto steht), minus was sie hier kosten.
+  Schafft ein Land das nicht, wandern seine Titel ins nächstbeste Land; sind sie
+  dort kein Kauf mehr (gleiche Grenzen wie im Radar), stehen sie unter "Lieber
+  warten". Reihenfolge: zuerst das Land, in dem dein Konto steht, dann leicht,
+  mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ein Rest ist kein
+  Verlust, solange du im Land bleibst; folgt im Plan noch ein Wechsel, verfällt
+  er (Nintendo nimmt Guthaben nicht mit) und zählt dort als Kosten ("Rest
+  verfällt"). "Passt dazu" nennt einen Titel, der den Rest nutzt.
+  "Als Korb vergleichen" übernimmt die Titel in den gemeinsamen Korb.
   "gekauft" an einem Land vermerkt den Kauf im Kaufprotokoll
   (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort
   als Guthaben, Guthaben anderer Länder gilt als weg (Nintendo nimmt es beim
@@ -57,16 +64,17 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 - Pakete, Angebote je Land: Länderkarten als dichtes Raster oder große Liste.
   Je Land die Wishlist-Angebote mit Kosten, Karten, Rest, Angebotsende und
   Vorschlägen zum Dazunehmen (+) oder Weglassen (−). Die Kopfzahl ist der
-  Abstand zum Optimum. Optimum ist die Summe der Bestpreise aller Länder
+  Abstand zum Optimum (grün, wenn jeder Titel "kaufen" ist, gold, wenn jeder
+  mindestens "gut" ist, mit den Grenzen des Urteils). Optimum ist die Summe der Bestpreise aller Länder
   für die Titel im Paket (Titel ohne bekannten Bestpreis zählen mit dem
   Preis hier). Abstand ist, was das Paket hier ohne Rest kostet, minus
-  dieses Optimum, in Euro und Prozent (grün "Optimum", gold bis 15 % oder
-  2 € je Titel darüber). Gold "unter Optimum" heißt: Das Paket ist nur mit
+  dieses Optimum, in Euro und Prozent. Gold "unter Optimum" heißt: Das Paket ist nur mit
   Angeboten so billig, die nicht zählen (Sprache ungeprüft, ohne Karte).
-  Die Ersparnis gegenüber Deutschland steht in der Zeile darunter, grün wenn
-  positiv, rot wenn negativ. Ob sich der Wechsel lohnt, sagt der eigene
-  Hinweis "Wechsel lohnt erst ab X €". Ein Rest ist kein Verlust: Ersparnis
-  und Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €");
+  Darunter steht der Wechselgewinn ("spart X € gg. Polen", wie im Kaufplan),
+  die Spalte "sonst" nennt je Titel den Preis ohne diesen Wechsel; die
+  Ersparnis gegenüber Deutschland steht im Tooltip. Ob sich der Wechsel lohnt,
+  sagt der Hinweis "Wechsel lohnt erst ab X €". Ein Rest ist kein Verlust:
+  Gewinn und Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €");
   ab 5 € Rest warnt das Paket. Vorhandenes Guthaben ist schon bezahlt, zählt
   aber zum Kurs mit ("dazu Guthaben X €"), sonst stünde ein Paket aus
   Guthaben bei 0 € und damit scheinbar am Optimum.
@@ -104,8 +112,8 @@ günstigsten Land mit Kartenzahlung gekauft wird. Dort kostet der Wechsel
 nichts und es bleibt kein Rest.
 
 Marken an jedem Angebot: ★ Bestpreis über alle Länder, grün Landestief, rot
-Angebot darüber. Der Bestpreis ist
-der niedrigste Preis, den es je gab, zum heutigen Kurs.
+Angebot darüber. Bestpreis und Landestief sind die niedrigsten Preise der
+letzten 24 Monate, zum heutigen Kurs und Einkaufsweg.
 
 Im Preisvergleich steht der Bestpreis je Titel in einer eigenen Spalte, das
 Land, in dem es ihn gab, ist gold umrandet. Jede Zelle zeigt darunter den
@@ -121,6 +129,14 @@ mit den Karten, die du für genau diesen Betrag kaufen würdest (die
 günstigste Kombination, die ihn deckt), anteilig. Für ein Spiel zu 60 MXN
 zählt also die 100er Karte, nicht der bessere Kurs einer 1000er. Im Paket
 teilen sich die Titel die Karten. Der Tooltip nennt die Karten und den Rest.
+
+Bestpreis und Landestief kommen aus dem digitalen Tagesverlauf der
+DekuDeals-Artikelseite (das Tool speichert je Monat den tiefsten Preis) und
+der eigenen Aufzeichnung, jeweils der letzten 24 Monate. Ältere Tiefstwerte
+zum heutigen Kurs zeigten Preise, die es so nie gab. Nur wo der Verlauf fehlt
+oder die Seite Tiefstpreise für Switch und Switch 2 nennt (dann ist offen, zu
+welcher Fassung der Verlauf gehört), gilt der Allzeit-Tiefstpreis. Version 0.16
+liest dafür jede Artikelseite einmal neu (etwa 15 bis 25 Minuten).
 
 Fehlt auf der DekuDeals-Seite ein digitaler Tiefstpreis (manchmal steht
 dort nur der eines Händlers), gilt der niedrigste Preis aus dem digitalen
@@ -139,7 +155,8 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   jedes Land, wie es zu deiner Wishlist steht, auch wenn es abgeschaltet ist.
 - Wechsel: leicht (Karte, kein Rest), mittel (Guthabenkarten, ein Rest
   verfällt beim Wechsel), schwer (Amerika: Guthaben muss vor dem Wechsel 0
-  sein). Je Stufe gilt eine eigene Mindestersparnis.
+  sein). Je Stufe gilt ein eigener Mindestgewinn gegenüber dem, was die Titel
+  ohne diesen Wechsel kosten.
 - Fremdwährungsgebühr: 0 für Karten ohne Auslandseinsatzentgelt.
 - Bezahlen: Karte, Guthabenkarte oder das Günstigere von beiden.
 - Steuer: Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt
@@ -163,8 +180,8 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   Auf gelesene Preise kommt die Servicegebühr des Shops (Einstellung,
   Vorgabe 0,40 € plus 7,75 %): Die Seite zeigt den Preis ohne sie, berechnet
   wird sie erst an der Kasse. Bei Eneba trafen diese Werte im Oktober 2026
-  acht Käufe zwischen 5,57 und 93,03 € auf den Cent. Der feste Teil zählt je
-  Karte; bei mehreren Karten in einer Bestellung fällt er nur einmal an. Von
+  acht Käufe zwischen 5,57 und 93,03 € auf den Cent. Bei mehreren Karten in
+  einer Bestellung fällt der feste Teil nur einmal an. Von
   Hand eingetragene Preise bleiben, wie du sie einträgst.
 - gg.deals: Für jedes aktive Land mit Guthabenkarten liest
   das Tool einmal am Tag die Kartengruppe bei gg.deals, eine Seite je Land.
@@ -221,6 +238,10 @@ von der DekuDeals-Artikelseite nach (ein Abruf alle 2,5 Sekunden, Angebote
 zuerst) und führt ihn danach selbst fort, auch dort, wo DekuDeals keinen Wert
 hat. Jeder Preiswechsel landet zusätzlich in `data/history.json`.
 
+"Fall exportieren" im Verlauf-Fenster lädt alle Daten dieses Titels als Datei
+(Preise, Tiefstwerte, Verlauf, Karten, Kurse, Einstellungen ohne Wishlist- und
+Sammlungslink). Damit lässt sich ein auffälliger Fall genau nachrechnen.
+
 "Verlauf" neben jedem Titel (Radar, Preisvergleich) zeigt diese Aufzeichnung
 als Kurve je Land und dazu: Preis jetzt, Normalpreis, tiefster
 aufgezeichneter Preis mit Datum, Zahl der Angebote, typische Dauer, Anteil der
@@ -240,8 +261,7 @@ Angebotspreis ist der Median dieser Tiefstwerte, ab zwei Phasen. War das
 letzte Angebot tiefer als der Median, gilt dieses: Nintendo senkt
 Angebotspreise oft dauerhaft, und der Median würde dann noch den alten Preis
 zeigen. Je Titel zählt das günstigste Land, in Euro zum heutigen Kurs.
-Standard für das Urteil ist der Bestpreis aller Länder; unter Einstellungen
-lässt sich auf den typischen Angebotspreis umstellen.
+Er steht nur zur Information im Radar und im Verlauf; das Urteil misst am Bestpreis.
 
 Den Verlauf lädt das Tool mit dem Tiefstpreis. Für Titel, deren Tiefstpreis
 schon bekannt ist, holt es die Seite nur während eines Angebots nach,

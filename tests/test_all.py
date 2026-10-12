@@ -481,8 +481,16 @@ class PlanTest(unittest.TestCase):
         self.settings["tier_min_saving"]["3"] = 25
         br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
         self.assertEqual((br["tier"], br["tier_name"], br["threshold"]), (3, "schwer", 25.0))
-        self.assertFalse(br["worth"])                      # 19,18 € Ersparnis reichen nicht
+        self.assertFalse(br["worth"])
+        # Gegenüber Deutschland spart Brasilien 19,65 €. Ohne diesen Wechsel gäbe es Hades
+        # aber in Japan für 8,03 € und VS Foscari in Norwegen für 1,90 €: Der Wechsel
+        # bringt nur 2,60 € (Entscheidung 12.10.2026: gemessen wird gegen die Alternative)
+        self.assertEqual((br["saving"], br["alt_total"], br["gain"]), (19.65, 9.93, 2.6))
+        self.assertEqual(br["alt_codes"], ["JP", "NO"])
+        self.assertEqual([(i["alt"], i["alt_code"]) for i in br["items"]], [(8.03, "JP"), (1.9, "NO")])
         self.settings["tier_min_saving"]["3"] = 15
+        self.assertFalse(self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]["worth"])
+        self.settings["tier_min_saving"]["3"] = 2.5
         self.assertTrue(self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]["worth"])
 
     def test_language_rule(self):
@@ -568,16 +576,17 @@ class PlanTest(unittest.TestCase):
         hades = rows["hades"]
         self.assertEqual((hades["easy"]["code"], hades["hard"]["code"]), ("JP", "BR"))
         self.assertEqual(hades["champ"]["code"], "BR")
-        self.assertEqual(hades["champ_easy"]["code"], "JP")
-        # Der Bestpreis aller Länder liegt jetzt in Brasilien: nur schwer erreichbar
-        self.assertEqual((hades["verdict"], hades["reason"]), ("hard", "stark nur in Brasilien"))
+        # Der Bestpreis aller Länder liegt jetzt in Brasilien. Das Urteil misst nur die
+        # Preisgüte, das Land und seine Stufe stehen dabei; ob sich der Weg lohnt, sagt der Kaufplan
+        self.assertEqual((hades["verdict"], hades["reason"]), ("buy", "Bestpreis in Brasilien (schwer)"))
+        self.assertEqual(hades["at"], {"code": "BR", "name": "Brasilien", "tier": 3})
         self.assertEqual(rows["good-job"]["verdict"], "none")
         self.assertEqual(rows["good-job"]["easy"]["code"], "DE")      # nur DE und BR, leicht ist DE
         self.assertEqual(rows["spiritfarer"]["easy"]["code"], "DE")   # in DE im Angebot
         # Zielpreis: Nidhogg 2 kostet in DE 14,99 €, Ziel 15 € gilt als erreicht
         rows = planner.radar(self.data, self.settings, {"nidhogg-2": 15}, now=NOW)
         self.assertEqual(rows[0]["verdict"], "buy")
-        self.assertIn("nidhogg-2", [r["slug"] for r in rows if r["reason"] == "Zielpreis erreicht"])
+        self.assertIn("nidhogg-2", [r["slug"] for r in rows if r["reason"].startswith("Zielpreis erreicht")])
 
     def test_verdict_counts_euros_too(self):
         sale = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
@@ -587,55 +596,41 @@ class PlanTest(unittest.TestCase):
         self.data["lows"] = {"DE": {"spiritfarer": {"low": 5.99}, "nidhogg-2": {"low": 3.49}}}
         rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
         # 0,25 € über dem Bestpreis: kaufen, auch wenn es kein Bestpreis ist
-        self.assertEqual((rows["spiritfarer"]["verdict"], rows["spiritfarer"]["diff_easy"]), ("buy", 0.25))
-        self.assertEqual(rows["spiritfarer"]["reason"], "nur 0,25 € über Bestpreis")
+        self.assertEqual((rows["spiritfarer"]["verdict"], rows["spiritfarer"]["diff"]), ("buy", 0.25))
+        self.assertEqual(rows["spiritfarer"]["reason"], "nur 0,25 € über Bestpreis in Deutschland")
         # 1,50 € über dem Bestpreis sind 43 %, in Euro aber wenig: gutes Angebot
         n = rows["nidhogg-2"]
-        self.assertEqual((n["verdict"], n["diff_easy"], n["gap_easy"]), ("good", 1.5, 43))
-        self.assertEqual(n["reason"], "1,50 € (43 %) über Bestpreis")
+        self.assertEqual((n["verdict"], n["diff"], n["gap"]), ("good", 1.5, 43))
+        self.assertEqual(n["reason"], "1,50 € (43 %) über Bestpreis in Deutschland")
         self.settings["deal_eur"] = {"buy": 0.1, "good": 1.0}
         rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
         self.assertEqual(rows["spiritfarer"]["verdict"], "good")        # 4 % über Bestpreis
         self.assertEqual(rows["nidhogg-2"]["verdict"], "wait")
         self.assertEqual(rows["nidhogg-2"]["reason"], "war 1,50 € günstiger")
 
-    def test_typical_sale_price_decides(self):
+    def test_typical_sale_price_is_info_only(self):
         # Spiritfarer: DE jetzt 6,24 €, Allzeit-Tief 4,99 €
         lows = {"spiritfarer": {"low": 4.99, "sales": [["2025-03-01", 7.49], ["2025-07-01", 7.49],
                                                        ["2025-11-01", 9.99]]}}
         self.data["lows"] = {"DE": lows}
-        # Standard: das Urteil misst am Bestpreis aller Länder, der typische Preis steht daneben
-        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
-        self.assertEqual((r["ref"], r["typical"]["eur"], r["verdict"]), ("best", 7.49, "good"))
+        # Das Urteil misst am Bestpreis aller Länder, der typische Preis steht nur daneben,
+        # auch wenn eine alte Einstellung ihn noch wählt
         self.settings["verdict_ref"] = "typical"
         r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
-        self.assertEqual((r["ref"], r["typical"]["eur"], r["typical"]["runs"]), ("typical", 7.49, 3))
-        self.assertEqual((r["verdict"], r["reason"]), ("buy", "unter typischem Angebotspreis"))
+        self.assertEqual((r["typical"]["eur"], r["typical"]["runs"], r["verdict"]), (7.49, 3, "good"))
         self.assertEqual(r["typ_diff"], -1.25)
-        # Das letzte Angebot war das tiefste: Es gilt statt des Medians, weil
-        # Nintendo Angebotspreise oft dauerhaft senkt
+        # Das letzte Angebot war das tiefste: Es gilt statt des Medians
         lows["spiritfarer"]["sales"][-1] = ["2026-05-01", 6.24]
         r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
-        self.assertEqual((r["typical"]["eur"], r["verdict"], r["reason"]),
-                         (6.24, "buy", "typischer Angebotspreis"))
-        # Typisch 4,99 €: 1,25 € (25 %) darüber ist ein gutes Angebot
-        lows["spiritfarer"]["sales"] = [["2025-03-01", 4.99], ["2026-05-01", 4.99]]
-        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
-        self.assertEqual((r["verdict"], r["reason"]), ("good", "1,25 € (25 %) über typischem Angebotspreis"))
-        # Angebote älter als zwei Jahre und einzelne Angebote zählen nicht: dann der Bestpreis
+        self.assertEqual(r["typical"]["eur"], 6.24)
+        # Angebote älter als zwei Jahre und einzelne Angebote zählen nicht
         lows["spiritfarer"]["sales"] = [["2023-01-01", 2.0], ["2026-05-01", 7.49]]
         r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
-        self.assertEqual((r["typical"], r["ref"], r["verdict"]), (None, "best", "good"))
-        # Einstellung „Bestpreis“: das alte Urteil, der typische Preis steht nur daneben
-        lows["spiritfarer"]["sales"] = [["2025-03-01", 7.49], ["2025-07-01", 7.49]]
-        self.settings["verdict_ref"] = "best"
-        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
-        self.assertEqual((r["ref"], r["verdict"], r["typical"]["eur"]), ("best", "good", 7.49))
-        # Den Bestpreis zu erreichen bleibt immer ein Kauf
-        self.settings["verdict_ref"] = "typical"
+        self.assertIsNone(r["typical"])
+        # Den Bestpreis zu erreichen ist ein Kauf
         lows["spiritfarer"]["low"] = 6.24
         r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
-        self.assertEqual((r["verdict"], r["reason"]), ("buy", "Bestpreis"))
+        self.assertEqual((r["verdict"], r["reason"]), ("buy", "Bestpreis in Deutschland"))
 
     def test_estimated_prices_are_flagged(self):
         # Japan ohne eingetragene Karte: Kurs plus Aufschlag geschätzt. Guthaben gibt es
@@ -643,7 +638,7 @@ class PlanTest(unittest.TestCase):
         self.settings["countries"]["JP"]["cards"] = ""
         rows = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}
         self.assertEqual(rows["hades"]["easy"]["code"], "NO")
-        self.assertNotEqual(rows["hades"]["champ_easy"]["code"], "JP")
+        self.assertNotEqual(rows["hades"]["champ"]["code"], "JP")
         cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
         self.assertTrue(cells["JP"]["est"])
         self.assertTrue(cells["JP"]["nocard"])
@@ -1009,16 +1004,83 @@ class PlanTest(unittest.TestCase):
                          ["countries"], [])
 
     def test_purchase_plan_keeps_country_above_threshold(self):
+        # Gegenüber Deutschland spart Brasilien 19,65 €, gegenüber Japan und Norwegen nur
+        # 2,60 €: Bei einer Schwelle von 15 € lohnt der Wechsel nach Amerika nicht
         self.settings["tier_min_saving"]["3"] = 15
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertEqual([s["code"] for s in plan["steps"]], ["DE"])
+        self.assertEqual([(d["code"], d["gain"], d["saving"]) for d in plan["dropped"]], [("BR", 2.6, 19.65)])
+        self.settings["tier_min_saving"]["3"] = 2
         plan = planner.purchase_plan(self.data, self.settings, now=NOW)
         steps = [(s["code"], [i["slug"] for i in s["items"]]) for s in plan["steps"]]
         self.assertEqual(steps, [("DE", ["spiritfarer"]), ("BR", ["hades", "vs-foscari"])])
         self.assertEqual(plan["dropped"], [])
         self.assertAlmostEqual(plan["cost"], 14.04)
-        self.assertAlmostEqual(plan["saving"], 19.65)        # ohne den Rest in Brasilien
+        # Brasilien ist der letzte Schritt: Der Rest bleibt auf dem Konto und ist kein Verlust
+        self.assertAlmostEqual(plan["saving"], 19.65)
+        self.assertEqual(plan["rest_lost"], 0)
         # Gute Angebote gibt es im Beispiel nicht, der Schalter ändert nichts
         self.assertEqual(planner.purchase_plan(self.data, self.settings, include_good=True,
                                                now=NOW)["count"], 3)
+
+    def test_purchase_plan_counts_rest_before_a_switch(self):
+        # Konto steht in Brasilien: Brasilien kommt zuerst, danach Deutschland. Der Rest in
+        # Brasilien verfällt beim Wechsel und zählt deshalb als Kosten
+        self.settings["current_country"] = "BR"
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertEqual([s["code"] for s in plan["steps"]], ["BR", "DE"])
+        br = plan["steps"][0]
+        self.assertAlmostEqual(br["rest_lost"], 0.47, places=2)
+        self.assertAlmostEqual(br["games_cost"], 7.8)          # die Karten ganz
+        self.assertAlmostEqual(plan["rest_lost"], 0.47, places=2)
+        self.assertAlmostEqual(plan["saving"], round(19.65 - 0.47, 2), places=1)
+        self.assertNotIn("rest_lost", plan["steps"][1])         # letzter Schritt: Rest bleibt
+
+    def test_verdict_same_rule_in_every_country(self):
+        # Echter Fall: ein DLC in Brasilien wenige Cent über dem Bestpreis war "warten", weil schwere
+        # Länder nur genau am Bestpreis zählten. Jetzt gilt dieselbe Grenze überall
+        self.data["lows"] = {"BR": {"vs-foscari": {"low": 3.6}}}
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["vs-foscari"]
+        self.assertEqual((r["verdict"], r["at"]["code"]), ("buy", "BR"))
+        self.assertEqual(r["reason"], "nur 0,08 € über Bestpreis in Brasilien (schwer)")
+
+    def test_best_price_from_history_of_24_months(self):
+        # Allzeit 2,00 R$ (2019), in den letzten 24 Monaten nie unter 30 R$: Bestpreis ist 30 R$
+        self.data["lows"] = {"BR": {"hades": {"low": 2.0, "hist": [["2019-05", 2.0], ["2025-02", 30.0],
+                                                                   ["2026-01", 33.59]]}}}
+        ctx = planner.Context(self.data, self.settings, NOW)
+        self.assertEqual(ctx.low_value("BR", "hades"), 30.0)
+        # Eigene Aufzeichnung zählt mit
+        self.data["lows"]["BR"]["hades"]["own_low"] = 29.0
+        self.assertEqual(planner.Context(self.data, self.settings, NOW).low_value("BR", "hades"), 29.0)
+        # Seite für Switch und Switch 2: offen, zu welcher Fassung der Verlauf gehört, dann Allzeit
+        self.data["lows"]["BR"]["hades"].update(hist_multi=True)
+        self.assertEqual(planner.Context(self.data, self.settings, NOW).low_value("BR", "hades"), 2.0)
+        # Ohne Verlauf im Zeitraum: Allzeit-Tiefstpreis
+        self.data["lows"]["BR"]["hades"] = {"low": 25.0, "hist": [["2019-05", 2.0]]}
+        self.assertEqual(planner.Context(self.data, self.settings, NOW).low_value("BR", "hades"), 25.0)
+        self.assertEqual(sources.month_lows([("2025-01-01", 20), ("2025-01-09", 12), ("2025-02-01", 15)]),
+                         [["2025-01", 12], ["2025-02", 15]])
+
+    def test_case_export_without_wishlist_link(self):
+        self.settings["wishlist_url"] = "https://www.dekudeals.com/wishlist/geheim"
+        out = planner.case_export(self.data, self.settings, {"BR": {"hades": [["2026-10-01", 33.59]]}},
+                                  "hades", now=NOW)
+        self.assertEqual(out["settings"]["wishlist_url"], "")
+        self.assertNotIn("geheim", json.dumps(out))
+        self.assertEqual(set(out["prices"]), {"DE", "NO", "BR", "JP"})
+        self.assertEqual(out["history"], {"BR": [["2026-10-01", 33.59]]})
+        self.assertEqual(out["radar"]["verdict"], "buy")
+
+    def test_lasting_cheaper_regular_price(self):
+        # Good-Job ist in Brasilien dauerhaft günstiger. Ein Angebot in Deutschland, das
+        # darüber liegt, heißt "warten", mit dem richtigen Grund
+        sale = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
+        de = self.data["prices"]["DE"]
+        de["good-job"] = dict(de["good-job"], discount=15.99, **sale)
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
+        self.assertEqual(r["verdict"], "wait")
+        self.assertEqual(r["reason"], "in Brasilien dauerhaft 11,98 €")
 
 
 class StoreTest(unittest.TestCase):
@@ -1306,12 +1368,17 @@ class SyncTest(unittest.TestCase):
             got.append(slug) or {"low": 9.0, "history": series})
         try:
             sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200)
-            # nur der Titel im Angebot: Tiefstpreis bekannt, Verlauf fehlte
-            self.assertEqual(got, ["a"])
+            # Beide einmal: a im Angebot (zuerst), b für die Monatstiefstwerte (seit 0.16)
+            self.assertEqual(got, ["a", "b"])
+            self.assertEqual(data["lows"]["DE"]["b"]["hist"], [["2025-01", 10]])
             e = data["lows"]["DE"]["a"]
             self.assertEqual((e["sales"], e["sales_at"]), ([["2025-01-02", 10], ["2025-01-05", 12]], 1736467200))
             sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 86400)
-            self.assertEqual(got, ["a"])                       # frisch: kein zweiter Abruf
+            self.assertEqual(got, ["a", "b"])                  # frisch: kein zweiter Abruf
+            # Seite mit Tiefstpreisen für Switch und Switch 2: Verlauf gilt nicht als Bestpreis
+            e = {}
+            sync._store_low({"lows": {"DE": {"c": e}}}, settings, "DE", "c", 9.0, 1, series, platforms=2)
+            self.assertEqual((e.get("hist_multi"), "hist" in e, e["hist_v"]), (True, False, sync.HIST_V))
         finally:
             sources.fetch_item = orig
 

@@ -93,6 +93,13 @@ class Handler(BaseHTTPRequestHandler):
                                             store.load_history(), slug)
                 out["target"] = store.load_ui()["targets"].get(slug)
                 self._send(200, out)
+            elif path == "/api/fall":
+                q = urllib.parse.parse_qs(self.path.partition("?")[2])
+                slug = (q.get("slug") or [""])[0]
+                out = planner.case_export(store.load_data(), store.load_settings(),
+                                          store.load_history(), slug)
+                out["version"] = sources.VERSION
+                self._send(200, out)
             elif path == "/api/diag":
                 self._send(200, {"lines": sync.diagnose()})
             elif path == "/api/export":

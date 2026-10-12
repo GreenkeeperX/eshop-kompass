@@ -20,6 +20,9 @@ GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
 TYPICAL_DAYS = 730
 HIGH_REST_EUR = 5.0      # ab diesem Rest in Euro warnt ein Paket
 TYPICAL_MIN_RUNS = 2
+# Bestpreis und Landestief: tiefster Preis dieses Zeitraums aus dem DekuDeals-Verlauf. Ältere
+# Tiefstwerte, zum heutigen Kurs gerechnet, zeigen Preise, die es so nie gab (Entscheidung 12.10.2026)
+BEST_MONTHS = 24
 # Gelesene Kartenpreise (Shopseite, gg.deals) zählen nur in diesem Bereich, gemessen am
 # Nennwert zum Mittelkurs. Ein Lesefehler (etwa ein Gebührenhinweis statt des Preises)
 # würde sonst als „günstiger“ alle Vergleiche kippen. Kleine Karten mit Servicegebühr
@@ -176,6 +179,10 @@ class Context:
 
     def __init__(self, data, settings, now=None, include_all=False):
         self.now = now or datetime.now(timezone.utc)
+        y, m = self.now.year, self.now.month - BEST_MONTHS
+        while m < 1:
+            y, m = y - 1, m + 12
+        self.best_since = f"{y:04d}-{m:02d}"
         self.settings = settings
         self.items = {s: it for s, it in data["items"].items() if it.get("active")}
         self.order = sorted(self.items, key=lambda s: self.items[s].get("order", 0))
@@ -451,9 +458,16 @@ class Context:
     # ---- Tiefst- und Bestpreise
 
     def low_value(self, code, slug):
-        """Tiefstpreis in Landeswährung (ohne Steuer): DekuDeals oder eigene Aufzeichnung."""
+        """Tiefstpreis in Landeswährung (ohne Steuer) der letzten 24 Monate: aus dem
+        DekuDeals-Tagesverlauf und der eigenen Aufzeichnung. Ohne Verlauf (noch nicht
+        gelesen, oder die Seite gilt für Switch und Switch 2) der Allzeit-Tiefstpreis."""
         e = self.lows.get(countries.BY_CODE[code]["shop"], {}).get(slug) or {}
-        values = [v for v in (e.get("low"), e.get("own_low")) if v is not None]
+        own = e.get("own_low")
+        if e.get("hist") and not e.get("hist_multi"):
+            vals = [v for m, v in e["hist"] if m >= self.best_since and v and v > 0]
+            if vals:
+                return min(vals + ([own] if own is not None else []))
+        values = [v for v in (e.get("low"), own) if v is not None]
         return min(values) if values else None
 
     def low(self, code, slug, o):
@@ -481,10 +495,11 @@ class Context:
         return min(median, max(runs)[1]), n
 
     def _champions(self):
-        """Bestpreis je Titel: der niedrigste Preis, den es je gab, in Euro zum
-        heutigen Kurs. Einmal über alle Länder, einmal nur über die leichten."""
-        self.champ_all, self.champ_easy = {}, {}
-        # Typischer Angebotspreis: das günstigste Land, über alle Länder wie der Bestpreis
+        """Bestpreis je Titel: der niedrigste Preis der letzten 24 Monate über alle
+        zählenden Länder, in Euro mit dem heutigen Einkaufsweg. Normalpreise zählen mit:
+        Ist ein Spiel irgendwo dauerhaft am billigsten, ist das sein Bestpreis."""
+        self.champ_all = {}
+        # Typischer Angebotspreis: nur zur Information, das günstigste Land
         self.typ_all = {}
         for code, c in self.countries.items():
             if c["unit"] is None:
@@ -502,9 +517,44 @@ class Context:
                 if low is not None:
                     local = min(local, round(cents(low) * (1 + c["tax"] / 100)))
                 eur = self.est(c, local)
-                for table, ok in ((self.champ_all, True), (self.champ_easy, c["tier"] <= 2)):
-                    if ok and (slug not in table or eur < table[slug][0] - 1e-9):
-                        table[slug] = (eur, code, c["estimated"])
+                if slug not in self.champ_all or eur < self.champ_all[slug][0] - 1e-9:
+                    self.champ_all[slug] = (eur, code, c["estimated"])
+
+    def grade(self, eur, slug):
+        """Preisgüte eines Europreises gegenüber dem Bestpreis, für jedes Land gleich:
+        buy (am Bestpreis, bis 2 % oder deal_eur.buy darüber), good (bis 15 % oder
+        deal_eur.good darüber), wait. None ohne Bestpreis."""
+        best = self.champ_all.get(slug)
+        if eur is None or not best or not best[0]:
+            return None
+        deal = dict({"buy": 0.5, "good": 2.0}, **(self.settings.get("deal_eur") or {}))
+        diff = eur - best[0]
+        if eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005 or diff <= deal["buy"] + 0.005:
+            return "buy"
+        if 100 * (eur / best[0] - 1) <= GOOD_GAP + 1e-9 or diff <= deal["good"] + 0.005:
+            return "good"
+        return "wait"
+
+    def alt_price(self, slug, tier, shop, allowed=None):
+        """Was ein Titel ohne den Wechsel in ein Land der Stufe `tier` kostet: der günstigste
+        zählende Preis jetzt in einem anderen Land gleicher oder leichterer Stufe oder in dem
+        Land, in dem das Konto steht. (Euro, Land) oder None."""
+        current = self.settings.get("current_country") or ""
+        best = None
+        for code, c in self.countries.items():
+            if allowed is not None and code not in allowed:
+                continue
+            if c["unit"] is None or c["meta"]["shop"] == shop:
+                continue
+            if c["tier"] > tier and c["meta"]["shop"] != current:
+                continue
+            o = c["offers"].get(slug)
+            if not o or not self.decides(o):
+                continue
+            eur = self.est(c, o["local"])
+            if best is None or eur < best[0] - 1e-9:
+                best = (eur, code)
+        return best
 
     def mark(self, c, slug, o):
         """Deal-Güte eines Angebots: Marke und Abstand zum Bestpreis in Prozent."""
@@ -661,9 +711,14 @@ def make_payer(ctx, c):
 
 # --------------------------------------------------------------------- Plan
 
-def plan_country(ctx, code, override=None, must=(), basket=None):
+def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
     """Plan für ein Land. Mit `basket` gilt derselbe Warenkorb für alle Länder,
-    sonst die Angebote des Landes plus eigene Änderungen (`override`)."""
+    sonst die Angebote des Landes plus eigene Änderungen (`override`).
+
+    Ob sich der Wechsel lohnt, misst der Wechselgewinn: was dieselben Titel ohne diesen
+    Wechsel kosten (günstigstes zählendes Land gleicher oder leichterer Stufe oder das
+    Land, in dem das Konto steht, siehe Context.alt_price), minus was sie hier kosten.
+    `allowed` begrenzt die Länder, die als Alternative zählen (Kaufplan)."""
     c = ctx.countries[code]
     override = override or {}
     is_ref = code == countries.REFERENCE
@@ -710,6 +765,16 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
                                ", ".join(ctx.title(s) for s in missing_must))
         out["must_missing"] = True
 
+    # Was jeder Titel ohne diesen Wechsel kostet; ohne Alternative der deutsche Preis,
+    # ohne beides der Preis hier (dann bringt der Titel keinen Wechselgewinn)
+    alt, alt_code = {}, {}
+    for slug in offers:
+        a = ctx.alt_price(slug, c["tier"], c["meta"]["shop"], allowed)
+        if a:
+            alt[slug], alt_code[slug] = a
+        elif slug in ctx.ref and not is_ref:
+            alt[slug], alt_code[slug] = ctx.ref[slug], countries.REFERENCE
+
     pay, has_cards = make_payer(ctx, c)
     total = sum(offers[s]["local"] for s in chosen)
     base = pay(total)
@@ -723,8 +788,9 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
         out["items"].append({
             "slug": slug, "title": it["title"], "short": ctx.short(slug),
             "ref": _r(r), "dlc_of": ctx.parent_title(slug), "forced": slug in must,
+            "alt": _r(alt.get(slug)), "alt_code": alt_code.get(slug),
             **ctx.owned_flags(slug),
-            "over": bool(not is_ref and r is not None and ctx.est(c, o["local"]) > r + 0.005),
+            "over": bool(not is_ref and slug in alt and ctx.est(c, o["local"]) > alt[slug] + 0.005),
             **ctx.cell(c, slug, o),
         })
     ref_total = sum(ref.get(s, 0) for s in chosen)
@@ -760,9 +826,15 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
                 i["eur"] = _r(games * offers[i["slug"]]["local"] / total)
         out["saving"] = _r(ref_cmp - games)
         out["saving_pct"] = round(100 * (ref_cmp - games) / ref_cmp) if ref_cmp else 0
+        # Wechselgewinn gegenüber der Alternative ohne diesen Wechsel (Entscheidung 12.10.2026)
+        alt_total = sum(alt.get(s, ctx.est(c, offers[s]["local"])) for s in chosen)
+        out["alt_total"] = _r(alt_total)
+        out["gain"] = _r(alt_total - games)
+        codes = [alt_code[s] for s in chosen if s in alt_code]
+        out["alt_codes"] = sorted(dict.fromkeys(codes), key=lambda k: -codes.count(k))
         limit = float((ctx.settings.get("tier_min_saving") or {}).get(str(c["tier"]), 0))
         out["threshold"] = limit
-        out["worth"] = is_ref or out["current"] or out["saving"] >= limit
+        out["worth"] = is_ref or out["current"] or out["gain"] >= limit
 
     # Abstand zum Optimum: je Titel, wie weit der Preis hier über dem Bestpreis
     # liegt, den es je irgendwo gab (Entscheidung 12.10.2026: wichtiger als Deutschland)
@@ -773,6 +845,11 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
     out["opt_known"] = len(known)
     out["opt_at"] = sum(1 for i in known if i["eur"] <= i["champ"] * (1 + BEST_TOLERANCE) + 0.005)
     out["optimum"] = out["opt_gap"] = out["opt_pct"] = None
+    # Paket-Güte mit denselben Grenzen wie das Urteil: buy, wenn jeder Titel "kaufen" ist,
+    # good, wenn jeder mindestens "gut" ist
+    grades = [ctx.grade(i["eur"], i["slug"]) for i in out["items"]]
+    out["grade"] = None if not grades or None in grades else \
+        "buy" if all(g == "buy" for g in grades) else "good" if "wait" not in grades else "wait"
     if known and chosen and out.get("games_cost") is not None:
         optimum = sum(i["champ"] for i in known) + sum(i["eur"] or 0 for i in out["items"] if i not in known)
         out["optimum"] = _r(optimum)
@@ -796,14 +873,14 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
         out["warnings"].append(f"{nolang} Titel ohne deutsche Fassung")
 
     if not is_ref:
-        out["fillers"] = _fillers(ctx, c, chosen, total, base, pay, has_cards, ref)
+        out["fillers"] = _fillers(ctx, c, chosen, total, base, pay, has_cards, alt)
         if not basket:
-            out["trims"] = _trims(ctx, c, chosen, total, base, pay, ref, must)
+            out["trims"] = _trims(ctx, c, chosen, total, base, pay, alt, must)
     return out
 
 
 def _trims(ctx, c, chosen, total, base, pay, ref, must):
-    """Titel, die hier unterm Strich mehr kosten als in Deutschland.
+    """Titel, die hier unterm Strich mehr kosten als ohne diesen Wechsel (`ref`: Alternative).
 
     Gerechnet wird mit den Grenzkosten: was das Paket ohne den Titel weniger
     kostet. Löst ein Titel eine zusätzliche Guthabenkarte aus, ist das viel.
@@ -951,18 +1028,19 @@ def matrix(data, settings, now=None):
     return {"cols": cols, "rows": rows}
 
 
-VERDICTS = ["buy", "good", "hard", "wait", "none"]
+VERDICTS = ["buy", "good", "wait", "none"]
 
 
 def radar(data, settings, targets=None, now=None):
     """Eine Zeile je Titel: bester Preis jetzt, Bestpreis, Urteil.
 
-    "Leicht" fasst die Länder der Stufen 1 und 2 zusammen, "schwer" die
-    Stufe 3. Dort lohnt ein Kauf nur bei deutlich besseren Angeboten.
+    Das Urteil misst nur die Preisgüte: wie nah das günstigste zählende Angebot am
+    Bestpreis liegt, mit denselben Grenzen für jedes Land. Ob sich der Weg in ein
+    schweres Land lohnt, entscheiden Kaufplan und Pakete über den Wechselgewinn.
+    "Jetzt, leicht" (Stufen 1 und 2) und "Jetzt, schwer" (Stufe 3) zeigen beide Seiten.
     """
     ctx = Context(data, settings, now)
     targets = targets or {}
-    deal_eur = dict({"buy": 0.5, "good": 2.0}, **(settings.get("deal_eur") or {}))
     rows = []
     for slug in ctx.order:
         best = {"easy": None, "hard": None}
@@ -979,9 +1057,10 @@ def radar(data, settings, targets=None, now=None):
             if best[group] is None or raw < best[group]["raw"] - 0.005:
                 best[group] = dict(ctx.cell(c, slug, o), code=code, name=c["meta"]["name"],
                                    currency=c["currency"], raw=raw, lang_code=c["meta"]["lang"],
+                                   tier=c["tier"],
                                    shop_cards=c["shop_cards"] and c["unit"] != ctx._units(c)[0])
         easy, hard = best["easy"], best["hard"]
-        champ_all, champ_easy = ctx.champ_all.get(slug), ctx.champ_easy.get(slug)
+        champ_all = ctx.champ_all.get(slug)
 
         def champ(entry):
             if not entry:
@@ -992,56 +1071,48 @@ def radar(data, settings, targets=None, now=None):
             target = float(targets.get(slug))
         except (TypeError, ValueError):
             target = None
-        # Maßstab ist der Bestpreis über alle Länder (Entscheidung 12.10.2026): wo war das
-        # Spiel bisher am günstigsten, und wie nah ist der beste Preis jetzt dran?
-        gap_easy = diff_easy = diff_all = None
-        if easy and champ_all and champ_all[0]:
-            gap_easy = max(0, round(100 * (easy["raw"] / champ_all[0] - 1)))
-            diff_easy = max(0.0, _r(easy["raw"] - champ_all[0]))
-        if easy and champ_all:
-            diff_all = max(0.0, _r(easy["raw"] - champ_all[0]))
-        # Ein Angebot zählt als Kauf oder gutes Angebot, wenn es prozentual
-        # oder in Euro nah genug am Bestpreis liegt: 1 € mehr für einen
-        # günstigen Titel ist wenig, auch wenn es 30 % sind.
-        buy_eur, good_eur = deal_eur["buy"], deal_eur["good"]
-        # Maßstab des Urteils: der typische Angebotspreis, wo der Verlauf ihn
-        # kennt, sonst der Bestpreis
+        both = [b for b in (easy, hard) if b]
+        cheapest = min(both, key=lambda b: b["raw"]) if both else None
+        on_sale = [b for b in both if b["sale"]]
+        # Das Urteil gilt dem günstigsten zählenden Angebot, egal in welcher Stufe
+        top = min(on_sale, key=lambda b: b["raw"]) if on_sale else None
+        shown = top or cheapest           # das Angebot, dessen Abstand die Zeile zeigt
+        diff = gap = None
+        if shown and champ_all and champ_all[0]:
+            diff = max(0.0, _r(shown["raw"] - champ_all[0]))
+            gap = max(0, round(100 * (shown["raw"] / champ_all[0] - 1)))
         typ = ctx.typ_all.get(slug)
-        use_typ = settings.get("verdict_ref", "best") == "typical" and typ is not None
         typ_diff = typ_gap = None
-        if easy and typ:
-            typ_diff = _r(easy["raw"] - typ[0])
-            typ_gap = round(100 * (easy["raw"] / typ[0] - 1)) if typ[0] else 0
-        verdict, reason = "none", "kein Angebot"
-        if (unsure or nocard) and not easy and not hard:
+        if shown and typ:
+            typ_diff = _r(shown["raw"] - typ[0])
+            typ_gap = round(100 * (shown["raw"] / typ[0] - 1)) if typ[0] else 0
+
+        def where(b):
+            return f" in {b['name']}" + (" (schwer)" if b["tier"] >= 3 else "")
+        verdict, reason, at = "none", "kein Angebot", None
+        if (unsure or nocard) and not both:
             why = ([", ".join(unsure) + ": Sprache ungeprüft"] if unsure else []) + \
                   ([", ".join(nocard) + ": keine Guthabenkarte mit Preis"] if nocard else [])
             reason = "nur dort kaufbar, wo es nicht zählt (" + "; ".join(why) + ")"
-        if target is not None and easy and easy["raw"] <= target + 0.005:
-            verdict, reason = "buy", "Zielpreis erreicht"
-        elif easy and easy["mark"] == "best":
-            verdict, reason = "buy", "Bestpreis"
-        elif use_typ and easy and easy["sale"] and (
-                typ_diff <= buy_eur + 0.005 or easy["raw"] <= typ[0] * (1 + BEST_TOLERANCE) + 0.005):
-            verdict, reason = "buy", ("unter typischem Angebotspreis" if typ_diff < -0.005
-                                      else "typischer Angebotspreis" if typ_diff <= 0.005
-                                      else f"nur {_eur(typ_diff)} über typischem Angebotspreis")
-        elif hard and hard["sale"] and (
-                (target is not None and hard["raw"] <= target + 0.005)
-                or (hard["mark"] == "best" and (not easy or hard["raw"] < easy["raw"] * 0.85))):
-            verdict, reason = "hard", f"stark nur in {hard['name']}"
-        elif use_typ and easy and easy["sale"] and (typ_gap <= GOOD_GAP or typ_diff <= good_eur + 0.005):
-            verdict, reason = "good", f"{_eur(typ_diff)} ({typ_gap} %) über typischem Angebotspreis"
-        elif use_typ and easy and easy["sale"]:
-            verdict, reason = "wait", f"typisch sind {_eur(typ[0])}"
-        elif not use_typ and easy and easy["sale"] and diff_easy is not None and diff_easy <= buy_eur + 0.005:
-            verdict, reason = "buy", f"nur {_eur(diff_easy)} über Bestpreis"
-        elif not use_typ and easy and easy["sale"] and gap_easy is not None and (
-                gap_easy <= GOOD_GAP or diff_easy <= good_eur + 0.005):
-            verdict, reason = "good", f"{_eur(diff_easy)} ({gap_easy} %) über Bestpreis"
-        elif (easy and easy["sale"]) or (hard and hard["sale"]):
-            verdict, reason = "wait", (f"war {_eur(diff_easy)} günstiger" if diff_easy
-                                       else "war schon günstiger")
+        if target is not None and cheapest and cheapest["raw"] <= target + 0.005:
+            verdict, reason, at = "buy", "Zielpreis erreicht" + where(cheapest), cheapest
+        elif top:
+            g = ctx.grade(top["raw"], slug)
+            at = top
+            if g == "buy":
+                verdict = "buy"
+                reason = ("Bestpreis" if top["mark"] == "best" else f"nur {_eur(diff)} über Bestpreis") + where(top)
+            elif g == "good":
+                verdict, reason = "good", f"{_eur(diff)} ({gap} %) über Bestpreis" + where(top)
+            else:
+                verdict = "wait"
+                # Liegt der Bestpreis heute als Normalpreis vor, war er nicht nur einmal so:
+                # Dort ist der Titel dauerhaft günstiger
+                bc = champ_all and ctx.countries.get(champ_all[1])
+                bo = bc and bc["offers"].get(slug)
+                lasting = bool(bo and not bo["sale"] and abs(ctx.est(bc, bo["local"]) - champ_all[0]) < 0.01)
+                reason = (f"in {bc['meta']['name']} dauerhaft {_eur(champ_all[0])}" if lasting
+                          else f"war {_eur(diff)} günstiger" if diff else "war schon günstiger")
         # Cashback gibt es nicht immer: nur ein Hinweis, wenn es das Angebot unter den
         # Bestpreis drücken könnte (bezahlt mit Guthaben aus einem Kartenshop)
         cb = float(settings.get("cashback_pct") or 0)
@@ -1053,6 +1124,9 @@ def radar(data, settings, targets=None, now=None):
                     if with_cb <= champ_all[0] * (1 + BEST_TOLERANCE) + 0.005 and (
                             cashback is None or with_cb < cashback["eur"]):
                         cashback = {"eur": _r(with_cb), "code": b["code"], "pct": cb}
+        at_info = None if not at else {"code": at["code"], "name": at["name"], "tier": at["tier"]}
+        shown_info = None if not shown else {"code": shown["code"], "name": shown["name"],
+                                              "tier": shown["tier"], "sale": shown["sale"]}
         for b in (easy, hard):
             if b:
                 b.pop("raw")
@@ -1060,20 +1134,16 @@ def radar(data, settings, targets=None, now=None):
         rows.append({"slug": slug, "title": it["title"], "dlc_of": ctx.parent_title(slug),
                      **ctx.owned_flags(slug),
                      "easy": easy, "hard": hard, "de": _r(ctx.ref.get(slug)),
-                     "champ": champ(champ_all), "champ_easy": champ(champ_easy),
-                     "gap_easy": gap_easy, "diff_easy": diff_easy, "diff_all": diff_all,
+                     "champ": champ(champ_all),
+                     "gap": gap, "diff": diff, "shown": shown_info,
                      "typical": None if not typ else {
                          "eur": _r(typ[0]), "code": typ[1], "est": typ[2], "runs": typ[3],
                          "name": countries.BY_CODE[typ[1]]["name"]},
                      "typ_diff": typ_diff, "typ_gap": typ_gap, "cashback": cashback,
-                     "ref": "typical" if use_typ else "best",
-                     "target": target, "verdict": verdict,
-                     "lang_unsure": [] if (easy or hard) else unsure + nocard,
+                     "target": target, "verdict": verdict, "at": at_info,
+                     "lang_unsure": [] if both else unsure + nocard,
                      "reason": reason, "no_ids": not any(it.get("ids", {}).values())})
-    def gap(r):
-        g = r["typ_gap"] if r["ref"] == "typical" else r["gap_easy"]
-        return g if g is not None else 999
-    rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]), gap(r)))
+    rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]), r["gap"] if r["gap"] is not None else 999))
     return rows
 
 
@@ -1202,55 +1272,79 @@ def price_levels(data, settings, now=None):
 def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None):
     """Ein Gesamtvorschlag: welche Titel jetzt in welchem Land, in welcher Reihenfolge.
 
-    Kandidaten sind die Titel mit dem Urteil "kaufen" oder "nur schwer"
-    (wahlweise auch "gutes Angebot"). Jeder Titel geht in das Land, in dem er am wenigsten kostet.
-    Ein Land, dessen Paket die Mindestersparnis seiner Wechselstufe gegenüber
-    Deutschland nicht schafft, fällt heraus, seine Titel wandern ins
-    nächstbeste Land. Das wiederholt sich, bis alle Länder ihre Schwelle
-    erreichen. Karten, Rest und Steuer stecken in den Paketen.
+    Kandidaten sind die Titel mit dem Urteil "kaufen" (wahlweise auch "gutes Angebot").
+    Jeder Titel geht in das Land, in dem er am wenigsten kostet. Ein Land, dessen
+    Wechselgewinn (gegenüber denselben Titeln ohne diesen Wechsel) die Schwelle seiner
+    Stufe nicht schafft, fällt heraus, seine Titel wandern ins nächstbeste Land. Das
+    wiederholt sich, bis alle Länder ihre Schwelle erreichen. Ist ein Titel im neuen Land
+    kein Kauf mehr (dieselbe Preisgüte wie im Radar), wartet er.
+
+    Ein Rest ist kein Verlust, solange du im Land bleibst. Folgt im Plan noch ein Wechsel,
+    verfällt er (Nintendo nimmt Guthaben nicht mit): Dann zählt er als Kosten.
     """
     ctx = Context(data, settings, now)
-    verdicts = ("buy", "hard", "good") if include_good else ("buy", "hard")
+    ok_grades = ("buy", "good") if include_good else ("buy",)
     rows = radar(data, settings, targets, now)
     # Schon gekauft, aber noch auf der Wishlist: nicht noch einmal einplanen
     done = {s for b in (bought or []) for s in b.get("slugs", [])}
-    wanted = [r["slug"] for r in rows if r["verdict"] in verdicts and r["slug"] not in done]
+    wanted = [r["slug"] for r in rows if r["verdict"] in ok_grades and r["slug"] not in done]
     reasons = {r["slug"]: r["reason"] for r in rows}
-    # Der Preis, auf dem das Urteil beruht: Teurer darf der Titel im Plan nicht werden
-    deal_price = {}
-    for r in rows:
-        b = r["hard"] if r["verdict"] == "hard" else r["easy"]
-        if b and b.get("eur") is not None:
-            deal_price[r["slug"]] = max(b["eur"], r["target"] or 0)
+    target = {r["slug"]: r["target"] for r in rows}
     ref_code, current = countries.REFERENCE, settings.get("current_country") or ""
     allowed = [code for code, c in ctx.countries.items() if c["unit"] is not None]
     dropped = []
 
+    def fits(slug, eur):
+        t = target.get(slug)
+        return (t is not None and eur <= t + 0.005) or ctx.grade(eur, slug) in ok_grades
+
     def assign():
-        """Jeder Titel ins günstigste noch erlaubte Land. Ist er dort teurer als
-        der Preis, der ihn zum Angebot machte, wartet er besser: Das Angebot
-        lohnte nur in einem Land, dessen Wechsel sich nicht rechnet."""
+        """Jeder Titel ins günstigste noch erlaubte Land. Ist er dort kein Kauf mehr,
+        wartet er besser: Das Angebot lohnte nur in einem Land, dessen Wechsel sich nicht rechnet."""
         groups, nowhere, later = {}, [], []
         for slug in wanted:
             best = None
             for code in allowed:
-                o = ctx.countries[code]["offers"].get(slug)
-                if o and not ctx.decides(o):
+                c = ctx.countries[code]
+                o = c["offers"].get(slug)
+                if not o or not ctx.decides(o):
                     continue
-                if o and (best is None or ctx.est(ctx.countries[code], o["local"]) < best[0] - 0.005):
-                    best = (ctx.est(ctx.countries[code], o["local"]), code, o)
+                eur = ctx.est(c, o["local"])
+                if best is None or eur < best[0] - 0.005:
+                    best = (eur, code)
             if not best:
                 nowhere.append(slug)
-            elif best[0] <= deal_price.get(slug, 0) + 0.01:
+            elif fits(slug, best[0]):
                 groups.setdefault(best[1], []).append(slug)
             else:
                 later.append(slug)
         return groups, nowhere, later
 
+    def first_end(p):
+        ends = [i["end"] for i in p["items"] if i.get("end")]
+        return min(ends) if ends else "9999"
+
+    def order(p):
+        # Erst das Land, in dem das Konto steht, dann nach Wechselstufe. Amerika
+        # zuletzt: Ein Rest dort blockiert jeden weiteren Wechsel. Innerhalb einer
+        # Stufe zuerst, wo ein Angebot am frühesten endet.
+        return (not p["current"], p["tier"] if not p["is_ref"] else 1, first_end(p), p["name"])
+
     while True:
         groups, nowhere, later = assign()
-        plans_by = {code: plan_country(ctx, code, basket=slugs) for code, slugs in groups.items()}
-        weak = [(p["saving"] - p.get("threshold", 0), code) for code, p in plans_by.items()
+        plans_by = {code: plan_country(ctx, code, basket=slugs, allowed=allowed)
+                    for code, slugs in groups.items()}
+        steps = sorted(plans_by.values(), key=order)
+        for p in steps[:-1]:
+            # Danach wechselt das Konto: Der Rest verfällt und zählt als Kosten
+            lost = p.get("rest_value") or 0.0
+            if lost >= 0.005 and p.get("games_cost") is not None:
+                p["rest_lost"] = _r(lost)
+                p["games_cost"] = _r(p["games_cost"] + lost)
+                p["gain"] = _r(p["gain"] - lost)
+                p["saving"] = _r(p["saving"] - lost)
+                p["worth"] = p["is_ref"] or p["current"] or p["gain"] >= p.get("threshold", 0)
+        weak = [(p["gain"] - p.get("threshold", 0), code) for code, p in plans_by.items()
                 if code not in (ref_code, current) and not p.get("worth")]
         if not weak:
             break
@@ -1258,27 +1352,17 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         p = plans_by[code]
         dropped.append({"code": code, "name": p["name"], "tier_name": p["tier_name"],
                         "titles": [i["short"] for i in p["items"]],
-                        "saving": p["saving"], "threshold": p.get("threshold")})
+                        "saving": p["saving"], "gain": p["gain"], "alt_codes": p.get("alt_codes", []),
+                        "threshold": p.get("threshold")})
         allowed.remove(code)
 
-    def first_end(p):
-        ends = [i["end"] for i in p["items"] if i.get("end")]
-        return min(ends) if ends else "9999"
-
-    steps = []
-    for code, p in plans_by.items():
-        c = ctx.countries[code]
+    for p in steps:
+        c = ctx.countries[p["code"]]
         p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
         # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
         # deutschen Schritt (dort ist die Ersparnis dann 0)
         p["de_now"] = _r(sum(ctx.ref[i["slug"]] if i["slug"] in ctx.ref
                              else ctx.est(c, c["offers"][i["slug"]]["local"]) for i in p["items"]))
-        steps.append(p)
-    # Erst das Land, in dem das Konto steht, dann nach Wechselstufe. Amerika
-    # zuletzt: Ein Rest dort blockiert jeden weiteren Wechsel. Innerhalb einer
-    # Stufe zuerst, wo ein Angebot am frühesten endet.
-    steps.sort(key=lambda p: (not p["current"], p["tier"] if not p["is_ref"] else 1,
-                              first_end(p), p["name"]))
     total = sum(p["cost"] for p in steps if p["cost"] is not None)
     games = sum(p.get("games_cost", p["cost"]) for p in steps if p["cost"] is not None)
     ref_total = sum(p["de_now"] for p in steps)
@@ -1287,6 +1371,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
             "ref_total": _r(ref_total), "saving": _r(ref_total - games),
             "rest_value": _r(total - games),
+            "rest_lost": _r(sum(p.get("rest_lost") or 0 for p in steps)),
             "include_good": include_good,
             "bought_waiting": [ctx.title(s) for s in ctx.order if s in done],
             "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "de", "rest", "currency")}
@@ -1367,3 +1452,24 @@ def price_history(data, settings, history, slug, now=None):
             out["since"] = points[0][0]
     out["countries"].sort(key=lambda x: (x["code"] != countries.REFERENCE, x["low_eur"]))
     return out
+
+
+def case_export(data, settings, history, slug, now=None):
+    """Alles, was die Rechnung für einen Titel braucht, zum Nachbauen eines Falls.
+    Wishlist- und Sammlungslink bleiben draußen."""
+    shops = {countries.BY_CODE[c]["shop"] for c in countries.ORDER}
+    it = (data.get("items") or {}).get(slug)
+    keep = dict(settings, wishlist_url="", collection_url="")
+    row = next((r for r in radar(data, settings, now=now) if r["slug"] == slug), None)
+    parent = (it or {}).get("parent")
+    return {
+        "slug": slug, "item": it,
+        "parent": {parent: data["items"].get(parent)} if parent and parent in data.get("items", {}) else {},
+        "prices": {s: (data.get("prices") or {}).get(s, {}).get(slug) for s in shops
+                   if (data.get("prices") or {}).get(s, {}).get(slug)},
+        "lows": {s: (data.get("lows") or {}).get(s, {}).get(slug) for s in shops
+                 if (data.get("lows") or {}).get(s, {}).get(slug)},
+        "history": {s: (history.get(s) or {}).get(slug) for s in shops if (history.get(s) or {}).get(slug)},
+        "fx": data.get("fx"), "card_prices": data.get("card_prices"),
+        "card_market": data.get("card_market"), "settings": keep, "radar": row,
+    }
