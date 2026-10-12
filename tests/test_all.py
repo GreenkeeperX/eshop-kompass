@@ -1834,5 +1834,21 @@ class SelfCheckTest(unittest.TestCase):
         self.assertIn("Wechselkurse sind 10 Tage alt", w)
 
 
+class BootSyncTest(unittest.TestCase):
+    def test_sync_after_start(self):
+        from datetime import datetime, timedelta, timezone
+        now = datetime(2026, 10, 12, 12, tzinfo=timezone.utc)
+        iso = lambda d: d.isoformat()
+        boot = now - timedelta(seconds=1)
+        self.assertTrue(sync.sync_due(None, 6, now))
+        self.assertFalse(sync.sync_due(iso(now - timedelta(hours=2)), 6, now))
+        self.assertTrue(sync.sync_due(iso(now - timedelta(hours=7)), 6, now))
+        self.assertTrue(sync.sync_due(iso(now - timedelta(hours=2)), 6, now, boot))     # nach dem Start
+        self.assertFalse(sync.sync_due(iso(now - timedelta(hours=2)), 6, now, now + timedelta(minutes=3)))
+        self.assertFalse(sync.sync_due(iso(now - timedelta(minutes=10)), 6, now, boot))  # gerade erst
+        self.assertFalse(sync.sync_due(iso(now - timedelta(hours=7)), 6, now, boot,
+                                       iso(now - timedelta(minutes=20))))              # Fehlschlag
+
+
 if __name__ == "__main__":
     unittest.main()
