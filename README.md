@@ -307,8 +307,10 @@ Sicherung und Protokoll.
   je Region und speichert das Ergebnis dauerhaft, unabhängig vom Preis:
   Wishlist-Titel und die fehlenden DLC deiner Spiele (Füllartikel). Europa in
   einem Abruf, Japan und Amerika je Titel bei Nintendo (store-jp.nintendo.com,
-  nintendo.com über ec.nintendo.com); fehlt eine Angabe, fragt es monatlich
-  neu. Amerika liefert Angaben, Japan nur eine JavaScript-Seite. DLC übernimmt
+  nintendo.com über ec.nintendo.com), höchstens 40 Seiten je Region und
+  Abgleich, ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
+  Titel kommt beim nächsten Abgleich wieder dran. Liefert eine gelesene Seite
+  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika liefert Angaben, Japan nur eine JavaScript-Seite. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
   Spiel und Region. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit

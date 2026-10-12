@@ -20,7 +20,10 @@ LOW_PAGE_V = 2                        # Seiten ohne Tiefstpreis: mit Verlauf-Ers
 LOWS_VERSION = 3                      # 3: "Switch 2" wurde als Preis 2,00 gelesen                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
 # 1: Monatstiefstwerte aus dem Tagesverlauf gespeichert (Grundlage des Bestpreises, 0.16)
 HIST_V = 1
-LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu prüfen
+LANG_RECHECK_SECONDS = 30 * 24 * 3600 # Seite gelesen, aber ohne Sprachen: monatlich neu prüfen
+LANG_RETRY_SECONDS = 20 * 3600        # ... bei den ersten Versuchen schon am nächsten Tag
+LANG_TRIES = 3                        # so viele Versuche, bevor nur noch monatlich gefragt wird
+LANG_PER_SYNC = 40                    # Seiten je Region und Abgleich, ungeprüfte zuerst
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
 CARD_PAUSE = 3.0
@@ -441,6 +444,7 @@ def prune_langs(data, settings):
         if slug not in keep:
             it.pop("langs", None)
             it.pop("langs_checked", None)
+            it.pop("langs_tries", None)
     games = {e.get("parent") for e in (data.get("extra") or {}).values()}
     glangs = data.get("glangs") or {}
     for game in [g for g in glangs if g not in games]:
@@ -471,9 +475,13 @@ def sync_langs(data, settings, fetch, sleep, now=None):
         _log(f"Sprachen: {dropped} Bestätigungen für Titel gelöscht, die weder auf der Wishlist noch in der Sammlung stehen")
 
     def due(rec, fam):
+        """Noch ohne Angabe und wieder an der Reihe. Sperren und Fehler zählen nicht als
+        Versuch; eine gelesene Seite ohne Sprachen (auch eine verdeckte Sperre) wird an
+        den nächsten Tagen noch zweimal gefragt, danach monatlich."""
         if (rec.get("langs") or {}).get(fam):
             return False
-        return now - (rec.get("langs_checked") or {}).get(fam, 0) > LANG_RECHECK_SECONDS
+        wait = LANG_RECHECK_SECONDS if (rec.get("langs_tries") or {}).get(fam, 0) >= LANG_TRIES else LANG_RETRY_SECONDS
+        return now - (rec.get("langs_checked") or {}).get(fam, 0) > wait
 
     eu = {}
     for rec in list(items.values()) + list(extra.values()):
@@ -514,6 +522,9 @@ def sync_langs(data, settings, fetch, sleep, now=None):
             rec = glangs.setdefault(game, {})
             if due(rec, fam):
                 todo.append((rec, nsuid))
+        # Schonend: ungeprüfte zuerst, höchstens LANG_PER_SYNC Seiten, der Rest beim nächsten Abgleich
+        todo.sort(key=lambda t: (t[0].get("langs_tries") or {}).get(fam, 0))
+        rest, todo = max(0, len(todo) - LANG_PER_SYNC), todo[:LANG_PER_SYNC]
         got = fails = 0
         if todo:
             _step(f"Sprachen {name} abrufen", len(todo))
@@ -532,13 +543,15 @@ def sync_langs(data, settings, fetch, sleep, now=None):
                     sleep(DEKU_PAUSE)
                     continue
             rec.setdefault("langs_checked", {})[fam] = now
+            tries = rec.setdefault("langs_tries", {})
+            tries[fam] = tries.get(fam, 0) + 1
             if langs:
                 rec.setdefault("langs", {})[fam] = langs
                 got += 1
             status["done"] += 1
             sleep(DEKU_PAUSE)
         if todo:
-            _log(f"Sprachen {name}: {got} von {len(todo)} Titeln")
+            _log(f"Sprachen {name}: {got} von {len(todo)} Titeln" + (f", {rest} folgen beim nächsten Abgleich" if rest else ""))
     store.save_data(data)
 
 

@@ -2048,6 +2048,40 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertIs(xctx.german(xctx.items["rl-b"], "JP", "rl-b"), False)
         self.assertIs(xctx.german(xctx.items["rl-b"], "EU", "rl-b"), True)
 
+    def test_language_blocks_do_not_count(self):
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "US")
+        data = {"items": {f"t{i}": {"title": f"T{i}", "active": True, "ids": {"AM": [str(i)]}}
+                          for i in range(3)}, "prices": {}}
+        calls, answer = [], {"0": sources.FetchError("u", 429)}
+
+        def am(n, fetch=None):
+            calls.append(n)
+            a = answer.get(n)
+            if isinstance(a, Exception):
+                raise a
+            return a
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_langs_am", am), mock.patch.object(sync, "LANG_PER_SYNC", 2):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0)
+            self.assertEqual(calls, ["0"])                      # gesperrt: sofort Schluss
+            self.assertNotIn("langs_checked", data["items"]["t0"])   # zählt nicht als Versuch
+            answer.clear()
+            calls.clear()
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 60)
+            self.assertEqual(len(calls), 2)                     # höchstens zwei je Abgleich
+            calls.clear()
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120)
+            self.assertEqual(calls, ["2"])                      # ungeprüfter zuerst, die anderen warten
+            # Seite ohne Sprachen: am nächsten Tag noch einmal, nach drei Versuchen monatlich
+            for day in range(1, 6):
+                sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120 + day * 86400)
+            self.assertEqual({it["langs_tries"]["AM"] for it in data["items"].values()}, {3})
+            calls.clear()
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120 + 7 * 86400)
+            self.assertEqual(calls, [])
+
     def test_languages_are_cleaned_up(self):
         settings = {"lang_confirm": {"gone": {"JP": True}, "rl": {"JP": False}, "rl-w": {"AM": True}}}
         data = self.data()
