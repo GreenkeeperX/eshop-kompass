@@ -285,6 +285,28 @@ def save_history(h):
         _save("history.json", h)
 
 
+def merge_history(extra):
+    """Preisaufzeichnung aus einer Sicherung dazunehmen: Punkte beider Stände, jeder
+    Zeitpunkt einmal. Die Aufzeichnung lässt sich nicht neu laden, deshalb ergänzen statt
+    ersetzen."""
+    with lock:
+        h = _load("history.json", {})
+        for code, titles in extra.items():
+            if not isinstance(titles, dict):
+                continue
+            for slug, points in titles.items():
+                if not isinstance(points, list):
+                    continue
+                cur = {p[0]: p for p in h.get(code, {}).get(slug, [])}
+                for p in points:
+                    if isinstance(p, list) and len(p) == 2 and isinstance(p[0], str) and \
+                            isinstance(p[1], (int, float)):
+                        cur.setdefault(p[0], p)
+                if cur:
+                    h.setdefault(code, {})[slug] = sorted(cur.values())
+        _save("history.json", h)
+
+
 def load_purchases():
     """Kaufprotokoll: [{at, code, slugs, titles, cost, de, rest, before}, ...]."""
     with lock:

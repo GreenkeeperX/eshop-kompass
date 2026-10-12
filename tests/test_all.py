@@ -1261,6 +1261,17 @@ class PlanTest(unittest.TestCase):
 
 
 class StoreTest(unittest.TestCase):
+    def test_backup_adds_price_recording(self):
+        # Die eigene Preisaufzeichnung lässt sich nicht neu laden: Die Sicherung ergänzt sie
+        store.save_history({"BR": {"hades": [["2026-10-01T00:00:00Z", 33.59]]}})
+        store.merge_history({"BR": {"hades": [["2026-09-01T00:00:00Z", 67.19],
+                                              ["2026-10-01T00:00:00Z", 33.59], ["kaputt"]]},
+                             "JP": {"celeste": [["2026-09-02T00:00:00Z", 2050]]}, "XX": "nein"})
+        h = store.load_history()
+        self.assertEqual(h["BR"]["hades"], [["2026-09-01T00:00:00Z", 67.19], ["2026-10-01T00:00:00Z", 33.59]])
+        self.assertEqual(list(h), ["BR", "JP"])
+        store.save_history({})
+
     def test_ui_state_and_settings_validation(self):
         ui = store.save_ui({"basket": ["a", "b"], "targets": {"a": "8,5", "b": "7.5", "c": 0},
                             "hidden": ["NZ"], "sort": "quatsch", "dense": 0,
