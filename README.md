@@ -124,7 +124,9 @@ teilen sich die Titel die Karten. Der Tooltip nennt die Karten und den Rest.
 
 Fehlt auf der DekuDeals-Seite ein digitaler Tiefstpreis (manchmal steht
 dort nur der eines Händlers), gilt der niedrigste Preis aus dem digitalen
-Verlauf. Das Protokoll zählt Seiten, die gar keinen nennen.
+Verlauf. Das Protokoll zählt Seiten, die gar keinen nennen. Spiele für
+Switch und Switch 2 haben je Plattform einen Tiefstpreis; es gilt der
+höchste, den der Preis jetzt nicht übersteigt, also der der eigenen Fassung.
 
 Der Landespreis verlinkt den Verlauf bei DekuDeals, der Europreis die
 eShop-Seite des Landes.

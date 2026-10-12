@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.15.1"
+VERSION = "0.15.2"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -158,23 +158,50 @@ def parse_amount(text):
     return float(re.sub(r"[.,]", "", raw))
 
 
-def parse_low(page_html):
-    """Digitaler Tiefstpreis einer Artikelseite.
+def parse_lows(page_html):
+    """Digitale Tiefstpreise einer Artikelseite, einer je Plattform.
 
-    Wo DekuDeals auch Händler führt, stehen zwei Werte auf der Seite
-    (Physical und Digital). Für den eShop-Vergleich zählt nur der digitale.
+    DekuDeals schreibt sie in drei Formen: "Digital: $6.24 Physical: $17.49",
+    eine Tabelle "Digital | Physical" mit einer Zeile Werte, oder bei Spielen für
+    Switch und Switch 2 eine Zeile je Plattform unter "Physical | Digital". Für den
+    eShop-Vergleich zählt nur digital. Plattformnamen wie "Switch 2" sind keine Preise.
     """
     m = _LOW_RE.search(page_html or "")
     if not m:
-        return None
+        return []
     text = html.unescape(_TAG_RE.sub(" ", m.group(1)))
-    text = re.split(r"Time range", text, maxsplit=1, flags=re.I)[0]
-    digital = re.search(r"digital", text, re.I)
-    if digital:
-        return parse_amount(text[digital.end():digital.end() + 60])
-    if re.search(r"physical", text, re.I):
-        return None                       # nur ein Händler-Tiefstpreis bekannt
-    return parse_amount(text)
+    text = re.split(r"Time range|Historical data", text, maxsplit=1, flags=re.I)[0]
+    text = re.sub(r"\(\s*[-−+]?\s*\d+\s*%\s*\)", " ", text)            # (-60%)
+    text = re.sub(r"(?:Nintendo\s+)?Switch(?:\s*2)?|\b\d+\s*[my]\b", " ", text, flags=re.I)
+    seq = []
+    for t in re.finditer(r"digital|physical|" + _AMOUNT_RE.pattern, text, re.I):
+        w = t.group(0).lower()
+        seq.append(w if w in ("digital", "physical") else parse_amount(t.group(0)))
+    if "digital" not in seq:
+        if "physical" in seq:
+            return []                         # nur ein Händler-Tiefstpreis bekannt
+        return [v for v in seq if isinstance(v, float)][:1]
+    head = []
+    for v in seq:
+        if not isinstance(v, str):
+            break
+        head.append(v)
+    if len(head) > 1:                         # Tabelle: Kopf, dann Werte je Zeile
+        values = [v for v in seq[len(head):] if isinstance(v, float)]
+        d = head.index("digital")
+        return values[d::len(head)]
+    out = []                                  # Wort, dann Wert
+    for i, v in enumerate(seq):
+        if v == "digital" and i + 1 < len(seq) and isinstance(seq[i + 1], float):
+            out.append(seq[i + 1])
+    return out
+
+
+def parse_low(page_html):
+    """Digitaler Tiefstpreis einer Artikelseite; bei mehreren Plattformen der höchste,
+    damit ein günstigerer Tiefstpreis der anderen Fassung keinen falschen Bestpreis macht."""
+    lows = parse_lows(page_html)
+    return max(lows) if lows else None
 
 
 _HIST_RE = r"""<script[^>]*id=["']{}["'][^>]*>(.*?)</script>"""
@@ -301,7 +328,8 @@ def parse_item_page(page_html):
                 nsuids.append(n)
     low = parse_low(page_html)
     return {"title": title, "parent": parent, "parent_title": parent_title,
-            "nsuids": nsuids, "low": low, "history": parse_history(page_html)}
+            "nsuids": nsuids, "low": low, "lows": parse_lows(page_html),
+            "history": parse_history(page_html)}
 
 
 def fetch_item(slug, country, fetch=fetch):

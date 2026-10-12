@@ -126,6 +126,26 @@ class SourcesTest(unittest.TestCase):
         self.assertIsNone(sources.parse_low("All time low <b>Physical</b> €27,19 (-55%) Time range"))
         self.assertEqual(sources.parse_low("All time low | ¥700 | (-75%) Time range 6m"), 700.0)
         self.assertIsNone(sources.parse_low("<p>nichts</p>"))
+        # Tabelle mit Kopf, dann Werte (Bread & Fred)
+        self.assertEqual(sources.parse_lows("All time low | Digital | | Physical | | €5,91 | (-60%) | €29,99 | | Time range"), [5.91])
+        # Switch und Switch 2: eine Zeile je Plattform; "Switch 2" ist kein Preis von 2,00
+        two = ("<table><tr><th>All time low</th><th>Physical</th><th></th><th>Digital</th></tr>"
+               "<tr><td>Switch 2</td><td>€69,99</td><td></td><td>€59,99</td></tr>"
+               "<tr><td>Switch</td><td>€49,99</td><td></td><td>€39,99</td><td>(-33%)</td></tr></table> Time range 6m 1y")
+        self.assertEqual(sources.parse_lows(two), [59.99, 39.99])
+        self.assertEqual(sources.parse_low(two), 59.99)
+
+    def test_low_of_own_platform(self):
+        # Je Plattform ein Tiefstpreis: es gilt der höchste, den der Preis jetzt nicht übersteigt
+        settings = store.load_settings()
+        data = {"items": {"a": {"active": True}}, "prices": {"DE": {"a": {"status": "onsale", "regular": 44.99}}}}
+        orig = sources.fetch_item
+        sources.fetch_item = lambda slug, country, fetch=None: {"low": 59.99, "lows": [59.99, 39.99], "history": []}
+        try:
+            sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200)
+            self.assertEqual(data["lows"]["DE"]["a"]["low"], 39.99)
+        finally:
+            sources.fetch_item = orig
 
     def test_alias_merge(self):
         data = {"items": {

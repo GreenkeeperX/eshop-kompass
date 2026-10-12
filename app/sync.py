@@ -17,7 +17,7 @@ SALES_RECHECK_SECONDS = 30 * 24 * 3600  # Angebotsverlauf monatlich auffrischen
 SALES_PER_SYNC = 40                   # höchstens so viele Seiten nur für den Verlauf
 SALES_MONTHS = 24                     # typischer Angebotspreis aus diesem Zeitraum
 LOW_PAGE_V = 2                        # Seiten ohne Tiefstpreis: mit Verlauf-Ersatz gelesen
-LOWS_VERSION = 2                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
+LOWS_VERSION = 3                      # 3: "Switch 2" wurde als Preis 2,00 gelesen                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
 LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu prüfen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
@@ -546,12 +546,17 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             fails += 1
             sleep(LOW_PAUSE)
             continue
-        low = info["low"]
+        p = data["prices"][code][slug]
+        cur = p.get("discount", p.get("regular"))
+        # Spiele für Switch und Switch 2 haben je Plattform einen Tiefstpreis: Es gilt
+        # der höchste, den das Angebot jetzt nicht übersteigt, also die eigene Fassung
+        cands = info.get("lows") or ([info["low"]] if info.get("low") else [])
+        fits = [v for v in cands if cur is None or v <= cur * 1.001 + 0.001]
+        low = max(fits) if fits else (min(cands) if cands else None)
         if not low and info.get("history"):
             # DekuDeals nennt manchmal nur einen Händler-Tiefstpreis: dann der
             # niedrigste Preis aus dem digitalen Verlauf
             low = min(v for _, v in info["history"])
-        p = data["prices"][code][slug]
         if low and low > p.get("regular", 0) * 1.001:
             low = None                       # unplausibel
         cur = p.get("discount", p.get("regular"))
@@ -623,7 +628,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
                         for k in ("low", "src", "checked"):
                             e.pop(k, None)
             data["lows_v"] = LOWS_VERSION
-            _log("Tiefstpreise werden neu geladen (nur digitale Preise)")
+            _log("Tiefstpreise werden neu geladen (Lesefehler bei Spielen für Switch und Switch 2 behoben)")
         sync_lows(data, settings, fetch, sleep)
         status["ok"] = True
         _step("Fertig")
