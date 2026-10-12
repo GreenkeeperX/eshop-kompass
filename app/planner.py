@@ -1300,11 +1300,17 @@ def collection(data, settings, targets=None, now=None, rows=None):
     owned_list = list(dict.fromkeys(data.get("owned") or []))
     owned = set(owned_list)
     by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
-    games, unread, no_dlc = [], 0, 0
+    items = data.get("items") or {}
+    games, unread, no_dlc, plain, waiting = [], 0, 0, [], []
+
+    def name(slug, e=None):
+        return (e or {}).get("title") or (items.get(slug) or {}).get("title") or \
+            slug.replace("-", " ").title()
     for slug in owned_list:
         e = rel.get(slug)
         if not e:
             unread += 1
+            waiting.append({"slug": slug, "title": name(slug)})
             continue
         if e.get("parent"):
             continue                         # selbst ein DLC, steht beim Hauptspiel
@@ -1326,12 +1332,16 @@ def collection(data, settings, targets=None, now=None, rows=None):
             dlc.append(row)
         if not dlc:
             no_dlc += 1
+            plain.append({"slug": slug, "title": name(slug, e)})
             continue
         have = sum(1 for d in dlc if d["owned"])
         games.append({"slug": slug, "title": e.get("title") or slug, "dlc": dlc,
                       "have": have, "missing": len(dlc) - have})
     games.sort(key=lambda g: (g["missing"] == 0, g["title"].lower()))
-    return {"games": games, "owned": len(owned_list), "unread": unread, "no_dlc": no_dlc}
+    plain.sort(key=lambda g: g["title"].lower())
+    waiting.sort(key=lambda g: g["title"].lower())
+    return {"games": games, "owned": len(owned_list), "unread": unread, "no_dlc": no_dlc,
+            "plain": plain, "waiting": waiting}
 
 
 LANG_CHECK_URL = {
