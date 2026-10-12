@@ -6,8 +6,9 @@ Guthabenkarten, Rest und Füllartikeln.
 
 ## Start
 
-Das Image wird bei jeder Änderung automatisch gebaut und liegt unter
-`ghcr.io/OWNER/eshop-kompass:latest`. Die `docker-compose.yml` zeigt den
+Jeder Push auf `main` lässt die Tests laufen und baut danach das Image. Es
+liegt unter `ghcr.io/OWNER/eshop-kompass:latest`, zusätzlich mit der
+Versionsnummer als Tag (etwa `:0.18`). Die `docker-compose.yml` zeigt den
 Betrieb als unprivilegierter Benutzer mit schreibgeschütztem Dateisystem.
 
     docker compose up -d
@@ -30,11 +31,14 @@ Begriffe: Einkaufspreis ist, was du zahlst, mit Steuer, Kurs, Guthabenkarten
 und Gebühr. Bestpreis ist der niedrigste Einkaufspreis der letzten 24 Monate in
 einem zählenden Land, mit deinem heutigen Einkaufsweg gerechnet; Normalpreise
 zählen mit. Das Urteil misst nur die Preisgüte des günstigsten zählenden
-Angebots, mit denselben Grenzen für jedes Land:
+Angebots mit Rabatt, mit denselben Grenzen für jedes Land:
 - kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber) oder
   höchstens 0,50 € darüber,
 - gut: bis 15 % oder höchstens 2 € darüber,
 - warten: im Angebot, aber weiter weg.
+Gibt es in keinem zählenden Land einen Rabatt, heißt das Urteil "kein
+Angebot", auch wenn ein Normalpreis am Bestpreis liegt. Nur der Zielpreis
+gilt auch für Normalpreise.
 Die beiden Euro-Grenzen sind unter Einstellungen änderbar. Ob sich der Weg in
 ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
 
@@ -55,7 +59,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ein Rest ist kein
   Verlust, solange du im Land bleibst; folgt im Plan noch ein Wechsel, verfällt
   er (Nintendo nimmt Guthaben nicht mit) und zählt dort als Kosten ("Rest
-  verfällt"). Ist heute nichts auf "kaufen", nennt die Seite die Angebote, die
+  verfällt"). Länder der Stufe schwer stehen am Ende, weil ein Rest dort
+  jeden weiteren Wechsel blockiert; bleibt einer, warnt die Karte nur ("Rest
+  blockiert"), der Plan rechnet weiter. Ist heute nichts auf "kaufen", nennt die Seite die Angebote, die
   am nächsten am Bestpreis liegen.
   "gekauft" an einem Land vermerkt den Kauf im Kaufprotokoll
   (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort
@@ -127,9 +133,9 @@ günstigsten Karte mal Shop-Preis. Kaufst du einen Titel allein, brauchst du
 meist mehr Guthaben, als er kostet. Was das kostet, steht im Tooltip als
 "allein gekauft" mit Karten und Rest.
 
-Unter der Vergleichstabelle steht, was der Korb kostet, wenn jeder Titel im
-günstigsten Land mit Kartenzahlung gekauft wird. Dort kostet der Wechsel
-nichts und es bleibt kein Rest.
+Unter dem Korb steht, was er kostet, wenn jeder Titel im günstigsten Land
+mit Kartenzahlung gekauft wird, sofern das günstiger ist als alles in einem
+Land. Dort kostet der Wechsel nichts und es bleibt kein Rest.
 
 Marken an jedem Angebot: ★ Bestpreis über alle Länder, rot: hier teurer als
 ohne den Wechsel, ? zählt nicht (Sprache ungeprüft oder ohne Guthabenkarte).
@@ -147,8 +153,9 @@ DekuDeals-Artikelseite (das Tool speichert je Monat den tiefsten Preis) und
 der eigenen Aufzeichnung, jeweils der letzten 24 Monate. Ältere Tiefstwerte
 zum heutigen Kurs zeigten Preise, die es so nie gab. Nur wo der Verlauf fehlt
 oder die Seite Tiefstpreise für Switch und Switch 2 nennt (dann ist offen, zu
-welcher Fassung der Verlauf gehört), gilt der Allzeit-Tiefstpreis. Version 0.16
-liest dafür jede Artikelseite einmal neu (etwa 15 bis 25 Minuten).
+welcher Fassung der Verlauf gehört), gilt der Allzeit-Tiefstpreis. Beim
+ersten Abgleich nach dem Update von einer Version vor 0.16 liest das Tool
+dafür jede Artikelseite einmal neu (etwa 15 bis 25 Minuten).
 
 Fehlt auf der DekuDeals-Seite ein digitaler Tiefstpreis (manchmal steht
 dort nur der eines Händlers), gilt der niedrigste Preis aus dem digitalen
