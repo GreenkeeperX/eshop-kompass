@@ -26,3 +26,31 @@ Weitere feste Regeln:
 - geschätzte Werte sind in der Oberfläche gekennzeichnet,
 - jede Version mit Tests (`python3 -m unittest tests.test_all`), neuer Nummer in
   `app/sources.py`, aktueller README und aktueller ROADMAP.md.
+
+## Aufbau
+
+Zweck, Bedienung und Rechenregeln stehen in `README.md`, Geplantes in `ROADMAP.md`.
+
+- `app/countries.py`: Länder, Regionen, Wechselstufen
+- `app/sources.py`: Abruf und Parser der Quellen, `VERSION`
+- `app/store.py`: Einstellungen und JSON-Dateien im Datenordner
+- `app/planner.py`: Kartenrechner, Körbe, Bestpreise, Urteile, Kaufplan
+- `app/sync.py`: Abgleich, Zeitplan, Verbindungstest
+- `app/server.py`: Webserver und JSON-Schnittstelle
+- `app/static/index.html`: gesamte Oberfläche, reines JavaScript ohne Build
+- `tests/test_all.py`: alle Tests, `.github/workflows/image.yml`: Tests und Image bei Push auf `main`
+
+Lokal starten: `python3 -m app.server` (Port 8787, Daten in `./data/`, ignoriert).
+Tests: `python3 -m unittest tests.test_all`. Ein Linter ist nicht eingerichtet.
+Alte Datendateien müssen nach einem Update weiter laden.
+
+## Graphify (optional, nur lokal)
+
+`graphify-out/` ist ein lokal erzeugter Code-Graph und nicht versioniert. Fehlt er,
+etwa in Cloud-Sitzungen, normal mit Lesen und Suchen arbeiten.
+
+- Wenn `graphify-out/graph.json` existiert, Codefragen zuerst mit
+  `graphify query "<Frage>"`, `graphify explain "<Begriff>"` oder
+  `graphify path "<A>" "<B>"` eingrenzen, dann gezielt lesen.
+- `graphify-out/GRAPH_REPORT.md` nur für Architekturfragen lesen.
+- Nach Codeänderungen `graphify update .` (nur Code, ohne KI-Kosten).
