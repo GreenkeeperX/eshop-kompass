@@ -15,6 +15,10 @@ CARD_PRICE_MAX_AGE = 3 * 24 * 3600   # gelesene Kartenpreise gelten so lange
 MIN_FILLER_GAIN = 0.5    # Füllartikel erst ab dieser Ersparnis in Euro vorschlagen
 BEST_TOLERANCE = 0.02    # bis 2 % über dem Bestpreis gilt ein Angebot als Bestpreis
 GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
+# Typischer Angebotspreis: Median der Tiefstwerte aller Angebotsphasen im
+# DekuDeals-Tagesverlauf dieses Zeitraums, erst ab so vielen Phasen
+TYPICAL_DAYS = 730
+TYPICAL_MIN_RUNS = 2
 # Gelesene Kartenpreise (Shopseite, gg.deals) zählen nur in diesem Bereich, gemessen am
 # Nennwert zum Mittelkurs. Ein Lesefehler (etwa ein Gebührenhinweis statt des Preises)
 # würde sonst als „günstiger“ alle Vergleiche kippen. Kleine Karten mit Servicegebühr
@@ -384,14 +388,18 @@ class Context:
             return
         for c in self.countries.values():
             fam = c["meta"]["family"]
-            if fam == "EU":
-                continue
             for slug in list(c["offers"]):
                 it = self.items[slug]
                 if self.german(it, "EU") is not True:
                     continue
+                if fam == "EU":
+                    # dasselbe Produkt wie im deutschen eShop
+                    c["offers"][slug]["lang"] = "same"
+                    continue
                 here = self.german(it, fam)
-                if here is False and mode == "exclude":
+                if here is True:
+                    c["offers"][slug]["lang"] = "de"
+                elif here is False and mode == "exclude":
                     del c["offers"][slug]
                     c["nolang"].add(slug)
                 elif here is False:
@@ -423,16 +431,38 @@ class Context:
         return {"low": low, "at_low": o.get("net", o["local"]) <= cents(low),
                 "low_pct": round(100 * (1 - cents(low) / base)) if base else 0}
 
+    def typical_value(self, code, slug):
+        """Typischer Angebotspreis in Landeswährung (ohne Steuer) und Zahl der
+        Angebotsphasen, aus dem DekuDeals-Verlauf. None, wenn zu wenige bekannt."""
+        e = self.lows.get(countries.BY_CODE[code]["shop"], {}).get(slug) or {}
+        since = (self.now.timestamp() - TYPICAL_DAYS * 86400)
+        since = datetime.fromtimestamp(since, timezone.utc).strftime("%Y-%m-%d")
+        runs = [(d, v) for d, v in e.get("sales") or [] if d >= since and v and v > 0]
+        if len(runs) < TYPICAL_MIN_RUNS:
+            return None
+        lows, n = sorted(v for _, v in runs), len(runs)
+        median = lows[n // 2] if n % 2 else (lows[n // 2 - 1] + lows[n // 2]) / 2
+        # War das letzte Angebot tiefer, gilt es: Nintendo senkt Angebotspreise
+        # oft dauerhaft, der Median hinkt dann hinterher
+        return min(median, max(runs)[1]), n
+
     def _champions(self):
         """Bestpreis je Titel: der niedrigste Preis, den es je gab, in Euro zum
         heutigen Kurs. Einmal über alle Länder, einmal nur über die leichten."""
         self.champ_all, self.champ_easy = {}, {}
+        # Typischer Angebotspreis: das günstigste leicht erreichbare Land
+        self.typ_easy = {}
         for code, c in self.countries.items():
             if c["unit"] is None:
                 continue
             for slug, o in c["offers"].items():
                 if not self.decides(o):
                     continue
+                typ = self.typical_value(code, slug) if c["tier"] <= 2 else None
+                if typ:
+                    eur = round(cents(typ[0]) * (1 + c["tax"] / 100)) * c["unit"]
+                    if slug not in self.typ_easy or eur < self.typ_easy[slug][0] - 1e-9:
+                        self.typ_easy[slug] = (eur, code, c["estimated"], typ[1])
                 local = o["local"]
                 low = self.low_value(code, slug)
                 if low is not None:
@@ -804,9 +834,16 @@ def matrix(data, settings, now=None):
                 continue
             cells[code] = ctx.cell(c, slug, o)
             eur = cells[code]["eur"]
-            if eur is not None and ctx.decides(o) and (best is None or eur < cells[best]["eur"]):
+            # Hervorgehoben wird das günstigste Angebot, nicht der günstigste Normalpreis
+            if eur is not None and o["sale"] and ctx.decides(o) and (
+                    best is None or eur < cells[best]["eur"]):
                 best = code
+        champ, typ = ctx.champ_all.get(slug), ctx.typ_easy.get(slug)
         rows.append({"slug": slug, "title": it["title"], "cells": cells, "best": best,
+                     "champ": None if not champ else {"eur": _r(champ[0]), "code": champ[1],
+                                                      "est": champ[2]},
+                     "typical": None if not typ else {"eur": _r(typ[0]), "code": typ[1],
+                                                      "est": typ[2], "runs": typ[3]},
                      "dlc_of": ctx.parent_title(slug), **ctx.owned_flags(slug),
                      "no_ids": not any(it.get("ids", {}).values())})
     return {"cols": cols, "rows": rows}
@@ -862,6 +899,14 @@ def radar(data, settings, targets=None, now=None):
         # oder in Euro nah genug am Bestpreis liegt: 1 € mehr für einen
         # günstigen Titel ist wenig, auch wenn es 30 % sind.
         buy_eur, good_eur = deal_eur["buy"], deal_eur["good"]
+        # Maßstab des Urteils: der typische Angebotspreis, wo der Verlauf ihn
+        # kennt, sonst der Bestpreis
+        typ = ctx.typ_easy.get(slug)
+        use_typ = settings.get("verdict_ref", "typical") == "typical" and typ is not None
+        typ_diff = typ_gap = None
+        if easy and typ:
+            typ_diff = _r(easy["raw"] - typ[0])
+            typ_gap = round(100 * (easy["raw"] / typ[0] - 1)) if typ[0] else 0
         verdict, reason = "none", "kein Angebot"
         if unsure and not easy and not hard:
             reason = "nur in " + ", ".join(unsure) + " kaufbar, Sprache dort ungeprüft"
@@ -869,9 +914,18 @@ def radar(data, settings, targets=None, now=None):
             verdict, reason = "buy", "Zielpreis erreicht"
         elif easy and easy["mark"] in ("best", "best_easy"):
             verdict, reason = "buy", "Bestpreis"
-        elif easy and easy["sale"] and diff_easy is not None and diff_easy <= buy_eur + 0.005:
+        elif use_typ and easy and easy["sale"] and (
+                typ_diff <= buy_eur + 0.005 or easy["raw"] <= typ[0] * (1 + BEST_TOLERANCE) + 0.005):
+            verdict, reason = "buy", ("unter typischem Angebotspreis" if typ_diff < -0.005
+                                      else "typischer Angebotspreis" if typ_diff <= 0.005
+                                      else f"nur {_eur(typ_diff)} über typischem Angebotspreis")
+        elif use_typ and easy and easy["sale"] and (typ_gap <= GOOD_GAP or typ_diff <= good_eur + 0.005):
+            verdict, reason = "good", f"{_eur(typ_diff)} ({typ_gap} %) über typischem Angebotspreis"
+        elif use_typ and easy and easy["sale"]:
+            verdict, reason = "wait", f"typisch sind {_eur(typ[0])}"
+        elif not use_typ and easy and easy["sale"] and diff_easy is not None and diff_easy <= buy_eur + 0.005:
             verdict, reason = "buy", f"nur {_eur(diff_easy)} über Bestpreis"
-        elif easy and easy["sale"] and gap_easy is not None and (
+        elif not use_typ and easy and easy["sale"] and gap_easy is not None and (
                 gap_easy <= GOOD_GAP or diff_easy <= good_eur + 0.005):
             verdict, reason = "good", f"{_eur(diff_easy)} ({gap_easy} %) über Bestpreis"
         elif hard and hard["sale"] and (
@@ -890,11 +944,18 @@ def radar(data, settings, targets=None, now=None):
                      "easy": easy, "hard": hard, "de": _r(ctx.ref.get(slug)),
                      "champ": champ(champ_all), "champ_easy": champ(champ_easy),
                      "gap_easy": gap_easy, "diff_easy": diff_easy, "diff_all": diff_all,
+                     "typical": None if not typ else {
+                         "eur": _r(typ[0]), "code": typ[1], "est": typ[2], "runs": typ[3],
+                         "name": countries.BY_CODE[typ[1]]["name"]},
+                     "typ_diff": typ_diff, "typ_gap": typ_gap,
+                     "ref": "typical" if use_typ else "best",
                      "target": target, "verdict": verdict,
                      "lang_unsure": [] if (easy or hard) else unsure,
                      "reason": reason, "no_ids": not any(it.get("ids", {}).values())})
-    rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]),
-                             r["gap_easy"] if r["gap_easy"] is not None else 999))
+    def gap(r):
+        g = r["typ_gap"] if r["ref"] == "typical" else r["gap_easy"]
+        return g if g is not None else 999
+    rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]), gap(r)))
     return rows
 
 
@@ -1070,6 +1131,8 @@ def price_history(data, settings, history, slug, now=None):
            "since": None, "countries": []}
     champ = ctx.champ_easy.get(slug)
     out["champ_easy"] = None if not champ else {"eur": _r(champ[0]), "code": champ[1], "est": champ[2]}
+    typ = ctx.typ_easy.get(slug)
+    out["typical"] = None if not typ else {"eur": _r(typ[0]), "code": typ[1], "est": typ[2], "runs": typ[3]}
     for code, c in ctx.countries.items():
         series = (history.get(c["meta"]["shop"]) or {}).get(slug) or []
         points = [(t, _parse_dt(t), v) for t, v in series if _parse_dt(t) and v is not None]

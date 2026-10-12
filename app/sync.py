@@ -13,6 +13,9 @@ DEKU_PAUSE = 1.0                      # Sekunden zwischen DekuDeals-Abrufen
 NINTENDO_PAUSE = 0.3
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
 LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu prüfen
+SALES_RECHECK_SECONDS = 30 * 24 * 3600  # Angebotsverlauf monatlich auffrischen
+SALES_PER_SYNC = 40                   # höchstens so viele Seiten nur für den Verlauf
+SALES_MONTHS = 24                     # typischer Angebotspreis aus diesem Zeitraum
 LOWS_VERSION = 2                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
 LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu prüfen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
@@ -127,7 +130,8 @@ def sync_ids(data, settings, fetch, sleep, now=None):
                 it["parent"] = info["parent"]
                 if info["parent_title"]:
                     it["parent_title"] = info["parent_title"]
-            _store_low(data, settings, lookup.upper(), slug, info["low"], now)
+            _store_low(data, settings, lookup.upper(), slug, info["low"], now,
+                       info.get("history"))
             sleep(DEKU_PAUSE)
             if info["nsuids"]:
                 found = info["nsuids"]
@@ -172,8 +176,8 @@ def merge_aliases(data):
     return dropped
 
 
-def _store_low(data, settings, code, slug, low, now):
-    """Merkt sich den Tiefstpreis von DekuDeals für ein aktives Land."""
+def _store_low(data, settings, code, slug, low, now, history=None):
+    """Merkt sich Tiefstpreis und Angebotsphasen von DekuDeals für ein aktives Land."""
     cfg = settings["countries"].get(code)
     if not cfg or not cfg["enabled"]:
         return
@@ -184,6 +188,12 @@ def _store_low(data, settings, code, slug, low, now):
     else:
         e.pop("low", None)
         e.pop("src", None)
+    if history is not None:            # Seite gelesen: Verlauf merken, auch wenn sie keinen hat
+        e["sales_at"] = now
+        if history:
+            since = datetime.fromtimestamp(now - SALES_MONTHS * 30.44 * 86400,
+                                           timezone.utc).strftime("%Y-%m-%d")
+            e.update(sales=sources.sale_runs(history, since), sales_from=max(history[0][0], since))
 
 
 def _track(data, history, code, table, stamp):
@@ -489,7 +499,7 @@ def sync_lows(data, settings, fetch, sleep, now=None):
     """Lädt fehlende Tiefstpreise von DekuDeals nach, Angebote zuerst."""
     now = now or time.time()
     lows = data.setdefault("lows", {})
-    todo = []
+    todo, refresh = [], []
     for code in countries.ORDER:
         if not settings["countries"][code]["enabled"]:
             continue
@@ -498,9 +508,15 @@ def sync_lows(data, settings, fetch, sleep, now=None):
                 continue
             e = lows.get(code, {}).get(slug)
             if e and ("low" in e or now - e.get("checked", 0) < LOW_RECHECK_SECONDS):
+                # Tiefstpreis bekannt: Seite nur für den Angebotsverlauf erneut
+                # laden, wenn er fehlt oder alt ist und gerade ein Angebot läuft
+                if "discount" in p and now - e.get("sales_at", 0) >= SALES_RECHECK_SECONDS:
+                    refresh.append((0 if "sales_at" not in e else 1, code, slug))
                 continue
             todo.append((0 if "discount" in p else 1, code, slug))
     todo.sort()
+    refresh.sort()
+    todo += refresh[:SALES_PER_SYNC]
     if not todo:
         return
     _step("Tiefstpreise nachladen", len(todo))
@@ -522,14 +538,15 @@ def sync_lows(data, settings, fetch, sleep, now=None):
         cur = p.get("discount", p.get("regular"))
         if low and cur is not None and cur < low:
             low = cur
-        _store_low(data, settings, code, slug, low, now)
+        _store_low(data, settings, code, slug, low, now, info.get("history"))
         status["done"] += 1
         if status["done"] % 20 == 0:
             store.save_data(data)
         sleep(LOW_PAUSE)
     store.save_data(data)
     known = sum(1 for c in lows.values() for e in c.values() if "low" in e)
-    _log(f"Tiefstpreise bekannt: {known}")
+    runs = sum(1 for c in lows.values() for e in c.values() if e.get("sales"))
+    _log(f"Tiefstpreise bekannt: {known}, Angebotsverläufe: {runs}")
 
 
 def _better(new, cur):

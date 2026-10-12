@@ -21,6 +21,8 @@ DEFAULT_SETTINGS = {
     # ab dieser Ersparnis lohnt der Länderwechsel, je Stufe (leicht, mittel, schwer)
     "tier_min_saving": {"1": 3.0, "2": 8.0, "3": 20.0},
     "lang_rule": "exclude",   # Regionen ohne deutsche Fassung: exclude, warn, off
+    # Maßstab des Urteils: typischer Angebotspreis (typical) oder Allzeit-Bestpreis (best)
+    "verdict_ref": "typical",
     "refresh_hours": 6,
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
@@ -116,6 +118,8 @@ def save_settings(new):
             s["card_market"] = new["card_market"]
         if new.get("lang_rule") in ("exclude", "warn", "off"):
             s["lang_rule"] = new["lang_rule"]
+        if new.get("verdict_ref") in ("typical", "best"):
+            s["verdict_ref"] = new["verdict_ref"]
         for tier, value in (new.get("tier_min_saving") or {}).items():
             if str(tier) in s["tier_min_saving"]:
                 try:

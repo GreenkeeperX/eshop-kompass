@@ -21,13 +21,17 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 ## Ansichten
 
 - Radar: eine Zeile je Wishlist-Titel mit dem besten Preis jetzt (getrennt nach
-  leicht und schwer erreichbaren Ländern), dem Abstand zum Bestpreis in Euro
-  (der Bestpreis selbst steht im Tooltip), deinem Zielpreis und einem Urteil:
-  - kaufen: Zielpreis erreicht, Bestpreis (bis 2 % darüber) oder höchstens
-    0,50 € über dem Bestpreis,
-  - gutes Angebot: bis 15 % oder höchstens 2 € über dem Bestpreis,
+  leicht und schwer erreichbaren Ländern), dem Abstand zum Maßstab des Urteils
+  in Euro, deinem Zielpreis und einem Urteil. Maßstab ist der typische
+  Angebotspreis (siehe unten), wo er fehlt der Bestpreis; beide stehen in der
+  Zelle und im Tooltip.
+  - kaufen: Zielpreis erreicht, Bestpreis erreicht (bis 2 % darüber, gilt
+    immer) oder höchstens 0,50 € über dem Maßstab,
+  - gutes Angebot: bis 15 % oder höchstens 2 € über dem Maßstab,
   - nur schwer: stark nur in einem Land der Stufe schwer,
-  - warten: im Angebot, war aber schon deutlich günstiger.
+  - warten: im Angebot, typischerweise aber günstiger.
+  DE✓ am Preis heißt: deutsche Fassung bestätigt oder dasselbe Produkt wie im
+  deutschen eShop; "andere Fassung" heißt: dort ohne Deutsch.
   Die beiden Euro-Grenzen sind unter Einstellungen änderbar.
 - Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst.
   Kandidaten sind die Titel mit dem Urteil "kaufen" oder "nur schwer",
@@ -75,6 +79,10 @@ nichts und es bleibt kein Rest.
 Marken an jedem Angebot: ★ Bestpreis über alle Länder, ☆ Bestpreis der leicht
 erreichbaren Länder, grün Landestief, rot Angebot darüber. Der Bestpreis ist
 der niedrigste Preis, den es je gab, zum heutigen Kurs.
+
+Im Preisvergleich steht der Bestpreis je Titel in einer eigenen Spalte, das
+Land, in dem es ihn gab, ist gold umrandet. Grün hinterlegt ist das günstigste
+Angebot jetzt; ein günstiger Normalpreis ohne Angebot wird nicht hervorgehoben.
 
 Der Landespreis verlinkt den Verlauf bei DekuDeals, der Europreis die
 eShop-Seite des Landes.
@@ -168,6 +176,23 @@ Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar bleiben. Ein
 Angebot ist jede Strecke unter dem heutigen Normalpreis. Die Aufzeichnung
 kennt nur Zeiten, in denen das Tool lief; in den ersten Wochen sind die
 Kurven entsprechend kurz.
+
+### Typischer Angebotspreis
+
+Die DekuDeals-Artikelseite enthält den Tagesverlauf des Preises seit etwa
+Mitte 2024. Das Tool liest daraus die Angebotsphasen der letzten zwei Jahre
+(Normalpreis ist der häufigste Preis, ein Angebot jede Strecke mindestens 3 %
+darunter) und merkt sich je Phase den tiefsten Preis. Typischer
+Angebotspreis ist der Median dieser Tiefstwerte, ab zwei Phasen. War das
+letzte Angebot tiefer als der Median, gilt dieses: Nintendo senkt
+Angebotspreise oft dauerhaft, und der Median würde dann noch den alten Preis
+zeigen. Je Titel zählt das günstigste leicht erreichbare Land, in Euro zum
+heutigen Kurs. Unter Einstellungen lässt sich das Urteil auf den
+Allzeit-Bestpreis zurückstellen.
+
+Den Verlauf lädt das Tool mit dem Tiefstpreis. Für Titel, deren Tiefstpreis
+schon bekannt ist, holt es die Seite nur während eines Angebots nach,
+höchstens 40 je Abgleich und danach einmal im Monat.
 
 ## Selbstprüfung
 

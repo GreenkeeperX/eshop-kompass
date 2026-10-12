@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.10.1"
+VERSION = "0.11"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -177,6 +177,67 @@ def parse_low(page_html):
     return parse_amount(text)
 
 
+_HIST_RE = r"""<script[^>]*id=["']{}["'][^>]*>(.*?)</script>"""
+
+
+def parse_history(page_html):
+    """Digitaler Tagesverlauf einer Artikelseite: [(Datum, Preis), ...].
+
+    DekuDeals bettet ihn als JSON ein. Die Spalten nennt price_history_indices;
+    zählt nur, was digital und nicht physisch ist (der eShop).
+    """
+    page_html = page_html or ""
+
+    def block(sid):
+        m = re.search(_HIST_RE.format(sid), page_html, re.S)
+        if not m:
+            return None
+        try:
+            return json.loads(html.unescape(m.group(1)))
+        except ValueError:
+            return None
+    data, idx = block("price_history_data"), block("price_history_indices") or {}
+    if not isinstance(data, dict) or not isinstance(data.get("data"), list):
+        return []
+    cols = [i for i in idx.get("digital") or [] if i and i not in (idx.get("physical") or [])]
+    out = []
+    for row in data["data"]:
+        if not isinstance(row, list) or len(row) < 2 or not isinstance(row[0], str):
+            continue
+        col = cols[0] if cols else len(row) - 1
+        v = row[col] if col < len(row) else None
+        if isinstance(v, (int, float)) and v > 0:
+            out.append((row[0][:10], float(v)))
+    return out
+
+
+def sale_runs(series, since=None):
+    """Angebotsphasen eines Tagesverlaufs: [[Beginn, Tiefstwert], ...].
+
+    Normalpreis ist der häufigste Preis im Zeitraum, ein Angebot jede Strecke
+    mindestens 3 % darunter. Steigt der Normalpreis, zählt der häufigere.
+    """
+    series = [(d, v) for d, v in series if not since or d >= since]
+    if not series:
+        return []
+    counts = {}
+    for _, v in series:
+        counts[v] = counts.get(v, 0) + 1
+    regular = max(counts, key=lambda v: (counts[v], v))
+    runs, run = [], None
+    for d, v in series:
+        if v < regular * 0.97:
+            if run is None:
+                run = [d, v]
+            run[1] = min(run[1], v)
+        elif run is not None:
+            runs.append(run)
+            run = None
+    if run is not None:
+        runs.append(run)
+    return runs
+
+
 def wishlist_id(url_or_id):
     m = _WISHLIST_RE.search(url_or_id or "")
     if m:
@@ -240,7 +301,7 @@ def parse_item_page(page_html):
                 nsuids.append(n)
     low = parse_low(page_html)
     return {"title": title, "parent": parent, "parent_title": parent_title,
-            "nsuids": nsuids, "low": low}
+            "nsuids": nsuids, "low": low, "history": parse_history(page_html)}
 
 
 def fetch_item(slug, country, fetch=fetch):

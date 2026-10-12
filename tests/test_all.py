@@ -1,3 +1,4 @@
+import html
 import json
 import os
 import urllib.parse
@@ -89,6 +90,22 @@ class SourcesTest(unittest.TestCase):
         info = sources.parse_item_page(item)
         self.assertEqual((info["parent"], info["parent_title"], info["nsuids"]),
                          ("base-game", "Base Game", ["70010000033130"]))
+
+    def test_price_history_and_sale_runs(self):
+        rows = [["2024-05-%02d" % d, None, 13.31] for d in range(1, 11)]
+        rows[3][2] = rows[4][2] = 6.65                    # Angebot 4.–5. Mai
+        rows[8][2] = 7.99                                 # Angebot 9. Mai, läuft noch
+        data = json.dumps({"headers": ["Nintendo eShop"], "data": rows})
+        idx = json.dumps({"all": [0, 1, 2], "physical": [0, 1], "digital": [0, 1, 2]})
+        page = (f'<title>X | Deku Deals</title><script id="price_history_data" type="application/json">'
+                f'{html.escape(data)}</script><script id="price_history_indices">{idx}</script>')
+        series = sources.parse_history(page)
+        self.assertEqual((len(series), series[3]), (10, ("2024-05-04", 6.65)))
+        runs = sources.sale_runs(series)
+        self.assertEqual(runs, [["2024-05-04", 6.65], ["2024-05-09", 7.99]])
+        self.assertEqual(sources.sale_runs(series, since="2024-05-06"), [["2024-05-09", 7.99]])
+        self.assertEqual(sources.parse_item_page(page)["history"], series)
+        self.assertEqual(sources.parse_history("<html>ohne Verlauf</html>"), [])
 
     def test_low_prefers_digital(self):
         both = ("<h3>Price history</h3><table><tr><td>All time low</td></tr>"
@@ -432,8 +449,13 @@ class PlanTest(unittest.TestCase):
         self.assertTrue(cell["nolang"])
         self.assertIn("ungeprüfter Sprache", " ".join(by["BR"]["warnings"]))   # Amerika unbekannt
         self.assertEqual(by["NO"]["warnings"], [])         # Europa ist dasselbe Produkt
+        self.assertEqual(cell["nolang"], True)
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertEqual(cells["NO"]["lang"], "same")       # dasselbe Produkt: DE✓
         items["hades"]["langs"]["JP"] = "日本語, ドイツ語"
         self.assertEqual(len(self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]["items"]), 1)
+        cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
+        self.assertEqual(cells["JP"]["lang"], "de")         # in Japan bestätigt
         items["hades"]["langs"] = {"EU": "english, french", "JP": "日本語"}
         by = self.by(planner.plans(self.data, self.settings, now=NOW))
         self.assertEqual(len(by["JP"]["items"]), 1)        # auch in DE kein Deutsch: egal
@@ -491,6 +513,40 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(rows["spiritfarer"]["verdict"], "good")        # 4 % über Bestpreis
         self.assertEqual(rows["nidhogg-2"]["verdict"], "wait")
         self.assertEqual(rows["nidhogg-2"]["reason"], "war 1,50 € günstiger")
+
+    def test_typical_sale_price_decides(self):
+        # Spiritfarer: DE jetzt 6,24 €, Allzeit-Tief 4,99 €
+        lows = {"spiritfarer": {"low": 4.99, "sales": [["2025-03-01", 7.49], ["2025-07-01", 7.49],
+                                                       ["2025-11-01", 9.99]]}}
+        self.data["lows"] = {"DE": lows}
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
+        self.assertEqual((r["ref"], r["typical"]["eur"], r["typical"]["runs"]), ("typical", 7.49, 3))
+        self.assertEqual((r["verdict"], r["reason"]), ("buy", "unter typischem Angebotspreis"))
+        self.assertEqual(r["typ_diff"], -1.25)
+        # Das letzte Angebot war das tiefste: Es gilt statt des Medians, weil
+        # Nintendo Angebotspreise oft dauerhaft senkt
+        lows["spiritfarer"]["sales"][-1] = ["2026-05-01", 6.24]
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
+        self.assertEqual((r["typical"]["eur"], r["verdict"], r["reason"]),
+                         (6.24, "buy", "typischer Angebotspreis"))
+        # Typisch 4,99 €: 1,25 € (25 %) darüber ist ein gutes Angebot
+        lows["spiritfarer"]["sales"] = [["2025-03-01", 4.99], ["2026-05-01", 4.99]]
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
+        self.assertEqual((r["verdict"], r["reason"]), ("good", "1,25 € (25 %) über typischem Angebotspreis"))
+        # Angebote älter als zwei Jahre und einzelne Angebote zählen nicht: dann der Bestpreis
+        lows["spiritfarer"]["sales"] = [["2023-01-01", 2.0], ["2026-05-01", 7.49]]
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
+        self.assertEqual((r["typical"], r["ref"], r["verdict"]), (None, "best", "good"))
+        # Einstellung „Bestpreis“: das alte Urteil, der typische Preis steht nur daneben
+        lows["spiritfarer"]["sales"] = [["2025-03-01", 7.49], ["2025-07-01", 7.49]]
+        self.settings["verdict_ref"] = "best"
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
+        self.assertEqual((r["ref"], r["verdict"], r["typical"]["eur"]), ("best", "good", 7.49))
+        # Den Bestpreis zu erreichen bleibt immer ein Kauf
+        self.settings["verdict_ref"] = "typical"
+        lows["spiritfarer"]["low"] = 6.24
+        r = {x["slug"]: x for x in planner.radar(self.data, self.settings, now=NOW)}["spiritfarer"]
+        self.assertEqual((r["verdict"], r["reason"]), ("buy", "Bestpreis"))
 
     def test_estimated_prices_are_flagged(self):
         # Japan: Guthaben ohne eingetragene Karte, also Kurs plus Aufschlag geschätzt
@@ -741,6 +797,8 @@ class PlanTest(unittest.TestCase):
         m = planner.matrix(self.data, self.settings, now=NOW)
         row = {r["slug"]: r for r in m["rows"]}
         self.assertEqual(row["hades"]["best"], "BR")
+        self.assertEqual(row["hades"]["champ"]["code"], "BR")         # Bestpreis-Land
+        self.assertIsNone(row["good-job"]["best"])                    # nirgends im Angebot
         self.assertTrue(row["good-job"]["cells"]["NO"]["na"])
         self.assertNotIn("JP", row["good-job"]["cells"])
 
@@ -1062,6 +1120,28 @@ class SyncTest(unittest.TestCase):
         sync._track(data, hist, "BR", table, "2026-10-12T00:00:00+00:00")
         self.assertEqual([p for _, p in hist["BR"]["a"]], [4.0, 6.0])
         self.assertEqual(data["lows"]["BR"]["a"]["low"], 4.0)
+
+
+    def test_sale_history_is_loaded_politely(self):
+        settings = store.load_settings()
+        data = {"items": {"a": {"active": True}, "b": {"active": True}},
+                "prices": {"DE": {"a": {"status": "onsale", "regular": 20, "discount": 10},
+                                  "b": {"status": "onsale", "regular": 20}}},
+                "lows": {"DE": {"a": {"low": 9.0, "checked": 1}, "b": {"low": 9.0, "checked": 1}}}}
+        series = [("2025-01-0%d" % d, v) for d, v in ((1, 20), (2, 10), (3, 20), (4, 20), (5, 12))]
+        got, orig = [], sources.fetch_item
+        sources.fetch_item = lambda slug, country, fetch=None: (
+            got.append(slug) or {"low": 9.0, "history": series})
+        try:
+            sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200)
+            # nur der Titel im Angebot: Tiefstpreis bekannt, Verlauf fehlte
+            self.assertEqual(got, ["a"])
+            e = data["lows"]["DE"]["a"]
+            self.assertEqual((e["sales"], e["sales_at"]), ([["2025-01-02", 10], ["2025-01-05", 12]], 1736467200))
+            sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 86400)
+            self.assertEqual(got, ["a"])                       # frisch: kein zweiter Abruf
+        finally:
+            sources.fetch_item = orig
 
 
 class GgdealsBlockTest(unittest.TestCase):
