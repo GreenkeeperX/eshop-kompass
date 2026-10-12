@@ -1565,6 +1565,93 @@ class PurchaseLogTest(unittest.TestCase):
                                    + (p.get("balance_lost") or 0))
 
 
+GAME_PAGE = """<title>Vampire Survivors | Deku Deals</title><h2>Details</h2>
+<h3><a href="#dlcCollapse">DLC</a></h3><div id="dlcCollapse" class="collapse">
+<div class="cell"><a href="/items/vs-foscari"><img alt="Tides of the Foscari"></a>
+<a href="/items/vs-foscari"><h6 class="name">Tides of the Foscari</h6></a><span>€1,99</span> <span>-20%</span></div>
+<div class="cell"><a href="/items/vs-emergency-meeting?country=de"><h6>Emergency Meeting</h6> 1,99 €</a></div>
+<div class="cell"><a href="/items/vampire-survivors-nintendo-switch-2-edition-upgrade-pack">
+<h6>Nintendo Switch 2 Edition Upgrade Pack</h6></a></div></div>
+<h3>Included In</h3><a href="/items/vampire-survivors-bundle">Vampire Survivors Bundle</a>
+<h3>Other users also liked...</h3><a href="/items/hades">Hades</a>"""
+
+
+class CollectionTest(unittest.TestCase):
+    def test_related_sections(self):
+        r = sources.parse_related(GAME_PAGE)
+        self.assertEqual(r["dlc"], [("vs-foscari", "Tides of the Foscari"),
+                                    ("vs-emergency-meeting", "Emergency Meeting"),
+                                    ("vampire-survivors-nintendo-switch-2-edition-upgrade-pack",
+                                     "Nintendo Switch 2 Edition Upgrade Pack")])
+        self.assertEqual(r["included_in"], [("vampire-survivors-bundle", "Vampire Survivors Bundle")])
+        self.assertEqual(r["contains"], [])
+        # "Other users also liked" gehört nicht dazu, eine Seite ohne Abschnitte liefert nichts
+        self.assertNotIn("hades", [x for x, _ in r["dlc"]])
+        self.assertEqual(sources.parse_related("<h3>Details</h3><a href='/items/x'>X</a>"),
+                         {"dlc": [], "included_in": [], "contains": []})
+        bundle = '<h3>Contains</h3><a href="/items/mario-kart-8-deluxe">Mario Kart 8 Deluxe $59.99 $41.97 -30%</a>'
+        self.assertEqual(sources.parse_related(bundle)["contains"], [("mario-kart-8-deluxe", "Mario Kart 8 Deluxe")])
+
+    def test_sync_related_is_gentle(self):
+        data, settings = sample()
+        data["owned"] = ["vampire-survivors", "vs-foscari"]
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            if "/items/vampire-survivors?" in url:
+                return GAME_PAGE
+            if "/items/vs-foscari?" in url:
+                return '<title>Foscari | Deku Deals</title><h4>DLC for <a href="/items/vampire-survivors">VS</a></h4>'
+            return "<title>Spiel | Deku Deals</title>"
+        t0 = NOW.timestamp()
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0)
+        # Sammlung zuerst, dann die Wishlist; je Seite einmal
+        self.assertEqual(len(calls), 6)
+        self.assertIn("/items/vampire-survivors?", calls[0])
+        self.assertEqual(len(data["rel"]["vampire-survivors"]["dlc"]), 3)
+        self.assertEqual(data["rel"]["vs-foscari"]["parent"], "vampire-survivors")
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 86400)
+        self.assertEqual(len(calls), 6)                     # monatlich, nicht täglich
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 31 * 86400)
+        self.assertEqual(len(calls), 12)
+        # Höchstens REL_PER_SYNC Seiten, eine Sperre beendet das Lesen
+        calls.clear()
+        data["rel"] = {}
+        data["owned"] = [f"game-{i}" for i in range(60)]
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0)
+        self.assertEqual(len(calls), sync.REL_PER_SYNC)
+        calls.clear()
+
+        def deny(url, ua=None):
+            calls.append(url)
+            raise sources.FetchError(url, 429)
+        sync.sync_related(data, settings, deny, lambda s: None, now=t0)
+        self.assertEqual(len(calls), 1)
+
+    def test_collection_view(self):
+        data, settings = sample()
+        data["owned"] = ["vampire-survivors", "vs-emergency-meeting", "hades", "unread-game"]
+        data["rel"] = {
+            "vampire-survivors": {"checked": 1, "title": "Vampire Survivors", "parent": None,
+                                  "dlc": [list(x) for x in sources.parse_related(GAME_PAGE)["dlc"]]},
+            "hades": {"checked": 1, "title": "Hades", "parent": None, "dlc": []},
+            "vs-emergency-meeting": {"checked": 1, "title": "EM", "parent": "vampire-survivors", "dlc": []}}
+        c = planner.collection(data, settings, now=NOW)
+        self.assertEqual((c["owned"], c["unread"], c["no_dlc"]), (4, 1, 1))
+        g, = c["games"]
+        self.assertEqual((g["title"], g["have"], g["missing"]), ("Vampire Survivors", 1, 2))
+        by = {d["slug"]: d for d in g["dlc"]}
+        self.assertTrue(by["vs-emergency-meeting"]["owned"])
+        # Foscari steht auf der Wishlist: Urteil und Einkaufspreis wie im Radar
+        fos = by["vs-foscari"]
+        row = next(r for r in planner.radar(data, settings, now=NOW) if r["slug"] == "vs-foscari")
+        self.assertEqual((fos["wish"], fos["verdict"], fos["code"]), (True, row["verdict"], row["shown"]["code"]))
+        self.assertIsNotNone(fos["eur"])
+        up = by["vampire-survivors-nintendo-switch-2-edition-upgrade-pack"]
+        self.assertEqual((up["wish"], up["owned"], up["upgrade"]), (False, False, True))
+
+
 class SelfCheckTest(unittest.TestCase):
     def test_self_check_flags_jumps_drops_and_odd_cards(self):
         data, settings = sample()

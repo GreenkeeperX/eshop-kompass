@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.20"
+VERSION = "0.21"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -321,6 +321,62 @@ def fetch_wishlist(url_or_id, fetch=fetch, max_pages=30, pause=None, kind="wishl
     return slugs
 
 
+_HEADING_RE = re.compile(r"<h([1-6])\b[^>]*>(.*?)</h\1\s*>", re.S | re.I)
+_ANCHOR_RE = re.compile(r"<a\b([^>]*)>(.*?)</a\s*>", re.S | re.I)
+_ALT_RE = re.compile(r"""\b(?:alt|title)\s*=\s*["']([^"']+)["']""", re.I)
+# Preisangaben und Rabatte, die in einer Kachel neben dem Namen stehen
+_PRICE_BITS_RE = re.compile(
+    r"(?:[$€£¥]|R\$|MX\$|CA\$|A\$|NZ\$|kr|zł|CHF)\s?\d[\d.,]*|\d[\d.,]*\s?(?:€|zł|kr|CHF)|-?\d+\s?%")
+# Abschnitte einer Artikelseite, die auf verwandte Artikel zeigen
+RELATED = {"dlc": ("dlc", "add-on", "add-ons"), "included_in": ("included in",), "contains": ("contains",)}
+
+
+def _link_title(attrs, inner):
+    text = re.sub(r"\s+", " ", html.unescape(_TAG_RE.sub(" ", _SCRIPT_RE.sub(" ", inner)))).strip()
+    text = re.sub(r"\s+", " ", _PRICE_BITS_RE.sub(" ", text)).strip(" ·|-")
+    if not text:
+        m = _ALT_RE.search(inner) or _ALT_RE.search(attrs)
+        text = html.unescape(m.group(1)).strip() if m else ""
+    return text
+
+
+def parse_related(page_html):
+    """Verwandte Artikel einer Artikelseite: DLC, enthalten in (Pakete), enthält.
+
+    DekuDeals setzt über jeden Abschnitt eine Überschrift ("DLC", "Included In",
+    "Contains"). Ein Abschnitt reicht bis zur nächsten Überschrift gleicher oder
+    höherer Ebene, kleinere Überschriften in den Kacheln gehören dazu. Liefert
+    {"dlc": [(Kürzel, Name)], "included_in": [...], "contains": [...]}, in der
+    Reihenfolge der Seite, jedes Kürzel einmal."""
+    page_html = _norm(page_html)
+    heads = list(_HEADING_RE.finditer(page_html))
+    out = {k: [] for k in RELATED}
+    for n, h in enumerate(heads):
+        name = re.sub(r"\s+", " ", html.unescape(_TAG_RE.sub(" ", h.group(2)))).strip().lower()
+        name = re.sub(r"\s*\(?\d+\)?$", "", name)          # "DLC (12)"
+        key = next((k for k, names in RELATED.items() if name in names), None)
+        if not key:
+            continue
+        level = int(h.group(1))
+        end = len(page_html)
+        for later in heads[n + 1:]:
+            if int(later.group(1)) <= level:
+                end = later.start()
+                break
+        seen = {}
+        for a in _ANCHOR_RE.finditer(page_html, h.end(), end):
+            m = _ITEM_LINK_RE.match("<a " + a.group(1) + ">")
+            if not m:
+                continue
+            slug = m.group(1)
+            title = _link_title(a.group(1), a.group(2))
+            if slug not in seen or (not seen[slug] and title):
+                seen[slug] = title
+        out[key] += [(s, t or s.replace("-", " ")) for s, t in seen.items()
+                     if s not in {x for x, _ in out[key]}]
+    return out
+
+
 def parse_item_page(page_html):
     """Titel, Hauptspiel (bei DLC) und Nintendo-IDs aus einer Artikelseite."""
     page_html = _norm(page_html)
@@ -340,7 +396,7 @@ def parse_item_page(page_html):
     low = parse_low(page_html)
     return {"title": title, "parent": parent, "parent_title": parent_title,
             "nsuids": nsuids, "low": low, "lows": parse_lows(page_html),
-            "history": parse_history(page_html)}
+            "history": parse_history(page_html), "related": parse_related(page_html)}
 
 
 def fetch_item(slug, country, fetch=fetch):
