@@ -63,6 +63,8 @@ Reihenfolge und Begründung:
 - [x] 3.4 Ein Weg zur Switch 2 im Kaufplan (0.24): Hast du das Spiel, fällt die Edition
   weg und das Upgrade-Paket zählt. Ohne das Spiel bleibt der günstigere Weg, Edition oder
   Spiel plus Paket, nie beides.
+- [x] Kartenpreise (0.25): zuerst die Karten der Länder im Kaufplan, mit den übrigen
+  Abrufen die am längsten nicht gelesenen.
 - [ ] Danach: Füllartikel in den Kaufplan, wenn eine größere Karte mit Zusatztitel
   günstiger ist als ein Rest.
 

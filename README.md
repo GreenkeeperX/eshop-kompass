@@ -255,8 +255,10 @@ Sicherung und Protokoll.
   acht Käufe zwischen 5,57 und 93,03 € auf den Cent. Bei mehreren Karten in
   einer Bestellung fällt der feste Teil nur einmal an. Von
   Hand eingetragene Preise bleiben, wie du sie einträgst. Sperrt der Shop nach
-  einigen Abrufen, kommen beim nächsten Mal zuerst die Links dran, die am
-  längsten nicht gelesen wurden.
+  einigen Abrufen (bei Eneba nach etwa elf), kommen zuerst die Karten der
+  Länder dran, in denen der Kaufplan gerade kauft, danach die Links, die am
+  längsten nicht gelesen wurden. So bleiben die Preise frisch, die gerade
+  zählen, und kein Link bleibt dauerhaft liegen.
 - Glaubhaft: Ein gelesener Kartenpreis zählt nur
   zwischen 70 und 160 % des Nennwerts zum Mittelkurs. Alles andere ist fast
   sicher ein Lesefehler, etwa ein Gebührenhinweis statt des Preises. Solche
