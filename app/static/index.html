@@ -165,9 +165,12 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .tools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .tools input[type=search]{flex:1;min-width:180px;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .matrix{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
-.matrix td,.matrix th{padding:3px 8px}
+.matrix td,.matrix th{padding:3px 6px}
+.matrix.scroll{overflow:auto;max-height:calc(100vh - 150px)}
+.matrix th{z-index:2}.matrix th:first-child{z-index:3}.matrix td:first-child{z-index:1}
+.matrix td:not(:first-child){white-space:nowrap}
 .matrix th{position:sticky;top:0;background:var(--card)}
-.matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);max-width:280px;white-space:normal}
+.matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);min-width:150px;max-width:210px;white-space:normal;box-shadow:1px 0 0 var(--line)}
 .mlegend{margin:0 0 10px;font-size:12px;color:var(--muted)}.mlegend summary{cursor:pointer;font-weight:600;color:var(--ink)}.mlegend .lg{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:4px 18px;margin-top:6px}.mlegend .lg>div{line-height:1.6}.mlegend .lg>div>span,.mlegend .lg>div>small{margin-right:6px}.mlegend .sw{display:inline-block;padding:1px 6px;border-radius:4px;font-weight:600;color:var(--ink)}.mlegend .sw.best{background:var(--best)}.mlegend .sw.champ{box-shadow:inset 0 0 0 2px var(--gold)}.mlegend .sw0{font-weight:600;color:var(--ink);font-size:12px}.matrix small.lo{display:block;color:var(--muted)}.matrix td.best{background:var(--best);font-weight:600}
 .matrix td.na{color:var(--muted)}
 .matrix td small{display:block;color:var(--muted);font-size:10.5px;line-height:1.2}
@@ -359,10 +362,21 @@ function compose(code, x){
   const net = x.net ?? x.local;
   parts.push(`eShop ${money(net, cur)}` + (p.tax ? ` + ${String(p.tax).replace(".", ",")} % Steuer = ${money(x.local, cur)}` : ""));
   if(p.via === "eur") return parts[0] + ", exakter Betrag";
+  if(cur === "EUR" && x.alone && x.alone.cards.length){
+    const a = x.alone, cards = a.cards.map(c => `${c.count}× ${eur(c.face)}`).join(" + ");
+    return parts.concat(`Guthaben passend gekauft: ${cards} für ${eur(a.eur)}` + (a.rest ? `, ${eur(a.rest)} bleiben als Rest auf dem Konto` : "")).join(" · ") + ` · anteilig ${eur(x.eur)}`;
+  }
   if(cur === "EUR" && p.card) return parts.concat(`Guthabenkarte ${eur(p.card.face)} für ${eur(p.card.cost)}${cardSrc(p.card)}, ein Rest bleibt auf dem Konto`).join(" · ") + ` · ergibt ${eur(x.eur)}`;
   parts.push(`Mittelkurs 1 € = ${p.rate.toLocaleString("de-DE", {maximumFractionDigits: p.rate > 20 ? 1 : 3})} ${cur}` +
     (S.state.fx_updated ? ` (Stand ${fxDate()})` : ""));
   if(p.via === "card") parts.push(`Kartenzahlung plus ${pctTxt(p.fee)} Fremdwährungsgebühr, die Bank rechnet mit eigenem Kurs`);
+  else if(x.alone && x.alone.cards.length){
+    // Guthaben passend zu diesem Titel gekauft; der Rest bleibt auf dem Konto und zählt nicht
+    const a = x.alone, cards = a.cards.map(c => `${c.count}× ${money(c.face, cur)}`).join(" + ");
+    return parts.concat(`Guthaben passend gekauft: ${cards} für ${eur(a.eur)}` +
+      (a.rest ? `, davon ${money(x.local, cur)} für den Titel, ${money(a.rest, cur)} bleiben als Rest` : "")).join(" · ") +
+      ` · anteilig ${x.est ? "ungefähr " : ""}${eur(x.eur)}`;
+  }
   else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}${cardSrc(p.card)}, das sind ${p.vs_mid > 0 ? "+" : ""}${pctTxt(p.vs_mid)} zum Kurs`);
   else if(p.at_rate) parts.push(`Guthaben in festen Werten zum Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}`);
   else parts.push(`Guthaben geschätzt mit Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}, weil kein Kartenpreis bekannt ist`);
@@ -749,12 +763,15 @@ function planCard(p){
   let save = "", saveDe = "";
   if(has && p.opt_gap !== null && p.opt_gap !== undefined){
     const at = p.opt_gap < 0.005;
+    // Unter dem Optimum geht nur mit Angeboten, die nicht zählen (Sprache ungeprüft, ohne Karte)
+    const under = (p.games_cost ?? p.cost) < p.optimum - 0.5;
     const near = p.opt_pct <= 15 || p.opt_gap <= 2 * p.items.length + 0.005;
-    save = `<span class="save ${at ? "" : near ? "near" : "low"}" title="Optimum ${eur(p.optimum)}: die Summe der Bestpreise aller Länder für diese ${p.items.length} Titel, also was sie gekostet hätten, wenn jeder zu seinem günstigsten Zeitpunkt im günstigsten Land gekauft worden wäre (zum heutigen Kurs). Das Paket kostet hier ${eur(p.games_cost ?? p.cost)} ohne Rest. ${p.opt_at} von ${p.opt_known} Titeln liegen einzeln am Bestpreis.">${at ? "Optimum" : "+" + eur(p.opt_gap) + `<small>${p.opt_pct} %</small>`}<small>Summe Bestpreise ${eur(p.optimum)}</small></span>`;
+    save = `<span class="save ${under ? "near" : at ? "" : near ? "near" : "low"}" title="Optimum ${eur(p.optimum)}: die Summe der Bestpreise aller Länder für diese ${p.items.length} Titel, also was sie gekostet hätten, wenn jeder zu seinem günstigsten Zeitpunkt im günstigsten Land gekauft worden wäre (zum heutigen Kurs). Das Paket kostet hier ${eur(p.games_cost ?? p.cost)} ohne Rest.${under ? " Darunter liegt es nur mit Angeboten, die nicht zählen (Sprache ungeprüft oder ohne Guthabenkarte): erst prüfen." : ""} ${p.opt_at} von ${p.opt_known} Titeln liegen einzeln am Bestpreis.">${under ? "−" + eur(p.optimum - (p.games_cost ?? p.cost)) + `<small>unter Optimum</small>` : at ? "Optimum" : "+" + eur(p.opt_gap) + `<small>${p.opt_pct} %</small>`}<small>Summe Bestpreise ${eur(p.optimum)}</small></span>`;
   }
   if(has && p.saving !== null){
     const sign = p.saving >= 0 ? "−" : "+";
-    saveDe = `<span class="${p.is_ref ? "" : p.saving < 0 ? "bad" : (p.worth ? "ok" : "")}" title="${p.is_ref ? "Angebote in Deutschland gegenüber dem Normalpreis" : p.worth ? "Ersparnis gegenüber Deutschland jetzt, ohne Rest" : `Ersparnis gegenüber Deutschland jetzt, ohne Rest. Unter deiner Schwelle von ${eur(p.threshold)} für die Stufe ${p.tier_name}`}">${sign}${eur(Math.abs(p.saving))} ${p.is_ref ? "gg. normal" : "gg. DE"}</span>`;
+    // Farbe nur nach dem Vorzeichen; ob sich der Wechsel lohnt, sagt der eigene Hinweis „unter Schwelle“
+    saveDe = `<span class="${p.is_ref ? "" : p.saving < -0.005 ? "bad" : p.saving > 0.005 ? "ok" : ""}" title="${p.is_ref ? "Angebote in Deutschland gegenüber dem Normalpreis" : "Ersparnis gegenüber Deutschland jetzt, ohne Rest"}">${sign}${eur(Math.abs(p.saving))} ${p.is_ref ? "gg. normal" : "gg. DE"}</span>`;
   }
   let h = `<article class="pc ${p.current ? "cur" : ""}"><header><h2>${esc(p.name)}</h2><span>${save}${p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</span></header><p class="sub">${esc(sub)}</p>`;
 
@@ -765,7 +782,7 @@ function planCard(p){
     if(saveDe) parts.push(saveDe);
     if(p.cards.length) parts.push(cardsHtml(p));
     if(!p.is_ref) parts.push(restHtml(p));
-    if(!p.worth && p.saving >= 0) parts.push(`<small title="Für Länder der Stufe ${esc(p.tier_name)} lohnt der Wechsel bei dir erst ab ${eur(p.threshold)} Ersparnis">unter Schwelle ${eur(p.threshold)}</small>`);
+    if(!p.worth && p.saving >= 0) parts.push(`<span class="chip" title="Für Länder der Stufe ${esc(p.tier_name)} lohnt der Wechsel bei dir erst ab ${eur(p.threshold)} Ersparnis gegenüber Deutschland">Wechsel lohnt erst ab ${eur(p.threshold)}</span>`);
     const stars = p.items.filter(i => i.mark === "best").length;
     if(stars) parts.push(`<small title="${stars} von ${p.items.length} Titeln zum Bestpreis">${stars}× Bestpreis</small>`);
     h += `<p class="line">${parts.join("<i>·</i>")}</p>`;
@@ -774,7 +791,7 @@ function planCard(p){
     p.items.map(i => {
       const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "");
       return `<tr><td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}"><span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}</span></label></td>
-      <td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}${pctTag(i, cur)}</td><td class="c-t">${i.champ === null ? "–" : num(i.champ)}${gapTag(i)}</td>
+      <td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}${pctTag(i, cur)}</td><td class="c-t" title="${i.champ === null ? "" : `Bestpreis aller zählenden Länder: ${eur(i.champ)} in ${esc(country(i.champ_code).name)}`}">${i.champ === null ? "–" : num(i.champ) + ` <small style="display:inline">${i.champ_code}</small>`}${gapTag(i)}</td>
       <td>${endCell(i.end)}</td><td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als in Deutschland"` : ""}>${ax(i)}${buyLink(p.code, i, num(i.eur))}</td><td>${num(i.ref)}</td></tr>`;
     }).join("") + `</tbody></table>`;
   } else {
@@ -900,8 +917,10 @@ function viewMatrix(){
   const mx = S.state.matrix, q = S.filter.toLowerCase();
   const rows = mx.rows.filter(r => (!q || r.title.toLowerCase().includes(q)) &&
     (!S.onlySale || Object.values(r.cells).some(c => c.sale)));
+  // Mit „nur Angebote“ fallen auch Länder ohne ein Angebot in den gezeigten Zeilen weg
+  const cols = S.onlySale ? mx.cols.filter(c => rows.some(r => r.cells[c.code] && r.cells[c.code].sale)) : mx.cols;
   let h = `<div class="tools"><input type="search" id="q" placeholder="Titel filtern" value="${esc(S.filter)}">
-    <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label></div>
+    <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote (und Länder mit Angebot)</label></div>
     <details class="mlegend" ${S.mLegend === false ? "" : "open"}><summary>Legende</summary><div class="lg">
       <div><span class="sw best">9,99 €</span>Grün hinterlegt: günstigstes Angebot jetzt, über alle zählenden Länder.</div>
       <div><span class="sw champ">9,99 €</span>Gold umrandet: In diesem Land gab es den Bestpreis aller Länder (Spalte „Bestpreis“).</div>
@@ -915,15 +934,15 @@ function viewMatrix(){
       <div><span class="hint">ohne Karte</span>Guthaben dort nicht zu bekommen, zählt nicht. <span class="na">kein DE</span> keine deutsche Fassung, <span class="na">–</span> nicht kaufbar.</div>
       <div>Alle Europreise mit Steuer, Kurs und deinem Zahlweg; der Tooltip einer Zelle zeigt die Rechnung. ★ vor dem Titel legt ihn in den gemeinsamen Korb.</div>
     </div></details>
-    <div class="matrix scroll"><table><thead><tr><th>Titel</th><th title="Niedrigster Preis, den es je gab, über alle aktiven Länder, zum heutigen Kurs. Das Land ist in der Zeile gold umrandet. Darunter der typische Angebotspreis.">Bestpreis</th>${mx.cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
+    <div class="matrix scroll"><table><thead><tr><th>Titel</th><th title="Niedrigster Preis, den es je gab, über alle aktiven Länder, zum heutigen Kurs. Das Land ist in der Zeile gold umrandet. Darunter der typische Angebotspreis.">Bestpreis</th>${cols.map(c => `<th title="${esc(c.name)}">${c.code}</th>`).join("")}</tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><button class="star ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">★</button><a class="tl" href="${deku(r.slug)}" target="_blank" rel="noopener">${esc(r.title)}</a><button class="mini" data-act="verlauf" data-s="${esc(r.slug)}" title="Preisverlauf aus der eigenen Aufzeichnung">Verlauf</button>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     `<td class="bp">${r.champ ? `${ax(r.champ)}<b>${eur(r.champ.eur)}</b> <small style="display:inline">${r.champ.code}</small>` : `<span class="na">–</span>`}${r.typical ? `<small title="Typischer Angebotspreis in ${esc(country(r.typical.code).name)}, aus ${r.typical.runs} Angeboten der letzten zwei Jahre">typisch ${ax(r.typical)}${eur(r.typical.eur)}</small>` : ""}</td>` +
-    mx.cols.map(c => {
+    cols.map(c => {
       const x = r.cells[c.code];
       if(!x) return `<td class="na"></td>`;
       if(x.na) return `<td class="na" ${x.nolang ? `title="Hier gibt es keine deutsche Fassung"` : ""}>${x.nolang ? "kein DE" : "–"}</td>`;
       const champ = r.champ && r.champ.code === c.code;
-      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.nocard ? `<small class="hint" title="Für dieses Land ist keine Guthabenkarte mit Preis eingetragen oder gelesen: Guthaben ist dort nicht zu bekommen, das Angebot zählt nicht für Bestpreis, Urteil und Kaufplan">ohne Karte</small> ` : ""}${x.lang === "unknown" ? `<button class="link hint" style="font-size:11px" data-act="gosprachen" title="Unter Einstellungen einmal bestätigen">Sprache?</button> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}<small class="lo" title="${x.low_eur === null || x.low_eur === undefined ? "Tiefstpreis dieses Landes noch nicht geladen" : `Tiefstpreis dieses Landes ${money(x.low, c.currency)} netto, mit Steuer und Zahlweg ${eur(x.low_eur)} zum heutigen Kurs`}">Tief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}${x.sale && x.end ? ` · ${endCell(x.end, "bis ")}` : ""}</small></td>`;
+      return `<td class="${r.best === c.code ? "best " : ""}${champ ? "champ" : ""}" title="${esc(compose(c.code, x))}${champ ? " · Hier gab es den Bestpreis" : ""}${x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht für Bestpreis, Urteil und Kaufplan" : ""}">${ax(x)}${x.nocard ? `<small class="hint" title="Für dieses Land ist keine Guthabenkarte mit Preis eingetragen oder gelesen: Guthaben ist dort nicht zu bekommen, das Angebot zählt nicht für Bestpreis, Urteil und Kaufplan">ohne Karte</small> ` : ""}${x.lang === "unknown" ? `<button class="link hint" style="font-size:11px" data-act="gosprachen" title="Unter Einstellungen einmal bestätigen">Sprache?</button> ` : ""}${priceLink(r.slug, c.code, eur(x.eur), x, c.currency)}${pctTag(x, c.currency)}${langTag(x, false)}<small class="lo" title="${x.low_eur === null || x.low_eur === undefined ? "Tiefstpreis dieses Landes noch nicht geladen" : `Tiefstpreis dieses Landes ${money(x.low, c.currency)} netto, mit Steuer und Zahlweg ${eur(x.low_eur)} zum heutigen Kurs`}">Tief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}</small>${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}</td>`;
     }).join("") + `</tr>`).join("");
   return h + `</tbody></table></div>`;
 }
@@ -1096,15 +1115,23 @@ function settingsBody(form){
 /* Sprachen von Hand bestätigen: einmal je Titel und Region */
 function langSection(){
   const todo = S.state.lang_todo || [];
-  const open = todo.filter(t => !t.manual), done = todo.filter(t => t.manual);
-  let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
-    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus Japan oder Amerika nur, wenn sie Deutsch enthält. Wo Nintendo keine Angabe liefert, steht hier der Titel: im Store nachsehen und einmal bestätigen. Deine Angabe gilt dauerhaft und geht der von Nintendo vor.</p>`;
-  if(!todo.length) return h + `<p class="hint">Alles geprüft.</p>`;
+  const open = todo.filter(t => !t.manual && t.state === null), done = todo.filter(t => t.manual);
+  const auto = todo.filter(t => !t.manual && t.state !== null);
+  const need = open.filter(t => t.matters), rest = open.filter(t => !t.matters);
+  let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${need.length ? ` <span class="chip w">${need.length} zu prüfen</span>` : ""}${auto.length ? ` <span class="chip">${auto.length} automatisch</span>` : ""}</h3>
+    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus Japan oder Amerika nur, wenn sie Deutsch enthält. Amerika liest das Tool selbst von nintendo.com. Für Japan gibt es keine abrufbare Quelle (der Store zeigt Sprachen nur per JavaScript, die Suche sperrt Programme), deshalb steht der Titel hier: im Store nachsehen und einmal bestätigen. Prüfen lohnt nur, wo die Fassung billiger wäre als der Bestpreis der zählenden Länder; die übrigen ändern nichts. Deine Angabe gilt dauerhaft und geht der von Nintendo vor.</p>`;
+  if(!todo.length) return h + `<p class="hint">Keine Titel in Regionen außerhalb Europas.</p>`;
   const row = t => `<tr><td>${esc(t.title)}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
+    <td><small>${t.here ? `dort ${eur(t.here.eur)} (${t.here.code})` : "dort nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small></td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
-    <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
+    <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `Nintendo sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
+      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline">von Nintendo geprüft</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
-  return h + `<div class="scroll"><table><thead><tr><th>Titel</th><th>Region</th><th></th><th>Deutsch?</th></tr></thead><tbody>${open.concat(done).map(row).join("")}</tbody></table></div>`;
+  const head = `<thead><tr><th>Titel</th><th>Region</th><th title="Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder">Preis</th><th></th><th>Deutsch?</th></tr></thead>`;
+  h += need.length ? `<div class="scroll"><table>${head}<tbody>${need.map(row).join("")}</tbody></table></div>` : `<p class="hint">Keine Prüfung nötig: Nirgends wäre eine ungeprüfte Fassung billiger als der Bestpreis.</p>`;
+  if(rest.length || done.length || auto.length)
+    h += `<details><summary class="hint">${auto.length} von Nintendo geprüft, ${done.length} von dir gesetzt, ${rest.length} ungeprüft ohne Folgen</summary><div class="scroll"><table>${head}<tbody>${done.concat(auto, rest).map(row).join("")}</tbody></table></div></details>`;
+  return h;
 }
 async function saveSettings(form, rerender){
   const active = () => JSON.stringify(Object.entries(S.state.settings.countries).filter(e => e[1].enabled).map(e => e[0]));

@@ -61,11 +61,13 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
   für die Titel im Paket (Titel ohne bekannten Bestpreis zählen mit dem
   Preis hier). Abstand ist, was das Paket hier ohne Rest kostet, minus
   dieses Optimum, in Euro und Prozent (grün "Optimum", gold bis 15 % oder
-  2 € je Titel darüber). Die Ersparnis
-  gegenüber Deutschland steht in der Zeile darunter und entscheidet weiter
-  über die Wechselschwelle. Ein Rest ist kein Verlust: Ersparnis und
-  Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €"); ab
-  5 € Rest warnt das Paket.
+  2 € je Titel darüber). Gold "unter Optimum" heißt: Das Paket ist nur mit
+  Angeboten so billig, die nicht zählen (Sprache ungeprüft, ohne Karte).
+  Die Ersparnis gegenüber Deutschland steht in der Zeile darunter, grün wenn
+  positiv, rot wenn negativ. Ob sich der Wechsel lohnt, sagt der eigene
+  Hinweis "Wechsel lohnt erst ab X €". Ein Rest ist kein Verlust: Ersparnis
+  und Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €");
+  ab 5 € Rest warnt das Paket.
 - Pakete, gemeinsamer Korb: "Korb für alle" öffnet eine Vergleichstabelle,
   Titel als Zeilen, Länder als Spalten. Das günstigste Land ist hervorgehoben,
   aber nur unter Ländern, die den ganzen Korb anbieten.
@@ -106,8 +108,21 @@ der niedrigste Preis, den es je gab, zum heutigen Kurs.
 Im Preisvergleich steht der Bestpreis je Titel in einer eigenen Spalte, das
 Land, in dem es ihn gab, ist gold umrandet. Jede Zelle zeigt darunter den
 Tiefstpreis des Landes in Euro ("Tief ?" heißt: noch nicht geladen). Eine
-aufklappbare Legende über der Tabelle erklärt alle Farben und Marken. Grün hinterlegt ist das günstigste
-Angebot jetzt; ein günstiger Normalpreis ohne Angebot wird nicht hervorgehoben.
+aufklappbare Legende über der Tabelle erklärt alle Farben und Marken. Grün
+hinterlegt ist das günstigste Angebot jetzt; ein günstiger Normalpreis ohne
+Angebot wird nicht hervorgehoben. Die Tabelle scrollt in einem eigenen
+Fenster, Kopfzeile und Titelspalte bleiben stehen. "nur Angebote" blendet
+auch Länder ohne Angebot aus.
+
+Guthaben passend zum Einkauf: Jeder Europreis eines Guthabenlandes rechnet
+mit den Karten, die du für genau diesen Betrag kaufen würdest (die
+günstigste Kombination, die ihn deckt), anteilig. Für ein Spiel zu 60 MXN
+zählt also die 100er Karte, nicht der bessere Kurs einer 1000er. Im Paket
+teilen sich die Titel die Karten. Der Tooltip nennt die Karten und den Rest.
+
+Fehlt auf der DekuDeals-Seite ein digitaler Tiefstpreis (manchmal steht
+dort nur der eines Händlers), gilt der niedrigste Preis aus dem digitalen
+Verlauf. Das Protokoll zählt Seiten, die gar keinen nennen.
 
 Der Landespreis verlinkt den Verlauf bei DekuDeals, der Europreis die
 eShop-Seite des Landes.
@@ -174,9 +189,14 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
 - Sprachen: Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne
   sie weg. Europa gilt als dasselbe Produkt. Japan und Amerika prüft das Tool
   je Titel einmal bei Nintendo (store-jp.nintendo.com, nintendo.com über
-  ec.nintendo.com) und danach nur, wo die Angabe fehlt. Was offen bleibt,
-  steht unter Einstellungen, "Sprachen prüfen", mit Link in den Store:
-  einmal "Deutsch ja" oder "nein" bestätigen, das gilt dauerhaft und geht der
+  ec.nintendo.com) und danach nur, wo die Angabe fehlt; Amerika liefert
+  Angaben, Japan nur eine JavaScript-Seite. Unter Einstellungen, "Sprachen
+  prüfen", stehen alle Titel: oben die ungeprüften, bei denen die Prüfung
+  etwas ändert (die Fassung wäre billiger als der Bestpreis der zählenden
+  Länder), mit Link in den Store und "Deutsch ja"/"nein". Aufgeklappt
+  folgen die von Nintendo geprüften ("stimmt nicht" überschreibt), die von
+  Hand gesetzten ("zurücksetzen" stellt die Angabe von Nintendo wieder her)
+  und die ungeprüften ohne Folgen. Von Hand gilt dauerhaft und geht der
   Angabe von Nintendo vor. Ist für eine Region unbekannt, ob es Deutsch gibt,
   bleibt das Angebot im Preisvergleich sichtbar („Sprache?“), zählt
   aber nicht für Bestpreis, Urteil und Kaufplan. Ist ein Titel nur dort

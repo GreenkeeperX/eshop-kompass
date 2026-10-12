@@ -310,11 +310,11 @@ class PlanTest(unittest.TestCase):
                                        {"face": 15.0, "count": 1, "url": ""}])
         self.assertAlmostEqual(br["cost"], 7.80)
         self.assertAlmostEqual(br["rest"], 2.41)
-        # Der Rest ist kein Verlust: 2,41 R$ zum Kartenkurs des Landes sind 0,46 €,
-        # die Spiele selbst also 7,34 €
-        self.assertAlmostEqual(br["rest_value"], 0.46, places=2)
-        self.assertAlmostEqual(br["games_cost"], 7.34)
-        self.assertAlmostEqual(br["saving"], round(24.99 + 1.99 - 7.34, 2))
+        # Der Rest ist kein Verlust: 2,41 von 40 R$ der gekauften Karten sind anteilig
+        # 0,47 €, die Spiele selbst also 7,33 €
+        self.assertAlmostEqual(br["rest_value"], 0.47, places=2)
+        self.assertAlmostEqual(br["games_cost"], 7.33)
+        self.assertAlmostEqual(br["saving"], round(24.99 + 1.99 - 7.33, 2))
         self.assertIn("Rest blockiert", " ".join(br["warnings"]))
         self.assertIn("DLC", " ".join(br["warnings"]))
         # Nidhogg 2 (7,50 BRL) braucht eine Karte mehr, spart aber gegenüber 14,99 € in DE
@@ -487,6 +487,13 @@ class PlanTest(unittest.TestCase):
         items["hades"]["ids"].update(JP=["70010000000001"], AM=["70010000000002"])
         todo = {(t["slug"], t["family"]) for t in planner.lang_todo(self.data, self.settings, now=NOW)}
         self.assertEqual(todo, {("hades", "JP"), ("hades", "AM")})
+        # Prüfen lohnt, wo die Fassung den Bestpreis der zählenden Länder (NO 9,50 €) unterbietet
+        rows = {t["family"]: t for t in planner.lang_todo(self.data, self.settings, now=NOW)}
+        self.assertEqual((rows["JP"]["matters"], rows["JP"]["here"]["code"], rows["JP"]["champ"]["code"]), (True, "JP", "NO"))
+        self.data["prices"]["JP"]["hades"]["discount"] = 2000.0       # 11,47 €: ändert nichts
+        rows = {t["family"]: t for t in planner.lang_todo(self.data, self.settings, now=NOW)}
+        self.assertFalse(rows["JP"]["matters"])
+        self.assertTrue(rows["AM"]["matters"])
         # Von Hand: Japan ohne Deutsch fällt weg, Amerika mit Deutsch zählt
         self.settings["lang_confirm"] = {"hades": {"JP": False, "AM": True}}
         cells = planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]
@@ -808,15 +815,19 @@ class PlanTest(unittest.TestCase):
                          ("giftcard", 22.5, -10.0))
         by = self.by(planner.plans(self.data, self.settings, now=NOW))
         self.assertEqual(by["DE"]["cost"], 6.24)                       # Spiritfarer zum Shop-Preis
-        dgp = by["DG"]
-        # Spiritfarer (6,24 €) und Hades sind nicht beide drin: nur was hier günstiger als DE ist
-        self.assertEqual([i["slug"] for i in dgp["items"]], ["spiritfarer"])
-        # Eine 20er Karte über Nennwert oder eine 25er für 22,50 €: der Rest zählt als Kosten
-        self.assertEqual((dgp["cost"], dgp["rest"]), (21.0, 13.76))
-        self.assertLess(dgp["saving"], 0)
+        # Für Spiritfarer (6,24 €) reicht eine 20er Karte, die hier 21 € kostet: anteilig
+        # 6,55 €, also nicht günstiger als im Shop. Die 25er wäre je Euro billiger, kostet
+        # aber mehr, als der Einkauf braucht (Entscheidung: Guthaben passend zum Einkauf)
+        self.assertEqual(by["DG"]["items"], [])
         row = {r["slug"]: r for r in planner.radar(self.data, self.settings, now=NOW)}["good-job"]
         self.assertEqual(row["de"], 19.99)                              # Vergleichsbasis unverändert
-        self.assertEqual(row["easy"]["code"], "DG")                     # 19,99 × 0,9 als Anteil
+        self.assertEqual(row["easy"]["code"], "DE")                     # DG anteilig 20,99 €
+        # Eine 20er für 18 €: Spiritfarer anteilig 5,62 €, der Rest ist kein Verlust
+        dg["cards"] = "20 = 18,00\n25 = 22,50"
+        dgp = self.by(planner.plans(self.data, self.settings, now=NOW))["DG"]
+        self.assertEqual([i["slug"] for i in dgp["items"]], ["spiritfarer"])
+        self.assertEqual((dgp["cost"], dgp["rest"], dgp["games_cost"]), (18.0, 13.76, 5.62))
+        self.assertAlmostEqual(dgp["saving"], 0.62)
         # Kauf vermerkt in DG: das Konto steht in Deutschland
         self.settings["current_country"] = "DE"
         self.assertTrue(self.by(planner.plans(self.data, self.settings, now=NOW))["DG"]["current"])
@@ -904,6 +915,18 @@ class PlanTest(unittest.TestCase):
         br = {r["slug"]: r for r in planner.matrix(self.data, self.settings, now=NOW)["rows"]}["hades"]["cells"]["BR"]
         self.assertLess(br["low_eur"], br["eur"])
 
+    def test_card_share_fits_the_purchase(self):
+        # Eine große Karte ist je Real billiger, aber für ein Spiel zu 7,50 R$ kauft
+        # niemand 250 R$: es zählt die 15er Karte, anteilig (Entscheidung 12.10.2026)
+        self.settings["countries"]["BR"]["cards"] = "15=3.00 250=40.00"
+        cells = {r["slug"]: r for r in planner.matrix(self.data, self.settings, now=NOW)["rows"]}
+        nid = cells["nidhogg-2"]["cells"]["BR"]
+        self.assertEqual(nid["eur"], 1.5)                       # 3,00 € × 7,50 / 15
+        self.assertEqual(nid["alone"]["cards"], [{"face": 15.0, "count": 1}])
+        # Im Paket teilen sich die Titel die Karten: die Summe ist, was die Spiele kosten
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        self.assertAlmostEqual(sum(i["eur"] for i in br["items"]), br["games_cost"], places=1)
+
     def test_alone_bought(self):
         ctx = planner.Context(self.data, self.settings, NOW)
         br = ctx.countries["BR"]
@@ -926,7 +949,7 @@ class PlanTest(unittest.TestCase):
         # zu weit vom Bestpreis weg, also warten Hades und VS Foscari.
         self.assertEqual(steps, [("DE", ["spiritfarer"])])
         self.assertEqual([d["code"] for d in plan["dropped"]], ["BR"])
-        self.assertAlmostEqual(plan["dropped"][0]["saving"], 19.64)
+        self.assertAlmostEqual(plan["dropped"][0]["saving"], 19.65)
         self.assertEqual([x["slug"] for x in plan["later"]], ["hades", "vs-foscari"])
         self.assertAlmostEqual(plan["cost"], 6.24)
         self.assertEqual(plan["count"], 1)
@@ -948,8 +971,8 @@ class PlanTest(unittest.TestCase):
         self.assertEqual([s["pct"] for s in br["sales"]], [50, 60])
         self.assertEqual(br["typical_days"], 10.0)
         self.assertEqual(br["low"], 33.59)
-        self.assertEqual(br["low_eur"], 6.38)    # zum heutigen Kurs mit der 15er-Karte
-        self.assertEqual(br["points"][1][2], 7.98)
+        self.assertEqual(br["low_eur"], 6.55)    # zum heutigen Kurs, mit 25er und 15er Karte anteilig
+        self.assertEqual(br["points"][1][2], 8.4)     # 41,99 R$: drei 15er Karten für 9 €, anteilig
         self.assertEqual(br["on_sale_pct"], round(100 * (10 + 10.7083) / 40.7083))
         de = v["countries"][0]
         self.assertEqual((de["sale_count"], de["on_sale_pct"], de["typical_days"]), (0, 0, None))
@@ -964,7 +987,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(steps, [("DE", ["spiritfarer"]), ("BR", ["hades", "vs-foscari"])])
         self.assertEqual(plan["dropped"], [])
         self.assertAlmostEqual(plan["cost"], 14.04)
-        self.assertAlmostEqual(plan["saving"], 19.64)        # ohne den Rest in Brasilien
+        self.assertAlmostEqual(plan["saving"], 19.65)        # ohne den Rest in Brasilien
         # Gute Angebote gibt es im Beispiel nicht, der Schalter ändert nichts
         self.assertEqual(planner.purchase_plan(self.data, self.settings, include_good=True,
                                                now=NOW)["count"], 3)
@@ -1226,6 +1249,22 @@ class SyncTest(unittest.TestCase):
         self.assertEqual([p for _, p in hist["BR"]["a"]], [4.0, 6.0])
         self.assertEqual(data["lows"]["BR"]["a"]["low"], 4.0)
 
+
+    def test_low_from_history_when_page_names_none(self):
+        # DekuDeals nennt nur einen Händler-Tiefstpreis: der digitale Verlauf hilft aus.
+        # Seiten, die früher ohne Tiefstpreis gelesen wurden, kommen einmal neu dran.
+        settings = store.load_settings()
+        data = {"items": {"a": {"active": True}},
+                "prices": {"DE": {"a": {"status": "onsale", "regular": 20}}},
+                "lows": {"DE": {"a": {"checked": 1736467200}}}}
+        got, orig = [], sources.fetch_item
+        sources.fetch_item = lambda slug, country, fetch=None: (
+            got.append(slug) or {"low": None, "history": [("2025-01-01", 20.0), ("2025-02-01", 13.0)]})
+        try:
+            sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 60)
+            self.assertEqual((got, data["lows"]["DE"]["a"]["low"]), (["a"], 13.0))
+        finally:
+            sources.fetch_item = orig
 
     def test_sale_history_is_loaded_politely(self):
         settings = store.load_settings()

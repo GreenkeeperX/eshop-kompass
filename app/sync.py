@@ -16,6 +16,7 @@ LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu pr
 SALES_RECHECK_SECONDS = 30 * 24 * 3600  # Angebotsverlauf monatlich auffrischen
 SALES_PER_SYNC = 40                   # höchstens so viele Seiten nur für den Verlauf
 SALES_MONTHS = 24                     # typischer Angebotspreis aus diesem Zeitraum
+LOW_PAGE_V = 2                        # Seiten ohne Tiefstpreis: mit Verlauf-Ersatz gelesen
 LOWS_VERSION = 2                      # erhöht sich, wenn Tiefstpreise neu zu laden sind
 LANG_RECHECK_SECONDS = 30 * 24 * 3600 # fehlende Sprachangaben monatlich neu prüfen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
@@ -183,6 +184,7 @@ def _store_low(data, settings, code, slug, low, now, history=None):
         return
     e = data.setdefault("lows", {}).setdefault(code, {}).setdefault(slug, {})
     e["checked"] = now
+    e["lv"] = LOW_PAGE_V
     if low and low > 0:
         e.update(low=low, src="deku")
     else:
@@ -429,7 +431,9 @@ def self_check(data, settings, now=None):
     if "JP" in ctx.countries and ctx.countries["JP"]["offers"]:
         unknown = sum(1 for o in ctx.countries["JP"]["offers"].values() if o.get("lang") == "unknown")
         if unknown and settings.get("lang_rule", "exclude") == "exclude":
-            _log(f"Prüfung: Japan, bei {unknown} Titeln ist die Sprache ungeprüft, sie zählen nicht für Urteil und Kaufplan")
+            need = sum(1 for t in planner.lang_todo(data, settings) if t["family"] == "JP" and t["matters"] and t["state"] is None)
+            _log(f"Prüfung: Japan, bei {unknown} Titeln ist die Sprache ungeprüft, sie zählen nicht für Urteil und Kaufplan; "
+                 + (f"bei {need} lohnt die Prüfung (Einstellungen, Sprachen prüfen)" if need else "keiner davon wäre billiger als der Bestpreis"))
     data["checks"] = {"at": now.isoformat(timespec="seconds"), "warnings": warnings,
                       "units": units, "buyable": buyable}
     for w in warnings:
@@ -516,7 +520,9 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             if p.get("status") != "onsale" or not data["items"].get(slug, {}).get("active"):
                 continue
             e = lows.get(code, {}).get(slug)
-            if e and ("low" in e or now - e.get("checked", 0) < LOW_RECHECK_SECONDS):
+            # Seiten ohne Tiefstpreis aus der Zeit vor dem Verlauf-Ersatz einmal neu lesen
+            fresh = "low" in e or e.get("lv", 0) >= LOW_PAGE_V if e else False
+            if e and fresh and ("low" in e or now - e.get("checked", 0) < LOW_RECHECK_SECONDS):
                 # Tiefstpreis bekannt: Seite nur für den Angebotsverlauf erneut
                 # laden, wenn er fehlt oder alt ist und gerade ein Angebot läuft
                 if "discount" in p and now - e.get("sales_at", 0) >= SALES_RECHECK_SECONDS:
@@ -541,6 +547,10 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             sleep(LOW_PAUSE)
             continue
         low = info["low"]
+        if not low and info.get("history"):
+            # DekuDeals nennt manchmal nur einen Händler-Tiefstpreis: dann der
+            # niedrigste Preis aus dem digitalen Verlauf
+            low = min(v for _, v in info["history"])
         p = data["prices"][code][slug]
         if low and low > p.get("regular", 0) * 1.001:
             low = None                       # unplausibel
@@ -555,7 +565,8 @@ def sync_lows(data, settings, fetch, sleep, now=None):
     store.save_data(data)
     known = sum(1 for c in lows.values() for e in c.values() if "low" in e)
     runs = sum(1 for c in lows.values() for e in c.values() if e.get("sales"))
-    _log(f"Tiefstpreise bekannt: {known}, Angebotsverläufe: {runs}")
+    missing = sum(1 for c in lows.values() for e in c.values() if "low" not in e and "own_low" not in e)
+    _log(f"Tiefstpreise bekannt: {known}, Angebotsverläufe: {runs}, Seiten ohne Tiefstpreis: {missing}")
 
 
 def _better(new, cur):

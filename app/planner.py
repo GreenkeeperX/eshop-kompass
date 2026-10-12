@@ -185,7 +185,7 @@ class Context:
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
         self.card_market = data.get("card_market") or {}
-        self._payers = {}
+        self._payers, self._shares = {}, {}
         self.countries = {}
         for code in countries.ORDER:
             cfg = settings["countries"][code]
@@ -374,16 +374,30 @@ class Context:
         return bool(how and how["via"] == "giftcard" and not how["card"] and not how["at_rate"])
 
     def est(self, c, local):
-        """Europreis eines Bruttobetrags in Landeswährung beim üblichen Zahlweg."""
-        return None if c["unit"] is None else local * c["unit"]
+        """Europreis eines Bruttobetrags in Landeswährung beim üblichen Zahlweg.
+        Mit Guthabenkarten: mit den Karten, die zu diesem Betrag passen, anteilig."""
+        if c["unit"] is None:
+            return None
+        if c["code"] == countries.REFERENCE or local <= 0:
+            return local * c["unit"]
+        key = (c["code"], local)
+        if key not in self._shares:
+            v = self._payer(c).share(local)
+            self._shares[key] = local * c["unit"] if v is None else v
+        return self._shares[key]
+
+    def _payer(self, c):
+        if c["code"] not in self._payers:
+            self._payers[c["code"]] = make_payer(self, c)[0]
+        return self._payers[c["code"]]
 
     # ---- Sprachen
 
-    def german(self, it, fam, slug=None):
+    def german(self, it, fam, slug=None, by_hand=True):
         """Hat die Fassung dieser Region Deutsch? None, wenn unbekannt.
         Deine Bestätigung von Hand geht vor, dann die Angabe von Nintendo.
         Ein DLC ohne eigene Angabe richtet sich nach seinem Hauptspiel."""
-        conf = self.settings.get("lang_confirm") or {}
+        conf = (self.settings.get("lang_confirm") or {}) if by_hand else {}
 
         def own(s, item):
             v = (conf.get(s) or {}).get(fam) if s else None
@@ -480,14 +494,14 @@ class Context:
                     continue
                 typ = self.typical_value(code, slug)
                 if typ:
-                    eur = round(cents(typ[0]) * (1 + c["tax"] / 100)) * c["unit"]
+                    eur = self.est(c, round(cents(typ[0]) * (1 + c["tax"] / 100)))
                     if slug not in self.typ_all or eur < self.typ_all[slug][0] - 1e-9:
                         self.typ_all[slug] = (eur, code, c["estimated"], typ[1])
                 local = o["local"]
                 low = self.low_value(code, slug)
                 if low is not None:
                     local = min(local, round(cents(low) * (1 + c["tax"] / 100)))
-                eur = local * c["unit"]
+                eur = self.est(c, local)
                 for table, ok in ((self.champ_all, True), (self.champ_easy, c["tier"] <= 2)):
                     if ok and (slug not in table or eur < table[slug][0] - 1e-9):
                         table[slug] = (eur, code, c["estimated"])
@@ -518,9 +532,7 @@ class Context:
         die dafür nötig sind, und ihrem Rest. None, wenn das dem Anteilspreis gleicht."""
         if c["unit"] is None:
             return None
-        if c["code"] not in self._payers:
-            self._payers[c["code"]] = make_payer(self, c)[0]
-        r = self._payers[c["code"]](local)
+        r = self._payer(c)(local)
         if r["estimated"] or abs(r["cost"] - self.est(c, local)) < 0.005:
             return None
         return {"eur": _r(r["cost"]), "rest": None if r["rest"] is None else r["rest"] / 100,
@@ -570,6 +582,19 @@ class Context:
         return title
 
 
+def cfg_balance(c):
+    return cents(c["cfg"].get("balance") or 0)
+
+
+def _rest_value(base, total, balance):
+    """Anteil der Kartenkosten, der als Rest auf dem Konto bleibt."""
+    need = max(0, total - balance)
+    rest = (base["rest"] or 0) - max(0, balance - total)
+    if base["estimated"] or not base["cost"] or rest <= 0 or need <= 0:
+        return 0.0
+    return base["cost"] * rest / (need + rest)
+
+
 def make_payer(ctx, c):
     """Liefert pay(total) -> Kosten in Euro, Karten, Rest für ein Land.
 
@@ -615,7 +640,22 @@ def make_payer(ctx, c):
         a, b = by_card(need, left), by_gift(need, left)
         return b if not b["estimated"] and b["cost"] < a["cost"] - 0.005 else a
 
+    def share(local):
+        """Europreis eines Titels, wenn du nur für ihn Guthaben kaufst: die Karten,
+        die ihn decken, anteilig. Ein Rest ist kein Verlust, zählt aber zu dem Kurs,
+        zu dem diese Karten ihn liefern, nicht zum Kurs einer großen Karte (Entscheidung
+        12.10.2026: keine 1000 MXN für ein Spiel zu 3 €). None: kein Kartenpreis
+        bekannt, dann gilt der pauschale Kurs."""
+        if local <= 0 or mode == "card":
+            return None
+        g = by_gift(local, 0)
+        if g["estimated"] or not g["cost"]:
+            return None
+        gv = g["cost"] * local / (local + (g["rest"] or 0))
+        return gv if mode == "giftcard" or gv < local * card_unit - 1e-9 else local * card_unit
+
     pay.urls = urls
+    pay.share = share
     return pay, bool(solver)
 
 
@@ -695,8 +735,8 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
                   for f, n in base["cards"]],
         "rest": None if base["rest"] is None else base["rest"] / 100,
         "rest_eur": None if base["rest"] is None else _r(base["rest"] / 100 / c["rate"]),
-        # Was der Rest gekostet hat: zum Kurs, zu dem du das Guthaben bekommst
-        "rest_value": 0.0 if not base["rest"] or c["unit"] is None else base["rest"] * c["unit"],
+        # Was der Rest gekostet hat: anteilig an den Karten, die du dafür kaufst
+        "rest_value": _rest_value(base, total, cfg_balance(c)),
         "ref_total": _r(ref_total),
     })
     if chosen:
@@ -708,6 +748,10 @@ def plan_country(ctx, code, override=None, must=(), basket=None):
         # Ein hoher Rest wird gewarnt.
         games = base["cost"] - out["rest_value"]
         out["games_cost"] = _r(games)
+        # Im Paket teilen sich die Titel die Karten: Europreis je Titel anteilig
+        if total and not base["estimated"] and base["via"] == "giftcard":
+            for i in out["items"]:
+                i["eur"] = _r(games * offers[i["slug"]]["local"] / total)
         out["saving"] = _r(ref_cmp - games)
         out["saving_pct"] = round(100 * (ref_cmp - games) / ref_cmp) if ref_cmp else 0
         limit = float((ctx.settings.get("tier_min_saving") or {}).get(str(c["tier"]), 0))
@@ -1035,9 +1079,26 @@ LANG_CHECK_URL = {
 
 
 def lang_todo(data, settings, now=None):
-    """Titel, deren Sprache in einer Region mit aktivem Land ungeprüft ist, obwohl
-    es in Deutschland eine deutsche Fassung gibt. Einmal von Hand bestätigt, gilt es."""
+    """Sprache je Titel und Region mit aktivem Land, für Titel mit deutscher Fassung in
+    Deutschland: von Nintendo geprüft, ungeprüft oder von Hand. Von Hand gilt vor Nintendo."""
     ctx = Context(data, settings, now, include_all=True)
+    live = Context(data, settings, now)       # Bestpreis nur über die aktiven Länder
+
+    def cheapest(slug, codes):
+        """Günstigster Preis jetzt oder je in diesen Ländern, in Euro."""
+        best = None
+        for code in codes:
+            c = live.countries.get(code)
+            o = c and c["offers"].get(slug)
+            if not o or c["unit"] is None:
+                continue
+            local, low = o["local"], live.low_value(code, slug)
+            if low is not None:
+                local = min(local, round(cents(low) * (1 + c["tax"] / 100)))
+            eur = live.est(c, local)
+            if best is None or eur < best[0]:
+                best = (eur, code)
+        return best
     fams = {}
     for c in ctx.countries.values():
         fam = c["meta"]["family"]
@@ -1054,11 +1115,19 @@ def lang_todo(data, settings, now=None):
                 continue
             state = ctx.german(it, fam, slug)
             manual = isinstance((conf.get(slug) or {}).get(fam), bool)
-            if state is None or manual:
-                out.append({"slug": slug, "title": it["title"], "family": fam,
-                            "family_name": countries.FAMILIES[fam], "codes": codes,
-                            "url": LANG_CHECK_URL.get(fam, "").format(nsuid=ids[0]),
-                            "state": state, "manual": manual})
+            # Alle Titel stehen in der Liste: automatisch geprüfte mit der Angabe von
+            # Nintendo (Entscheidung 12.10.2026), ungeprüfte zum Bestätigen, eigene Angaben zum Zurücksetzen
+            # Prüfen lohnt nur, wo die Fassung den Bestpreis der zählenden Länder
+            # unterbieten würde; sonst ändert die Antwort nichts
+            here, champ = cheapest(slug, codes), live.champ_all.get(slug)
+            out.append({"slug": slug, "title": it["title"], "family": fam,
+                        "here": None if not here else {"eur": _r(here[0]), "code": here[1]},
+                        "champ": None if not champ else {"eur": _r(champ[0]), "code": champ[1]},
+                        "matters": bool(here and (not champ or here[0] < champ[0] - 0.005)),
+                        "family_name": countries.FAMILIES[fam], "codes": codes,
+                        "url": LANG_CHECK_URL.get(fam, "").format(nsuid=ids[0]),
+                        "state": state, "manual": manual,
+                        "nintendo": ctx.german(it, fam, slug, by_hand=False)})
     return out
 
 
