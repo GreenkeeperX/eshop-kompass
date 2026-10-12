@@ -936,6 +936,12 @@ class SafetyTest(unittest.TestCase):
                 '{"@type":"AggregateOffer","lowPrice":"52.37","priceCurrency":"EUR"}}</script>')
         self.assertEqual(sources.parse_ld_price(page), (52.37, "EUR"))
         self.assertIsNone(sources.parse_ld_price("<div id=app></div>"))
+        # Mehrere Angebote: das günstigste zählt, nicht das zuletzt genannte oder ein Höchstpreis
+        many = ('<script type="application/ld+json">{"@type":"Product","offers":['
+                '{"@type":"Offer","price":"18.10","priceCurrency":"EUR"},'
+                '{"@type":"Offer","price":"24.38","priceCurrency":"EUR"},'
+                '{"@type":"AggregateOffer","highPrice":"30.00","lowPrice":"18.40","priceCurrency":"EUR"}]}</script>')
+        self.assertEqual(sources.parse_ld_price(many), (18.10, "EUR"))
         store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc",
                              "countries": {"US": {"cards": "50 = 41 | https://www.eneba.com/x"}}})
         seen = []
@@ -1056,6 +1062,25 @@ class SyncTest(unittest.TestCase):
         sync._track(data, hist, "BR", table, "2026-10-12T00:00:00+00:00")
         self.assertEqual([p for _, p in hist["BR"]["a"]], [4.0, 6.0])
         self.assertEqual(data["lows"]["BR"]["a"]["low"], 4.0)
+
+
+class GgdealsBlockTest(unittest.TestCase):
+    def test_blocked_ggdeals_rests_for_a_day(self):
+        data, settings = sample()
+        settings["countries"]["JP"]["pay"] = "giftcard"
+        calls = []
+
+        def deny(url, ua=None):
+            calls.append(url)
+            raise sources.FetchError(url, 403)
+        t0 = NOW.timestamp()
+        sync.sync_card_market(data, settings, deny, lambda s: None, now=t0)
+        self.assertEqual(len(calls), 1)                         # nach der ersten Sperre Schluss
+        self.assertEqual({c for c, e in data["card_market"].items() if "sperrt" in e["error"]}, {"JP", "BR"})
+        sync.sync_card_market(data, settings, deny, lambda s: None, now=t0 + 3600)
+        self.assertEqual(len(calls), 1)                         # heute nicht noch einmal
+        sync.sync_card_market(data, settings, deny, lambda s: None, now=t0 + 86400)
+        self.assertEqual(len(calls), 2)
 
 
 class PurchaseLogTest(unittest.TestCase):

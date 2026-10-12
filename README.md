@@ -104,7 +104,8 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   9000` mit Aufschlag 0: Dann folgen die Kosten jedem neuen Kurs und der Rest
   zählt mit.
   Hat eine Karte einen Link, liest das Tool beim Abgleich höchstens einmal am
-  Tag den Preis von der Shopseite (aus den Produktdaten der Seite). Unter dem
+  Tag den Preis von der Shopseite (aus den Produktdaten der Seite; nennt sie
+  mehrere Angebote, zählt das günstigste). Unter dem
   Eingabefeld steht, was es gelesen hat. Liefert die Seite keinen Preis oder
   ist der Wert älter als drei Tage, gilt dein eingetragener Preis.
   Auf gelesene Preise kommt die Servicegebühr des Shops (Einstellung,
@@ -120,7 +121,9 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
   Kartenseite nennt (der Tooltip verlinkt sie). Fehlende Kartenwerte kommen
   dazu, bei eingetragenen gilt der günstigere Preis, mit x markierte bleiben
   draußen. Werte älter als drei Tage zählen nicht. Abschaltbar unter
-  Einstellungen.
+  Einstellungen. Stand Oktober 2026 verlangt gg.deals eine Cloudflare-Prüfung
+  im Browser (HTTP 403). Das Tool umgeht sie nicht: Es meldet die Sperre,
+  versucht es einmal am Tag wieder und rechnet mit den übrigen Preisen.
 - Glaubhaft: Ein gelesener Kartenpreis (Shopseite oder gg.deals) zählt nur
   zwischen 70 und 160 % des Nennwerts zum Mittelkurs. Alles andere ist fast
   sicher ein Lesefehler, etwa ein Gebührenhinweis statt des Preises. Solche
@@ -145,7 +148,10 @@ Unter Einstellungen, jede Änderung wird sofort gespeichert:
 - Sicherung: Einstellungen, Karten, Zielpreise und Körbe als Datei.
 
 Jede Spalte und jedes Feld erklärt sich im Tooltip. Das Protokoll unter
-Einstellungen läuft während eines Abgleichs mit und bleibt am Ende stehen.
+Einstellungen läuft während eines Abgleichs mit, nennt oben den Start des
+Laufs und zeigt die Uhrzeit deines Browsers. "Verbindung testen" schreibt in
+eine eigene Box darüber. Die Wechselkurse holt das Tool bei jedem Abgleich,
+die Quelle erneuert sie einmal am Tag.
 
 ## Tiefstpreise und Verlauf
 

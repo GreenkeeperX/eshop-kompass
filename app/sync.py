@@ -342,7 +342,13 @@ def sync_card_market(data, settings, fetch, sleep, now=None):
             cards = sources.parse_ggdeals_group(fetch(url), currency)
         except sources.FetchError as e:
             if e.status in sources.BLOCKED:
-                _log(f"Kartenpreise: gg.deals lehnt Abrufe ab ({e}), bisherige Werte gelten weiter")
+                # Sperre (bei gg.deals eine Cloudflare-Prüfung, die einen Browser verlangt):
+                # nicht umgehen, für heute alle Länder ruhen lassen und es deutlich sagen
+                _log(f"Kartenpreise: gg.deals sperrt Abrufe ohne Browser (HTTP {e.status}), "
+                     "bisherige Werte gelten weiter. Abschaltbar unter Einstellungen")
+                for c, _ in todo:
+                    market[c] = dict(market.get(c) or {}, checked=now,
+                                     error=f"gg.deals sperrt Abrufe ohne Browser (HTTP {e.status})")
                 break
             market[code] = dict(old, checked=now, error=f"HTTP {e.status or 'Fehler'}")
         else:
@@ -671,7 +677,8 @@ def diagnose():
         code, url = links[0]
         probe(f"Guthabenkarte {code} ({urllib.parse.urlsplit(url).netloc})", url, None,
               lambda t: f"{len(t)} Zeichen, Titel „{sources.page_title(t)[:60]}“, "
-                        f"Preis in Produktdaten: {sources.parse_ld_price(t)}, Anfang: {sources.visible_text(t)[:140]}")
+                        f"Preis in Produktdaten: {sources.parse_ld_price(t)}, alle Angaben: "
+                        f"{sorted(sources.ld_prices(t))[:12]}, Anfang: {sources.visible_text(t)[:100]}")
     else:
         lines.append("Guthabenkarte: keine Karte mit Link eingetragen, Eneba nicht geprüft")
     # gg.deals: Kartenwerte und Preise einer Gruppenseite, dazu ein Ausschnitt zum Nachbessern

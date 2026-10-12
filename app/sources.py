@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.10"
+VERSION = "0.10.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -415,12 +415,10 @@ def parse_ggdeals_group(page_html, currency):
 _LD_RE = re.compile(r"""<script[^>]*type=["']application/ld\+json["'][^>]*>(.*?)</script>""", re.S | re.I)
 
 
-def parse_ld_price(page_html):
-    """Preis aus den strukturierten Produktdaten einer Shopseite (schema.org Offer).
-
-    Liefert (Preis, Währung) oder None, wenn die Seite keine mitliefert, etwa
-    weil sie ihre Preise erst im Browser lädt.
-    """
+def ld_prices(page_html):
+    """Alle Preise aus den strukturierten Produktdaten einer Shopseite (schema.org):
+    [(Preis, Währung, Feld)]. Eine Seite kann viele Angebote nennen."""
+    out = []
     for block in _LD_RE.findall(page_html or ""):
         try:
             stack = [json.loads(block)]
@@ -433,14 +431,27 @@ def parse_ld_price(page_html):
                 continue
             if not isinstance(x, dict):
                 continue
-            for key in ("lowPrice", "price"):
-                if x.get(key) not in (None, "") and x.get("priceCurrency"):
+            cur = x.get("priceCurrency")
+            for key in ("lowPrice", "price", "highPrice"):
+                if x.get(key) not in (None, "") and cur:
                     try:
-                        return float(x[key]), x["priceCurrency"]
+                        out.append((float(x[key]), cur, key))
                     except (TypeError, ValueError):
                         pass
             stack.extend(v for v in x.values() if isinstance(v, (dict, list)))
-    return None
+    return out
+
+
+def parse_ld_price(page_html):
+    """Günstigster Preis aus den Produktdaten einer Shopseite: (Preis, Währung) oder
+    None, wenn die Seite keine mitliefert, etwa weil sie ihre Preise erst im Browser
+    lädt. Nennt die Seite mehrere Angebote, zählt das günstigste (nie ein Höchstpreis)."""
+    found = [(p, cur) for p, cur, key in ld_prices(page_html) if key != "highPrice" and p > 0]
+    if not found:
+        return None
+    # Mehrere Währungen: die häufigste nehmen, darin den kleinsten Preis
+    cur = max({c for _, c in found}, key=lambda c: sum(1 for _, x in found if x == c))
+    return min(p for p, c in found if c == cur), cur
 
 
 def fetch_card_price(url, fetch=fetch):

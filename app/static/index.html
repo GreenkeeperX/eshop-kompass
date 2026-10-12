@@ -380,6 +380,10 @@ function aloneTxt(x, cur){
   return ` · allein gekauft: ${eur(a.eur)}${cards ? ` (${cards}${a.rest ? `, Rest ${money(a.rest, cur)}` : ""})` : ""}`;
 }
 const pctTxt = v => String(v ?? "").replace(".", ",") + " %";
+function fxStamp(){
+  const d = new Date(S.state.fx_updated);
+  return isNaN(d) ? (S.state.fx_updated || "–") : d.toLocaleString("de-DE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
+}
 function fxDate(){
   const d = new Date(S.state.fx_updated);
   return isNaN(d) ? S.state.fx_updated : d.toLocaleDateString("de-DE");
@@ -486,7 +490,11 @@ function watch(){
     const stepChanged = st.step !== S.step;
     S.step = st.step;
     S.state.status = st;
-    if(!st.running){ clearInterval(S.timer); S.timer = null; await refresh(); toast(st.ok ? "Abgleich fertig" : "Abgleich fehlgeschlagen"); }
+    if(!st.running){
+      clearInterval(S.timer); S.timer = null;
+      try{ await refresh(); }catch(e){ toast("Fehler beim Neuladen: " + e.message); }
+      toast(st.ok ? "Abgleich fertig" : "Abgleich fehlgeschlagen");
+    }
     else if(stepChanged && /^(Sprachen|Tiefstpreise)/.test(st.step)){ await refresh(); }   // Preise sind da
     else renderHead();
     showLog(st.log);
@@ -504,11 +512,20 @@ setInterval(async () => {
 }, 60000);
 
 /* Protokoll: neueste Zeile unten, die Box folgt ihr, solange du nicht hochgescrollt hast */
+/* Der Server schreibt UTC, angezeigt wird die Uhrzeit deines Browsers */
+function localStamp(line){
+  const m = /^(\d\d):(\d\d):(\d\d)( .*)$/s.exec(line);
+  if(!m) return line;
+  const d = new Date(); d.setUTCHours(+m[1], +m[2], +m[3], 0);
+  return d.toLocaleTimeString("de-DE") + m[4];
+}
 function showLog(lines){
   const l = $("log");
-  if(!l || l.dataset.diag) return;
+  if(!l) return;
   const atEnd = l.scrollHeight - l.scrollTop - l.clientHeight < 30;
-  l.textContent = (lines || []).join("\n") || "Noch kein Protokoll.";
+  const st = S.state.status || {};
+  const head = st.started ? `Abgleich vom ${new Date(st.started).toLocaleString("de-DE")}${st.running ? ", läuft" : st.ok === false ? ", fehlgeschlagen" : ""}\n` : "";
+  l.textContent = (lines || []).length ? head + lines.map(localStamp).join("\n") : "Noch kein Protokoll seit dem letzten Neustart.";
   if(atEnd || !l.dataset.seen){ l.scrollTop = l.scrollHeight; l.dataset.seen = "1"; }
 }
 function renderHead(){
@@ -984,9 +1001,10 @@ function viewSettings(){
     <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
       <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p>
     <h3 class="sec">Letzter Abgleich</h3>
-    <p class="hint" style="margin-bottom:8px">Wechselkurse vom ${esc(S.state.fx_updated || "–")}, sie werden bei jedem Abgleich aktualisiert ·
+    <p class="hint" style="margin-bottom:8px">Wechselkurse vom ${esc(fxStamp())}. Das Tool holt sie bei jedem Abgleich, die Quelle erneuert sie einmal am Tag ·
       <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
-    <pre class="log" id="log"></pre>`;
+    <pre class="log" id="diag" ${S.diagText ? "" : "hidden"}>${esc(S.diagText || "")}</pre>
+    <pre class="log" id="log" style="margin-top:8px"></pre>`;
   return h;
 }
 function settingsBody(form){
@@ -1052,7 +1070,10 @@ document.addEventListener("click", async e => {
     else if(a === "vlclose"){ $("verlauf").close(); }
     else if(a === "vltoggle"){ const sh = S.vl.show; sh.has(d.c) ? sh.delete(d.c) : sh.add(d.c); drawVerlauf(); }
     else if(a === "showlog"){ S.tab = "settings"; render(); const l = $("log"); if(l) l.scrollIntoView({block:"center"}); }
-    else if(a === "sync"){ await api("/api/sync", {}); S.state.status.running = true; S.state.status.ok = null; S.state.status.step = "Abgleich startet"; render(); watch(); }
+    else if(a === "sync"){
+      const r = await api("/api/sync", {});
+      if(!r.started) toast("Ein Abgleich läuft schon, sein Protokoll steht unter Einstellungen");
+      S.state.status.running = true; S.state.status.ok = null; S.state.status.step = "Abgleich startet"; render(); watch(); }
     else if(a === "dense"){ S.ui.dense = d.v === "1"; saveUi(); render(); }
     else if(a === "add"){ addTo(d.c, d.s.split(",")); await replan(); }
     else if(a === "trim"){ const name = rowOf(d.s).title; await change(`${name} entfernt`, () => dropFrom(d.c, d.s)); }
@@ -1078,11 +1099,13 @@ document.addEventListener("click", async e => {
     }
     else if(a === "pickfile"){ $("impFile").click(); }
     else if(a === "diag"){
-      const l = $("log");
-      l.dataset.diag = "1";
+      // Eigene Box: Das Protokoll des Abgleichs läuft daneben weiter
+      const l = $("diag");
+      l.hidden = false;
       l.textContent = "Teste DekuDeals, Nintendo, Wechselkurse und Guthabenkarten …";
       const r = await api("/api/diag");
-      l.textContent = r.lines.join("\n");
+      S.diagText = r.lines.join("\n");   // bleibt stehen, auch wenn die Seite neu zeichnet
+      l.textContent = S.diagText;
       l.scrollTop = 0;
     }
   }catch(err){ toast("Fehler: " + err.message); }
