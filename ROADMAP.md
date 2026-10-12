@@ -85,10 +85,12 @@ Reihenfolge und Begründung:
   drei Wishlist-Titel, deren Preis unter dem Rest und möglichst nahe daran liegt, auch ohne
   Urteil „kaufen“. Ohne Titel aus der Sammlung, gekaufte und DLC ohne Hauptspiel. Erst ein
   Klick nimmt den Titel in den Schritt, „Füller ×“ nimmt ihn wieder heraus.
-- [ ] 4.3 Angebotsrhythmus: In den Einzelheiten eines Titels je Land die Zahl der Angebote in
+- [x] 4.3 Angebotsrhythmus (0.31): In den Einzelheiten eines Titels je Land die Zahl der Angebote in
   24 Monaten, der übliche Abstand, das letzte Angebot und die Monate, in die sie meist
   fielen. Aus den vorhandenen DekuDeals-Verläufen, ohne neue Abrufe. Ein Hinweis auf das
   nächste übliche Angebot nur bei gleichmäßigen Abständen, als Schätzung gekennzeichnet.
+  Das Ende eines Angebots kennt das Tool erst, wenn es die Seite neu liest.
+- [x] Titel als Link zur Startseite (0.31): Ein Klick lädt die Seite neu.
 - [ ] 4.4 DLC abhaken: In der Sammlung ein Haken je DLC für Inhalte, die die
   DekuDeals-Sammlung nicht kennt (etwa aus einem Paket). Eine Angabe der Sammlung geht vor.
 - [ ] 4.5 DLC-Preise: Für fehlende DLC der Sammlung die Nintendo-IDs schonend über die
