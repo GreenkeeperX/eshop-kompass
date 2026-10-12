@@ -289,7 +289,9 @@ Sicherung und Protokoll.
   aber nicht für Bestpreis, Urteil und Kaufplan. Ist ein Titel nur dort
   kaufbar, nennt die Titelliste es als Grund. Mit „nur warnen“ zählen solche
   Angebote wie früher mit.
-- Sicherung: Einstellungen, Karten, Zielpreise und Körbe als Datei.
+- Sicherung: Einstellungen, Karten, Zielpreise, Körbe, Kaufprotokoll und die
+  eigene Preisaufzeichnung als eine Datei. Beim Einlesen wird die Aufzeichnung
+  ergänzt, nicht ersetzt; alles andere holt das Tool beim Abgleich neu.
 
 Jede Spalte und jedes Feld erklärt sich im Tooltip. Das Protokoll unter
 Einstellungen läuft während eines Abgleichs mit, nennt oben den Start des
