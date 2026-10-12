@@ -1439,7 +1439,7 @@ function viewSettings(){
       <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
     <pre class="log" id="diag" ${S.diagText ? "" : "hidden"}>${esc(S.diagText || "")}</pre>
     <h3 class="sec" id="set-sicherung">Sicherung und Protokoll</h3>
-    <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise und Körbe. Preise und Verlauf holt das Tool selbst neu.</p>
+    <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise, Körbe, Kaufprotokoll und die eigene Preisaufzeichnung. Beim Einlesen wird die Aufzeichnung ergänzt, nicht ersetzt. Preise, Sammlung und DekuDeals-Verläufe holt das Tool selbst neu.</p>
     <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
       <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p>
     <pre class="log" id="log" style="margin-top:8px"></pre>`;

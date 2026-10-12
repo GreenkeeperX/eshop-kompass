@@ -109,7 +109,7 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/export":
                 self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
                                  "settings": store.load_settings(), "ui": store.load_ui(),
-                                 "purchases": store.load_purchases()})
+                                 "purchases": store.load_purchases(), "history": store.load_history()})
             else:
                 self._send(404, {"error": "nicht gefunden"})
         except Exception as e:
@@ -137,6 +137,8 @@ class Handler(BaseHTTPRequestHandler):
                     store.save_ui(body["ui"])
                 if isinstance(body.get("purchases"), list) and not store.load_purchases():
                     store.save_purchases([p for p in body["purchases"] if isinstance(p, dict)][-500:])
+                if isinstance(body.get("history"), dict):
+                    store.merge_history(body["history"])
                 self._send(200, {"ok": True})
             elif path == "/api/bought":
                 slugs = [str(x) for x in (body.get("slugs") or [])][:200]

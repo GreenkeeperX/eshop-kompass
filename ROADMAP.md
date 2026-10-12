@@ -65,12 +65,40 @@ Reihenfolge und Begründung:
   Spiel plus Paket, nie beides.
 - [x] Kartenpreise (0.25): zuerst die Karten der Länder im Kaufplan, mit den übrigen
   Abrufen die am längsten nicht gelesenen.
-- [ ] Danach: Füllartikel in den Kaufplan, wenn eine größere Karte mit Zusatztitel
-  günstiger ist als ein Rest.
+
+## Phase 4: Echte Daten, Rest nutzen, Sammlung vertiefen
+
+- [x] 4.0 Sicherung mit eigener Preisaufzeichnung (0.26): Sie ist das Einzige, was das Tool
+  nicht neu laden kann. Beim Einlesen wird sie ergänzt, nicht ersetzt. Weiter ein Knopf.
+- [ ] 4.1 Prüfung mit echten Daten: Verbindungstest, Protokoll und Kaufplan nach dem
+  Update. Danach Korrekturen, vor allem an den DLC-Abschnitten und der Switch-2-Zuordnung.
+- [ ] 4.2 Füllartikel im Kaufplan, Stufe 1: Unter jedem Schritt mit Rest stehen bis zu drei
+  Wishlist-Titel, deren Preis unter dem Rest und möglichst nahe daran liegt, auch ohne
+  Urteil „kaufen“. Die Summe des Plans bleibt, erst ein Klick nimmt den Titel auf. Die
+  Rechnung gibt es schon für die Länderkarten.
+- [ ] 4.3 Angebotsrhythmus: In den Einzelheiten eines Titels je Land die Zahl der Angebote in
+  24 Monaten, der übliche Abstand, das letzte Angebot und die Monate, in die sie meist
+  fielen. Aus den vorhandenen DekuDeals-Verläufen, ohne neue Abrufe. Ein Hinweis auf das
+  nächste übliche Angebot nur bei gleichmäßigen Abständen, als Schätzung gekennzeichnet.
+- [ ] 4.4 DLC abhaken: In der Sammlung ein Haken je DLC für Inhalte, die die
+  DekuDeals-Sammlung nicht kennt (etwa aus einem Paket). Eine Angabe der Sammlung geht vor.
+- [ ] 4.5 DLC-Preise: Für fehlende DLC der Sammlung die Nintendo-IDs schonend über die
+  Artikelseiten lesen. Daraus die Summe der fehlenden DLC je Spiel in der Sammlung und
+  Füllartikel Stufe 2 (fehlende DLC deiner Spiele in den Rest).
+- [ ] 4.6 Sprache in Japan: eine Probe für nintendo.co.jp in den Verbindungstest. Liefert
+  sie Sprachangaben für einen guten Teil der Titel, wird dieser Teil automatisch, sonst
+  bleibt es bei der Bestätigung von Hand.
+
+Zurückgestellt: Füllartikel Stufe 3 (gute Spiele abseits der Wishlist). Es braucht dafür
+eine Quelle für „gut“, und ein Vorschlag für ein Spiel, das niemand wollte, hilft wenig.
+
+Gestrichen: Benachrichtigung, Wishlist aufräumen (geschieht in DekuDeals), Budget,
+Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
 
 ## Ohne Arbeit für uns
 
-- **Sprache in Japan:** Es gibt keine Quelle. Bis dahin gilt die Bestätigung von Hand.
+- **Sprache in Japan:** Eine vollständige Quelle gibt es nicht (der Store baut die Seite
+  per JavaScript, die Suche ist per robots.txt gesperrt). Siehe 4.6.
 - **Südafrika:** Ob Kartenzahlung dort geht, ist ungetestet. Bis dahin gilt „leicht, Karte“.
 - **Tests der Oberfläche:** Es gibt keine automatischen Tests. Prüfung per Screenshots
   mit Testdaten, weil das Tool ohne Zusatzpakete auskommen soll.
