@@ -73,8 +73,11 @@ Reihenfolge und Begründung:
 - [x] Kleinigkeiten aus dem Betrieb (0.27): €-Zeichen an jedem Eurobetrag, Grund bei
   „kein Urteil“ (nicht erschienen, nur im Abo, kostenlos), Sprachliste klarer gezählt und
   mit der gelesenen Angabe, Abo-Inhalte von Nintendo Switch Online zählen nicht als fehlende DLC.
-- [ ] 4.1 Prüfung mit echten Daten: Verbindungstest, Protokoll und Kaufplan nach dem
-  Update. Danach Korrekturen, vor allem an den DLC-Abschnitten und der Switch-2-Zuordnung.
+- [x] Reiter „Sammlung“ (0.28): alle Spiele der Sammlung, oben die mit fehlenden DLC,
+  darunter die ohne Zusatzinhalte und die noch nicht gelesenen. Vorher ein Filter im
+  Reiter Titel, der schwer zu finden war.
+- [x] 4.1 Prüfung mit echten Daten (mit 0.26): Abgleich ohne Sperren, DLC-Abschnitte im
+  echten HTML wie gebaut, Japan-Store weiter nur JavaScript. Korrekturen in 0.27.
 - [ ] 4.2 Füllartikel im Kaufplan, Stufe 1: Unter jedem Schritt mit Rest stehen bis zu drei
   Wishlist-Titel, deren Preis unter dem Rest und möglichst nahe daran liegt, auch ohne
   Urteil „kaufen“. Die Summe des Plans bleibt, erst ein Klick nimmt den Titel auf. Die
