@@ -91,6 +91,11 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   mit dem, was die Spiele kosten (ein Rest bleibt Guthaben). "letzten Kauf zurücknehmen" stellt
   Land und Guthaben wieder her. "als Korb vergleichen" übernimmt die Titel in
   den gemeinsamen Korb.
+- Füllartikel: Bleibt in einem Schritt des Kaufplans ein Rest, stehen darunter bis
+  zu drei Wishlist-Titel, die hineinpassen, der kleinste verbleibende Rest zuerst.
+  Das Urteil zählt dabei nicht, Titel aus der Sammlung, gekaufte und DLC ohne
+  Hauptspiel fehlen. Ein Klick nimmt den Titel in den Schritt, "Füller ×" nimmt
+  ihn wieder heraus. Nach "gekauft" sind die Füller dieses Landes vergessen.
 - Titel, Liste: eine Zeile je Wishlist-Titel mit Urteil, Einkaufspreis samt
   Land und Stufe, Abstand zum Bestpreis und, wenn das beste Angebot in einem
   schweren Land liegt, der Alternative in einem leichten oder mittleren Land.
