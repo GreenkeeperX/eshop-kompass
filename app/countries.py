@@ -29,7 +29,7 @@ COUNTRIES = [
     ("DE", "Deutschland", "EU", "card", 1, 0, False, True, "de", "Vergleichsbasis"),
     # Dasselbe deutsche Konto, bezahlt mit Guthabenkarten unter Nennwert: rechnet wie
     # jedes Guthabenland, ein Rest zählt als Kosten. Preise kommen aus dem deutschen eShop.
-    ("DG", "Deutschland mit Guthaben", "EU", "giftcard", 1, 0, False, False, "de",
+    ("DG", "Deutschland (Guthaben)", "EU", "giftcard", 1, 0, False, False, "de",
      "deutsches Konto, bezahlt mit Guthabenkarten"),
     ("PL", "Polen", "EU", "card", 1, 0, False, True, "en", ""),
     ("NO", "Norwegen", "EU", "card", 1, 0, False, True, "en", ""),
@@ -54,15 +54,6 @@ COUNTRIES = [
     ("PE", "Peru", "AM", "giftcard", 3, 0, True, False, "es", ""),
     ("AR", "Argentinien", "AM", "giftcard", 3, 0, True, False, "es", ""),
 ]
-
-# Kartengruppen bei gg.deals: eine Seite je Land nennt den günstigsten Preis
-# jedes Kartenwerts über alle Shops, in Euro
-GGDEALS = {
-    "DG": "eur-germany", "PL": "pln-poland", "NO": "nok-norway", "DK": "dkk-denmark",
-    "SE": "sek-sweden", "GB": "gbp-united-kingdom", "CH": "chf-switzerland",
-    "NZ": "nzd-new-zealand", "AU": "aud-australia", "JP": "jpy-japan",
-    "US": "usd-united-states", "CA": "cad-canada", "BR": "brl-brazil", "MX": "mxn-mexico",
-}
 
 # Länder ohne eigenen eShop: Preise, Tiefstpreise und Verlauf kommen von hier
 SAME_SHOP = {"DG": "DE"}

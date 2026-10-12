@@ -503,24 +503,19 @@ function compose(code, x){
   return parts.join(" · ") + ` · ergibt ${x.est ? "ungefähr " : ""}${eur(x.eur)}` + aloneTxt(x, cur);
 }
 /* Woher ein Kartenpreis stammt, für Tooltips */
-const cardSrc = k => k.market ? ` (günstigster Preis bei gg.deals vom ${stamp(k.market)}, dort mit Shop und Rabattcode)`
-  : k.live ? ` (Shop-Preis vom ${stamp(k.live)}${feeTxt(k.fee, k.fee_eur)})` : "";
+const cardSrc = k => k.live ? ` (Shop-Preis vom ${stamp(k.live)}${feeTxt(k.fee, k.fee_eur)})` : "";
 const feeTxt = (pct, fix) => pct || fix ? ` mit Servicegebühr ${[fix ? eur(fix) : "", pct ? pctTxt(pct) : ""].filter(Boolean).join(" + ")}` : "";
 const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 /* Gelesene Shop-Preise der Guthabenkarten eines Landes, für die Einstellungen */
 function cardStatus(code, cur){
   const rows = (S.state.card_status || {})[code];
   if(!rows) return "";
-  const gg = rows.filter(r => r.market), own = rows.filter(r => !r.market && !r.market_error), errs = rows.filter(r => r.market_error);
-  const parts = [];
-  if(gg.length) parts.push(`gg.deals (${stamp(gg[0].market)}): ` + gg.map(r => `${cur ? money(r.face, cur) : num(r.face)} <span class="ok">${eur(r.cost)}</span>`).join(", "));
-  errs.forEach(err => parts.push(`gg.deals: <span class="warnc">${esc(err.market_error)}</span>`));
-  return parts.concat(own.map(r => {
+  return rows.map(r => {
     const face = cur ? money(r.face, cur) : num(r.face);
     if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)}${feeTxt(S.state.settings.shop_fee_pct, S.state.settings.shop_fee_eur)})`;
     if(r.checked) return `${face}: <span class="warnc">${esc(r.error || "kein Preis")}</span>, es gilt ${r.manual === null ? "Kurs plus Aufschlag" : eur(r.manual)}`;
     return `${face}: wird beim nächsten Abgleich gelesen`;
-  })).join(" · ");
+  }).join(" · ");
 }
 /* Einzelkauf: welche Karten ein Titel allein braucht und was übrig bleibt */
 function aloneTxt(x, cur){
@@ -724,7 +719,7 @@ function planState(slug){
   if(!k) return "";
   const n = k.steps.findIndex(p => p.items.some(i => i.slug === slug));
   if(n >= 0) return `im Plan, Schritt ${n + 1} (${esc(k.steps[n].name)})`;
-  const d = k.dropped.find(x => (x.slugs || []).includes(slug));
+  const d = k.dropped.find(x => (x.open_slugs || []).includes(slug));
   if(d && d.blocked_by) return `nicht im Plan: Rest in ${esc(d.name)} blockiert den Wechsel`;
   if(d) return `nicht im Plan: Wechsel nach ${esc(d.name)} lohnt nicht`;
   if(k.later.some(l => l.slug === slug)) return "nicht im Plan: lieber warten";
@@ -856,10 +851,11 @@ function notPlanned(k){
   const rows = [];
   for(const h of k.held || [])
     rows.push(`<tr><td>${esc(h.title)}</td><td class="l">kaufen in <b>${esc(h.name)}</b>, aber <span class="bad">Wechsel blockiert</span>: Guthaben in ${esc(k.lock.name)} muss erst aufgebraucht sein</td></tr>`);
-  for(const d of k.dropped.filter(d => d.blocked_by))
-    rows.push(`<tr><td>${d.titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">nur ein Land mit blockierendem Rest je Plan</span>: ${esc(d.blocked_by.join(", "))} bringt mehr</td></tr>`);
-  for(const d of k.dropped.filter(d => !d.blocked_by))
-    rows.push(`<tr><td>${d.titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">Wechsel lohnt nicht</span>: ${d.gain >= 0 ? `spart ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`} gegenüber ${esc(altNames(d.alt_codes))}, lohnt ab ${eur(d.threshold)}</td></tr>`);
+  const open = k.dropped.filter(d => (d.open_titles || []).length);
+  for(const d of open.filter(d => d.blocked_by))
+    rows.push(`<tr><td>${d.open_titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">nur ein Land mit blockierendem Rest je Plan</span>: ${esc(d.blocked_by.join(", "))} bringt mehr</td></tr>`);
+  for(const d of open.filter(d => !d.blocked_by))
+    rows.push(`<tr><td>${d.open_titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">Wechsel lohnt nicht</span>: ${d.gain >= 0 ? `spart ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`} gegenüber ${esc(altNames(d.alt_codes))}, lohnt ab ${eur(d.threshold)}</td></tr>`);
   for(const l of k.later) rows.push(`<tr><td>${esc(l.title)}</td><td class="l">lieber warten: ${esc(l.reason)}; in den Ländern, deren Wechsel sich rechnet, kein Kauf</td></tr>`);
   if(k.nowhere.length) rows.push(`<tr><td>${k.nowhere.map(esc).join(", ")}</td><td class="l">nirgends kaufbar, wo es zählt</td></tr>`);
   if(k.bought_waiting.length) rows.push(`<tr><td>${k.bought_waiting.map(esc).join(", ")}</td><td class="l">schon gekauft, steht noch auf der Wishlist</td></tr>`);
@@ -870,7 +866,7 @@ const TIER_OF = d => ({leicht:1, mittel:2, schwer:3})[d.tier_name];
 function boughtBox(k){
   if(!k.bought.length) return "";
   return `<details class="box fold" data-k="bought" ${S.folds.bought ? "open" : ""}><summary>Gekauft (${k.bought.length}) <span class="mut">· insgesamt ${eur(k.bought_saving)} unter dem deutschen Preis</span></summary><table class="mini-t">` +
-    k.bought.map(b => `<tr><td>${dmy(b.at)}</td><td class="l">${esc(country(b.code).name)}: ${b.titles.map(esc).join(", ")}</td><td>${eur(b.cost)}${b.de !== null && b.de !== undefined ? ` <small style="display:inline" class="mut">statt ${eur(b.de)} in DE</small>` : ""}</td><td>${b.rest ? `Rest ${money(b.rest, b.currency)}` : ""}</td></tr>`).join("") +
+    k.bought.map(b => `<tr><td>${dmy(b.at)}</td><td class="l">${esc(country(b.code).name)}: ${b.titles.map(esc).join(", ")}</td><td title="${b.games !== null && b.games !== undefined ? `Spiele ${eur(b.games)}, Karten ${eur(b.cost)}: der Rest bleibt als Guthaben` : `Kartenkosten`}">${eur(b.games ?? b.cost)}${b.de !== null && b.de !== undefined ? ` <small style="display:inline" class="mut">statt ${eur(b.de)} in DE</small>` : ""}</td><td>${b.rest ? `Rest ${money(b.rest, b.currency)}` : ""}</td></tr>`).join("") +
     `</table><p class="hint" style="margin-top:6px"><button class="link" data-act="unbought" title="Den letzten Kauf zurücknehmen, Land und Guthaben wie vorher">letzten Kauf zurücknehmen</button></p></details>`;
 }
 function altNames(codes){
@@ -882,7 +878,7 @@ function sortPlans(list){
   const endOf = p => Math.min(Infinity, ...p.items.filter(i => i.end).map(i => +new Date(i.end)));
   const sav = (a, b) => (b.gain ?? b.saving ?? -1e9) - (a.gain ?? a.saving ?? -1e9);
   const opt = (a, b) => (a.opt_gap ?? 1e9) - (b.opt_gap ?? 1e9) || sav(a, b);
-  const by = {optimum: opt, saving: sav, rest: (a, b) => (a.rest_eur ?? 1e9) - (b.rest_eur ?? 1e9) || sav(a, b),
+  const by = {optimum: opt, saving: sav, rest: (a, b) => (a.rest_value ?? a.rest_eur ?? 1e9) - (b.rest_value ?? b.rest_eur ?? 1e9) || sav(a, b),
               end: (a, b) => endOf(a) - endOf(b) || sav(a, b), tier: (a, b) => a.tier - b.tier || sav(a, b)}[S.ui.sort] || sav;
   return list.filter(p => !p.is_ref).sort(by).concat(list.filter(p => p.is_ref));
 }
@@ -940,7 +936,7 @@ function lostTxt(p){
 }
 /* Zeile „Wechsel“: lohnt der Weg in dieses Land gegenüber der Alternative? */
 function switchLine(p){
-  if(p.is_ref) return `<span class="mut" title="Deutschland zum Shop-Preis ist die Vergleichsbasis">Vergleichsbasis${p.saving ? ` · ${eur(Math.abs(p.saving))} unter dem Normalpreis` : ""}</span>`;
+  if(p.home) return `<span class="mut" title="Kein Kontoland eingetragen: Deutschland gilt als dein Konto. Deutschland zum Shop-Preis ist die Vergleichsbasis.">Vergleichsbasis, kein Wechsel</span>`;
   if(p.gain === null || p.gain === undefined) return `<span class="mut">–</span>`;
   const tip = `Wechselgewinn: was diese Titel ohne den Wechsel kosten (${eur(p.alt_total)} in ${altNames(p.alt_codes)}) minus was sie hier kosten (${eur(p.games_cost)})` +
     (p.rest_lost ? `, samt ${lostTxt(p)}` : "") +
@@ -959,7 +955,7 @@ function restLine(p, last){
   if(!p.rest) return `<span>kein Rest</span>`;
   const blocked = !last && p.warnings.some(w => w.startsWith("Rest blockiert"));
   const fits = p.fillers.filter(f => f.slugs.length === 1 && f.extra < 0.005);
-  return `<span class="${blocked ? "bad" : p.rest_value >= 5 ? "warnc" : ""}">${money(p.rest, p.currency)} (${eur(p.rest_eur)})</span>` +
+  return `<span class="${blocked ? "bad" : p.rest_value >= 5 ? "warnc" : ""}">${money(p.rest, p.currency)} (${eur(p.rest_value ?? p.rest_eur)})</span>` +
     (fits.length ? ` · passt hinein: ${fits.map(f => esc(f.shorts[0])).join(", ")}` : "");
 }
 /* Hürden: was den Kauf hier erschwert, rot heißt nein, bernstein heißt prüfen */
@@ -986,14 +982,14 @@ function billHtml(p){
   if(p.cards.length) rows.push(`Karten: ${cardsHtml(p)}`);
   if(p.balance_value) rows.push(`Vorhandenes Guthaben zählt zum Kurs mit: ${eur(p.balance_value)}`);
   if(!p.is_ref && p.rest_value >= 0.5) rows.push(`Rest: ${eur(p.rest_value)} der Kartenkosten bleiben als Guthaben, die Spiele kosten ${eur(p.games_cost - (p.rest_lost || 0))}`);
-  if(!p.is_ref && p.gain !== null && p.gain !== undefined) rows.push(`Ohne diesen Wechsel: ${eur(p.alt_total)} in ${esc(altNames(p.alt_codes))}`);
-  if(p.saving !== null && p.saving !== undefined) rows.push(p.is_ref ? `Normalpreis: ${eur(p.ref_total)}` : `In Deutschland: ${eur(p.ref_total)} (${p.saving >= 0 ? "spart" : "kostet"} hier ${eur(Math.abs(p.saving))}${p.saving >= 0 ? "" : " mehr"})`);
+  if(p.gain !== null && p.gain !== undefined && !p.home) rows.push(`Ohne diesen Wechsel: ${eur(p.alt_total)} in ${esc(altNames(p.alt_codes))}`);
+  if(p.saving !== null && p.saving !== undefined && !p.is_ref) rows.push(`In Deutschland: ${eur(p.ref_total)} (${p.saving >= 0 ? "spart" : "kostet"} hier ${eur(Math.abs(p.saving))}${p.saving >= 0 ? "" : " mehr"})`);
   if(p.note && !p.is_ref) rows.push(esc(p.note));
   return rows.map(r => `<div>${r}</div>`).join("");
 }
 function planCard(p, step){
   const has = p.items.length > 0, cur = p.currency, key = "pc:" + p.code;
-  const dim = has && !p.is_ref && !p.current && p.worth === false && !step;
+  const dim = has && !p.home && !p.current && p.worth === false && !step;
   let h = `<article class="pc ${p.current ? "cur" : ""} ${dim ? "dim" : ""}"><header><h2>${step ? step + ". " : ""}${esc(p.name)} ${p.is_ref ? "" : tierTag(p.tier)}${p.current ? ` <span class="tier cur" title="Dein Konto steht hier">Konto</span>` : ""}</h2>
     ${step ? `<button class="sm" data-act="bought" data-c="${esc(p.code)}" title="Vermerkt den Kauf: Dein Konto steht danach hier, ein Rest bleibt als Guthaben, die Titel verschwinden aus dem Plan">gekauft</button>`
       : p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</header>`;
@@ -1056,7 +1052,7 @@ function restHtml(p, bare){
   if(p.rest === null) return `<span class="warnc">${bare ? "unbekannt" : "Rest unbekannt"}</span>`;
   if(p.rest === 0) return `${pre}0`;
   const blocked = p.warnings.some(w => w.startsWith("Rest blockiert"));
-  return `<span class="${blocked ? "bad" : ""}">${pre}${money(p.rest, p.currency)}</span> <small>${eur(p.rest_eur)}</small>`;
+  return `<span class="${blocked ? "bad" : ""}">${pre}${money(p.rest, p.currency)}</span> <small>${eur(p.rest_value ?? p.rest_eur)}</small>`;
 }
 
 /* ---------- Jetzt: Startseite mit Konto, Aufgaben und Kaufplan ---------- */
@@ -1339,7 +1335,7 @@ function viewSettings(){
       ${c.code === "DG" ? `<small class="hint">Deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest bleibt auf dem Konto und wird ab 5 € gewarnt; Deutschland zum Shop-Preis bleibt die Vergleichsbasis.</small>` : ""}
       <textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>${cs ? `<small class="hint">${cs}</small>` : ""}</details></td></tr>`;
   };
-  const table = list => `<div class="scroll"><table><thead><tr><th>Land</th><th title="Land in Titeln, Kaufplan und Ländern zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th><th title="Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt. schwer: Rest blockiert den Wechsel. Je Stufe gilt unter Regeln eine eigene Mindestersparnis.">Wechsel</th><th title="Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der eingetragenen Karten, sonst Kurs plus Aufschlag. Das Günstigere: wählt je Paket.">Bezahlen</th><th title="Aufschlag auf den Mittelkurs für Guthaben ohne eingetragenen Kartenpreis. Leer gilt der allgemeine Wert oben. 0 heißt: Guthaben zum Kurs, etwa bei Amazon Japan.">Aufschlag %</th><th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th><th title="Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.">Guthaben</th><th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er über den Support gelöst ist (Amerika). Sonst verfällt ein Rest nur und zählt als Kosten.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne Kartenpreis: der Aufschlag, als Schätzung.">Dein Kurs</th><th title="Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.">Preisniveau</th></tr></thead><tbody>${list.map(c => row(c) + cardRow(c)).join("")}</tbody></table></div>`;
+  const table = list => `<div class="scroll"><table><thead><tr><th>Land</th><th title="Land in Titeln, Kaufplan und Ländern zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th><th title="Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt beim nächsten Wechsel. schwer: ein Rest blockiert den Wechsel. Je Stufe gilt unter Regeln eine eigene Mindestersparnis.">Wechsel</th><th title="Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der eingetragenen Karten, sonst Kurs plus Aufschlag. Das Günstigere: wählt je Paket.">Bezahlen</th><th title="Aufschlag auf den Mittelkurs für Guthaben ohne eingetragenen Kartenpreis. Leer gilt der allgemeine Wert oben. 0 heißt: Guthaben zum Kurs, etwa bei Amazon Japan.">Aufschlag %</th><th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th><th title="Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.">Guthaben</th><th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er aufgebraucht oder über den Support gelöst ist (Amerika). Sonst bleibt ein Rest Guthaben, solange du im Land bleibst, und verfällt erst beim Wechsel.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne Kartenpreis: der Aufschlag, als Schätzung.">Dein Kurs</th><th title="Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.">Preisniveau</th></tr></thead><tbody>${list.map(c => row(c) + cardRow(c)).join("")}</tbody></table></div>`;
   const act = S.state.countries.filter(on), off = S.state.countries.filter(c => !on(c));
   const t = s.tier_min_saving, de = s.deal_eur;
   const jump = [["set-laender", "Länder"], ["set-regeln", "Regeln"], ["set-gebuehren", "Gebühren"], ["sprachen", "Sprachen"], ["set-quellen", "Quellen"], ["set-sicherung", "Sicherung und Protokoll"]];
@@ -1360,7 +1356,7 @@ function viewSettings(){
     <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label><label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label></div>
     </form>` + langSection() + `
     <h3 class="sec" id="set-quellen">Quellen</h3>
-    <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label><label class="f" title="Liest einmal am Tag je Land mit Guthabenkarten die Kartenpreise von gg.deals: je Kartenwert den günstigsten Preis über alle Shops, in Euro. Fehlende Kartenwerte kommen dazu, bei eingetragenen gilt der günstigere Preis. Als nicht vorrätig markierte Werte (x) bleiben draußen."><span><input form="setForm" name="card_market" type="checkbox" ${s.card_market ? "checked" : ""}> Kartenpreise von gg.deals lesen</span></label></div>
+    <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
     <p class="hint" style="margin-top:8px">Wechselkurse vom ${esc(fxStamp())}. Das Tool holt sie bei jedem Abgleich, die Quelle erneuert sie einmal am Tag ·
       <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
     <pre class="log" id="diag" ${S.diagText ? "" : "hidden"}>${esc(S.diagText || "")}</pre>
@@ -1375,7 +1371,6 @@ function settingsBody(form){
   const body = {countries:{}, tier_min_saving:{}};
   for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","shop_fee_eur","refresh_hours","lang_rule","cashback_pct"])
     body[k] = form.elements[k].value;
-  body.card_market = form.elements.card_market.checked;
   for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;
   body.deal_eur = {buy: form.elements.deal_buy.value, good: form.elements.deal_good.value};
   form.querySelectorAll("tr[data-code]").forEach(tr => {
@@ -1480,7 +1475,7 @@ document.addEventListener("click", async e => {
       const p = S.kauf.steps.find(x => x.code === d.c);
       if(!confirm(`Kauf in ${p.name} vermerken? Dein Konto steht danach dort${p.rest ? `, Rest ${money(p.rest, p.currency)}` : ""}.`)) return;
       await api("/api/bought", {code: p.code, slugs: p.items.map(i => i.slug), titles: p.items.map(i => i.short),
-        cost: p.cost, de: p.de_now, rest: p.rest, currency: p.currency});
+        cost: p.cost, games: p.games_paid, de: p.de_now, rest: p.rest, currency: p.currency});
       toast(`Kauf in ${p.name} vermerkt`); await refresh(); S.kauf = await api("/api/kaufplan"); render();
     }
     else if(a === "unbought"){ await api("/api/bought/undo", {}); toast("Letzter Kauf zurückgenommen"); await refresh(); S.kauf = await api("/api/kaufplan"); render(); }

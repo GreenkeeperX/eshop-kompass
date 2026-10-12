@@ -379,10 +379,42 @@ class PlanTest(unittest.TestCase):
     def test_reference_and_expired_sale(self):
         de = self.by(planner.plans(self.data, self.settings, now=NOW))["DE"]
         self.assertEqual([i["slug"] for i in de["items"]], ["spiritfarer"])
-        self.assertAlmostEqual(de["saving"], 24.99 - 6.24)
+        # Deutschland ist die Vergleichsbasis: gegen sich selbst keine Ersparnis.
+        # Ohne Kontoland gilt es als Konto und braucht keine Schwelle
+        self.assertAlmostEqual(de["saving"], 0)
+        self.assertTrue(de["home"])
+        self.assertTrue(de["worth"])
         late = datetime(2026, 10, 21, tzinfo=timezone.utc)
         no = self.by(planner.plans(self.data, self.settings, now=late))["NO"]
         self.assertEqual(no["items"], [])
+
+    def test_return_to_germany_needs_the_easy_threshold(self):
+        SALE = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
+        # Fall F8c: Das Konto steht in Norwegen, VS-Foscari ist in Deutschland 6 Cent
+        # günstiger. Der Weg zurück nach Deutschland ist ein Wechsel wie jeder leichte
+        # und schafft die 3-€-Schwelle nicht: Der Titel bleibt in Norwegen
+        d, s = sample()
+        s["current_country"] = "NO"
+        d["prices"]["DE"]["spiritfarer"] = {"status": "onsale", "currency": "EUR", "regular": 24.99}
+        d["prices"]["NO"]["hades"] = {"status": "onsale", "currency": "NOK", "regular": 250}
+        d["prices"]["JP"] = {}
+        d["prices"]["BR"] = {}
+        d["prices"]["NO"]["vs-foscari"] = {"status": "onsale", "currency": "NOK", "regular": 20,
+                                          "discount": 19.5, **SALE}
+        d["prices"]["DE"]["vs-foscari"] = dict(d["prices"]["DE"]["vs-foscari"], discount=1.79, **SALE)
+        k = planner.purchase_plan(d, s, now=NOW, include_good=True)
+        self.assertEqual([p["code"] for p in k["steps"]], ["NO"])
+        self.assertIn("vs-foscari", [i["slug"] for i in k["steps"][0]["items"]])
+        de = [x for x in k["dropped"] if x["code"] == "DE"][0]
+        self.assertAlmostEqual(de["gain"], 0.06)
+        self.assertEqual(de["threshold"], 3.0)
+        # Was es nur in Deutschland gibt, steht unter dem herausgefallenen Land
+        self.assertEqual(de["open_slugs"], ["good-job", "nidhogg-2"])
+        # Mit Konto in Deutschland (oder ohne Kontoland) ist es kein Wechsel
+        for cur in ("DE", ""):
+            s["current_country"] = cur
+            k = planner.purchase_plan(d, s, now=NOW, include_good=True)
+            self.assertEqual([p["code"] for p in k["steps"]], ["DE"])
 
     def test_shared_basket(self):
         basket = ["hades", "good-job", "nidhogg-2"]
@@ -724,6 +756,27 @@ class PlanTest(unittest.TestCase):
         self.assertNotIn("https://shop.example/br25", self.data["card_prices"])
         self.assertIn("lehnt Abrufe ab", sync.status["log"][-2])
 
+    def test_card_prices_take_turns(self):
+        # Der Shop sperrt nach einigen Abrufen. Gelesen wird reihum, die ältesten zuerst,
+        # sonst kämen die hinteren Links nie dran
+        urls = [f"https://shop.example/br{v}" for v in (15, 25, 50, 100)]
+        self.settings["countries"]["BR"]["cards"] = "\n".join(
+            f"{v} | {u}" for v, u in zip((15, 25, 50, 100), urls))
+        ld = ('<script type="application/ld+json">{"@type":"Offer","price":"5.00",'
+              '"priceCurrency":"EUR"}</script>')
+        t0, calls = NOW.timestamp(), []
+
+        def twice(url, ua=None):          # Sperre nach zwei Abrufen
+            calls.append(url)
+            if len(calls) % 3 == 0:
+                raise sources.FetchError(url, 429)
+            return ld
+        for day in range(3):
+            sync.sync_card_prices(self.data, self.settings, twice, lambda s: None,
+                                  now=t0 + day * 86400)
+        read = {u for u in urls if self.data["card_prices"].get(u, {}).get("price")}
+        self.assertEqual(read, set(urls))
+
     def test_fixed_shop_fee_once_per_order(self):
         url = "https://shop.example/br50"
         self.settings["countries"]["BR"]["cards"] = f"50 | {url}"
@@ -752,61 +805,28 @@ class PlanTest(unittest.TestCase):
         self.assertEqual((cb["code"], cb["pct"]), ("BR", 15))
         self.assertNotEqual(row()["verdict"], "buy")               # nur ein Hinweis
 
-    def test_card_prices_from_ggdeals(self):
-        page = ('<div class="tile"><a href="/de/gift-card/nintendo-eshop-gift-card-50-brl/"><img></a>'
-                '<a href="/de/gift-card/nintendo-eshop-gift-card-50-brl/">Nintendo eShop 50 BRL</a>'
-                '<s>9,10€</s> <b>~8,05€</b></div>'
-                '<div class="tile"><a href="/de/gift-card/nintendo-eshop-gift-card-60-brl-brazil/">60 BRL</a>'
-                '<span>Nicht verfügbar</span></div>'
-                '<div class="tile"><a href="/de/gift-card/nintendo-eshop-gift-card-100-brl/">100 BRL</a>'
-                '<b>16,10 €</b></div>'
-                '<div><a href="/de/gift-card/nintendo-eshop-gift-card-20-usd/">20 USD</a> 17,00€</div>')
-        cards = sources.parse_ggdeals_group(page, "BRL")
-        self.assertEqual({f: p for f, (p, _) in cards.items()}, {50: 8.05, 100: 16.1})
-        self.assertEqual(cards[50][1], "https://gg.deals/de/gift-card/nintendo-eshop-gift-card-50-brl/")
-        self.settings["countries"]["BR"]["cards"] = "15=3.00\n25=4.80\n50=9.50\nx 100"
-        self.data["card_market"] = {"BR": {"checked": NOW.timestamp(), "cards": {
-            "50": {"price": 8.05, "url": "https://gg.deals/a"},
-            "100": {"price": 16.10, "url": "https://gg.deals/b"},
-            "150": {"price": 23.99, "url": "https://gg.deals/c"},
-            "15": {"price": 3.50, "url": "https://gg.deals/d"}}}}
-        ctx = planner.Context(self.data, self.settings, NOW)
-        by = {x["face"] // 100: x for x in ctx.countries["BR"]["cards"]}
-        self.assertEqual(by[50]["cost"], 8.05)            # günstiger als dein Eintrag
-        self.assertEqual(by[50]["manual"], 9.50)
-        self.assertEqual(by[15]["cost"], 3.00)            # dein Eintrag ist günstiger
-        self.assertFalse(by[100]["stock"])                # nicht vorrätig bleibt draußen
-        self.assertEqual((by[150]["cost"], by[150]["stock"]), (23.99, True))   # neuer Wert
-        self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["BR"]["card"]["market"],
-                         NOW.timestamp())
-        # Abgeschaltet oder älter als drei Tage: nur deine Einträge
-        later = datetime.fromtimestamp(NOW.timestamp() + 4 * 86400, timezone.utc)
-        self.assertEqual(len(planner.Context(self.data, self.settings, later).countries["BR"]["cards"]), 4)
-        self.settings["card_market"] = False
-        self.assertEqual(planner.Context(self.data, self.settings, NOW).countries["BR"]["cards"][2]["cost"], 9.5)
-
     def test_implausible_card_prices_are_ignored(self):
-        # 50 BRL zum Mittelkurs sind 8,91 €: 0,35 € (Gebührenhinweis statt Preis) ist ein Lesefehler
-        self.data["card_market"] = {"BR": {"checked": NOW.timestamp(), "cards": {
-            "50": {"price": 0.35, "url": "https://gg.deals/a"},
-            "100": {"price": 16.10, "url": "https://gg.deals/b"},
-            "200": {"price": 90.0, "url": "https://gg.deals/c"}}}}
-        self.settings["countries"]["BR"]["cards"] = "15=3.00\n25=4.80\n50=9.50 | https://shop.example/br50"
-        self.data["card_prices"] = {"https://shop.example/br50": {
-            "checked": NOW.timestamp(), "price": 0.99, "currency": "EUR"}}
+        # 50 BRL zum Mittelkurs sind 8,91 €: 0,99 € (Gebührenhinweis statt Preis) ist ein Lesefehler
+        self.settings["countries"]["BR"]["cards"] = ("15=3.00\n25=4.80\n50=9.50 | https://shop.example/br50\n"
+                                                    "100 | https://shop.example/br100\n"
+                                                    "200 | https://shop.example/br200")
+        self.data["card_prices"] = {
+            "https://shop.example/br50": {"checked": NOW.timestamp(), "price": 0.99, "currency": "EUR"},
+            "https://shop.example/br100": {"checked": NOW.timestamp(), "price": 16.10, "currency": "EUR"},
+            "https://shop.example/br200": {"checked": NOW.timestamp(), "price": 90.0, "currency": "EUR"}}
         ctx = planner.Context(self.data, self.settings, NOW)
         by = {x["face"] // 100: x for x in ctx.countries["BR"]["cards"]}
-        self.assertEqual(by[50]["cost"], 9.50)              # beides unglaubhaft: dein Eintrag gilt
-        self.assertEqual(by[100]["cost"], 16.10)            # 90 % vom Mittelkurs: zählt
-        self.assertNotIn(200, by)                           # 252 %: zählt nicht
+        self.assertEqual(by[50]["cost"], 9.50)              # unglaubhaft: dein Eintrag gilt
+        self.assertAlmostEqual(by[100]["cost"], 17.75)      # rund 100 % vom Mittelkurs: zählt
+        self.assertIsNone(by[200]["cost"])                  # 273 %: zählt nicht
         self.assertEqual(sorted((i["src"], i["face"]) for i in ctx.countries["BR"]["implausible"]),
-                         [("gg.deals", 50.0), ("gg.deals", 200.0), ("shop", 50.0)])
+                         [("shop", 50.0), ("shop", 200.0)])
         rows = planner.card_status(self.data, self.settings, now=NOW)["BR"]
         self.assertIn("unglaubhaft", next(r for r in rows if r["face"] == 50)["error"])
-        self.assertIn("50 für 0,35 €", next(r for r in rows if r.get("market_error"))["market_error"])
         # Deutschland: eine 20-€-Karte für 0,35 € senkt die Vergleichsbasis nicht
-        self.data["card_market"]["DE"] = {"checked": NOW.timestamp(), "cards": {
-            "20": {"price": 0.35, "url": "https://gg.deals/d"}}}
+        self.settings["countries"]["DG"]["cards"] = "20 | https://shop.example/de20"
+        self.data["card_prices"]["https://shop.example/de20"] = {
+            "checked": NOW.timestamp(), "price": 0.35, "currency": "EUR"}
         self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["DE"]["via"], "eur")
         self.assertTrue(planner.plausible_card(6.40, 3000, 5.6086))   # kleine Karte mit Gebühr
         self.assertFalse(planner.plausible_card(None, 3000, 5.6086))
@@ -995,7 +1015,10 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(steps, [("DE", ["spiritfarer"])])
         self.assertEqual([d["code"] for d in plan["dropped"]], ["BR"])
         self.assertAlmostEqual(plan["dropped"][0]["saving"], 19.65)
-        self.assertEqual([x["slug"] for x in plan["later"]], ["hades", "vs-foscari"])
+        # Jeder Titel steht nur einmal unter "Nicht im Plan": Hades und VS Foscari unter
+        # Brasilien, dessen Wechsel nicht lohnt, nicht noch einmal unter "lieber warten"
+        self.assertEqual(plan["dropped"][0]["open_slugs"], ["hades", "vs-foscari"])
+        self.assertEqual(plan["later"], [])
         self.assertAlmostEqual(plan["cost"], 6.24)
         self.assertEqual(plan["count"], 1)
 
@@ -1400,11 +1423,6 @@ class SyncTest(unittest.TestCase):
                 if "country=CL" in url:
                     raise sources.FetchError(url, 500)     # abgeschaltetes Land fällt aus
                 return '{"prices":[]}'                     # übrige Länder: nichts im Angebot
-            if "gg.deals" in url:
-                if "brl-brazil" in url:
-                    return ('<a href="/de/gift-card/nintendo-eshop-gift-card-50-brl/">50 BRL</a>'
-                            '<span>~8,05€</span>')
-                return "<p>leer</p>"
             raise AssertionError("unerwarteter Abruf " + url)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
         self.assertTrue(sync.status["ok"], sync.status["log"])
@@ -1432,12 +1450,7 @@ class SyncTest(unittest.TestCase):
         # Preise für alle Länder mit bekannten IDs (Europa und Amerika), nicht für Japan und Asien
         self.assertEqual(len(price_calls), 19)
         self.assertIn("CL", data["price_fail"])
-        # gg.deals: eine Seite je aktivem Land mit Guthaben (hier BR, JP). Deutschland zum
-        # Shop-Preis braucht keine, „Deutschland mit Guthaben“ ist abgeschaltet
-        gg = [u for u in calls if "gg.deals" in u]
-        self.assertEqual(len(gg), len(set(gg)))
-        self.assertEqual(data["card_market"]["BR"]["cards"]["50"]["price"], 8.05)
-        self.assertEqual(set(data["card_market"]), {"BR", "JP"})
+        self.assertNotIn("card_market", data)                            # gg.deals ist ausgebaut
         self.assertNotIn("DG", data["prices"])                           # kein eigener eShop
         self.assertFalse(any("Preisabruf fehlgeschlagen" in l for l in sync.status["log"]))
         n = len(calls)
@@ -1505,25 +1518,6 @@ class SyncTest(unittest.TestCase):
             sources.fetch_item = orig
 
 
-class GgdealsBlockTest(unittest.TestCase):
-    def test_blocked_ggdeals_rests_for_a_day(self):
-        data, settings = sample()
-        settings["countries"]["JP"]["pay"] = "giftcard"
-        calls = []
-
-        def deny(url, ua=None):
-            calls.append(url)
-            raise sources.FetchError(url, 403)
-        t0 = NOW.timestamp()
-        sync.sync_card_market(data, settings, deny, lambda s: None, now=t0)
-        self.assertEqual(len(calls), 1)                         # nach der ersten Sperre Schluss
-        self.assertEqual({c for c, e in data["card_market"].items() if "sperrt" in e["error"]}, {"JP", "BR"})
-        sync.sync_card_market(data, settings, deny, lambda s: None, now=t0 + 3600)
-        self.assertEqual(len(calls), 1)                         # heute nicht noch einmal
-        sync.sync_card_market(data, settings, deny, lambda s: None, now=t0 + 86400)
-        self.assertEqual(len(calls), 2)
-
-
 class PurchaseLogTest(unittest.TestCase):
     def setUp(self):
         for name in ("settings.json", "purchases.json"):
@@ -1558,6 +1552,17 @@ class PurchaseLogTest(unittest.TestCase):
         self.assertNotIn("hades", [i["slug"] for p in plan["steps"] for i in p["items"]])
         self.assertEqual(plan["bought_waiting"], ["Hades"])
         self.assertAlmostEqual(plan["bought_saving"], 16.99)
+        # Mit dem Preis der Spiele (ohne den Rest, der als Guthaben bleibt) rechnet die
+        # Ersparnis wie der Kaufplan
+        bought.append({"at": "2026-10-12T20:00:00+00:00", "code": "BR", "slugs": ["good-job"],
+                       "titles": ["Good Job!"], "cost": 9.0, "games": 7.5, "de": 9.99, "rest": 8,
+                       "currency": "BRL"})
+        plan = planner.purchase_plan(data, settings, now=NOW, bought=bought)
+        self.assertAlmostEqual(plan["bought_saving"], 16.99 + 2.49)
+        # Der Kaufplan gibt je Schritt mit, was der Kauf ohne Rest kostet
+        for p in plan["steps"]:
+            self.assertAlmostEqual(p["games_paid"], p["cost"] - p["rest_value"] + (p.get("balance_value") or 0)
+                                   + (p.get("balance_lost") or 0))
 
 
 class SelfCheckTest(unittest.TestCase):
@@ -1572,12 +1577,13 @@ class SelfCheckTest(unittest.TestCase):
         data["fx"]["updated"] = "2026-10-01"
         for slug in list(data["prices"]["BR"])[1:]:
             data["prices"]["BR"][slug]["status"] = "not_found"
-        data["card_market"] = {"BR": {"checked": NOW.timestamp(), "cards": {
-            "50": {"price": 0.35, "url": "https://gg.deals/a"}}}}
+        settings["countries"]["BR"]["cards"] = "50 | https://shop.example/br50"
+        data["card_prices"] = {"https://shop.example/br50": {
+            "checked": NOW.timestamp(), "price": 0.35, "currency": "EUR"}}
         w = " | ".join(sync.self_check(data, settings, now=NOW)["warnings"])
         self.assertIn("Norwegen: Preis je NOK", w)
         self.assertIn("Brasilien: nur noch 1 statt 5 Titel kaufbar", w)
-        self.assertIn("Kartenpreis 50 BRL für 0,35 €", w)
+        self.assertIn("Kartenpreis 50 BRL für 0,78 € vom Shop unglaubhaft", w)
         self.assertIn("Wechselkurse sind 10 Tage alt", w)
 
 
