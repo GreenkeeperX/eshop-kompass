@@ -60,6 +60,9 @@ Reihenfolge und Begründung:
   Sammlung ist. Mit Preisvergleich, wenn das Upgrade-Paket auf der Wishlist steht.
 - [x] 3.3 Komplett-Editionen (0.23): Hinweis „auch enthalten in …“ am Titel und Vergleich von
   Paketpreis und Summe der fehlenden Teile, soweit beides bekannt ist.
+- [x] 3.4 Ein Weg zur Switch 2 im Kaufplan (0.24): Hast du das Spiel, fällt die Edition
+  weg und das Upgrade-Paket zählt. Ohne das Spiel bleibt der günstigere Weg, Edition oder
+  Spiel plus Paket, nie beides.
 - [ ] Danach: Füllartikel in den Kaufplan, wenn eine größere Karte mit Zusatztitel
   günstiger ist als ein Rest.
 
