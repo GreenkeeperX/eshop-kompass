@@ -1648,7 +1648,7 @@ function jpHelper(todo){
   const ids = [...new Set(jp.filter(t => !t.manual && (t.state === null || t.src === "titledb")).map(t => t.nsuid))];
   return `<details class="box"><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     <ol class="hint">
-      <li>Zieh diesen Link einmal in deine Lesezeichenleiste (er ersetzt ein älteres „JP-Sprachen lesen“): <a href="javascript:${encodeURIComponent(JP_HELPER)}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>JP-Sprachen lesen 2</b></a></li>
+      <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(JP_HELPER)}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>JP-Sprachen lesen</b></a></li>
       <li>Kopiere die IDs: <textarea id="jpids" readonly rows="2" style="width:100%">${ids.join(" ")}</textarea> <button data-act="jpcopy">IDs kopieren</button></li>
       <li>Öffne <a href="https://store-jp.nintendo.com/" target="_blank" rel="noopener">store-jp.nintendo.com</a>, klick das Lesezeichen an und füge die IDs ein. Es liest eine Seite alle 2,5 Sekunden.</li>
       <li>Füge das Ergebnis hier ein: <textarea id="jpimport" rows="3" style="width:100%" placeholder='{"70010000000000":"日本語, 英語, ドイツ語"}'></textarea> <button data-act="jpimport">Übernehmen</button></li>
