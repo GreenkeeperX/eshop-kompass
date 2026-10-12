@@ -413,9 +413,10 @@ function money(n, cur){
   try{ return new Intl.NumberFormat("de-DE",{style:"currency",currency:cur||"EUR"}).format(n); }
   catch(e){ return n.toFixed(2).replace(".",",") + " " + (cur||""); }
 }
-function num(n, cur){   // Zahl ohne Währungszeichen, für enge Spalten
+function num(n, cur){   // Landeswährung ohne Zeichen, für enge Spalten; Euro immer mit €
   if(n === null || n === undefined) return "–";
-  const d = cur ? digits(cur) : 2;
+  if(!cur || cur === "EUR") return eur(n);
+  const d = digits(cur);
   return n.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d});
 }
 const eur = n => money(n, "EUR");
@@ -1467,19 +1468,19 @@ function langSection(){
   const open = todo.filter(t => !t.manual && t.state === null), done = todo.filter(t => t.manual);
   const auto = todo.filter(t => !t.manual && t.state !== null);
   const need = open.filter(t => t.matters), rest = open.filter(t => !t.matters);
-  let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${need.length ? ` <span class="chip w">${need.length} zu prüfen</span>` : ""}${auto.length ? ` <span class="chip">${auto.length} automatisch</span>` : ""}</h3>
+  let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${need.length ? ` <span class="chip w">${need.length} zu prüfen</span>` : ""}</h3>
     <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus Japan oder Amerika nur, wenn sie Deutsch enthält. Amerika liest das Tool selbst von nintendo.com. Für Japan gibt es keine abrufbare Quelle (der Store zeigt Sprachen nur per JavaScript, die Suche sperrt Programme), deshalb steht der Titel hier: im Store nachsehen und einmal bestätigen. Prüfen lohnt nur, wo die Fassung billiger wäre als der Bestpreis der zählenden Länder; die übrigen ändern nichts. Deine Angabe gilt dauerhaft und geht der von Nintendo vor.</p>`;
   if(!todo.length) return h + `<p class="hint">Keine Titel in Regionen außerhalb Europas.</p>`;
   const row = t => `<tr><td>${esc(t.title)}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
     <td><small>${t.here ? `dort ${eur(t.here.eur)} (${t.here.code})` : "dort nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small></td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
     <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `Nintendo sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
-      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline">von Nintendo geprüft</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
+      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="Gelesen: ${esc(t.text || "–")}">von Nintendo geprüft${t.text ? `: ${esc(t.text)}` : ""}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
   const head = `<thead><tr><th>Titel</th><th>Region</th><th title="Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder">Preis</th><th></th><th>Deutsch?</th></tr></thead>`;
   h += need.length ? `<div class="scroll"><table>${head}<tbody>${need.map(row).join("")}</tbody></table></div>` : `<p class="hint">Keine Prüfung nötig: Nirgends wäre eine ungeprüfte Fassung billiger als der Bestpreis.</p>`;
   if(rest.length || done.length || auto.length)
-    h += `<details><summary class="hint">${auto.length} von Nintendo geprüft, ${done.length} von dir gesetzt, ${rest.length} ungeprüft ohne Folgen</summary><div class="scroll"><table>${head}<tbody>${done.concat(auto, rest).map(row).join("")}</tbody></table></div></details>`;
+    h += `<details><summary class="hint">Weitere ${auto.length + done.length + rest.length}: ${auto.length} automatisch geprüft, ${done.length} von dir bestätigt, ${rest.length} egal, weil dort nicht günstiger</summary><div class="scroll"><table>${head}<tbody>${done.concat(auto, rest).map(row).join("")}</tbody></table></div></details>`;
   return h;
 }
 async function saveSettings(form, rerender){
