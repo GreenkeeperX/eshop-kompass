@@ -56,7 +56,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
 
 - Jetzt (Startseite): oben, in welchem Land dein Konto steht und mit wie viel
   Guthaben, direkt änderbar. Darunter "Zu erledigen": ungeprüfte Sprachen, die
-  etwas ändern würden, Länder ohne Guthabenkarte mit Preis und Kartenpreise,
+  etwas ändern würden (die Fassung wäre günstiger; alle offenen stehen unter
+  Einstellungen, "Sprachen prüfen"), Länder ohne Guthabenkarte mit Preis und Kartenpreise,
   die älter als 30 Tage sind, jeweils mit Sprung an die richtige Stelle.
   Dann der Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem
   Land kaufst. Kandidaten sind die Titel mit dem Urteil "kaufen", per Schalter
@@ -69,7 +70,7 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   steht. Ohne eingetragenes Kontoland gilt Deutschland als Konto.
   Schafft ein Land das nicht, wandern seine Titel ins nächstbeste Land; sind
   sie dort kein Kauf mehr, stehen sie unter "Nicht im Plan" (zugeklappt), mit
-  Grund, jeder Titel nur einmal. Reihenfolge: zuerst das Land, in dem dein Konto steht, dann leicht,
+  Grund, jeder Titel nur einmal. Reihenfolge: zuerst das Land, in dem dein Konto steht (ohne Angabe Deutschland), dann leicht,
   mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ein Rest ist kein
   Verlust, solange du im Land bleibst; folgt im Plan noch ein Wechsel, verfällt
   er (Nintendo nimmt Guthaben nicht mit) und zählt dort als Kosten ("Rest
@@ -185,8 +186,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   jeder Titel "kaufen" ist) und zählt die Urteile; "Wechsel" sagt, ob sich der
   Weg hierher lohnt ("✓ lohnt" oder rot "lohnt nicht", mit Gewinn gegenüber
   "sonst" und der Schwelle der Stufe); "Rest" nennt, was als Guthaben bleibt
-  und was hineinpasst. Hürden (Rest blockiert, Karten fehlen, DLC braucht eine
-  andere Region) stehen darunter. Die Tabelle zeigt je Titel Einkaufspreis,
+  und was hineinpasst. Bezahlst du ganz oder teils aus vorhandenem Guthaben,
+  steht das unter der Kopfzahl. Hürden (Rest blockiert, Karten fehlen, DLC
+  braucht eine andere Region als Europa) stehen darunter. Die Tabelle zeigt je Titel Einkaufspreis,
   Abstand zum Bestpreis und den Preis ohne diesen Wechsel ("sonst").
   Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen unter der Tabelle,
   die ganze Rechnung unter "Rechnung". Ein Rest ist kein Verlust: Gewinn und
@@ -410,8 +412,9 @@ macht Pausen zwischen den Abrufen und hört bei einer Sperre (HTTP 403 oder 429)
 oder einer Prüfseite auf, statt sich als Browser auszugeben. Der Rest folgt
 beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
 auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Für
-Japan prüft er zusätzlich nintendo.co.jp: erst die robots.txt, dann, wenn sie es
-erlaubt, die Liste aller Switch-Titel und eine Titelseite daraus. Er zeigt, wie
+Japan prüft er zusätzlich nintendo.co.jp: erst die robots.txt (gelesen je Kennung,
+wie es Crawler tun; ein Verbot nur für einzelne Bots gilt nicht für uns), dann,
+wenn sie es erlaubt, die Liste aller Switch-Titel und eine Titelseite daraus. Er zeigt, wie
 viele deiner Japan-IDs die Liste kennt und ob die Seite Sprachen (対応言語) nennt.
 
 Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so

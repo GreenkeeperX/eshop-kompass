@@ -104,7 +104,10 @@ Reihenfolge und Begründung:
 - [ ] 4.6 Sprache in Japan: eine Probe für nintendo.co.jp in den Verbindungstest. Liefert
   sie Sprachangaben für einen guten Teil der Titel, wird dieser Teil automatisch, sonst
   bleibt es bei der Bestätigung von Hand. Probe gebaut (0.34): robots.txt, die Liste aller
-  Switch-Titel und eine Titelseite daraus. Offen: Auswertung mit echten Daten, dann die
+  Switch-Titel und eine Titelseite daraus. Der Verbindungstest 0.35.2 meldete die Liste als
+  gesperrt, las die robots.txt aber falsch (ein Verbot für einzelne Bots galt für alle);
+  seit 0.38 richtig. Zugleich liefert store-jp inzwischen Sprachen. Offen: der nächste
+  Abgleich (wie viele Japan-Titel store-jp klärt) und ein neuer Verbindungstest, dann die
   Entscheidung.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
@@ -136,6 +139,11 @@ Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
   Länderspalten der Titel-Tabelle stehen ab Werk nach Stufe und darin nach Zahl der
   Bestpreise, wahlweise nur nach Bestpreisen oder nur nach Stufe; Deutschland bleibt vorn.
   Die Wahl merkt sich der Browser.
+- [x] 5.3 Reste aus Review 0.35 (0.38): Ohne Kontoland kommt Deutschland im Kaufplan zuerst,
+  wie mit Konto in Deutschland. Bezahlung aus vorhandenem Guthaben steht unter der Kopfzahl,
+  ein Rest daraus ohne „(0,00 €)“. „Passt dazu“ nur, wo ein Rest bleibt. „Zu erledigen“ nennt
+  nur offene Sprachen, die gerade Geld kosten. Kein DLC-Regionshinweis in Europa.
+  Verbindungstest: robots.txt je Kennung gelesen, Preisverlauf wieder aus der Artikelseite.
 
 ## Ohne Arbeit für uns
 

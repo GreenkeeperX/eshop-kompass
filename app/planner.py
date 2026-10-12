@@ -1721,7 +1721,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         # Erst das Land, in dem das Konto steht, dann nach Wechselstufe. Ein Land, dessen
         # Rest den Wechsel blockiert, zuletzt. Innerhalb einer Stufe zuerst, wo ein
         # Angebot am frühesten endet.
-        return (stuck(p), not p["current"], p["tier"] if not p["is_ref"] else 1, first_end(p), p["name"])
+        # Ohne angegebenes Kontoland gilt Deutschland als Konto ("home") und kommt ebenso zuerst
+        return (stuck(p), not (p["current"] or p["home"]), p["tier"] if not p["is_ref"] else 1, first_end(p), p["name"])
 
     held, everywhere = [], {}
     if locked:

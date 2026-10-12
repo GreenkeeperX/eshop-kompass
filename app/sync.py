@@ -4,6 +4,7 @@ import threading
 import time
 import traceback
 import urllib.parse
+import urllib.robotparser
 from datetime import datetime, timedelta, timezone
 
 from . import countries, planner, sources, store
@@ -838,7 +839,7 @@ def diagnose():
         info = sources.parse_item_page(text)
         return (f"Titel „{(info['title'] or '')[:50]}“, IDs {info['nsuids']}, "
                 f"Tiefstpreis {info['low']}")
-    r = probe(f"Artikelseite {slug}", f"https://www.dekudeals.com/items/{slug}?country=de",
+    item = probe(f"Artikelseite {slug}", f"https://www.dekudeals.com/items/{slug}?country=de",
               None, item_info)
     probe("Nintendo-Preise", sources.NINTENDO_PRICE_URL + "?country=DE&lang=de&ids=70010000000126",
           None, lambda t: t[:160])
@@ -857,12 +858,15 @@ def diagnose():
     # Switch-Titel und eine Titelseite daraus. Drei Abrufe, nur im Verbindungstest.
     jp_ids = {n for it in data["items"].values() if it.get("active")
               for n in (it.get("ids") or {}).get("JP") or []}
-    r = sources.request("https://www.nintendo.co.jp/robots.txt", None, timeout=20)
-    banned = [ln.split(":", 1)[1].strip() for ln in r["text"].splitlines()
-              if ln.lower().startswith("disallow:")] if not r["error"] else []
-    lines.append(f"nintendo.co.jp robots.txt: HTTP {r['status'] or r['error']}, gesperrt: "
-                 + (", ".join(banned[:12]) or "nichts"))
-    allowed = lambda path: not any(b and path.startswith(b) for b in banned)
+    rb = sources.request("https://www.nintendo.co.jp/robots.txt", None, timeout=20)
+    # Regeln je Kennung: Ein "Disallow: /" für einzelne Bots gilt nicht für uns. Maßgeblich
+    # ist der Abschnitt, der zu unserer Kennung passt, sonst der für alle (*).
+    rp = urllib.robotparser.RobotFileParser()
+    rp.parse(rb["text"].splitlines() if not rb["error"] and rb["status"] < 400 else [])
+    allowed = lambda path: rp.can_fetch(sources.USER_AGENT, "https://www.nintendo.co.jp" + path)
+    lines.append(f"nintendo.co.jp robots.txt: HTTP {rb['status'] or rb['error']}, für uns "
+                 f"Titelliste {'erlaubt' if allowed('/data/software/xml/switch.xml') else 'gesperrt'}, "
+                 f"Titelseiten {'erlaubt' if allowed('/switch/') else 'gesperrt'}")
     if allowed("/data/software/xml/switch.xml"):
         def xml_info(t):
             tags = sorted(set(sources.re.findall(r"<([A-Za-z]+)>", t)))[:20]
@@ -907,7 +911,7 @@ def diagnose():
     probe(f"Sprachen Amerika ({am})", sources.AM_STORE_URL.format(nsuid=am), None, am_info)
 
     # Preisverlauf: DekuDeals liefert ihn als JSON in der Artikelseite (für Kurven im Tool)
-    text = r["text"]
+    text = item["text"]
     for sid in ("price_history_data", "price_history_indices"):
         m = sources.re.search(r"""<script[^>]*id=["']""" + sid + r"""["'][^>]*>(.*?)</script>""",
                               text, sources.re.S)

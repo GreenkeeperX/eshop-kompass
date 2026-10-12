@@ -1105,6 +1105,18 @@ class PlanTest(unittest.TestCase):
         self.assertNotIn("hades", {i["slug"] for p in plan["steps"] for i in p["items"]})
         self.assertIn("Hades", plan["bought_waiting"])
 
+    def test_plan_order_same_without_account_country(self):
+        # Ohne Kontoland gilt Deutschland als Konto: dieselbe Reihenfolge wie mit Konto in DE,
+        # auch wenn ein Angebot in Norwegen früher endet
+        self.data["prices"]["NO"]["good-job"] = {"status": "onsale", "currency": "NOK", "regular": 200, "discount": 10,
+                                                 "start": "2026-10-01T00:00:00Z", "end": "2026-10-15T00:00:00Z"}
+        self.settings["current_country"] = ""
+        a = [p["code"] for p in planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True)["steps"]]
+        self.settings["current_country"] = "DE"
+        b = [p["code"] for p in planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True)["steps"]]
+        self.assertEqual(a, b)
+        self.assertEqual(a, ["DE", "NO"])
+
     def test_rest_blocks_nowhere_by_default(self):
         # Ab 0.36: Guthaben in Brasilien hält den Plan nicht mehr dort fest
         self.settings["current_country"] = "BR"
@@ -1531,6 +1543,25 @@ class SafetyTest(unittest.TestCase):
             text = "\n".join(sync.diagnose())
         self.assertIn("per robots.txt gesperrt", text)
         self.assertFalse(any("switch.xml" in u for u in urls))
+        # Ein "Disallow: /" für einen einzelnen Bot gilt nicht für uns (bis 0.37 falsch gelesen)
+        urls.clear()
+        with mock.patch.object(sources, "request", fake("User-agent: GPTBot\nDisallow: /\n\n"
+                                                        "User-agent: *\nDisallow: /cgi-bin/")):
+            text = "\n".join(sync.diagnose())
+        self.assertIn("für uns Titelliste erlaubt", text)
+        self.assertTrue(any("switch.xml" in u for u in urls))
+
+    def test_diagnose_reads_history_from_item_page(self):
+        # Bis 0.37 suchte der Verbindungstest den Verlauf in robots.txt statt in der Artikelseite
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
+
+        def request(url, ua=None, timeout=25):
+            text = ('<script id="price_history_data" type="application/json">[1]</script>'
+                    if "/items/" in url else "")
+            return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
+        with mock.patch.object(sources, "request", request):
+            text = "\n".join(sync.diagnose())
+        self.assertIn("Verlauf, price_history_data: 3 Zeichen", text)
 
 class SyncTest(unittest.TestCase):
     def test_full_sync_with_fake_network(self):

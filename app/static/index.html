@@ -1128,7 +1128,9 @@ function restLine(p, last){
   if(!p.rest) return `<span>kein Rest</span>`;
   const blocked = !last && p.warnings.some(w => w.startsWith("Rest blockiert"));
   const fits = (p.fill || []).length ? [] : p.fillers.filter(f => f.slugs.length === 1 && f.extra < 0.005);
-  return `<span class="${blocked ? "bad" : p.rest_value >= 5 ? "warnc" : ""}">${money(p.rest, p.currency)} (${eur(p.rest_value ?? p.rest_eur)})</span>` +
+  // Ein Rest aus vorhandenem Guthaben hat keinen neuen Preis: dann ohne Europreis statt „(0,00 €)“
+  const rv = p.rest_value ?? p.rest_eur;
+  return `<span class="${blocked ? "bad" : rv >= 5 ? "warnc" : ""}">${money(p.rest, p.currency)}${rv > 0.005 ? ` (${eur(rv)})` : p.balance_value ? " aus deinem Guthaben" : ""}</span>` +
     (fits.length ? ` · passt hinein: ${fits.map(f => esc(f.shorts[0])).join(", ")}` : "");
 }
 /* Hürden: was den Kauf hier erschwert, rot heißt nein, bernstein heißt prüfen */
@@ -1139,7 +1141,8 @@ function hurdles(p, last){
     if(w.startsWith("Rest blockiert") && last) out.push(`<span class="warnc" title="Der Kaufplan wechselt danach nicht mehr. Ein späterer Wechsel geht erst, wenn das Guthaben aufgebraucht ist.">Rest bleibt, blockiert spätere Wechsel</span>`);
     else if(w.startsWith("Rest blockiert")) out.push(`<span class="bad" title="${esc(w)}, bis das Guthaben 0 ist">Rest blockiert Wechsel</span>`);
     else if(w.startsWith("Keine Guthabenkarten")) out.push(`<span class="warnc" title="${esc(w)}">Karten fehlen, geschätzt</span>`);
-    else if(w.startsWith("DLC braucht")) out.push(`<span class="${p.family === country("DE").family_name || p.is_ref ? "mut" : "warnc"}" title="${esc(w)}">DLC braucht Region ${esc(p.family)}</span>`);
+    // In Europa passt das Hauptspiel ohnehin (deutsches Konto, dieselbe Region): kein Hinweis
+    else if(w.startsWith("DLC braucht")){ if(!p.is_ref && p.family !== "Europa") out.push(`<span class="warnc" title="${esc(w)}">DLC braucht Region ${esc(p.family)}</span>`); }
     else if(/ohne deutschen Vergleichspreis/.test(w)) out.push(`<span class="mut" title="${esc(w)}">${parseInt(w)} ohne DE-Preis</span>`);
     else if(/ungeprüfter Sprache/.test(w)) out.push(`<span class="warnc" title="Für diese Region liegt noch keine Sprachangabe vor">${parseInt(w)}× Sprache ungeprüft</span>`);
     else if(/ohne deutsche Fassung/.test(w)) out.push(`<span class="bad">${esc(w)}</span>`);
@@ -1167,7 +1170,7 @@ function planCard(p, step){
     ${step ? `<button class="sm" data-act="bought" data-c="${esc(p.code)}" title="Vermerkt den Kauf: Dein Konto steht danach hier, ein Rest bleibt als Guthaben, die Titel verschwinden aus dem Plan">gekauft</button>`
       : p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</header>`;
   if(has){
-    h += `<div class="money" title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}${cur === "EUR" ? "" : `<small>${money(p.total, cur)}</small>`}</div>`;
+    h += `<div class="money" title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}${cur === "EUR" ? "" : `<small>${money(p.total, cur)}</small>`}${p.balance_value ? `<small>${p.cost < 0.005 ? "ganz aus deinem Guthaben" : "neu zu zahlen, dazu dein Guthaben"}</small>` : ""}</div>`;
     h += `<div class="ln"><span class="k">Preis</span>${priceLine(p)}</div>`;
     h += `<div class="ln"><span class="k">Wechsel</span>${switchLine(p)}</div>`;
     const last = !!(step && S.kauf && step === S.kauf.steps.length);
@@ -1206,7 +1209,8 @@ function planCard(p, step){
       ? `<a class="btn sm" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Er steht nicht auf der Wishlist: Setz ihn bei DekuDeals darauf, dann lässt er sich hier übernehmen. DLC gelten nur in der Region des Hauptspiels.">${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></a>`
       : `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`).join(" ") +
       `</div>`;
-  } else if(p.fillers[0]){
+  } else if(p.fillers[0] && p.rest > 0){
+    // Nur wo ein Rest bleibt: Bei Kartenzahlung gibt es keinen Rest, der sich füllen ließe
     const f = p.fillers[0];
     h += `<p class="restline" style="margin-top:6px">Passt dazu: + ${f.shorts.map(esc).join(" + ")} für ${eur(f.extra)}, sonst ${eur(f.ref)}${f.rest !== null && f.rest !== undefined ? `, Rest dann ${money(f.rest, cur)}` : ""}</p>`;
   }
@@ -1234,7 +1238,8 @@ function restHtml(p, bare){
   if(p.rest === null) return `<span class="warnc">${bare ? "unbekannt" : "Rest unbekannt"}</span>`;
   if(p.rest === 0) return `${pre}0`;
   const blocked = p.warnings.some(w => w.startsWith("Rest blockiert"));
-  return `<span class="${blocked ? "bad" : ""}">${pre}${money(p.rest, p.currency)}</span> <small>${eur(p.rest_value ?? p.rest_eur)}</small>`;
+  const rv = p.rest_value ?? p.rest_eur;
+  return `<span class="${blocked ? "bad" : ""}">${pre}${money(p.rest, p.currency)}</span>${rv > 0.005 ? ` <small>${eur(rv)}</small>` : ""}`;
 }
 
 /* ---------- Jetzt: Startseite mit Konto, Aufgaben und Kaufplan ---------- */
@@ -1250,8 +1255,10 @@ function accountLine(){
 }
 function todos(){
   const out = [], s = S.state.settings;
-  const need = (S.state.lang_todo || []).filter(t => !t.manual && t.state === null).sort((a, b) => b.matters - a.matters);
-  if(need.length) out.push([`${need.length} Titel: Sprache in ${[...new Set(need.map(t => t.family_name))].join(", ")} offen, ${need.length === 1 ? "zählt" : "zählen"} dort erst nach deiner Bestätigung (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})`, `<button class="link" data-act="gosprachen">einmal prüfen</button>`]);
+  // Nur was gerade Geld kostet: offene Sprachen, wo die Fassung günstiger wäre. Die übrigen
+  // offenen Titel stehen unter Einstellungen, Sprachen prüfen.
+  const open = (S.state.lang_todo || []).filter(t => !t.manual && t.state === null), need = open.filter(t => t.matters);
+  if(need.length) out.push([`${need.length} Titel wären in ${[...new Set(need.map(t => t.family_name))].join(", ")} günstiger, die Sprache dort ist aber offen (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})${open.length > need.length ? `; insgesamt ${open.length} offen` : ""}`, `<button class="link" data-act="gosprachen">prüfen</button>`]);
   for(const p of S.plans){
     if(p.is_ref || p.code === "DG" || !(s.countries[p.code] || {}).enabled) continue;
     if(p.warnings.some(w => w.startsWith("Keine Guthabenkarten")))
