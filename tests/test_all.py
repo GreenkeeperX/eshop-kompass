@@ -1685,6 +1685,33 @@ class Switch2Test(unittest.TestCase):
         rows.append(self.row("other-nintendo-switch-2-edition", "Other – Nintendo Switch 2 Edition", 69.99))
         self.assertEqual(list(planner.switch2_paths(data, rows)), [ed])
 
+    def test_plan_buys_one_way_to_switch_2(self):
+        ed, up, base = "zelda-totk-nintendo-switch-2-edition", "zelda-totk-nintendo-switch-2-edition-upgrade-pack", "zelda-totk"
+        data = {"owned": [base], "items": {up: {"title": "Upgrade Pack", "active": True, "parent": base}},
+                "rel": {base: {"title": "Zelda TotK", "dlc": [[up, "Nintendo Switch 2 Edition Upgrade Pack"]]}}}
+        rows = [self.row(ed, "Zelda TotK – Nintendo Switch 2 Edition", 79.99), self.row(up, "Upgrade Pack", 9.99)]
+        # Das Spiel ist da: keine Edition, das Paket bleibt im Plan
+        wanted, skip = planner._switch2_choice(data, rows, [ed, up])
+        self.assertEqual(wanted, [up])
+        self.assertEqual(skip[0]["slug"], ed)
+        self.assertIn("Upgrade-Paket genügt", skip[0]["reason"])
+        # Ohne das Spiel und beides zum Kauf: der günstigere Weg bleibt
+        data["owned"] = []
+        rows.append(self.row(base, "Zelda TotK", 49.99))
+        wanted, skip = planner._switch2_choice(data, rows, [ed, base, up])
+        self.assertEqual((wanted, [x["slug"] for x in skip]), ([base, up], [ed]))
+        rows[2]["easy"]["eur"] = 74.99                   # jetzt ist die Edition günstiger
+        wanted, skip = planner._switch2_choice(data, rows, [ed, base, up])
+        self.assertEqual((wanted, [x["slug"] for x in skip]), ([ed], [base, up]))
+        # Ohne Preis für das Paket bleibt die Edition, ein Paket allein ohne Spiel ist nutzlos
+        del data["items"][up], data["rel"][base]["dlc"]
+        wanted, skip = planner._switch2_choice(data, [rows[0], rows[2]], [ed, base])
+        self.assertEqual((wanted, [x["slug"] for x in skip]), ([ed], [base]))
+        self.assertIn("unbekannt", skip[0]["reason"])
+        data["items"][up] = {"title": "Upgrade Pack", "active": True, "parent": base}
+        wanted, skip = planner._switch2_choice(data, rows[:2], [ed, up])
+        self.assertEqual((wanted, [x["slug"] for x in skip]), ([ed], [up]))
+
 
 class BundleTest(unittest.TestCase):
     def test_bundle_against_parts(self):
