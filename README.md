@@ -110,6 +110,11 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   sofern beides auf der Wishlist steht. Die Edition gehört zum Spiel, dessen
   Kürzel sie bei DekuDeals um "nintendo-switch-2-edition" verlängert; das
   Paket ist ein DLC dieses Spiels.
+  Der Kaufplan kauft nur einen Weg zur Switch 2: Hast du das Spiel, lässt er
+  die Edition weg und plant das Upgrade-Paket wie jeden Wishlist-Titel. Stehen
+  Edition und Switch-1-Fassung beide zum Kauf an, bleibt der günstigere Weg
+  (Spiel plus Paket gegen die Edition). Ist der Preis des Pakets unbekannt,
+  bleibt die Edition. Was wegfällt, steht unter "Nicht im Plan".
 - Pakete: Steht eine Komplett-Edition oder ein Paket auf der Wishlist, nennen
   die Einzelheiten die bekannten Teile und vergleichen den Paketpreis mit dem,
   was die fehlenden Teile einzeln jetzt kosten ("Paket spart" oder "einzeln

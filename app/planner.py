@@ -1185,6 +1185,46 @@ def switch2_paths(data, rows):
     return out
 
 
+def _switch2_choice(data, rows, wanted):
+    """Switch 2 im Kaufplan: Du kaufst die Edition oder das Switch-1-Spiel plus
+    Upgrade-Paket, nie beides; das Paket auch später (Entscheidung 12.10.2026).
+
+    Hast du das Spiel, fällt die Edition weg, das Paket plant der Plan wie jeden
+    Wishlist-Titel. Stehen Edition und Spiel zum Kauf an, bleibt der günstigere Weg.
+    Ist der Preis des Pakets unbekannt, bleibt die Edition. Liefert die übrigen
+    Kandidaten und die weggelassenen Titel mit Grund."""
+    wanted = list(wanted)
+    listed = {r["slug"] for r in rows}
+    skip = []
+
+    def drop(slug, reason):
+        if slug in wanted:
+            wanted.remove(slug)
+            skip.append({"slug": slug, "reason": reason})
+
+    for ed, p in switch2_paths(data, rows).items():
+        base, up = p["base"], p["upgrade"]
+        if p["base_owned"]:
+            why = "Switch-1-Fassung in der Sammlung, das Upgrade-Paket genügt"
+            if p["upgrade_owned"]:
+                why = "Switch-1-Fassung und Upgrade-Paket in der Sammlung"
+            elif up not in listed:
+                why += " (steht nicht auf der Wishlist)"
+            drop(ed, why)
+        elif ed in wanted and base in wanted:
+            if p["path_saving"] is not None and p["path_saving"] > 0.005:
+                drop(ed, f"Switch-1-Fassung plus Upgrade-Paket ist {_eur(p['path_saving'])} günstiger")
+            else:
+                why = ("die Switch-2-Edition ist nicht teurer als Spiel plus Upgrade-Paket"
+                       if p["path_eur"] is not None else
+                       "die Switch-2-Edition kommt in den Plan, der Preis des Upgrade-Pakets ist unbekannt")
+                drop(base, why)
+                drop(up, why)
+        elif ed in wanted and up in wanted:
+            drop(up, "ohne die Switch-1-Fassung nutzlos, die Switch-2-Edition kommt in den Plan")
+    return wanted, skip
+
+
 def bundles(data, rows):
     """Komplett-Editionen und Pakete gegen Einzelkauf.
 
@@ -1420,6 +1460,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     wanted = [r["slug"] for r in rows if r["verdict"] in ok_grades and r["slug"] not in done]
     reasons = {r["slug"]: r["reason"] for r in rows}
     target = {r["slug"]: r["target"] for r in rows}
+    wanted, s2_skip = _switch2_choice(data, rows, wanted)
     current = settings.get("current_country") or ""
     allowed = [code for code, c in ctx.countries.items() if c["unit"] is not None]
     dropped = []
@@ -1586,6 +1627,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                                     "name": ctx.countries[everywhere[s][1]]["meta"]["name"]}
                                    for s in held],
             "later": [{"slug": s, "title": ctx.title(s), "reason": reasons.get(s, "")} for s in later],
+            "s2_skip": [dict(x, title=ctx.title(x["slug"])) for x in s2_skip],
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
             "ref_total": _r(ref_total), "saving": _r(ref_total - games),
             "rest_value": _r(total - games),
