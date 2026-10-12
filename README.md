@@ -336,8 +336,9 @@ Sicherung und Protokoll.
   „laut titledb“), für Titel ohne Angabe höchstens wöchentlich geladen (rund 24 MB,
   Stück für Stück gelesen, nur die eigenen IDs behalten); und der Browser-Helfer unter
   „Sprachen prüfen“: ein Lesezeichen, das in deinem Browser die Shopseiten der
-  offenen Titel liest (eine alle 2,5 Sekunden) und das Ergebnis als Text zum Einfügen
-  ausgibt. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
+  offenen Titel liest (eine alle 2,5 Sekunden) und das Ergebnis als Text mit
+  Kopieren-Knopf ausgibt. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des
+  Spiels, auf die sie verweist. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
   Spiel und Region. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
