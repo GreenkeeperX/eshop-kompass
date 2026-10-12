@@ -88,7 +88,7 @@ class Handler(BaseHTTPRequestHandler):
                 ui = store.load_ui()
                 out = planner.purchase_plan(store.load_data(), store.load_settings(), ui["targets"],
                                             include_good=ui["plan_good"],
-                                            bought=store.load_purchases())
+                                            bought=store.load_purchases(), fill=ui["plan_fill"])
                 self._send(200, out)
             elif path == "/api/verlauf":
                 q = urllib.parse.parse_qs(self.path.partition("?")[2])

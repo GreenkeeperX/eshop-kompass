@@ -1131,6 +1131,35 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(plan["rest_lost"], jp["rest_lost"])
         self.assertNotIn("rest_lost", plan["steps"][1])         # letzter Schritt: Rest bleibt
 
+    def test_plan_fills_the_rest(self):
+        # 900 ¥ bleiben in Japan. Celeste (800 ¥) passt hinein, auch ohne Urteil „kaufen“
+        self.without_lasting()
+        self.settings["current_country"] = "JP"
+        self.settings["countries"]["JP"]["cards"] = "1000 2000"
+        self.data["prices"]["JP"]["hades"]["discount"] = 1100
+        self.data["items"]["celeste"] = {"title": "Celeste", "parent": None, "active": True,
+                                         "order": 9, "ids": {"EU": ["9"]}, "ids_checked": {}}
+        self.data["prices"]["DE"]["celeste"] = {"status": "onsale", "currency": "EUR", "regular": 19.99}
+        self.data["prices"]["JP"]["celeste"] = {"status": "onsale", "currency": "JPY", "regular": 800}
+        self.data["lows"] = {"DE": {"celeste": {"low": 1.0}}}
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        jp = plan["steps"][0]
+        self.assertEqual([(f["slug"], f["left"]) for f in jp["fill"]], [("celeste", 100.0)])
+        self.assertEqual(plan["steps"][1]["fill"], [])                 # kein Rest in DE
+        # Übernommen: Celeste kommt in den Schritt, der verfallende Rest wird kleiner
+        filled = planner.purchase_plan(self.data, self.settings, now=NOW, fill={"JP": ["celeste"]})
+        jp2 = filled["steps"][0]
+        self.assertEqual([i["slug"] for i in jp2["items"]], ["hades", "celeste"])
+        self.assertEqual((jp2["fill_slugs"], jp2["rest"], jp2["fill"]), (["celeste"], 100.0, []))
+        self.assertLess(jp2["rest_lost"], jp["rest_lost"])
+        # Schon in der Sammlung oder gekauft: kein Vorschlag, kein Füller
+        self.data["owned"] = ["celeste"]
+        self.assertEqual(planner.purchase_plan(self.data, self.settings, now=NOW)["steps"][0]["fill"], [])
+        self.data["owned"] = []
+        bought = [{"slugs": ["celeste"]}]
+        again = planner.purchase_plan(self.data, self.settings, now=NOW, fill={"JP": ["celeste"]}, bought=bought)
+        self.assertEqual([i["slug"] for i in again["steps"][0]["items"]], ["hades"])
+
     def test_blocking_rest_only_in_the_last_step(self):
         # Echter Fall: Konto in Brasilien ohne Guthaben. Ein Rest in Brasilien blockiert den
         # Wechsel, also kommt Brasilien zuletzt; dorthin ist es dann ein Wechsel wie jeder andere

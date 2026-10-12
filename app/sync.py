@@ -299,7 +299,7 @@ def _plan_card_urls(data, settings, now=None):
     try:
         ui = store.load_ui()
         steps = planner.purchase_plan(data, settings, ui["targets"], include_good=ui["plan_good"],
-                                      bought=store.load_purchases(),
+                                      bought=store.load_purchases(), fill=ui.get("plan_fill"),
                                       now=datetime.fromtimestamp(now, timezone.utc) if now else None)["steps"]
     except Exception:
         return set()
