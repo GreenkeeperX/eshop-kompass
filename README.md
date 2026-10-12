@@ -303,21 +303,25 @@ Sicherung und Protokoll.
   Karten, ohne vorhandene zu ersetzen. Gibt es den Kartenwert schon, bekommt
   die Zeile nur den Link.
 - Sprachen: Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne
-  sie weg. Europa gilt als dasselbe Produkt. Japan und Amerika prüft das Tool
-  je Titel einmal bei Nintendo (store-jp.nintendo.com, nintendo.com über
-  ec.nintendo.com) und danach nur, wo die Angabe fehlt; Amerika liefert
-  Angaben, Japan nur eine JavaScript-Seite. Unter Einstellungen, "Sprachen
-  prüfen", stehen alle Titel: oben die ungeprüften, bei denen die Prüfung
-  etwas ändert (die Fassung wäre billiger als der Bestpreis der zählenden
-  Länder), mit Link in den Store und "Deutsch ja"/"nein". Aufgeklappt
-  folgen die von Nintendo geprüften ("stimmt nicht" überschreibt), die von
-  Hand gesetzten ("zurücksetzen" stellt die Angabe von Nintendo wieder her)
-  und die ungeprüften ohne Folgen. Von Hand gilt dauerhaft und geht der
-  Angabe von Nintendo vor. Ist für eine Region unbekannt, ob es Deutsch gibt,
-  bleibt das Angebot in der Titeltabelle sichtbar („Sprache?“), zählt
-  aber nicht für Bestpreis, Urteil und Kaufplan. Ist ein Titel nur dort
-  kaufbar, nennt die Titelliste es als Grund. Mit „nur warnen“ zählen solche
-  Angebote wie früher mit.
+  sie weg. Europa gilt als dasselbe Produkt. Das Tool prüft jeden Titel einmal
+  je Region und speichert das Ergebnis dauerhaft, unabhängig vom Preis:
+  Wishlist-Titel und die fehlenden DLC deiner Spiele (Füllartikel). Europa in
+  einem Abruf, Japan und Amerika je Titel bei Nintendo (store-jp.nintendo.com,
+  nintendo.com über ec.nintendo.com); fehlt eine Angabe, fragt es monatlich
+  neu. Amerika liefert Angaben, Japan nur eine JavaScript-Seite. DLC übernimmt
+  die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
+  Spiel und Region. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
+  offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
+  Link in den Store und "Deutsch ja"/"nein"; wo die Fassung gerade günstiger
+  wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:
+  von Nintendo gelesen ("stimmt nicht" überschreibt) und von Hand gesetzt
+  ("zurücksetzen" stellt die Angabe von Nintendo wieder her). Von Hand gilt
+  dauerhaft und geht der Angabe von Nintendo vor. Steht ein Titel weder auf der
+  Wishlist noch in der Sammlung, löscht der Abgleich seine Angaben wieder. Ist
+  für eine Region unbekannt, ob es Deutsch gibt, bleibt das Angebot in der
+  Titeltabelle sichtbar („Sprache?“), zählt aber nicht für Bestpreis, Urteil,
+  Kaufplan und Füllartikel. Ist ein Titel nur dort kaufbar, nennt die
+  Titelliste es als Grund. Mit „nur warnen“ zählen solche Angebote wie früher mit.
 - Sicherung: Einstellungen, Karten, Zielpreise, Körbe, Kaufprotokoll und die
   eigene Preisaufzeichnung als eine Datei. Beim Einlesen wird die Aufzeichnung
   ergänzt, nicht ersetzt; alles andere holt das Tool beim Abgleich neu.

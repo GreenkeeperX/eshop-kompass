@@ -1204,8 +1204,8 @@ function accountLine(){
 }
 function todos(){
   const out = [], s = S.state.settings;
-  const need = (S.state.lang_todo || []).filter(t => !t.manual && t.state === null && t.matters);
-  if(need.length) out.push([`${need.length} ${need.length === 1 ? "Titel" : "Titel"}: Sprache in ${[...new Set(need.map(t => t.family_name))].join(", ")} ungeprüft, ${need.length === 1 ? "zählt" : "zählen"} erst nach deiner Bestätigung (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})`, `<button class="link" data-act="gosprachen">bestätigen</button>`]);
+  const need = (S.state.lang_todo || []).filter(t => !t.manual && t.state === null).sort((a, b) => b.matters - a.matters);
+  if(need.length) out.push([`${need.length} Titel: Sprache in ${[...new Set(need.map(t => t.family_name))].join(", ")} offen, ${need.length === 1 ? "zählt" : "zählen"} dort erst nach deiner Bestätigung (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})`, `<button class="link" data-act="gosprachen">einmal prüfen</button>`]);
   for(const p of S.plans){
     if(p.is_ref || p.code === "DG" || !(s.countries[p.code] || {}).enabled) continue;
     if(p.warnings.some(w => w.startsWith("Keine Guthabenkarten")))
@@ -1522,23 +1522,24 @@ function settingsBody(form){
 /* Sprachen von Hand bestätigen: einmal je Titel und Region */
 function langSection(){
   const todo = S.state.lang_todo || [];
-  const open = todo.filter(t => !t.manual && t.state === null), done = todo.filter(t => t.manual);
-  const auto = todo.filter(t => !t.manual && t.state !== null);
-  const need = open.filter(t => t.matters), rest = open.filter(t => !t.matters);
-  let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${need.length ? ` <span class="chip w">${need.length} zu prüfen</span>` : ""}</h3>
-    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus Japan oder Amerika nur, wenn sie Deutsch enthält. Amerika liest das Tool selbst von nintendo.com. Für Japan gibt es keine abrufbare Quelle (der Store zeigt Sprachen nur per JavaScript, die Suche sperrt Programme), deshalb steht der Titel hier: im Store nachsehen und einmal bestätigen. Prüfen lohnt nur, wo die Fassung billiger wäre als der Bestpreis der zählenden Länder; die übrigen ändern nichts. Deine Angabe gilt dauerhaft und geht der von Nintendo vor.</p>`;
+  const open = todo.filter(t => !t.manual && t.state === null).sort((a, b) => b.matters - a.matters);
+  const done = todo.filter(t => t.manual), auto = todo.filter(t => !t.manual && t.state !== null);
+  const now = open.filter(t => t.matters).length;
+  let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
+    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus einer anderen Region nur, wenn sie Deutsch enthält. Das Tool prüft jeden Titel einmal je Region und merkt sich das Ergebnis, unabhängig vom Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (ein Eintrag je Spiel gilt für alle seine DLC). Amerika liest es selbst von nintendo.com. Für Japan gibt es keine abrufbare Quelle, dort bitte einmal im Store nachsehen und bestätigen; bis dahin zählt die Fassung nicht. Deine Angabe gilt dauerhaft und geht der von Nintendo vor. Titel, die weder auf der Wishlist noch in der Sammlung stehen, räumt der Abgleich wieder ab.</p>`;
   if(!todo.length) return h + `<p class="hint">Keine Titel in Regionen außerhalb Europas.</p>`;
-  const row = t => `<tr><td>${esc(t.title)}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
-    <td><small>${t.here ? `dort ${eur(t.here.eur)} (${t.here.code})` : "dort nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small></td>
+  const row = t => `<tr><td>${esc(t.title)}${t.dlc ? ` <small>${t.dlc} fehlende DLC</small>` : ""}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
+    <td><small>${t.here ? `dort ${t.dlc ? "ab " : ""}${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
     <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `Nintendo sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
-      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="Gelesen: ${esc(t.text || "–")}">von Nintendo geprüft${t.text ? `: ${esc(t.text)}` : ""}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
+      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="Gelesen: ${esc(t.text || "–")}">von Nintendo gelesen${t.text ? `: ${esc(t.text)}` : ""}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
   const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
   const head = `<thead><tr><th>Titel</th><th>Region</th><th title="Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder">Preis</th><th></th><th>Deutsch?</th></tr></thead>`;
-  h += need.length ? `<div class="scroll"><table>${head}<tbody>${need.map(row).join("")}</tbody></table></div>` : `<p class="hint">Keine Prüfung nötig: Nirgends wäre eine ungeprüfte Fassung billiger als der Bestpreis.</p>`;
-  if(rest.length || done.length || auto.length)
-    h += `<details><summary class="hint">Weitere ${auto.length + done.length + rest.length}: ${auto.length} automatisch geprüft, ${done.length} von dir bestätigt, ${rest.length} egal, weil dort nicht günstiger</summary><div class="scroll"><table>${head}<tbody>${group(done, "Von dir bestätigt")}${group(auto, "Von Nintendo geprüft")}${group(rest, "Ungeprüft, aber egal: dort nicht günstiger als der Bestpreis")}</tbody></table></div></details>`;
+  h += open.length ? `${now ? `<p class="hint">Bei ${now} davon wäre die Fassung gerade günstiger, sie stehen oben.</p>` : ""}<div class="scroll"><table>${head}<tbody>${open.map(row).join("")}</tbody></table></div>`
+    : `<p class="hint">Alles geprüft ✓</p>`;
+  if(done.length || auto.length)
+    h += `<details><summary class="hint">Geprüft ${auto.length + done.length}: ${auto.length} von Nintendo gelesen, ${done.length} von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(done, "Von dir bestätigt")}${group(auto, "Von Nintendo gelesen")}</tbody></table></div></details>`;
   return h;
 }
 async function saveSettings(form, rerender){

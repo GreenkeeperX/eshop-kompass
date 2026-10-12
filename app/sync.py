@@ -420,8 +420,9 @@ def self_check(data, settings, now=None):
         unknown = sum(1 for o in ctx.countries["JP"]["offers"].values() if o.get("lang") == "unknown")
         if unknown and settings.get("lang_rule", "exclude") == "exclude":
             need = sum(1 for t in planner.lang_todo(data, settings) if t["family"] == "JP" and t["matters"] and t["state"] is None)
-            _log(f"Prüfung: Japan, bei {unknown} Titeln ist die Sprache ungeprüft, sie zählen nicht für Urteil und Kaufplan; "
-                 + (f"bei {need} lohnt die Prüfung (Einstellungen, Sprachen prüfen)" if need else "keiner davon wäre billiger als der Bestpreis"))
+            _log(f"Prüfung: Japan, bei {unknown} Titeln ist die Sprache offen, sie zählen nicht für Urteil und Kaufplan, "
+                 "bis du sie einmal bestätigst (Einstellungen, Sprachen prüfen)"
+                 + (f"; bei {need} davon wäre Japan gerade günstiger" if need else ""))
     data["checks"] = {"at": now.isoformat(timespec="seconds"), "warnings": warnings,
                       "units": units, "buyable": buyable}
     for w in warnings:
@@ -431,18 +432,54 @@ def self_check(data, settings, now=None):
     return data["checks"]
 
 
+def prune_langs(data, settings):
+    """Räumt Sprachangaben auf, die keine Rolle mehr spielen: Titel weder auf der Wishlist
+    noch in der Sammlung, Spiele ohne fehlende DLC. Deine Bestätigungen bleiben für alles,
+    was auf der Wishlist oder in der Sammlung steht."""
+    keep = {s for s, it in data["items"].items() if it.get("active")} | set(data.get("owned") or [])
+    for slug, it in data["items"].items():
+        if slug not in keep:
+            it.pop("langs", None)
+            it.pop("langs_checked", None)
+    games = {e.get("parent") for e in (data.get("extra") or {}).values()}
+    glangs = data.get("glangs") or {}
+    for game in [g for g in glangs if g not in games]:
+        del glangs[game]
+    if "owned" not in data:
+        return 0                     # Sammlung nie gelesen: Bestätigungen nicht anfassen
+    conf = settings.get("lang_confirm") or {}
+    drop = [s for s in conf if s not in keep]
+    if drop:
+        store.save_settings({"lang_confirm": {s: {f: None for f in conf[s]} for s in drop}})
+        for s in drop:
+            conf.pop(s, None)
+    return len(drop)
+
+
 def sync_langs(data, settings, fetch, sleep, now=None):
-    """Sprachen je Region von Nintendo: Europa in einem Abruf, Japan je Titel."""
+    """Sprache je Titel und Region, einmal geprüft und dauerhaft gespeichert, unabhängig vom
+    Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (Füllartikel). Europa in einem
+    Abruf, Amerika und Japan je Titel. DLC übernimmt die Sprache seines Spiels, deshalb
+    reicht für fehlende DLC eine Seite je Spiel und Region. Fehlt eine Angabe, fragt das
+    Tool monatlich neu."""
     now = now or time.time()
     items = {s: it for s, it in data["items"].items() if it.get("active")}
+    extra = data.get("extra") or {}
+    glangs = data.setdefault("glangs", {})
+    dropped = prune_langs(data, settings)
+    if dropped:
+        _log(f"Sprachen: {dropped} Bestätigungen für Titel gelöscht, die weder auf der Wishlist noch in der Sammlung stehen")
 
-    def due(it, fam):
-        if (it.get("langs") or {}).get(fam):
+    def due(rec, fam):
+        if (rec.get("langs") or {}).get(fam):
             return False
-        return now - (it.get("langs_checked") or {}).get(fam, 0) > LANG_RECHECK_SECONDS
+        return now - (rec.get("langs_checked") or {}).get(fam, 0) > LANG_RECHECK_SECONDS
 
-    eu = {it["ids"]["EU"][0]: s for s, it in items.items()
-          if it["ids"].get("EU") and due(it, "EU")}
+    eu = {}
+    for rec in list(items.values()) + list(extra.values()):
+        ids = (rec.get("ids") or {}).get("EU")
+        if ids and due(rec, "EU"):
+            eu.setdefault(ids[0], []).append(rec)
     if eu:
         _step("Sprachen abrufen")
         try:
@@ -451,27 +488,36 @@ def sync_langs(data, settings, fetch, sleep, now=None):
             _log(f"Sprachen Europa nicht abrufbar ({e})")
             found = None
         if found is not None:
-            for nsuid, slug in eu.items():
-                it = items[slug]
-                it.setdefault("langs_checked", {})["EU"] = now
-                if nsuid in found:
-                    it.setdefault("langs", {})["EU"] = found[nsuid]
+            for nsuid, recs in eu.items():
+                for rec in recs:
+                    rec.setdefault("langs_checked", {})["EU"] = now
+                    if nsuid in found:
+                        rec.setdefault("langs", {})["EU"] = found[nsuid]
             _log(f"Sprachen Europa: {len(found)} von {len(eu)} Titeln")
 
     # Japan und Amerika: eine Seite je Titel, einmal verlässlich, danach nur, wo sie fehlt.
-    # DLC übernimmt die Sprache des Hauptspiels, eigene Seiten braucht es dafür nicht.
+    # DLC übernimmt die Sprache des Hauptspiels, eigene Seiten braucht es dafür nicht;
+    # für fehlende DLC deiner Spiele steht die Seite eines DLC für das ganze Spiel.
     per_title = [("JP", "Japan", sources.fetch_langs_jp), ("AM", "Amerika", sources.fetch_langs_am)]
     for fam, name, fetch_one in per_title:
         if not any(settings["countries"][code]["enabled"] for code in countries.ORDER
                    if countries.BY_CODE[code]["family"] == fam):
             continue
-        todo = [(s, it["ids"][fam][0]) for s, it in items.items()
+        todo = [(it, it["ids"][fam][0]) for it in items.values()
                 if it["ids"].get(fam) and due(it, fam) and not it.get("parent")]
+        firsts = {}
+        for e in extra.values():
+            ids = (e.get("ids") or {}).get(fam)
+            if ids and e.get("parent") and e["parent"] not in firsts:
+                firsts[e["parent"]] = ids[0]
+        for game, nsuid in firsts.items():
+            rec = glangs.setdefault(game, {})
+            if due(rec, fam):
+                todo.append((rec, nsuid))
         got = fails = 0
         if todo:
             _step(f"Sprachen {name} abrufen", len(todo))
-        for slug, nsuid in todo:
-            it = items[slug]
+        for rec, nsuid in todo:
             try:
                 langs = fetch_one(nsuid, fetch=fetch)
             except sources.FetchError as e:
@@ -485,9 +531,9 @@ def sync_langs(data, settings, fetch, sleep, now=None):
                     status["done"] += 1
                     sleep(DEKU_PAUSE)
                     continue
-            it.setdefault("langs_checked", {})[fam] = now
+            rec.setdefault("langs_checked", {})[fam] = now
             if langs:
-                it.setdefault("langs", {})[fam] = langs
+                rec.setdefault("langs", {})[fam] = langs
                 got += 1
             status["done"] += 1
             sleep(DEKU_PAUSE)
@@ -724,6 +770,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_lows(data, settings, fetch, sleep)
         sync_related(data, settings, fetch, sleep)
         sync_extra_ids(data, settings, fetch, sleep)
+        sync_langs(data, settings, fetch, sleep)    # Sprachen der neu gefundenen DLC
         status["ok"] = True
         _step("Fertig")
     except Exception as e:
