@@ -1641,8 +1641,10 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     fill = {code: [s for s in slugs if s in ctx.items] for code, slugs in (fill or {}).items()}
     ok_grades = ("buy", "good") if include_good else ("buy",)
     rows = radar(data, settings, targets, now)
-    # Schon gekauft, aber noch auf der Wishlist: nicht noch einmal einplanen
-    done = {s for b in (bought or []) for s in b.get("slugs", [])}
+    # Schon gekauft, aber noch auf der Wishlist: nicht noch einmal einplanen. Das gilt auch
+    # für alles, was in der Sammlung bei DekuDeals steht (Entscheidung 12.10.2026: keine
+    # doppelte Pflege, die Sammlung kommt mit dem nächsten Abgleich).
+    done = {s for b in (bought or []) for s in b.get("slugs", [])} | ctx.owned
     wanted = [r["slug"] for r in rows if r["verdict"] in ok_grades and r["slug"] not in done]
     reasons = {r["slug"]: r["reason"] for r in rows}
     target = {r["slug"]: r["target"] for r in rows}
@@ -1804,7 +1806,9 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         left = step["rest"] if step else cur_balance / 100
         inside = {i["slug"] for i in step["items"]} if step else set()
         offers = cur_c["offers"] if cur_c else {}
-        fit = [ctx.short(s) for s in ctx.order if s not in done and s not in inside and s in offers
+        # Was ohnehin wartet, weil es woanders günstiger ist, steht nicht auch hier
+        fit = [ctx.short(s) for s in ctx.order if s not in done and s not in inside and s not in held
+               and s in offers
                and ctx.decides(offers[s]) and offers[s]["local"] <= round((left or 0) * 100)]
         lock = {"code": cur_code, "name": countries.BY_CODE[cur_code]["name"],
                 "currency": (cur_c or {}).get("currency"), "balance": cur_balance / 100,
@@ -1943,6 +1947,10 @@ def price_history(data, settings, history, slug, now=None):
             "deku_low_eur": (lambda lv: None if lv is None else eur(lv))(
                 (ctx.lows.get(c["meta"]["shop"], {}).get(slug) or {}).get("low")),
             "sales": sales, "sale_count": len(sales),
+            # Angebote laut DekuDeals in den letzten 24 Monaten: Die eigene Aufzeichnung
+            # kennt nur die Zeit, seit das Tool läuft
+            "deku_sales": (lambda e: len(e["sales"]) if "sales" in e else None)(
+                ctx.lows.get(c["meta"]["shop"], {}).get(slug) or {}),
             "on_sale_pct": round(100 * on_sale / span),
             "typical_days": round(sorted(done)[len(done) // 2], 1) if done else None,
             "days": round(span / 86400, 1),

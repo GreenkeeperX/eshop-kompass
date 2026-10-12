@@ -85,7 +85,8 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 
 
 /* Länderkarten: Raster (dicht) und Liste (groß) */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:10px;align-items:start}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(350px,100%),1fr));gap:10px;align-items:start}
+.grid.steps{grid-template-columns:repeat(auto-fill,minmax(min(540px,100%),1fr))}
 .pc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px 8px;font-size:13px;line-height:1.35;min-width:0}
 .pc.cur{border-color:var(--accent)}
 .pc>header{display:flex;align-items:baseline;justify-content:space-between;gap:7px}
@@ -479,7 +480,8 @@ function toast(msg, undo){
 const country = code => S.state.countries.find(c => c.code === code) || {name: code, lang: "en"};
 const shopOf = code => code ? (country(code).shop || code) : "DE";   // DG nutzt den deutschen eShop
 const deku = (slug, code) => `https://www.dekudeals.com/items/${encodeURIComponent(slug)}?country=${shopOf(code).toLowerCase()}`;
-const epSearch = title => `https://eshop-prices.com/games?q=${encodeURIComponent(title)}&currency=EUR`;
+// Suche bei eShop-Prices nur mit Buchstaben und Ziffern: Zeichen wie & oder : finden dort nichts
+const epSearch = title => `https://eshop-prices.com/games?q=${String(title).replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(" ").map(encodeURIComponent).join("+")}&currency=EUR`;
 function shopUrl(code, nsuid){   // Produktseite im eShop des Landes
   if(!nsuid) return null;
   const kind = String(nsuid).startsWith("7001") ? "titles" : String(nsuid).startsWith("7007") ? "bundles" : null;
@@ -953,7 +955,7 @@ function viewKauf(){
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
     ${k.count ? `<button data-act="plan2basket" title="Alle Titel des Plans als gemeinsamen Korb in allen Ländern vergleichen">als Korb vergleichen</button>` : ""}</div>`;
   if(k.lock) h += lockBox(k);
-  if(k.steps.length) h += `<div class="grid">` + k.steps.map((p, n) => planCard(p, n + 1)).join("") + `</div>`;
+  if(k.steps.length) h += `<div class="grid steps">` + k.steps.map((p, n) => planCard(p, n + 1)).join("") + `</div>`;
   else h += emptyPlan();
   h += notPlanned(k) + boughtBox(k);
   return h;
@@ -990,7 +992,7 @@ function notPlanned(k){
   for(const x of k.s2_skip || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">nur ein Weg zur Switch 2: ${esc(x.reason)}</td></tr>`);
   for(const l of k.later) rows.push(`<tr><td>${esc(l.title)}</td><td class="l">lieber warten: ${esc(l.reason)}; in den Ländern, deren Wechsel sich rechnet, kein Kauf</td></tr>`);
   if(k.nowhere.length) rows.push(`<tr><td>${k.nowhere.map(esc).join(", ")}</td><td class="l">nirgends kaufbar, wo es zählt</td></tr>`);
-  if(k.bought_waiting.length) rows.push(`<tr><td>${k.bought_waiting.map(esc).join(", ")}</td><td class="l">schon gekauft, steht noch auf der Wishlist</td></tr>`);
+  if(k.bought_waiting.length) rows.push(`<tr><td>${k.bought_waiting.map(esc).join(", ")}</td><td class="l">schon gekauft oder in deiner Sammlung, steht noch auf der Wishlist</td></tr>`);
   if(!rows.length) return "";
   return `<details class="box fold" data-k="notplan" ${S.folds.notplan ? "open" : ""}><summary>Nicht im Plan (${rows.length})</summary><table class="mini-t">${rows.join("")}</table></details>`;
 }
@@ -1012,7 +1014,9 @@ function sortPlans(list){
   const opt = (a, b) => (a.opt_gap ?? 1e9) - (b.opt_gap ?? 1e9) || sav(a, b);
   const by = {optimum: opt, saving: sav, rest: (a, b) => (a.rest_value ?? a.rest_eur ?? 1e9) - (b.rest_value ?? b.rest_eur ?? 1e9) || sav(a, b),
               end: (a, b) => endOf(a) - endOf(b) || sav(a, b), tier: (a, b) => a.tier - b.tier || sav(a, b)}[S.ui.sort] || sav;
-  return list.filter(p => !p.is_ref).sort(by).concat(list.filter(p => p.is_ref));
+  // Das Land, in dem das Konto steht, vorn, dann die Alternativen, Deutschland als Vergleich am Ende
+  const cur = list.filter(p => p.current), rest = list.filter(p => !p.current);
+  return cur.concat(rest.filter(p => !p.is_ref).sort(by), rest.filter(p => p.is_ref));
 }
 function hiddenLine(){
   if(!S.ui.hidden.length) return "";
@@ -1023,7 +1027,7 @@ function viewCards(){
   const opt = (v, l) => `<option value="${v}" ${S.ui.sort === v ? "selected" : ""}>${l}</option>`;
   let h = `<div class="bar"><span class="seg"><button data-act="dense" data-v="1" class="${S.ui.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.ui.dense ? "" : "on"}">Liste</button></span>
     <select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Bestpreis")}${opt("saving","nach Wechselgewinn")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
-    <span class="sp"></span>${basketSeg()}</div>`;
+    <span class="sp"></span>${Object.values(S.ui.overrides).some(ov => ov && ((ov.add || []).length || (ov.remove || []).length)) ? `<button class="sm" data-act="resetall" title="Eigene Änderungen an allen Warenkörben verwerfen">alle zurücksetzen</button><span class="sp"></span>` : ""}${basketSeg()}</div>`;
   const cards = [], empty = [];
   for(const p of sortPlans(S.plans)){
     if(S.ui.hidden.includes(p.code) && !p.is_ref) continue;
@@ -1135,7 +1139,7 @@ function planCard(p, step){
     const hd = hurdles(p, last);
     if(hd.length) h += `<div class="hurd">${hd.join(" · ")}</div>`;
     const wide = !S.ui.dense || step;
-    h += `<table class="it"><thead><tr><th>Titel</th>${wide ? `<th title="Preis im eShop des Landes">Shop ${esc(cur || "")}</th>` : ""}<th>bis</th><th title="Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben">Einkaufspreis</th><th title="Einkaufspreis minus Bestpreis">über Bestpreis</th>${wide && !p.is_ref ? `<th title="Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land">sonst</th>` : ""}</tr></thead><tbody>` +
+    h += `<div class="scroll"><table class="it"><thead><tr><th>Titel</th>${wide ? `<th title="Preis im eShop des Landes">Shop ${esc(cur || "")}</th>` : ""}<th>bis</th><th title="Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben">Einkaufspreis</th><th title="Einkaufspreis minus Bestpreis">über Bestpreis</th>${wide && !p.is_ref ? `<th title="Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land">sonst</th>` : ""}</tr></thead><tbody>` +
       p.items.map(i => {
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
         const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
@@ -1146,7 +1150,7 @@ function planCard(p, step){
           <td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
           <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : i.eur - i.champ < 0.005 ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">am Bestpreis</span>` : `<span class="g-${i.grade || "wait"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
           ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
-      }).join("") + `</tbody></table>`;
+      }).join("") + `</tbody></table></div>`;
   } else {
     h += `<p class="line"><small>Kein Wishlist-Titel im Angebot.</small></p>`;
   }
@@ -1235,7 +1239,7 @@ function openLegend(){
     <div><b>Bestpreis</b>: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet. <b>Einkaufspreis</b>: was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr.</div>
     <div><span class="star">★</span> am Bestpreis. In der Tabelle: <span class="sw c-buy">9,99</span> „kaufen“, <span class="sw c-good">9,99</span> „gut“, <span class="sw champ">9,99</span> hier gab es den Bestpreis.</div>
     <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b class="bad">lohnt nicht</b> ist rot.</div>
-    <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> ein Rest blockiert den Wechsel: Der Kaufplan wechselt danach nicht mehr, und liegt dort Guthaben, plant er nur dort.</div>
+    <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> Guthabenkarten, ein Wechsel mit Guthaben geht nur über den Support.</div>
     <div><span class="pct">−60 %</span> Rabatt im Shop. <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
     <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch.</div>
     <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">bernstein</span> heißt prüfen, <span class="bad">rot</span> heißt nein. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
@@ -1392,13 +1396,13 @@ function drawVerlauf(){
   h += `<p class="hint">Aufgezeichnet seit ${dmy(v.since)} (${Math.round(days)} ${Math.round(days) === 1 ? "Tag" : "Tage"}). Europreise zum heutigen Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar sind. Die Aufzeichnung kennt nur Zeiten, in denen das Tool lief.${days < 30 ? " Noch wenig Daten: Die Kurven werden mit jedem Abgleich aussagekräftiger." : ""}</p>`;
   h += `<div class="lg">` + v.countries.map(c => `<button class="${S.vl.show.has(c.code) ? "" : "off"}" data-act="vltoggle" data-c="${c.code}" title="ein- oder ausblenden"><i style="background:${color(c.code)}"></i>${esc(c.name)}</button>`).join("") + `</div>`;
   h += chartSvg(v, color);
-  h += `<div class="scroll"><table><thead><tr><th>Land</th><th>jetzt</th><th>normal</th><th title="Niedrigster aufgezeichneter Preis">tiefster</th><th title="Wie oft der Titel unter dem heutigen Normalpreis lag">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der aufgezeichneten Zeit im Angebot">im Angebot</th><th>zuletzt</th></tr></thead><tbody>` +
+  h += `<div class="scroll"><table><thead><tr><th>Land</th><th>jetzt</th><th>normal</th><th title="Niedrigster aufgezeichneter Preis">tiefster</th><th title="Angebote der letzten 24 Monate laut DekuDeals. Fehlt diese Angabe: wie oft der Titel in der eigenen Aufzeichnung unter dem heutigen Normalpreis lag">Angebote</th><th title="Mittlere Dauer der abgeschlossenen Angebote">Dauer</th><th title="Anteil der aufgezeichneten Zeit im Angebot">im Angebot</th><th>zuletzt</th></tr></thead><tbody>` +
     v.countries.map(c => {
       const a = c.est ? APPROX : "", last = c.sales[c.sales.length - 1];
       const lastTxt = !last ? "–" : last.end ? `${dm(last.start)}–${dm(last.end)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>` : `läuft seit ${dm(last.start)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>`;
       return `<tr><td>${esc(c.name)}</td><td>${c.now_eur === null ? "–" : a + eur(c.now_eur)}</td><td>${a}${eur(c.regular_eur)}</td>
         <td>${a}${eur(c.low_eur)}<small>${c.currency === "EUR" ? "" : money(c.low, c.currency) + " · "}${dm(c.low_at)}</small></td>
-        <td>${c.sale_count}</td><td>${c.typical_days === null ? "–" : String(c.typical_days).replace(".", ",") + " T."}</td><td>${c.on_sale_pct} %</td><td>${lastTxt}</td></tr>`;
+        <td>${c.deku_sales !== null && c.deku_sales !== undefined ? `${c.deku_sales}<small>24 Monate</small>` : `${c.sale_count}<small>aufgezeichnet</small>`}</td><td>${c.typical_days === null ? "–" : String(c.typical_days).replace(".", ",") + " T."}</td><td>${c.on_sale_pct} %</td><td>${lastTxt}</td></tr>`;
     }).join("") + `</tbody></table></div>`;
   d.innerHTML = h;
 }
@@ -1489,7 +1493,7 @@ function viewSettings(){
     ${off.length ? `<details class="box fold" data-k="morecountries" ${S.folds.morecountries ? "open" : ""}><summary>weitere Länder (${off.length})</summary><p class="hint">Einschalten und aktualisieren; das Preisniveau zeigt, ob es sich lohnt.</p>${table(off)}</details>` : ""}
     <h3 class="sec" id="set-regeln">Regeln</h3>
     <p class="rule">„kaufen“ bis ${eur(de.buy)} oder 2 % über dem Bestpreis, „gut“ bis ${eur(de.good)} oder 15 %. Ein Wechsel lohnt ab ${eur(t["1"])} Gewinn in einem leichten, ${eur(t["2"])} in einem mittleren und ${eur(t["3"])} in einem schweren Land.</p>
-    <div class="fields"><label class="f" title="Liegt der günstigste zählende Preis jetzt (in jedem Land, jeder Stufe, mit oder ohne Rabatt) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan wird bei Nintendo geprüft, Amerika ist noch ungeprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
+    <div class="fields"><label class="f" title="Liegt der günstigste zählende Preis jetzt (in jedem Land, jeder Stufe, mit oder ohne Rabatt) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Japan und Amerika werden bei Nintendo geprüft. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
     <div class="fields" style="margin-top:12px"><label class="f" title="Kaufplan und Pakete: Ein Land lohnt sich erst, wenn es gegenüber dem, was dieselben Titel ohne diesen Wechsel kosten (günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), so viel spart. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Gewinn, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label><label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label><label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label></div>
     <h3 class="sec" id="set-gebuehren">Gebühren</h3>
     <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label><label class="f" title="Gilt für Länder mit Guthabenkarten, für die keine Karte mit Preis eingetragen ist: Kurs plus dieser Aufschlag. Solche Preise sind mit ≈ als geschätzt markiert. Je Land in der Tabelle unten überschreibbar.">Aufschlag für Guthabenkarten ohne Preis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label></div>
@@ -1529,13 +1533,13 @@ function langSection(){
   const done = todo.filter(t => t.manual), auto = todo.filter(t => !t.manual && t.state !== null);
   const now = open.filter(t => t.matters).length;
   let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
-    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus einer anderen Region nur, wenn sie Deutsch enthält. Das Tool prüft jeden Titel einmal je Region und merkt sich das Ergebnis, unabhängig vom Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (ein Eintrag je Spiel gilt für alle seine DLC). Amerika liest es selbst von nintendo.com. Für Japan gibt es keine abrufbare Quelle, dort bitte einmal im Store nachsehen und bestätigen; bis dahin zählt die Fassung nicht. Deine Angabe gilt dauerhaft und geht der von Nintendo vor. Titel, die weder auf der Wishlist noch in der Sammlung stehen, räumt der Abgleich wieder ab.</p>`;
+    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus einer anderen Region nur, wenn sie Deutsch enthält. Das Tool prüft jeden Titel einmal je Region und merkt sich das Ergebnis, unabhängig vom Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (ein Eintrag je Spiel gilt für alle seine DLC). Amerika liest es selbst von nintendo.com. Japan liest es aus dem japanischen Store, wo der nichts liefert, bitte einmal dort nachsehen und bestätigen; bis dahin zählt die Fassung nicht. Deine Angabe gilt dauerhaft und geht der von Nintendo vor. Titel, die weder auf der Wishlist noch in der Sammlung stehen, räumt der Abgleich wieder ab.</p>`;
   if(!todo.length) return h + `<p class="hint">Keine Titel in Regionen außerhalb Europas.</p>`;
   const row = t => `<tr><td>${esc(t.title)}${t.dlc ? ` <small>${t.dlc} fehlende DLC</small>` : ""}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
     <td><small>${t.here ? `dort ${t.dlc ? "ab " : ""}${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
     <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `Nintendo sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
-      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="Gelesen: ${esc(t.text || "–")}">von Nintendo gelesen${t.text ? `: ${esc(t.text)}` : ""}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
+      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline;text-decoration:underline dotted" title="Gelesen: ${esc(t.text || "–")}">von Nintendo gelesen</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
   const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
   const head = `<thead><tr><th>Titel</th><th>Region</th><th title="Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder">Preis</th><th></th><th>Deutsch?</th></tr></thead>`;
@@ -1643,6 +1647,7 @@ document.addEventListener("click", async e => {
     else if(a === "dense"){ S.ui.dense = d.v === "1"; saveUi(); render(); }
     else if(a === "add"){ addTo(d.c, d.s.split(",")); await replan(); }
     else if(a === "trim"){ const name = rowOf(d.s).title; await change(`${name} entfernt`, () => dropFrom(d.c, d.s)); }
+    else if(a === "resetall"){ await change("Alle Warenkörbe zurückgesetzt", () => { S.ui.overrides = {}; }); }
     else if(a === "reset"){ await change("Auswahl zurückgesetzt", () => { delete S.ui.overrides[d.c]; }); }
     else if(a === "hide"){ await change(`${country(d.c).name} ausgeblendet`, () => { if(!S.ui.hidden.includes(d.c)) S.ui.hidden.push(d.c); }); }
     else if(a === "unhide"){ S.ui.hidden = S.ui.hidden.filter(c => c !== d.c); await replan(); }

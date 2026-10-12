@@ -460,7 +460,7 @@ def prune_langs(data, settings):
     return len(drop)
 
 
-def sync_langs(data, settings, fetch, sleep, now=None):
+def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
     """Sprache je Titel und Region, einmal geprüft und dauerhaft gespeichert, unabhängig vom
     Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (Füllartikel). Europa in einem
     Abruf, Amerika und Japan je Titel. DLC übernimmt die Sprache seines Spiels, deshalb
@@ -470,6 +470,15 @@ def sync_langs(data, settings, fetch, sleep, now=None):
     items = {s: it for s, it in data["items"].items() if it.get("active")}
     extra = data.get("extra") or {}
     glangs = data.setdefault("glangs", {})
+    # Bis 0.35 lieferte der japanische Store oft leere Seiten, Titel mit drei leeren
+    # Antworten fragte das Tool nur noch monatlich. Seit der Store die Sprachen wieder
+    # zeigt, einmal von vorn (0.36).
+    if data.get("langs_jp_reset", 0) < 1:
+        for rec in list(items.values()) + list(glangs.values()):
+            if not (rec.get("langs") or {}).get("JP"):
+                (rec.get("langs_tries") or {}).pop("JP", None)
+                (rec.get("langs_checked") or {}).pop("JP", None)
+        data["langs_jp_reset"] = 1
     dropped = prune_langs(data, settings)
     if dropped:
         _log(f"Sprachen: {dropped} Bestätigungen für Titel gelöscht, die weder auf der Wishlist noch in der Sammlung stehen")
@@ -524,7 +533,11 @@ def sync_langs(data, settings, fetch, sleep, now=None):
                 todo.append((rec, nsuid))
         # Schonend: ungeprüfte zuerst, höchstens LANG_PER_SYNC Seiten, der Rest beim nächsten Abgleich
         todo.sort(key=lambda t: (t[0].get("langs_tries") or {}).get(fam, 0))
-        rest, todo = max(0, len(todo) - LANG_PER_SYNC), todo[:LANG_PER_SYNC]
+        # `budget` teilt die Seiten auf beide Aufrufe eines Abgleichs auf
+        n = LANG_PER_SYNC if budget is None else budget.setdefault(fam, LANG_PER_SYNC)
+        rest, todo = max(0, len(todo) - n), todo[:n]
+        if budget is not None:
+            budget[fam] = n - len(todo)
         got = fails = 0
         if todo:
             _step(f"Sprachen {name} abrufen", len(todo))
@@ -769,7 +782,8 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         self_check(data, settings)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
-        sync_langs(data, settings, fetch, sleep)
+        langs_budget = {}         # höchstens LANG_PER_SYNC Seiten je Region im ganzen Abgleich
+        sync_langs(data, settings, fetch, sleep, budget=langs_budget)
         if data.get("lows_v") != LOWS_VERSION:
             # Frühere Versionen lasen teils den Händler- statt den digitalen
             # Tiefstpreis. Von DekuDeals übernommene Werte neu laden.
@@ -783,7 +797,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_lows(data, settings, fetch, sleep)
         sync_related(data, settings, fetch, sleep)
         sync_extra_ids(data, settings, fetch, sleep)
-        sync_langs(data, settings, fetch, sleep)    # Sprachen der neu gefundenen DLC
+        sync_langs(data, settings, fetch, sleep, budget=langs_budget)    # Sprachen der neu gefundenen DLC
         status["ok"] = True
         _step("Fertig")
     except Exception as e:

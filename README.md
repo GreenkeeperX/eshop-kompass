@@ -74,8 +74,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Verlust, solange du im Land bleibst; folgt im Plan noch ein Wechsel, verfällt
   er (Nintendo nimmt Guthaben nicht mit) und zählt dort als Kosten ("Rest
   verfällt"). Das gilt auch für Guthaben, das im Land deines Kontos liegt,
-  wenn der Plan es verlässt. Wo ein Rest den Wechsel blockiert (Einstellung
-  "Rest blockiert", ab Werk Amerika), plant der Plan keinen Wechsel danach:
+  wenn der Plan es verlässt. Ab Werk blockiert ein Rest nirgends den Wechsel:
+  Er geht auch mit Guthaben, über den Support, und der Rest verfällt oder wartet
+  auf den nächsten Wechsel dorthin. Wer es anders will, setzt in den
+  Einstellungen je Land "Rest blockiert". Wo das gilt, plant der Plan keinen Wechsel danach:
   So ein Land kommt nur als letzter Schritt, höchstens eins je Plan; das
   schwächere fällt heraus ("nur ein Land mit blockierendem Rest je Plan").
   Steht dein Konto in so einem Land und liegt dort Guthaben, plant der Plan
@@ -88,6 +90,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort
   als Guthaben, Guthaben anderer Länder gilt als weg. Gekaufte Titel
   verschwinden aus dem Plan, auch solange sie noch auf der Wishlist stehen.
+  Dasselbe gilt für alles, was in deiner Sammlung bei DekuDeals steht: Es steht
+  unter "Nicht im Plan" ("schon gekauft oder in deiner Sammlung").
   Unter "Gekauft" stehen die letzten Käufe, die Ersparnis rechnet wie der Plan
   mit dem, was die Spiele kosten (ein Rest bleibt Guthaben). "letzten Kauf zurücknehmen" stellt
   Land und Guthaben wieder her. "als Korb vergleichen" übernimmt die Titel in
@@ -160,7 +164,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Landestief, Angebotsende und Sprache. Die Tabelle scrollt in einem eigenen
   Fenster, Kopfzeile und Titelspalte bleiben stehen. "nur Angebote" blendet
   auch Länder ohne Angebot aus.
-- Länder, je Land: Länderkarten als dichtes Raster oder große Liste. Jede
+- Länder, je Land: Länderkarten als dichtes Raster oder große Liste. Das Land,
+  in dem dein Konto steht, kommt zuerst, dann die übrigen nach der gewählten
+  Reihenfolge, Deutschland als Vergleich am Ende. Hast du Warenkörbe geändert,
+  setzt "alle zurücksetzen" in der Leiste alle auf einmal zurück. Jede
   Karte enthält die Angebote des Landes, die günstiger als in Deutschland
   sind, und dauerhaft günstige Normalpreise mit dem Urteil "kaufen", also
   dieselben Titel, mit denen auch der Kaufplan rechnet. Die
@@ -308,9 +315,9 @@ Sicherung und Protokoll.
   Wishlist-Titel und die fehlenden DLC deiner Spiele (Füllartikel). Europa in
   einem Abruf, Japan und Amerika je Titel bei Nintendo (store-jp.nintendo.com,
   nintendo.com über ec.nintendo.com), höchstens 40 Seiten je Region und
-  Abgleich, ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
+  Abgleich (beide Durchgänge eines Abgleichs zusammen), ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
   Titel kommt beim nächsten Abgleich wieder dran. Liefert eine gelesene Seite
-  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika liefert Angaben, Japan nur eine JavaScript-Seite. DLC übernimmt
+  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika und Japan liefern Angaben (Japan anfangs oft leere Seiten, 0.36 fragt solche Titel einmal neu). DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
   Spiel und Region. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
@@ -347,7 +354,8 @@ Sammlungslink). Damit lässt sich ein auffälliger Fall genau nachrechnen.
 
 "Verlauf" in den Einzelheiten jedes Titels zeigt diese Aufzeichnung
 als Kurve je Land und dazu: Preis jetzt, Normalpreis, tiefster
-aufgezeichneter Preis mit Datum, Zahl der Angebote, typische Dauer, Anteil der
+aufgezeichneter Preis mit Datum, Zahl der Angebote (laut DekuDeals in den letzten
+24 Monaten, ohne diese Angabe aus der eigenen Aufzeichnung), typische Dauer, Anteil der
 Zeit im Angebot und das letzte Angebot. Europreise rechnen mit dem heutigen
 Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar bleiben. Ein
 Angebot ist jede Strecke unter dem heutigen Normalpreis. Die Aufzeichnung

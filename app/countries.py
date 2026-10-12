@@ -6,9 +6,10 @@ family: Titel-IDs sind je Region verschieden. EU = Nintendo of Europe
 pay:    Voreinstellung fürs Bezahlen ("card", "giftcard", "auto").
 tier:   Wie mühsam der Länderwechsel ist. 1 = leicht (Karte, kein Rest),
         2 = mittel (Guthabenkarten, ein Rest verfällt beim Wechsel),
-        3 = schwer (Amerika: Guthaben muss vor dem Wechsel 0 sein).
+        3 = schwer (Amerika: Wechsel mit Guthaben nur über den Support).
 tax:    Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt.
-rest_blocks: Restguthaben verhindert den Länderwechsel.
+rest_blocks: Restguthaben verhindert den Länderwechsel. Ab Werk nirgends: Ein Wechsel
+        geht auch mit Guthaben, über den Support (Entscheidung 12.10.2026).
 
 Länder der Eurozone fehlen bewusst: Dort gelten in aller Regel dieselben
 Europreise wie in Deutschland.
@@ -45,14 +46,14 @@ COUNTRIES = [
     ("SG", "Singapur", "AS", "giftcard", 2, 0, False, False, "en", ""),
     ("MY", "Malaysia", "AS", "giftcard", 2, 0, False, False, "en", ""),
     ("TH", "Thailand", "AS", "giftcard", 2, 0, False, False, "en", ""),
-    ("US", "USA", "AM", "giftcard", 3, 8, True, True, "en", ""),
-    ("CA", "Kanada", "AM", "giftcard", 3, 13, True, True, "en", ""),
-    ("BR", "Brasilien", "AM", "giftcard", 3, 0, True, True, "pt", ""),
-    ("MX", "Mexiko", "AM", "giftcard", 3, 0, True, True, "es", ""),
-    ("CL", "Chile", "AM", "giftcard", 3, 0, True, False, "es", ""),
-    ("CO", "Kolumbien", "AM", "giftcard", 3, 0, True, False, "es", ""),
-    ("PE", "Peru", "AM", "giftcard", 3, 0, True, False, "es", ""),
-    ("AR", "Argentinien", "AM", "giftcard", 3, 0, True, False, "es", ""),
+    ("US", "USA", "AM", "giftcard", 3, 8, False, True, "en", ""),
+    ("CA", "Kanada", "AM", "giftcard", 3, 13, False, True, "en", ""),
+    ("BR", "Brasilien", "AM", "giftcard", 3, 0, False, True, "pt", ""),
+    ("MX", "Mexiko", "AM", "giftcard", 3, 0, False, True, "es", ""),
+    ("CL", "Chile", "AM", "giftcard", 3, 0, False, False, "es", ""),
+    ("CO", "Kolumbien", "AM", "giftcard", 3, 0, False, False, "es", ""),
+    ("PE", "Peru", "AM", "giftcard", 3, 0, False, False, "es", ""),
+    ("AR", "Argentinien", "AM", "giftcard", 3, 0, False, False, "es", ""),
 ]
 
 # Länder ohne eigenen eShop: Preise, Tiefstpreise und Verlauf kommen von hier

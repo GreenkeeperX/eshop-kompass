@@ -337,7 +337,8 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(br["rest_value"], 0.47, places=2)
         self.assertAlmostEqual(br["games_cost"], 7.33)
         self.assertAlmostEqual(br["saving"], round(24.99 + 1.99 - 7.33, 2))
-        self.assertIn("Rest blockiert", " ".join(br["warnings"]))
+        # Ab 0.36 blockiert ein Rest ab Werk nirgends mehr den Wechsel
+        self.assertNotIn("Rest blockiert", " ".join(br["warnings"]))
         self.assertIn("DLC", " ".join(br["warnings"]))
         # Nidhogg 2 (7,50 BRL) braucht eine Karte mehr, spart aber gegenüber 14,99 € in DE
         first = br["fillers"][0]
@@ -1094,6 +1095,32 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(planner.price_history(self.data, self.settings, {}, "hades", now=NOW)
                          ["countries"], [])
 
+    def test_collection_titles_stay_out_of_the_plan(self):
+        # Was in der Sammlung steht, ist gekauft, auch wenn es noch auf der Wishlist steht
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        planned = {i["slug"] for p in plan["steps"] for i in p["items"]}
+        self.assertIn("hades", planned)
+        self.data["owned"] = ["hades"]
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertNotIn("hades", {i["slug"] for p in plan["steps"] for i in p["items"]})
+        self.assertIn("Hades", plan["bought_waiting"])
+
+    def test_rest_blocks_nowhere_by_default(self):
+        # Ab 0.36: Guthaben in Brasilien hält den Plan nicht mehr dort fest
+        self.settings["current_country"] = "BR"
+        self.settings["countries"]["BR"]["balance"] = 2.41
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        self.assertIsNone(plan["lock"])
+        self.assertEqual(plan["held"], [])
+
+    def test_price_history_counts_dekudeals_sales(self):
+        h = {"BR": {"hades": [["2026-10-01T00:00:00+00:00", 33.59]]}}
+        self.data.setdefault("lows", {}).setdefault("BR", {})["hades"] = {
+            "low": 33.59, "src": "deku", "sales": [["2025-12-01", 41.99], ["2026-10-01", 33.59]]}
+        br = next(c for c in planner.price_history(self.data, self.settings, h, "hades", now=NOW)["countries"]
+                  if c["code"] == "BR")
+        self.assertEqual((br["sale_count"], br["deku_sales"]), (1, 2))
+
     def test_purchase_plan_keeps_country_above_threshold(self):
         # Gegenüber Deutschland spart Brasilien 19,65 €, gegenüber Japan und Norwegen nur
         # 2,60 €: Bei einer Schwelle von 15 € lohnt der Wechsel nach Amerika nicht
@@ -1161,6 +1188,8 @@ class PlanTest(unittest.TestCase):
         self.assertEqual([i["slug"] for i in again["steps"][0]["items"]], ["hades"])
 
     def test_blocking_rest_only_in_the_last_step(self):
+        for code in ("BR", "MX"):                     # Wahl in den Einstellungen, ab Werk aus
+            self.settings["countries"][code]["rest_blocks"] = True
         # Echter Fall: Konto in Brasilien ohne Guthaben. Ein Rest in Brasilien blockiert den
         # Wechsel, also kommt Brasilien zuletzt; dorthin ist es dann ein Wechsel wie jeder andere
         self.settings["current_country"] = "BR"
@@ -1173,6 +1202,8 @@ class PlanTest(unittest.TestCase):
         self.assertIsNone(plan["lock"])
 
     def test_two_blocking_countries_keep_the_stronger(self):
+        for code in ("BR", "MX"):                     # Wahl in den Einstellungen, ab Werk aus
+            self.settings["countries"][code]["rest_blocks"] = True
         sale = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
         self.settings["tier_min_saving"]["3"] = 1
         self.settings["countries"]["MX"]["enabled"] = True
@@ -1185,6 +1216,8 @@ class PlanTest(unittest.TestCase):
         self.assertEqual([(d["code"], d["blocked_by"]) for d in plan["dropped"]], [("MX", ["Brasilien"])])
 
     def test_balance_in_blocking_country_locks_the_plan(self):
+        for code in ("BR", "MX"):                     # Wahl in den Einstellungen, ab Werk aus
+            self.settings["countries"][code]["rest_blocks"] = True
         # Am Tag nach dem Kauf in Brasilien: 2,41 R$ liegen dort. Ein Wechsel geht erst, wenn
         # sie aufgebraucht sind, also plant der Plan nur in Brasilien
         self.settings["current_country"] = "BR"
@@ -1195,6 +1228,8 @@ class PlanTest(unittest.TestCase):
                          [("BR", ["good-job", "nidhogg-2"])])
         self.assertEqual([h["slug"] for h in plan["held"]], ["spiritfarer"])
         self.assertEqual((plan["lock"]["code"], plan["lock"]["balance"]), ("BR", 2.41))
+        # Was wartet, steht nicht zugleich unter „passt hinein“
+        self.assertFalse(set(plan["lock"]["fits"]) & {h["short"] for h in plan["held"]})
         # Auch ohne Preise im Kontoland (oder abgeschaltet) bleibt das Konto gesperrt
         self.settings["current_country"] = "MX"
         self.settings["countries"]["BR"]["balance"] = 0
@@ -1346,12 +1381,16 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 0.0})
         s = store.save_settings({"countries": {"JP": {"rest_blocks": True}}})
         self.assertTrue(store.load_settings()["countries"]["JP"]["rest_blocks"])  # deine Wahl bleibt
+        # Stand 0.35: Amerika blockierte ab Werk, ab 0.36 nirgends mehr
+        with open(os.path.join(store.DATA_DIR, "settings.json"), "w") as f:
+            json.dump({"settings_v": 3, "countries": {"US": {"rest_blocks": True}}}, f)
+        self.assertFalse(store.load_settings()["countries"]["US"]["rest_blocks"])
         store.save_settings({"countries": {"JP": {"rest_blocks": False}}})
         # 0.8.1 speicherte pauschal 10,5 % Eneba-Gebühr: wird zur gemessenen Formel
         with open(os.path.join(store.DATA_DIR, "settings.json"), "w", encoding="utf-8") as f:
             json.dump({"settings_v": 1, "shop_fee_pct": 10.5}, f)
         s = store.load_settings()
-        self.assertEqual((s["shop_fee_pct"], s["shop_fee_eur"], s["settings_v"]), (7.75, 0.4, 3))
+        self.assertEqual((s["shop_fee_pct"], s["shop_fee_eur"], s["settings_v"]), (7.75, 0.4, 4))
         # Bis 0.9.2 standen deutsche Karten bei Deutschland: sie wandern zu „Deutschland mit Guthaben“
         with open(os.path.join(store.DATA_DIR, "settings.json"), "w", encoding="utf-8") as f:
             json.dump({"settings_v": 2, "countries": {"DE": {"cards": "20 | https://shop.example/de20"}}}, f)
@@ -2096,6 +2135,36 @@ class ExtraDlcTest(unittest.TestCase):
             self.assertEqual({it["langs_tries"]["AM"] for it in data["items"].values()}, {3})
             calls.clear()
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120 + 7 * 86400)
+            self.assertEqual(calls, [])
+
+    def test_japan_retries_reset_once_and_budget_is_shared(self):
+        # Bis 0.35 hingen Japan-Titel nach drei leeren Seiten im Monatsrhythmus. 0.36 fragt
+        # sie einmal neu; beide Aufrufe eines Abgleichs teilen sich die Seitenzahl.
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP")
+        t0 = 1736467200
+        data = {"items": {f"t{i}": {"title": f"T{i}", "active": True, "ids": {"JP": [str(i)]},
+                                    "langs_tries": {"JP": 3}, "langs_checked": {"JP": t0 - 86400}}
+                          for i in range(3)}, "prices": {}}
+        data["items"]["t2"]["langs"] = {"JP": "ドイツ語"}
+        calls = []
+
+        def jp(n, fetch=None):
+            calls.append(n)
+            return "ドイツ語"
+        with mock.patch.object(sources, "fetch_langs_jp", jp), mock.patch.object(sync, "LANG_PER_SYNC", 1):
+            budget = {}
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0, budget=budget)
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0, budget=budget)
+            self.assertEqual(len(calls), 1)                     # eine Seite im ganzen Abgleich
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 60)
+            self.assertEqual(sorted(calls), ["0", "1"])         # beide wieder dran, t2 hat schon
+            self.assertEqual(data["langs_jp_reset"], 1)
+            # Nur einmal: Danach gilt wieder der Monatsrhythmus
+            data["items"]["t0"].update(langs={}, langs_tries={"JP": 3}, langs_checked={"JP": t0 + 60})
+            calls.clear()
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120)
             self.assertEqual(calls, [])
 
     def test_languages_are_cleaned_up(self):

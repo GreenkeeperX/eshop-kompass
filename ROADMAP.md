@@ -120,10 +120,24 @@ eine Quelle für „gut“, und ein Vorschlag für ein Spiel, das niemand wollte
 Gestrichen: Benachrichtigung, Wishlist aufräumen (geschieht in DekuDeals), Budget,
 Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
 
+## Phase 5: Rückmeldungen nach dem ersten echten Abgleich
+
+- [x] 5.1 Nach Review 0.35 und echtem Abgleich (0.36): Titel aus der Sammlung fallen aus dem
+  Kaufplan. Ein Rest blockiert ab Werk nirgends mehr den Wechsel (Entscheidung 12.10.2026:
+  Wechsel mit Guthaben geht über den Support), die Einstellung bleibt je Land. Japan-Titel
+  mit drei leeren Seiten werden einmal neu gefragt; höchstens 40 Sprachseiten je Region im
+  ganzen Abgleich. Verlauf zählt Angebote laut DekuDeals (24 Monate). eShop-Prices-Suche ohne
+  Sonderzeichen. Planschritte und Raster laufen nicht mehr über den Rand, die gelesenen
+  Sprachen stehen im Tooltip. Raster: Kontoland vorn, „alle zurücksetzen“.
+- [ ] 5.2 Sortieren per Klick auf Spaltenköpfe, wo Tabellen sind (Titel-Tabelle, Verlauf,
+  Länder-Einstellungen, Sammlung, Sprachliste). Länderspalten der Titel-Tabelle wahlweise
+  nach Zahl der Bestpreise, Deutschland bleibt vorn.
+
 ## Ohne Arbeit für uns
 
-- **Sprache in Japan:** Eine vollständige Quelle gibt es nicht (der Store baut die Seite
-  per JavaScript, die Suche ist per robots.txt gesperrt). Siehe 4.6.
+- **Sprache in Japan:** Der japanische Store liefert die Sprachen inzwischen für einzelne
+  Titelseiten (Verbindungstest 0.35.2). Wie viele Titel damit geklärt werden, zeigt der
+  nächste Abgleich mit 0.36. Siehe 4.6.
 - **Südafrika:** Ob Kartenzahlung dort geht, ist ungetestet. Bis dahin gilt „leicht, Karte“.
 - **Tests der Oberfläche:** Es gibt keine automatischen Tests. Prüfung per Screenshots
   mit Testdaten, weil das Tool ohne Zusatzpakete auskommen soll.

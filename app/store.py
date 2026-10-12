@@ -98,6 +98,13 @@ def load_settings():
                 dg["enabled"] = True
                 de["cards"], de["cards_checked"] = "", ""
             s["settings_v"] = 3
+        if s.get("settings_v", 0) < 4:
+            # Ab 0.36 blockiert ein Rest nirgends mehr den Wechsel: Er geht auch mit Guthaben,
+            # über den Support. Der Rest verfällt oder wartet auf den nächsten Wechsel dorthin
+            # (Entscheidung 12.10.2026). Wer es anders will, setzt den Haken wieder.
+            for c in s["countries"].values():
+                c["rest_blocks"] = False
+            s["settings_v"] = 4
         if not s["wishlist_url"]:
             s["wishlist_url"] = os.environ.get("WISHLIST_URL", "")
         return s
