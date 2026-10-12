@@ -1369,7 +1369,8 @@ def extra_context(data, settings, now=None):
     # Sprache: eigene Angabe des DLC (Europa), sonst die seines Spiels (eine Seite je Spiel)
     items = {s: {"title": e["title"], "parent": None, "dlc_of": e["parent"], "active": True,
                  "order": i, "ids": e.get("ids") or {},
-                 "langs": dict((glangs.get(e["parent"]) or {}).get("langs") or {}, **(e.get("langs") or {}))}
+                 "langs": dict((glangs.get(e["parent"]) or {}).get("langs") or {}, **(e.get("langs") or {})),
+                 "langs_src": (glangs.get(e["parent"]) or {}).get("langs_src") or {}}
              for i, (s, e) in enumerate(extra.items())}
     return Context(dict(data, items=items, prices=data.get("xprices") or {}, lows={}),
                    settings, now)
@@ -1507,7 +1508,7 @@ def lang_todo(data, settings, now=None):
             fams.setdefault(fam, []).append(c["code"])
     out, conf = [], settings.get("lang_confirm") or {}
 
-    def row(slug, title, fam, codes, nsuid, state, nintendo, text, here, champ, **more):
+    def row(slug, title, fam, codes, nsuid, state, nintendo, text, here, champ, src=None, **more):
         return dict({"slug": slug, "title": title, "family": fam,
                      "here": None if not here else {"eur": _r(here[0]), "code": here[1]},
                      "champ": None if not champ else {"eur": _r(champ[0]), "code": champ[1]},
@@ -1516,7 +1517,9 @@ def lang_todo(data, settings, now=None):
                      "family_name": countries.FAMILIES[fam], "codes": codes,
                      "url": LANG_CHECK_URL.get(fam, "").format(nsuid=nsuid),
                      "state": state, "manual": isinstance((conf.get(slug) or {}).get(fam), bool),
-                     "text": text, "nintendo": nintendo}, **more)
+                     "text": text, "nintendo": nintendo, "nsuid": nsuid,
+                     # Herkunft der gelesenen Angabe: None = Nintendo, "titledb" = Titelliste
+                     "src": src if text else None}, **more)
     for slug in ctx.order:
         it = ctx.items[slug]
         # DLC mit Hauptspiel auf der Wishlist richtet sich nach dem Spiel
@@ -1528,7 +1531,7 @@ def lang_todo(data, settings, now=None):
                 out.append(row(slug, it["title"], fam, codes, ids[0], ctx.german(it, fam, slug),
                                ctx.german(it, fam, slug, by_hand=False),
                                (it.get("langs") or {}).get(fam), cheapest(slug, codes),
-                               live.champ_all.get(slug)))
+                               live.champ_all.get(slug), (it.get("langs_src") or {}).get(fam)))
     if xctx:
         rel, games = data.get("rel") or {}, {}
         for s in xctx.order:
@@ -1552,7 +1555,7 @@ def lang_todo(data, settings, now=None):
                                first["ids"][fam][0], xctx.german(first, fam, with_id[0]),
                                xctx.german(first, fam, with_id[0], by_hand=False),
                                (first.get("langs") or {}).get(fam), min(prices) if prices else None,
-                               None, dlc=len(dlc), matters=matters))
+                               None, (first.get("langs_src") or {}).get(fam), dlc=len(dlc), matters=matters))
     return out
 
 

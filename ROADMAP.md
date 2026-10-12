@@ -101,13 +101,12 @@ Reihenfolge und Begründung:
   je Abgleich. Die Preise kommen mit derselben Preisabfrage. Daraus die Summe der fehlenden
   DLC je Spiel und insgesamt in der Sammlung und Füllartikel Stufe 2: fehlende DLC deiner
   Spiele als Vorschlag für den Rest. Übernehmen lassen sie sich erst von der Wishlist.
-- [ ] 4.6 Sprache in Japan: eine zuverlässige Quelle. Geprüft und verworfen: die
-  store-jp-Produktseite (fast immer nur die JavaScript-Hülle, einmal eine volle Seite,
-  vermutlich aus einem Zwischenspeicher), die Suche von nintendo.jp (robots.txt),
-  nintendo.co.jp (Titelliste kennt nur einen kleinen Teil, kaum Titelseiten), DekuDeals (nicht
-  je Region), eine Schätzung aus Amerika oder Europa (Entscheidung 13.10.2026). Bis dahin
-  fragt das Tool store-jp je Titel nur monatlich (0.38.1). Offen: die Datenquelle, aus der
-  die store-jp-Seite ihre Angaben lädt, sonst titledb (Sammlung der eShop-Daten je Region).
+- [x] 4.6 Sprache in Japan (0.39): store-jp steht hinter einem Warteraum (Queue-it) mit
+  Bot-Schutz, die volle Seite bekommt nur ein Browser. Verworfen: die Suche von nintendo.jp
+  (robots.txt), nintendo.co.jp (Titelliste kennt nur einen kleinen Teil), DekuDeals (nicht je
+  Region), eine Schätzung aus Amerika oder Europa, den Warteraum zu umgehen. Umgesetzt: titledb
+  als automatischer Grundstock (gekennzeichnet) und ein Browser-Helfer als Lesezeichen, der die
+  Seiten in deinem Browser liest; Nintendo geht titledb vor (Entscheidung 13.10.2026).
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle
@@ -146,8 +145,8 @@ Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
 
 ## Ohne Arbeit für uns
 
-- **Sprache in Japan:** Bis eine verlässliche Quelle gefunden ist, bestätigst du von Hand
-  (siehe 4.6). Liefert store-jp eine Seite mit Sprachen, übernimmt das Tool sie.
+- **Sprache in Japan:** Titel, die titledb nicht kennt, liest der Browser-Helfer (siehe 4.6).
+  Ob der Bot-Schutz seine Abrufe dauerhaft durchlässt, zeigt erst der Gebrauch.
 - **Südafrika:** Ob Kartenzahlung dort geht, ist ungetestet. Bis dahin gilt „leicht, Karte“.
 - **Tests der Oberfläche:** Es gibt keine automatischen Tests. Prüfung per Screenshots
   mit Testdaten, weil das Tool ohne Zusatzpakete auskommen soll.

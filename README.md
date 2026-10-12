@@ -328,7 +328,16 @@ Sicherung und Protokoll.
   nintendo.com über ec.nintendo.com), höchstens 40 Seiten je Region und
   Abgleich (beide Durchgänge eines Abgleichs zusammen), ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
   Titel kommt beim nächsten Abgleich wieder dran. Liefert eine gelesene Seite
-  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika liefert Angaben. Japan liefert fast immer nur eine JavaScript-Seite: Dort fragt das Tool je Titel nur monatlich, die Sprache bestätigst du von Hand. DLC übernimmt
+  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika liefert Angaben.
+  Japan: store-jp steht hinter einem Warteraum (Queue-it) mit Bot-Schutz, durch kommt
+  nur ein Browser mit JavaScript. Das Tool erkennt den Warteraum, fragt dann je
+  Abgleich nur eine Seite und hört auf. Die Sprachen kommen stattdessen aus zwei Wegen:
+  titledb, eine offene Titelliste auf GitHub (nicht von Nintendo, in der Oberfläche
+  „laut titledb“), für Titel ohne Angabe höchstens wöchentlich geladen (rund 24 MB,
+  Stück für Stück gelesen, nur die eigenen IDs behalten); und der Browser-Helfer unter
+  „Sprachen prüfen“: ein Lesezeichen, das in deinem Browser die Shopseiten der
+  offenen Titel liest (eine alle 2,5 Sekunden) und das Ergebnis als Text zum Einfügen
+  ausgibt. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
   Spiel und Region. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
@@ -421,8 +430,9 @@ freigeben solltest du das Tool deshalb nicht.
 
 - Wishlist, Sammlung und Titel-IDs: dekudeals.com (öffentliche Wishlist, IDs werden dauerhaft gespeichert)
 - Preise und Verfügbarkeit: api.ec.nintendo.com/v1/price (inoffiziell)
-- Sprachen: search.nintendo-europe.com (Europa), store-jp.nintendo.com (Japan),
-  nintendo.com-Produktseiten über ec.nintendo.com (Amerika), sonst deine Bestätigung
+- Sprachen: search.nintendo-europe.com (Europa), store-jp.nintendo.com und titledb
+  (raw.githubusercontent.com/blawar/titledb, Japan), nintendo.com-Produktseiten über
+  ec.nintendo.com (Amerika), sonst deine Bestätigung
 - Wechselkurse: open.er-api.com, ersatzweise frankfurter.dev (EZB)
 
 ## Tests

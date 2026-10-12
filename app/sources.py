@@ -3,6 +3,7 @@
 Alle Netzabrufe laufen über `fetch(url)`, damit Tests eine Attrappe
 einsetzen können.
 """
+import codecs
 import gzip
 import html
 import http.cookiejar
@@ -13,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.38.1"
+VERSION = "0.39.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -81,6 +82,9 @@ def fetch(url, timeout=25, ua=None):
     if r["status"] >= 400:
         raise FetchError(url, r["status"])
     return r["text"]
+
+
+_plain_fetch = fetch      # echter Abruf; Tests setzen eigene Funktionen ein
 
 
 # ---------------------------------------------------------------- DekuDeals
@@ -505,8 +509,107 @@ def parse_langs_jp(page_html):
     return ", ".join(dict.fromkeys(words)) or None
 
 
+JP_WAITING = 20000   # kürzere Seiten ohne 対応言語 sind der Warteraum, keine Produktseite
+
+
 def fetch_langs_jp(nsuid, fetch=fetch):
-    return parse_langs_jp(fetch(JP_STORE_URL.format(nsuid=nsuid)))
+    """store-jp steht hinter einem Warteraum (Queue-it) mit Bot-Schutz. Durch kommt nur ein
+    Browser mit JavaScript; das Tool bekommt dann eine kurze Seite ohne Produkt. Die meldet
+    es als 503, damit der Abgleich Japan für diesmal sein lässt, statt jede Seite zu fragen."""
+    url = JP_STORE_URL.format(nsuid=nsuid)
+    page = fetch(url)
+    langs = parse_langs_jp(page)
+    if langs is None and len(page or "") < JP_WAITING:
+        raise FetchError(url, 503, "Warteraum")
+    return langs
+
+
+def jp_words(text):
+    """Sprachwörter aus einem Text des japanischen Stores, z. B. vom Browser-Helfer."""
+    return ", ".join(dict.fromkeys(w for w in _JP_WORD_RE.findall(text or "") if w != "対応言語")) or None
+
+
+# titledb: eine offene Titelliste auf GitHub, aus der Homebrew-Szene, mit den Sprachen
+# vieler japanischer Fassungen. Keine Angabe von Nintendo, deshalb in der Oberfläche
+# benannt; store-jp und der Browser-Helfer gehen vor. Die Datei ist groß (rund 24 MB
+# gepackt), das Tool liest sie deshalb Stück für Stück und behält nur die eigenen IDs.
+TITLEDB_URL = "https://raw.githubusercontent.com/blawar/titledb/master/JP.ja.json"
+_TDB_LANGS = {"ja": "japanese", "en": "english", "es": "spanish", "fr": "french", "de": "german",
+              "it": "italian", "nl": "dutch", "pt": "portuguese", "ru": "russian", "ko": "korean",
+              "zh": "chinese", "pl": "polish", "th": "thai"}
+
+
+def parse_titledb(chunks, wanted):
+    """Liest titledb ({nsuid: {..., "languages": [...]}}) aus Textstücken und liefert
+    {nsuid: "japanese, english, …"} für die gesuchten IDs mit Sprachangabe."""
+    dec, buf, pos, out = json.JSONDecoder(), "", 0, {}
+    chunks = iter(chunks)
+
+    def more():
+        nonlocal buf, pos
+        c = next(chunks, None)
+        if c is None:
+            return False
+        buf, pos = buf[pos:] + c, 0
+        return True
+    while "{" not in buf[pos:]:
+        if not more():
+            return out
+    pos = buf.index("{", pos) + 1
+    while True:
+        while pos < len(buf) and buf[pos] in " \t\r\n,":
+            pos += 1
+        if pos >= len(buf):
+            if not more():
+                return out
+            continue
+        if buf[pos] == "}":
+            return out
+        try:
+            key, end = dec.raw_decode(buf, pos)
+            colon = buf.index(":", end)
+            start = colon + 1
+            while start < len(buf) and buf[start] in " \t\r\n":
+                start += 1
+            val, end = dec.raw_decode(buf, start)
+        except ValueError:
+            if len(buf) - pos > 5_000_000:
+                raise ValueError("titledb: Eintrag nicht lesbar")
+            if not more():
+                raise ValueError("titledb: Datei endet mitten in einem Eintrag")
+            continue
+        pos = end
+        if key in wanted and isinstance(val, dict) and isinstance(val.get("languages"), list):
+            langs = [_TDB_LANGS.get(str(l), str(l)) for l in val["languages"]]
+            if langs:
+                out[key] = ", ".join(dict.fromkeys(langs))
+
+
+def _stream(url, timeout=60):
+    """Großen Text in Stücken laden, gzip unterwegs entpacken."""
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"})
+    try:
+        resp = _opener.open(req, timeout=timeout)
+    except urllib.error.HTTPError as e:
+        raise FetchError(url, e.code)
+    except Exception as e:
+        raise FetchError(url, 0, str(e)[:160])
+    with resp:
+        unzip = (zlib.decompressobj(16 + zlib.MAX_WBITS)
+                 if (resp.headers.get("Content-Encoding") or "").lower() == "gzip" else None)
+        text = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        while True:
+            raw = resp.read(1 << 16)
+            if not raw:
+                break
+            yield text.decode(unzip.decompress(raw) if unzip else raw)
+        yield text.decode(unzip.flush() if unzip else b"", final=True)
+
+
+def fetch_titledb(nsuids, fetch=fetch):
+    """Sprachen japanischer Fassungen laut titledb für diese IDs."""
+    chunks = _stream(TITLEDB_URL) if fetch is _plain_fetch else [fetch(TITLEDB_URL)]
+    return parse_titledb(chunks, {str(n) for n in nsuids})
 
 
 # Amerika: Die Titelseite des eShops leitet auf die Produktseite von nintendo.com

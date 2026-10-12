@@ -2106,6 +2106,11 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertEqual(rows[("rl", "AM")]["state"], True)
         self.assertEqual((rows[("rl", "JP")]["state"], rows[("rl", "JP")]["dlc"], rows[("rl", "JP")]["title"]),
                          (None, 2, "Rocket League"))
+        # Angabe aus titledb: zählt, aber mit Herkunft
+        data["glangs"]["rl"]["langs"]["JP"] = "japanese, german"
+        data["glangs"]["rl"]["langs_src"] = {"JP": "titledb"}
+        row = {(t["slug"], t["family"]): t for t in planner.lang_todo(data, settings)}[("rl", "JP")]
+        self.assertEqual((row["state"], row["src"], row["nsuid"]), (True, "titledb", "22"))
         # Deine Angabe zum Spiel gilt für seine DLC
         settings["lang_confirm"] = {"rl": {"JP": False}}
         xctx = planner.extra_context(data, settings)
@@ -2175,6 +2180,85 @@ class ExtraDlcTest(unittest.TestCase):
             calls.clear()
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120)
             self.assertEqual(calls, [])
+
+    def test_titledb_read_in_pieces(self):
+        # titledb ist groß: Stück für Stück lesen, nur gesuchte IDs mit Sprachen behalten
+        doc = json.dumps({"70010000000026": {"name": "Zelda", "languages": ["ja", "en", "de", "zh", "zh"]},
+                          "70010000000123": {"name": "Bread", "languages": ["ja", "en"]},
+                          "70010000000099": {"name": "Ohne", "languages": None},
+                          "70010000000100": {"name": "Leer", "languages": []}}, indent=4, ensure_ascii=False)
+        want = {"70010000000026", "70010000000099", "70010000000100"}
+        for size in (1, 7, 64, len(doc)):
+            chunks = [doc[i:i + size] for i in range(0, len(doc), size)]
+            self.assertEqual(sources.parse_titledb(chunks, want),
+                             {"70010000000026": "japanese, english, german, chinese"})
+        with self.assertRaises(ValueError):
+            sources.parse_titledb([doc[:-40]], want)
+        self.assertEqual(sources.fetch_titledb(["70010000000123"], fetch=lambda u: doc),
+                         {"70010000000123": "japanese, english"})
+
+    def test_japan_waiting_room_stops_store_and_titledb_fills(self):
+        # store-jp zeigt dem Tool den Warteraum: eine Probe, dann Schluss für diesen Abgleich.
+        # titledb füllt die Lücken, gekennzeichnet; Nintendo geht vor, sobald es durchkommt.
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP")
+        data = {"items": {f"t{i}": {"title": f"T{i}", "active": True, "ids": {"JP": [str(i)]}}
+                          for i in range(3)}, "prices": {}, "langs_jp_reset": 1}
+        shell = "<html><script>queue</script></html>"
+        self.assertRaises(sources.FetchError, sources.fetch_langs_jp, "1", fetch=lambda u: shell)
+        self.assertIsNone(sources.fetch_langs_jp("1", fetch=lambda u: "x" * sources.JP_WAITING))
+        calls, tdb = [], []
+
+        def jp(n, fetch=None):
+            calls.append(n)
+            raise sources.FetchError("u", 503, "Warteraum")
+
+        def titledb(ids, fetch=None):
+            tdb.append(sorted(ids))
+            return {"0": "japanese, german", "1": "japanese, english"}
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_langs_jp", jp), mock.patch.object(sources, "fetch_titledb", titledb):
+            sync.sync_titledb(data, settings, None, now=t0)
+            sync.sync_titledb(data, settings, None, now=t0 + 60)       # höchstens wöchentlich
+            self.assertEqual(tdb, [["0", "1", "2"]])
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0)
+        self.assertEqual(len(calls), 1)                                 # eine Probe, dann Schluss
+        items = data["items"]
+        self.assertNotIn("langs_tries", items["t0"])                    # Warteraum zählt nicht
+        self.assertEqual((items["t0"]["langs"]["JP"], items["t0"]["langs_src"]["JP"]),
+                         ("japanese, german", "titledb"))
+        self.assertNotIn("langs", items["t2"])
+        # Eine Woche später: nur t2 fehlt noch, aber erst nach einem Monat wieder nachsehen
+        with mock.patch.object(sources, "fetch_titledb", titledb):
+            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
+            self.assertEqual(len(tdb), 1)
+            sync.sync_titledb(data, settings, None, now=t0 + 31 * 86400)
+            self.assertEqual(tdb[-1], ["2"])
+        # store-jp kommt durch: Angabe von Nintendo ersetzt titledb
+        with mock.patch.object(sources, "fetch_langs_jp", lambda n, fetch=None: "日本語, 英語"):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 32 * 86400)
+        self.assertEqual(items["t0"]["langs"]["JP"], "日本語, 英語")
+        self.assertNotIn("JP", items["t0"]["langs_src"])
+
+    def test_browser_helper_import(self):
+        data = {"items": {"a": {"title": "A", "active": True, "ids": {"JP": ["70010000000001"]},
+                                "langs": {"JP": "japanese"}, "langs_src": {"JP": "titledb"}},
+                          "b": {"title": "B", "active": True, "ids": {"JP": ["70010000000002"]}}},
+                "extra": {"g-dlc": {"title": "DLC", "parent": "g", "ids": {"JP": ["70050000000003"]}}},
+                "prices": {}}
+        store.save_data(data)
+        text = json.dumps({"70010000000001": "日本語, 英語, フランス語, ドイツ語",
+                           "70010000000002": "", "70050000000003": "日本語", "70019999999999": "日本語"})
+        res = sync.import_jp_langs(text, now=5)
+        self.assertEqual(res, {"read": 2, "empty": 1, "unknown": 1})
+        d = store.load_data()
+        self.assertEqual(d["items"]["a"]["langs"]["JP"], "日本語, 英語, フランス語, ドイツ語")
+        self.assertEqual(d["items"]["a"]["langs_src"], {})
+        self.assertEqual(d["glangs"]["g"]["langs"]["JP"], "日本語")
+        self.assertRaises(ValueError, sync.import_jp_langs, "kein json")
+        with sync._lock:
+            self.assertRaises(RuntimeError, sync.import_jp_langs, "{}")
 
     def test_japan_language_checked_monthly(self):
         # Japan: nach einer leeren Seite gleich monatlich, Amerika noch am nächsten Tag

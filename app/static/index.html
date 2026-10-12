@@ -1592,13 +1592,14 @@ function langSection(){
   const done = todo.filter(t => t.manual), auto = todo.filter(t => !t.manual && t.state !== null);
   const now = open.filter(t => t.matters).length;
   let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
-    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus einer anderen Region nur, wenn sie Deutsch enthält. Das Tool prüft jeden Titel einmal je Region und merkt sich das Ergebnis, unabhängig vom Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (ein Eintrag je Spiel gilt für alle seine DLC). Amerika liest es selbst von nintendo.com. Für Japan gibt es keine verlässliche Quelle (der Store liefert fast immer nur eine JavaScript-Seite), dort bitte einmal im Store nachsehen und bestätigen; bis dahin zählt die Fassung nicht. Deine Angabe gilt dauerhaft und geht der von Nintendo vor. Titel, die weder auf der Wishlist noch in der Sammlung stehen, räumt der Abgleich wieder ab.</p>`;
+    <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus einer anderen Region nur, wenn sie Deutsch enthält. Das Tool prüft jeden Titel einmal je Region und merkt sich das Ergebnis, unabhängig vom Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (ein Eintrag je Spiel gilt für alle seine DLC). Amerika liest es selbst von nintendo.com. Japan: Der Store zeigt dem Tool fast immer nur einen Warteraum. Die Angaben kommen dann aus titledb (eine offene Titelliste, nicht von Nintendo, deshalb so gekennzeichnet) oder vom Browser-Helfer unten, der die Seiten in deinem Browser liest. Ohne Angabe zählt die Fassung nicht. Deine Angabe gilt dauerhaft und geht der von Nintendo vor. Titel, die weder auf der Wishlist noch in der Sammlung stehen, räumt der Abgleich wieder ab.</p>`;
   if(!todo.length) return h + `<p class="hint">Keine Titel in Regionen außerhalb Europas.</p>`;
+  h += jpHelper(todo);
   const row = t => `<tr><td>${esc(t.title)}${t.dlc ? ` <small>${t.dlc} fehlende DLC</small>` : ""}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
     <td><small>${t.here ? `dort ${t.dlc ? "ab " : ""}${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
-    <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `Nintendo sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
-      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline;text-decoration:underline dotted" title="Gelesen: ${esc(t.text || "–")}">von Nintendo gelesen</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Angabe von Nintendo überschreiben">stimmt nicht</button>`
+    <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `${t.src === "titledb" ? "titledb" : "Nintendo"} sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
+      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline;text-decoration:underline dotted" title="Gelesen: ${esc(t.text || "–")}">${t.src === "titledb" ? "laut titledb" : "von Nintendo gelesen"}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Gelesene Angabe überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
   const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
   const L = "sprachen", srt = arr => sortRows(L, arr, {title: t => t.title, region: t => t.family_name, price: t => t.here ? t.here.eur : null});
@@ -1606,8 +1607,47 @@ function langSection(){
   h += open.length ? `${now ? `<p class="hint">Bei ${now} davon wäre die Fassung gerade günstiger, sie stehen oben.</p>` : ""}<div class="scroll"><table>${head}<tbody>${srt(open).map(row).join("")}</tbody></table></div>`
     : `<p class="hint">Alles geprüft ✓</p>`;
   if(done.length || auto.length)
-    h += `<details><summary class="hint">Geprüft ${auto.length + done.length}: ${auto.length} von Nintendo gelesen, ${done.length} von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(srt(done), "Von dir bestätigt")}${group(srt(auto), "Von Nintendo gelesen")}</tbody></table></div></details>`;
+  {
+    const tdb = auto.filter(t => t.src === "titledb"), nin = auto.filter(t => t.src !== "titledb");
+    h += `<details><summary class="hint">Geprüft ${auto.length + done.length}: ${nin.length} von Nintendo gelesen${tdb.length ? `, ${tdb.length} laut titledb` : ""}, ${done.length} von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(srt(done), "Von dir bestätigt")}${group(srt(nin), "Von Nintendo gelesen")}${group(srt(tdb), "Laut titledb (nicht von Nintendo)")}</tbody></table></div></details>`;
+  }
   return h;
+}
+/* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch
+   den Warteraum von store-jp kommt, und gibt die Sprachen als Text zum Einfügen zurück. */
+const JP_HELPER = `(async()=>{
+if(location.hostname!=="store-jp.nintendo.com"){alert("Bitte zuerst eine Seite von store-jp.nintendo.com öffnen und dann das Lesezeichen anklicken.");return}
+const ids=[...new Set((prompt("Japan-IDs aus eShop-Kompass einfügen")||"").match(/\\d{14}/g)||[])];
+if(!ids.length)return;
+const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";document.body.appendChild(box);
+const out={};let bad=0,stop=false;
+for(let i=0;i<ids.length;i++){
+box.textContent="eShop-Kompass: lese "+(i+1)+" von "+ids.length+" …";
+let v=null;
+try{const r=await fetch("/item/software/D"+ids[i],{credentials:"include"});
+if(r.status===404)v="";else if(r.ok){const d=new DOMParser().parseFromString(await r.text(),"text/html");
+const th=[...d.querySelectorAll("th")].find(e=>e.textContent.trim()==="対応言語");
+if(th){const td=th.parentElement.querySelector("td");v=((td&&td.querySelector("p"))||td||th).textContent.trim()}
+else if(d.querySelector("[data-testid^=ProductDetail]"))v=""}}catch(e){}
+if(v===null){if(++bad>=3){stop=true;break}}else{bad=0;if(v)out[ids[i]]=v}
+await new Promise(r=>setTimeout(r,2500))}
+const txt=JSON.stringify(out),n=Object.keys(out).length;
+box.textContent="";const p=document.createElement("p");p.textContent=(stop?"Abgebrochen, der Store lässt gerade nicht durch. ":"Fertig. ")+n+" von "+ids.length+" Titeln mit Sprachen. Den Text unten kopieren und im eShop-Kompass einfügen.";
+const ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="width:100%;height:110px;margin:8px 0";
+const b=document.createElement("button");b.textContent="Schließen";b.onclick=()=>box.remove();
+box.append(p,ta,b);ta.focus();ta.select();try{await navigator.clipboard.writeText(txt);p.textContent+=" (schon in der Zwischenablage)"}catch(e){}
+})();`;
+function jpHelper(todo){
+  const jp = todo.filter(t => t.family === "JP");
+  if(!jp.length) return "";
+  const ids = [...new Set(jp.filter(t => !t.manual && (t.state === null || t.src === "titledb")).map(t => t.nsuid))];
+  return `<details class="box"><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
+    <ol class="hint">
+      <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(JP_HELPER)}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>JP-Sprachen lesen</b></a></li>
+      <li>Kopiere die IDs: <textarea id="jpids" readonly rows="2" style="width:100%">${ids.join(" ")}</textarea> <button data-act="jpcopy">IDs kopieren</button></li>
+      <li>Öffne <a href="https://store-jp.nintendo.com/" target="_blank" rel="noopener">store-jp.nintendo.com</a>, klick das Lesezeichen an und füge die IDs ein. Es liest eine Seite alle 2,5 Sekunden.</li>
+      <li>Füge das Ergebnis hier ein: <textarea id="jpimport" rows="3" style="width:100%" placeholder='{"70010000000000":"日本語, 英語, ドイツ語"}'></textarea> <button data-act="jpimport">Übernehmen</button></li>
+    </ol></details>`;
 }
 async function saveSettings(form, rerender){
   const active = () => JSON.stringify(Object.entries(S.state.settings.countries).filter(e => e[1].enabled).map(e => e[0]));
@@ -1682,6 +1722,16 @@ document.addEventListener("click", async e => {
       await api("/api/settings", {dlc_marks: {[d.s]: d.v || null}});
       S.state = await api("/api/state"); S.ui = S.state.ui; render();
       toast({have: "Als vorhanden abgehakt", ignore: "DLC ignoriert", ignore_all: "Alle DLC des Spiels ignoriert"}[d.v] || "Zurückgesetzt");
+    }
+    else if(a === "jpcopy"){
+      const ta = $("jpids"); ta.select();
+      try{ await navigator.clipboard.writeText(ta.value); }catch(e){ document.execCommand("copy"); }
+      toast("IDs kopiert");
+    }
+    else if(a === "jpimport"){
+      const r = await api("/api/jp_langs", {text: $("jpimport").value});
+      S.state.lang_todo = r.lang_todo; await refresh(); render();
+      toast(`${r.read} Titel übernommen` + (r.empty ? `, ${r.empty} ohne Sprachangabe` : "") + (r.unknown ? `, ${r.unknown} unbekannte IDs` : ""));
     }
     else if(a === "lang"){
       await api("/api/settings", {lang_confirm: {[d.s]: {[d.f]: d.v === "" ? null : d.v === "1"}}});

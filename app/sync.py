@@ -1,4 +1,5 @@
 """Abgleich: Wishlist -> Titel-IDs je Region -> Preise je Land -> Wechselkurse."""
+import json
 import re
 import threading
 import time
@@ -24,6 +25,8 @@ LANG_RECHECK_SECONDS = 30 * 24 * 3600 # Seite gelesen, aber ohne Sprachen: monat
 LANG_RETRY_SECONDS = 20 * 3600        # ... bei den ersten Versuchen schon am nächsten Tag
 LANG_TRIES = 3                        # so viele Versuche, bevor nur noch monatlich gefragt wird
 LANG_PER_SYNC = 40                    # Seiten je Region und Abgleich, ungeprüfte zuerst
+TITLEDB_SECONDS = 7 * 24 * 3600       # titledb höchstens wöchentlich laden ...
+TITLEDB_RECHECK_SECONDS = 30 * 24 * 3600  # ... und je Titel ohne Angabe monatlich nachsehen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
 CARD_PAUSE = 3.0
@@ -424,7 +427,7 @@ def self_check(data, settings, now=None):
         if unknown and settings.get("lang_rule", "exclude") == "exclude":
             need = sum(1 for t in planner.lang_todo(data, settings) if t["family"] == "JP" and t["matters"] and t["state"] is None)
             _log(f"Prüfung: Japan, bei {unknown} Titeln ist die Sprache offen, sie zählen nicht für Urteil und Kaufplan, "
-                 "bis du sie einmal bestätigst (Einstellungen, Sprachen prüfen)"
+                 "bis du sie einmal bestätigst oder den Browser-Helfer laufen lässt (Einstellungen, Sprachen prüfen)"
                  + (f"; bei {need} davon wäre Japan gerade günstiger" if need else ""))
     data["checks"] = {"at": now.isoformat(timespec="seconds"), "warnings": warnings,
                       "units": units, "buyable": buyable}
@@ -445,6 +448,8 @@ def prune_langs(data, settings):
             it.pop("langs", None)
             it.pop("langs_checked", None)
             it.pop("langs_tries", None)
+            it.pop("langs_src", None)
+            it.pop("tdb_checked", None)
     games = {e.get("parent") for e in (data.get("extra") or {}).values()}
     glangs = data.get("glangs") or {}
     for game in [g for g in glangs if g not in games]:
@@ -458,6 +463,93 @@ def prune_langs(data, settings):
         for s in drop:
             conf.pop(s, None)
     return len(drop)
+
+
+def jp_targets(data):
+    """Japan-ID -> Einträge, die ihre Sprache tragen: Wishlist-Titel und je Spiel mit
+    fehlenden DLC der erste DLC (gilt für alle DLC des Spiels), wie in sync_langs."""
+    out = {}
+    for it in data["items"].values():
+        ids = (it.get("ids") or {}).get("JP")
+        if it.get("active") and ids and not it.get("parent"):
+            out.setdefault(str(ids[0]), []).append(it)
+    firsts = {}
+    for e in (data.get("extra") or {}).values():
+        ids = (e.get("ids") or {}).get("JP")
+        if ids and e.get("parent") and e["parent"] not in firsts:
+            firsts[e["parent"]] = str(ids[0])
+    glangs = data.setdefault("glangs", {})
+    for game, nsuid in firsts.items():
+        out.setdefault(nsuid, []).append(glangs.setdefault(game, {}))
+    return out
+
+
+def sync_titledb(data, settings, fetch, now=None):
+    """Japan-Sprachen aus titledb für Titel ohne Angabe. Lädt die Liste nur, wenn ein Titel
+    seit einem Monat nicht nachgesehen wurde, und höchstens einmal die Woche."""
+    now = now or time.time()
+    if not any(settings["countries"][code]["enabled"] for code in countries.ORDER
+               if countries.BY_CODE[code]["family"] == "JP"):
+        return
+    todo = {n: recs for n, recs in jp_targets(data).items()
+            if any(not (r.get("langs") or {}).get("JP")
+                   and now - r.get("tdb_checked", 0) > TITLEDB_RECHECK_SECONDS for r in recs)}
+    if not todo or now - data.get("titledb_at", 0) < TITLEDB_SECONDS:
+        return
+    _step("Sprachen Japan aus titledb")
+    try:
+        found = sources.fetch_titledb(list(todo), fetch=fetch)
+    except Exception as e:
+        _log(f"titledb nicht abrufbar ({e})")
+        return
+    data["titledb_at"] = now
+    got = 0
+    for nsuid, recs in todo.items():
+        for rec in recs:
+            rec["tdb_checked"] = now
+            if nsuid in found and not (rec.get("langs") or {}).get("JP"):
+                rec.setdefault("langs", {})["JP"] = found[nsuid]
+                rec.setdefault("langs_src", {})["JP"] = "titledb"
+        got += nsuid in found
+    _log(f"Sprachen Japan aus titledb: {got} von {len(todo)} Titeln")
+    store.save_data(data)
+
+
+def import_jp_langs(text, now=None):
+    """Ergebnis des Browser-Helfers einlesen: {"Japan-ID": "日本語, 英語, …"}. Die Angaben
+    stammen von Nintendo und ersetzen titledb. Nicht während eines Abgleichs, der würde
+    sie beim Speichern überschreiben."""
+    try:
+        found = json.loads(text or "")
+    except ValueError:
+        raise ValueError("Das ist nicht der Text des Browser-Helfers (JSON erwartet)")
+    if not isinstance(found, dict):
+        raise ValueError("Das ist nicht der Text des Browser-Helfers (JSON erwartet)")
+    if not _lock.acquire(blocking=False):
+        raise RuntimeError("Gerade läuft ein Abgleich, bitte danach noch einmal einfügen")
+    try:
+        data = store.load_data()
+        targets = jp_targets(data)
+        now = now or time.time()
+        got = empty = unknown = 0
+        for nsuid, value in found.items():
+            recs = targets.get(str(nsuid).strip())
+            if not recs:
+                unknown += 1
+                continue
+            langs = sources.jp_words(str(value or ""))
+            if not langs:
+                empty += 1
+                continue
+            for rec in recs:
+                rec.setdefault("langs", {})["JP"] = langs
+                (rec.get("langs_src") or {}).pop("JP", None)
+                rec.setdefault("langs_checked", {})["JP"] = now
+            got += 1
+        store.save_data(data)
+    finally:
+        _lock.release()
+    return {"read": got, "empty": empty, "unknown": unknown}
 
 
 def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
@@ -487,10 +579,10 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
         """Noch ohne Angabe und wieder an der Reihe. Sperren und Fehler zählen nicht als
         Versuch; eine gelesene Seite ohne Sprachen (auch eine verdeckte Sperre) wird an
         den nächsten Tagen noch zweimal gefragt, danach monatlich. Japan gleich monatlich:
-        store-jp liefert fast immer nur die JavaScript-Hülle, die Sprache bestätigst du dort
-        von Hand (Entscheidung 13.10.2026)."""
-        if (rec.get("langs") or {}).get(fam):
-            return False
+        store-jp zeigt dem Tool fast immer nur den Warteraum; die Sprachen kommen dann aus
+        titledb oder vom Browser-Helfer (Entscheidung 13.10.2026)."""
+        if (rec.get("langs") or {}).get(fam) and (rec.get("langs_src") or {}).get(fam) != "titledb":
+            return False          # Angabe von Nintendo; eine aus titledb fragt store-jp nach
         tries = (rec.get("langs_tries") or {}).get(fam, 0)
         wait = LANG_RECHECK_SECONDS if tries >= (1 if fam == "JP" else LANG_TRIES) else LANG_RETRY_SECONDS
         return now - (rec.get("langs_checked") or {}).get(fam, 0) > wait
@@ -550,6 +642,9 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
             except sources.FetchError as e:
                 if e.status == 404:
                     langs = None           # keine Seite: als geprüft vermerken
+                elif e.status == 503:
+                    _log(f"Sprachen {name}: Der Store zeigt den Warteraum, nächster Versuch beim nächsten Abgleich")
+                    break                  # zählt nicht als Versuch, die anderen Seiten bleiben ungefragt
                 else:
                     fails += 1
                     if e.status in (403, 429) or fails >= 5:
@@ -563,6 +658,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
             tries[fam] = tries.get(fam, 0) + 1
             if langs:
                 rec.setdefault("langs", {})[fam] = langs
+                (rec.get("langs_src") or {}).pop(fam, None)    # jetzt von Nintendo
                 got += 1
             status["done"] += 1
             sleep(DEKU_PAUSE)
@@ -786,6 +882,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
         langs_budget = {}         # höchstens LANG_PER_SYNC Seiten je Region im ganzen Abgleich
+        sync_titledb(data, settings, fetch)
         sync_langs(data, settings, fetch, sleep, budget=langs_budget)
         if data.get("lows_v") != LOWS_VERSION:
             # Frühere Versionen lasen teils den Händler- statt den digitalen
@@ -852,6 +949,8 @@ def diagnose():
     # Japan liefert meist nur die JavaScript-Hülle: zeigen, was die Seite stattdessen enthält
     def jp_info(t):
         refs = sorted(set(sources.re.findall(r"""(?:src|href)=["']([^"']{4,90})""", t)))[:8]
+        if sources.parse_langs_jp(t) is None and len(t) < sources.JP_WAITING:
+            return f"{len(t)} Zeichen, Warteraum (Queue-it), keine Produktseite; Sprachen aus titledb und Browser-Helfer"
         return (f"{len(t)} Zeichen, Sprachen: {sources.parse_langs_jp(t)}, "
                 f"Titel „{sources.page_title(t)[:60]}“, Anfang: {sources.visible_text(t)[:160]}, "
                 f"Verweise: {' '.join(refs)}")

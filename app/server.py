@@ -151,6 +151,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"purchases": store.record_purchase(entry)})
             elif path == "/api/bought/undo":
                 self._send(200, {"purchases": store.undo_purchase()})
+            elif path == "/api/jp_langs":
+                try:
+                    res = sync.import_jp_langs(str(body.get("text") or ""))
+                except RuntimeError as e:
+                    self._send(409, {"error": str(e)})
+                    return
+                self._send(200, dict(res, lang_todo=planner.lang_todo(store.load_data(), store.load_settings())))
             elif path == "/api/sync":
                 self._send(200, {"started": sync.start_sync()})
             else:
