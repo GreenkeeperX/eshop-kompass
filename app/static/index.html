@@ -220,7 +220,11 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .vd.buy{background:var(--go);color:var(--card);font-weight:700}
 .vd.good{background:var(--go-bg);color:var(--go);font-weight:600}
 .vd.wait,.vd.none{background:var(--chip);color:var(--muted)}
-.cg h3{font-size:14px;margin:2px 0 6px}
+.cg h3{font-size:14px;margin:2px 0 6px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.cg h3 .link{font-size:12.5px;font-weight:400}
+.cg tr.ign td{color:var(--muted)}
+.cg h3 .sp{flex:1}
+.cg details.fold{margin-top:4px}
 .cg .cl{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;font-size:13px}
 .cg h3 .mut{font-weight:400;font-size:12.5px}
 .cg table{width:100%}
@@ -756,11 +760,26 @@ function titleFilterBar(){
 /* ---------- Sammlung: Zusatzinhalte zu Spielen, die du hast ---------- */
 function collDlc(d){
   const tag = d.upgrade ? ` <span class="chip" title="Upgrade-Paket: macht die Switch-1-Fassung zur Nintendo Switch 2 Edition">Switch-2-Upgrade</span>` : "";
+  const mk = (v, label, tip) => `<button class="link" data-act="dlcmark" data-s="${esc(d.slug)}" data-v="${v}" title="${tip}">${label}</button>`;
   let state;
   if(d.owned) state = `<span class="mut">✓ hast du</span>`;
-  else if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
-  else state = `<span class="warnc">fehlt</span> · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool Preis und Urteil">bei DekuDeals ansehen</a>`;
-  return `<tr><td class="l">${esc(d.title)}${tag}</td><td class="l">${state}</td></tr>`;
+  else if(d.by_hand) state = `<span class="mut">✓ hast du (von dir abgehakt)</span> · ${mk("", "zurücksetzen", "Haken entfernen")}`;
+  else if(d.ignored) state = `<span class="mut">ignoriert</span>${d.mark === "ignore" ? " · " + mk("", "zurücksetzen", "Wieder als fehlend zählen") : ""}`;
+  else {
+    if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
+    else state = `<span class="warnc">fehlt</span> · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool Preis und Urteil">bei DekuDeals ansehen</a>`;
+    state += ` · ${mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht")} · ${mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend")}`;
+  }
+  return `<tr class="${d.ignored ? "ign" : ""}"><td class="l">${esc(d.title)}${tag}</td><td class="l">${state}</td></tr>`;
+}
+function collGame(g){
+  const shown = g.dlc.filter(d => !d.ignored), ign = g.dlc.filter(d => d.ignored);
+  const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
+  const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : ""].filter(Boolean).join(", ");
+  const key = "ign:" + g.slug;
+  return `<section class="box cg"><h3>${esc(g.title)} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>` +
+    (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
+    (ign.length ? `<details class="fold" data-k="${esc(key)}" ${S.folds[key] ? "open" : ""}><summary class="hint">${ign.length} ignoriert</summary><table class="mini-t">${ign.map(collDlc).join("")}</table></details>` : "") + `</section>`;
 }
 function viewCollection(){
   const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
@@ -772,9 +791,9 @@ function viewCollection(){
   let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
     <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden DLC</label></div>`;
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
-  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung${missing ? `, ${missing} DLC fehlen` : ""}. Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals.
-    Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
-  h += games.map(g => `<section class="box cg"><h3>${esc(g.title)} <span class="mut">${g.have} von ${g.dlc.length}${g.missing ? `, ${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : ", alle da"}</span></h3><table class="mini-t">${g.dlc.map(collDlc).join("")}</table></section>`).join("");
+  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung${missing ? `, ${missing} DLC fehlen` : ""}. Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
+    „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
+  h += games.map(collGame).join("");
   const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">${esc(g.title)}</a>`).join("")}</div></section>` : "";
   h += list(plain, "Ohne Zusatzinhalte", "");
   h += list(waiting, "Noch nicht gelesen", "Das Tool liest je Abgleich höchstens 40 Artikelseiten, diese folgen bei den nächsten Abgleichen.");
@@ -1579,6 +1598,11 @@ document.addEventListener("click", async e => {
     }
     else if(a === "verlauf"){ await openVerlauf(d.s); }
     else if(a === "gosprachen"){ go("settings", false); const t = $("sprachen"); if(t) t.scrollIntoView(); }
+    else if(a === "dlcmark"){
+      await api("/api/settings", {dlc_marks: {[d.s]: d.v || null}});
+      S.state = await api("/api/state"); S.ui = S.state.ui; render();
+      toast({have: "Als vorhanden abgehakt", ignore: "DLC ignoriert", ignore_all: "Alle DLC des Spiels ignoriert"}[d.v] || "Zurückgesetzt");
+    }
     else if(a === "lang"){
       await api("/api/settings", {lang_confirm: {[d.s]: {[d.f]: d.v === "" ? null : d.v === "1"}}});
       S.state = await api("/api/state"); S.ui = S.state.ui; await loadPlans(); render();

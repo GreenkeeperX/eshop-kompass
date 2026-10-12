@@ -91,8 +91,11 @@ Reihenfolge und Begründung:
   nächste übliche Angebot nur bei gleichmäßigen Abständen, als Schätzung gekennzeichnet.
   Das Ende eines Angebots kennt das Tool erst, wenn es die Seite neu liest.
 - [x] Titel als Link zur Startseite (0.31): Ein Klick lädt die Seite neu.
-- [ ] 4.4 DLC abhaken: In der Sammlung ein Haken je DLC für Inhalte, die die
-  DekuDeals-Sammlung nicht kennt (etwa aus einem Paket). Eine Angabe der Sammlung geht vor.
+- [x] 4.4 DLC abhaken (0.32): In der Sammlung „habe ich“ je DLC für Inhalte, die die
+  DekuDeals-Sammlung nicht kennt (etwa aus einem Paket), dazu „ignorieren“ je DLC und
+  „alle DLC ignorieren“ je Spiel für Inhalte, die nicht interessieren (etwa kosmetische
+  Pakete). Ignorierte zählen nicht als fehlend und stehen eingeklappt. Eine Angabe der
+  Sammlung geht vor. Alles wird mitgesichert.
 - [ ] 4.5 DLC-Preise: Für fehlende DLC der Sammlung die Nintendo-IDs schonend über die
   Artikelseiten lesen. Daraus die Summe der fehlenden DLC je Spiel in der Sammlung und
   Füllartikel Stufe 2 (fehlende DLC deiner Spiele in den Rest).
