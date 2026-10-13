@@ -451,7 +451,8 @@ Sicherung und Protokoll.
   Stück für Stück gelesen, nur die eigenen IDs behalten); und der Browser-Helfer unter
   „Sprachen prüfen“: ein Lesezeichen, das in deinem Browser die Shopseiten der
   offenen Titel liest (eine alle 2,5 Sekunden; die IDs bekommt es über den Link zu
-  store-jp im Tool, der sie zugleich in die Zwischenablage legt; sonst fragt es danach) und das Ergebnis mit „Im eShop-Kompass
+  store-jp im Tool, der sie zugleich in die Zwischenablage legt; verliert der Store sie unterwegs,
+  liest das Lesezeichen sie aus der Zwischenablage, erst dann fragt es danach) und das Ergebnis mit „Im eShop-Kompass
   übernehmen“ ans Tool gibt, ersatzweise als Text mit Kopieren-Knopf. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des
   Spiels, auf die sie verweist. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je

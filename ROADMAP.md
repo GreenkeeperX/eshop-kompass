@@ -14,8 +14,8 @@ Konto (siehe [CLAUDE.md](CLAUDE.md)).
 - [ ] **Online-Mitgliedschaft ausbauen.** Da ist bisher: 12 Monate einzeln je aktivem Land mit
   Einkaufspreis, Bestpreis, Links und Erinnerung vor Ablauf. Fehlt noch:
   - die weiteren Varianten (kürzer, Familie, Erweiterungspaket),
-  - Japan, wo die eShop-ID noch fehlt,
-  - Händler-Links,
+  - Japan und die USA: DekuDeals nennt dort keine eShop-ID,
+  - weitere Bezugsquellen: Händler-Codes (Keyshops), Amazon Japan, Deals etwa von mydealz,
   - die Mitgliedschaft als Füllartikel und wählbar im Warenkorb.
 - [ ] **Kleinteile zusammenfassen.** Viele Kleinteile eines Spiels (etwa Kostüme) zusammenfassen,
   aber erst nach Erfahrung mit den gruppierten Pässen.

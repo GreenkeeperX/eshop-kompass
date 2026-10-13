@@ -45,10 +45,12 @@ button.link{border:0;background:none;padding:0;color:var(--accent);text-decorati
 button:disabled{opacity:.5;cursor:default}
 nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
 /* Kopf und Reiter kommen beim Scrollen mit, verschwinden nach unten weiter, kommen beim Hochscrollen zurück */
-.stick{position:sticky;top:0;z-index:4;background:var(--bg);margin-bottom:10px;will-change:transform;
-  transition:transform .35s cubic-bezier(.22,.61,.36,1),opacity .35s cubic-bezier(.22,.61,.36,1)}
-.stick.hid{transform:translate3d(0,-100%,0);opacity:0;pointer-events:none}
-@media (prefers-reduced-motion: reduce){.stick{transition:none}}
+.stick{position:sticky;top:0;z-index:4;background:var(--bg);margin-bottom:10px;
+  transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .45s ease}
+.stick.hid{transform:translateY(-100%);opacity:0;pointer-events:none}
+.radar thead th,.jump,.matrix th{transition:top .55s cubic-bezier(.4,0,.2,1)}
+.matrix.scroll{transition:max-height .55s cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion: reduce){.stick,.radar thead th,.jump,.matrix th,.matrix.scroll{transition:none}}
 nav button{white-space:nowrap}
 a.btn{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--ink);text-decoration:none}
 a.btn:hover{border-color:var(--accent)}
@@ -199,7 +201,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .tools input[type=search]{flex:1;min-width:180px;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .matrix{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
 .matrix td,.matrix th{padding:3px 6px}
-.matrix.scroll{overflow:auto;max-height:calc(100vh - 150px)}
+.matrix.scroll{overflow:auto;max-height:calc(100vh - var(--stick,0px) - 40px)}
 .matrix th{z-index:2}.matrix th:first-child{z-index:3}.matrix td:first-child{z-index:1}
 .matrix td:not(:first-child){white-space:nowrap}
 .matrix th{position:sticky;top:0;background:var(--card)}
@@ -212,7 +214,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .matrix td.nc{opacity:.6}
 .matrix tr.grp th{font-size:10px;padding:4px 6px 0;text-align:center;border-bottom:1px solid var(--line);top:0}
 .matrix tr.grp th:first-child,.matrix tr.grp th:nth-child(2){border-bottom:0}
-.matrix thead tr:nth-child(2) th{top:21px}
+.matrix thead tr:nth-child(2) th{top:calc(var(--grp,21px) - 1px)}
 .matrix.compact td{padding:2px 6px}
 .matrix .tbtn{font-size:13px}
 .matrix td.na{color:var(--muted)}
@@ -334,6 +336,7 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 .box h4{margin:10px 0 2px;font-size:13px}
 .mini-t td{white-space:normal;vertical-align:top;padding:4px 6px}
 .mini-t td.l,.mini-t td:nth-child(2){text-align:left}
+.mini-t td.num,.mini-t th.num{text-align:right}
 .big{font-size:20px;font-variant-numeric:tabular-nums}
 .todo{background:var(--warn-bg);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .todo>b{color:var(--warn)}
@@ -846,6 +849,8 @@ function render(){
   else if(S.tab === "sammlung") m.innerHTML = banners() + viewCollection();
   else if(S.tab === "laender") m.innerHTML = banners() + (S.ui.basket ? viewCompare() : viewCards());
   else { m.innerHTML = viewSettings(); showLog(S.state.status.log); }
+  const grp = m.querySelector(".matrix tr.grp");
+  if(grp) grp.closest(".matrix").style.setProperty("--grp", grp.getBoundingClientRect().height + "px");
 }
 const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || {title:slug, slug};
 const inBasket = slug => (S.ui.basket || []).includes(slug);
@@ -940,12 +945,12 @@ function dlcPrice(d){
 function collGame(g){
   const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 vorhanden · 7 ignoriert“.
-  // Alles da: „5 von 5 vorhanden“ grün; nichts mehr offen: die Zahl vorhandener grün, ignorierte rot,
-  // Wörter grau (0.55.1, Wortlaut 0.56.1)
-  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length} vorhanden</span>` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> vorhanden` : `${g.have} vorhanden`) : "",
+  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 vorhanden – 7 ignoriert“.
+  // Alles da: „5 von 5“ grün, „vorhanden“ grau; nichts mehr offen: die Zahl vorhandener grün, ignorierte rot,
+  // Wörter grau (0.55.1, Wortlaut 0.56.2)
+  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span> vorhanden` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> vorhanden` : `${g.have} vorhanden`) : "",
     g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
-    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
+    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" – ");
   const sumTip = `${g.dlc.length} DLC insgesamt`;
   const key = "ign:" + g.slug;
   const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
@@ -1509,19 +1514,20 @@ function nsoBox(){
   const head = best ? `am günstigsten ${esc(best.name)} ${best.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}${best.est ? "ca. " : ""}<b class="${best.grade === "buy" ? "g-buy" : best.grade === "good" ? "g-good" : ""}">${eur(best.eur)}</b> (${eur(best.month)} je Monat)${m.champ && !best.at_best ? ` · Bestpreis ${eur(m.champ)}` : ""}`
     : m.ids_known ? "Preise kommen mit dem nächsten Abgleich" : "die eShop-IDs sucht der nächste Abgleich";
   let h = `<details class="box" id="nsobox" data-k="nso" ${S.folds.nso || m.due ? "open" : ""}><summary><b>Online-Mitgliedschaft</b> <span class="mut">12 Monate, einzeln · ${head} · ${until}</span></summary>
-    <p class="hint">Läuft bis <input type="date" data-act="nsountil" value="${esc(m.until)}"> · 30 Tage vorher erscheint die Verlängerung unter „Zu erledigen“. Bezahlt wie bei Spielen: Kreditkarte oder deine Guthabenkarten. Kaufen kannst du nur im Land, in dem dein Konto gerade steht.</p>`;
+    <p class="hint">Läuft bis <input type="date" data-act="nsountil" value="${esc(m.until)}"> · 30 Tage vorher erinnert dich der Kasten „Zu erledigen“ oben im Reiter Jetzt an die Verlängerung (er erscheint nur, wenn etwas ansteht). Bezahlt wie bei Spielen: Kreditkarte oder deine Guthabenkarten. Kaufen kannst du nur im Land, in dem dein Konto gerade steht.</p>`;
   if(rows.length){
     // Farben wie bei Titeln: ★ gold am Bestpreis, grün fürs Urteil, rot der Betrag darüber; Preis führt in den eShop (0.56.1)
-    h += `<table class="mini-t"><tr><th class="l">Land</th><th>Einkaufspreis</th><th>je Monat</th><th>im Shop</th><th class="l"></th></tr>` + rows.map(r => {
+    h += `<table class="mini-t"><tr><th class="l">Land</th><th class="num">Einkaufspreis</th><th>je Monat</th><th>im Shop</th><th class="l"></th></tr>` + rows.map(r => {
       const cls = r.grade === "buy" ? "g-buy" : r.grade === "good" ? "g-good" : "";
       const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}` : "kein Tiefstpreis bekannt"}${m.champ ? ` · Bestpreis aller Länder ${eur(m.champ)}` : ""}`;
       let price = `<span class="${cls}" title="${esc(tip)}">${r.est ? "ca. " : ""}${eur(r.eur)}</span>`;
       if(r.url) price = `<a class="pl" href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(tip)} · Klick öffnet den eShop ${esc(r.name)}">${price}</a>`;
-      const chips = [r.current ? `<span class="chip">Konto</span>` : "", planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land">im Plan</span>` : "",
-        r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
+      const tags = [r.current ? `<span class="chip" title="Dein Konto steht gerade in diesem Land: Hier kaufst du ohne Wechsel">Konto</span>` : "",
+        planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land: Die Mitgliedschaft ließe sich im selben Schritt mitkaufen">im Plan</span>` : ""].filter(Boolean).join(" ");
+      const chips = [r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
         !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis aller Länder">+${eur(r.over)}</span>` : "",
         `<a class="tl" href="${esc(deku(NSO_SLUG, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>`].filter(Boolean).join(" ");
-      return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tierTag(r.tier)}</td><td>${r.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}${price}</td><td class="mut">${eur(r.month)}</td><td class="mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
+      return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tierTag(r.tier)} ${tags}</td><td class="num">${r.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}${price}</td><td class="mut">${eur(r.month)}</td><td class="mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
     }).join("") + `</table>`;
   }
   return h + `</details>`;
@@ -1964,7 +1970,7 @@ box.append(p,go,ta,c,b);
    ein Link zum Ziehen und „Code kopieren“ für ein von Hand angelegtes Lesezeichen (auch am Handy).
    v: Stand des Codes, need: ab welchem Stand ein altes Lesezeichen noch genügt. Ältere melden
    sich beim Übernehmen, damit niemand unbemerkt mit einem alten Lesezeichen weiterarbeitet. */
-const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 3, need: 3, label: "JP-Sprachen lesen"}};
+const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 4, need: 4, label: "JP-Sprachen lesen"}};
 const BM_CODE = {};
 function helpersOld(){ try{ return JSON.parse(localStorage.getItem("ek.helpers") || "{}") || {}; }catch(e){ return {}; } }
 function helperSeen(k, hv){
@@ -2029,7 +2035,8 @@ function eshopBox(){
 function jpHelperCode(tool){ return `(async()=>{
 if(location.hostname!=="store-jp.nintendo.com"){alert("Bitte zuerst eine Seite von store-jp.nintendo.com öffnen und dann das Lesezeichen anklicken.");return}
 const fromLink=decodeURIComponent(((location.search+location.hash).match(/ek-ids=([^&#]*)/)||[])[1]||"");
-const ids=[...new Set((fromLink.match(/\\d{14}/g)?fromLink:(prompt("Japan-IDs aus eShop-Kompass einfügen")||"")).match(/\\d{14}/g)||[])];
+let src=fromLink;if(!/\\d{14}/.test(src)){try{src=await navigator.clipboard.readText()}catch(e){src=""}}
+const ids=[...new Set(((/\\d{14}/.test(src)?src:(prompt("Japan-IDs aus eShop-Kompass einfügen")||"")).match(/\\d{14}/g))||[])];
 if(!ids.length)return;
 const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";document.body.appendChild(box);
 const wait=()=>new Promise(r=>setTimeout(r,2500));
@@ -2062,7 +2069,7 @@ function jpHelper(todo){
   return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>
-      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit und legt sie zugleich in die Zwischenablage: Fragt das Lesezeichen doch danach, einfach einfügen (Strg+V)." : ""}</li>
+      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit und legt sie zugleich in die Zwischenablage. Verliert der Store die IDs unterwegs, holt das Lesezeichen sie aus der Zwischenablage (Firefox zeigt dafür einen kleinen Knopf „Einfügen“); erst wenn auch das nicht geht, fragt es danach." : ""}</li>
       <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
     </ol>
     <details class="fold" data-k="jpfb" ${S.folds.jpfb ? "open" : ""}><summary class="hint">Geht das nicht? IDs und Ergebnis von Hand</summary>
@@ -2340,16 +2347,26 @@ document.addEventListener("toggle", e => {
     hidden = hid; const el = $("stick");
     el.classList.toggle("hid", hid);
     document.documentElement.style.setProperty("--stick", hid ? "0px" : el.offsetHeight + "px");
+    // Titel-Tabelle oben auf der Seite: Ohne Ausgleich bliebe beim Ausblenden ein leerer Streifen
+    // über ihr, beim Einblenden läge die Leiste über ihrem Kopf. Die Seite rückt deshalb mit.
+    const box = document.querySelector(".matrix.scroll");
+    if(box){
+      const top = box.getBoundingClientRect().top, need = el.offsetHeight;
+      if(hid && top > 0) scrollBy({top: top - 4, behavior: "smooth"});
+      else if(!hid && top < need && top > -need) scrollBy({top: top - need - 6, behavior: "smooth"});
+    }
   };
-  addEventListener("scroll", () => {
-    const y = scrollY;
+  // Die Titel-Tabelle scrollt in einem eigenen Kasten: ihr Scrollen zählt mit (0.56.2)
+  document.addEventListener("scroll", () => {
+    const box = document.querySelector(".matrix.scroll");
+    const y = scrollY + (box ? box.scrollTop : 0);
     if(Math.abs(y - lastY) < 8 && y > 60) return;
     const d = Math.sign(y - lastY);
     if(d !== dir){ dir = d; turn = lastY; }          // Richtung gewechselt: ab hier messen
     if(dir > 0 && !hidden && y > 300 && y - turn > 300 && $("thmMenu").hidden) requestAnimationFrame(() => set(true));
     else if(dir < 0 && hidden && (turn - y > 40 || y < 60)) requestAnimationFrame(() => set(false));
     lastY = y;
-  }, {passive: true});
+  }, {passive: true, capture: true});
   addEventListener("resize", () => set(hidden));
   set(false);
 })();

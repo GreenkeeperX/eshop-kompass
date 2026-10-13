@@ -28,15 +28,20 @@ Ablauf offen und eine Zeile unter „Zu erledigen“). Es gelten die Farben der 
 ★ gold am Bestpreis (niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden
 Länder, 2 % Spielraum), Preis grün nach Urteil „kaufen“ oder „gut“, Abstand zum Bestpreis rot
 `+x €`, Rabatt blau. Der Preis führt in den eShop des Landes, daneben „DekuDeals“ zum Verlauf.
-Das günstigste zählende Land fett, Chips „Konto“ und „im Plan“ neutral. Länder ohne
-Guthabenkarte blass mit bernsteinfarbenem Grund.
+Das günstigste zählende Land fett. Chips „Konto“ und „im Plan“ neutral und mit Tooltip direkt am
+Land, damit die Preise rechtsbündig untereinander stehen; Rabatt, Abstand und Link rechts daneben.
+Länder ohne Guthabenkarte blass mit bernsteinfarbenem Grund.
 
 ## Kopfleiste
 
 Kopf und Reiter kommen beim Scrollen mit. Erst nach 300 px weiter nach unten blenden sie sich
 aus, 40 px nach oben oder nahe am Seitenanfang zeigen sie sich wieder; Zittern unter 8 px zählt
-nicht. Die Bewegung dauert 0,35 s mit weichem Auslauf, bei „Bewegung reduzieren“ springt sie. Tabellenköpfe und die Sprungleiste halten über
-`--stick` Abstand, solange die Leiste zu sehen ist.
+nicht. Die Bewegung dauert 0,55 s, sanft an- und auslaufend, bei „Bewegung reduzieren“ springt sie.
+Tabellenköpfe und die Sprungleiste halten über `--stick` Abstand und gleiten im selben Takt mit.
+Kein `will-change` an der Leiste, sonst zeichnen Browser den Text dünner. Die Titel-Tabelle scrollt
+in einem eigenen Kasten: Ihr Scrollen zählt mit, und die Seite rückt so nach, dass weder ein leerer
+Streifen über der Tabelle bleibt noch die Leiste ihren Kopf verdeckt. Ihre zweite Kopfzeile sitzt an
+der gemessenen Höhe der ersten (`--grp`), ohne Spalt.
 
 ## Lesezeichen
 
@@ -87,10 +92,10 @@ nicht. Die Bewegung dauert 0,35 s mit weichem Auslauf, bei „Bewegung reduziere
 ## Zahlen in Sätzen
 
 Nur die Zahl trägt die Farbe, Verbindungswörter bleiben grau. Sammlung je Spiel: eine Zahl je
-Art, mit „·“ getrennt und ohne Gesamtzahl („10 vorhanden · 7 ignoriert“, die Gesamtzahl steht
-im Tooltip), damit nichts wie „17,7“ liest. „5 von 5 vorhanden“ ganz grün, wenn alles da ist;
-sonst bei nichts Offenem nur die Zahl vorhandener grün, die Zahl ignorierter rot (Entscheidung
-13.10.2026, Wortlaut ab 0.56.1). Der Kopf der Sammlung steht als kompakter Kasten über den
+Art, mit Gedankenstrich getrennt und ohne Gesamtzahl („10 vorhanden – 7 ignoriert“, die
+Gesamtzahl steht im Tooltip), damit nichts wie „17,7“ liest. Ist alles da, steht „5 von 5“ grün und
+„vorhanden“ grau; sonst bei nichts Offenem nur die Zahl vorhandener grün, die Zahl ignorierter rot
+(Entscheidung 13.10.2026, Wortlaut ab 0.56.2). Der Kopf der Sammlung steht als kompakter Kasten über den
 Gruppen: Zahlen fett in zwei kurzen Zeilen, die Erklärung eingeklappt darunter.
 
 ## Flächen
