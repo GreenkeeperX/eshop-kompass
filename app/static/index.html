@@ -1606,7 +1606,10 @@ const LANG_DE = {
   ukrainian: "Ukrainisch", arabic: "Arabisch", thai: "Thailändisch"};
 function langDe(text){
   if(!text) return "";
-  const out = text.split(/\s*[,、]\s*/).filter(Boolean).map(w => LANG_DE[w] || LANG_DE[w.toLowerCase()] || w);
+  // Zusätze wie ブラジルポルトガル語 (brasilianisches Portugiesisch): das Ende des Worts zählt
+  const tail = w => Object.keys(LANG_DE).filter(k => k.endsWith("語") && w.endsWith(k)).sort((a, b) => b.length - a.length)[0];
+  const out = text.split(/\s*[,、]\s*/).filter(Boolean)
+    .map(w => LANG_DE[w] || LANG_DE[w.toLowerCase()] || (tail(w) ? LANG_DE[tail(w)] : w));
   return [...new Set(out)].join(", ");
 }
 function langSection(){
