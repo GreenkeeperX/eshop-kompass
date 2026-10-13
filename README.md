@@ -355,8 +355,8 @@ Sicherung und Protokoll.
   es keine, bleibt die ID, steht aber unter „Sprachen prüfen“ als „ID fraglich“ oben, und
   ihre gelesene Sprache zählt erst nach deiner Angabe. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
-  Link in den Store und "Deutsch ja"/"nein" (nur was dort gerade kaufbar ist; der Rest wird
-  trotzdem gelesen und erscheint, sobald es dort einen Preis gibt); wo die Fassung gerade günstiger
+  Link in den Store und "Deutsch ja"/"nein" (was dort gerade nicht kaufbar ist, steht unten);
+  wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:
   von Nintendo gelesen ("stimmt nicht" überschreibt) und von Hand gesetzt
   ("zurücksetzen" stellt die Angabe von Nintendo wieder her). Von Hand gilt

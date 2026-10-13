@@ -1589,10 +1589,9 @@ function settingsBody(form){
 function langSection(){
   const todo = S.state.lang_todo || [];
   // „ID fraglich“ steht oben, auch wenn schon eine Sprache gelesen ist: Sie kann zu einem anderen Titel gehören
-  // Offen heißt: dort kaufbar. Wo es gerade nichts zu kaufen gibt, ändert die Antwort nichts; solche
-  // Einträge erscheinen erst, wenn es dort einen Preis gibt. Gelesen werden sie trotzdem.
-  const pending = todo.filter(t => !t.manual && (t.state === null || t.doubt));
-  const open = pending.filter(t => t.here || t.doubt).sort((a, b) => b.matters - a.matters);
+  // Günstigere zuerst, was dort gerade nicht kaufbar ist, zuletzt
+  const open = todo.filter(t => !t.manual && (t.state === null || t.doubt))
+    .sort((a, b) => b.matters - a.matters || !!b.here - !!a.here);
   const done = todo.filter(t => t.manual), auto = todo.filter(t => !t.manual && t.state !== null && !t.doubt);
   const now = open.filter(t => t.matters).length;
   let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
