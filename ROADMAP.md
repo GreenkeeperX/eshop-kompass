@@ -244,6 +244,92 @@ Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
   nur offene Sprachen, die gerade Geld kosten. Kein DLC-Regionshinweis in Europa.
   Verbindungstest: robots.txt je Kennung gelesen, Preisverlauf wieder aus der Artikelseite.
 
+## Phase 6: Zukunftspläne (Machbarkeit geprüft 13.10.2026)
+
+Noch nichts davon ist begonnen. Reihenfolge nach Aufwand und Nutzen: zuerst, was dem heutigen
+Betrieb hilft, zuletzt das öffentliche Angebot, weil es von den Schritten davor abhängt.
+
+- [ ] 6.1 **Hell, dunkel, System** (klein): Umschalter mit drei Stufen, Vorgabe „System“.
+  Machbar ohne Umbau: Die Farben stehen schon als Tokens, heute schaltet nur
+  `prefers-color-scheme`. Künftig setzt die Wahl `data-theme` am `html`-Element und wird wie
+  die übrige Ansicht im Browser gemerkt. Der helle Modus wird dafür erstmals eigens geprüft
+  (Kontraste von Gold, Grün, Bernstein); `docs/oberflaeche.md` wird angepasst.
+- [ ] 6.2 **Lesezeichen leichter anlegen** (klein): Ein Knopf, der selbst ein Lesezeichen
+  anlegt, geht nicht. Browser erlauben Webseiten das aus Sicherheitsgründen nicht mehr
+  (Firefox hat die letzte Schnittstelle dafür entfernt, Chrome hatte nie eine). Machbar ist:
+  - der Link zum Ziehen sieht aus wie ein Knopf, mit kurzer Anleitung je Browser,
+  - „Code kopieren“ als zweiter Weg (neues Lesezeichen, Code als Adresse einfügen), der auch
+    auf Tablet und Handy geht, wo Ziehen nicht klappt,
+  - die Textfelder zum Kopieren und Einfügen stehen eingeklappt unter „Geht das nicht?“,
+  - jedes Lesezeichen trägt seine Version; ist es älter als das Tool, meldet es das und bittet,
+    es neu zu ziehen. Heute merkt niemand, wenn ein altes Lesezeichen weiterläuft.
+  Verworfen: ein Lesezeichen, das seinen Code jedes Mal vom Tool nachlädt. Das holte fremden
+  Code in eine angemeldete Nintendo-Seite und scheitert oft an deren Sicherheitsregeln.
+  Später möglich: eine Browser-Erweiterung statt Lesezeichen. Sie wäre einmal installiert und
+  schickte die Daten direkt, braucht aber Veröffentlichung im Store je Browser und eigene
+  Pflege; sinnvoll erst mit einem öffentlichen Angebot (6.6).
+- [ ] 6.3 **Sprache der Oberfläche** (groß): Deutsch und Englisch, weitere nur mit Muttersprachlern.
+  Alle Texte stehen heute direkt im Code, rund 350 Zeilen der Oberfläche und viele Sätze in
+  Python (Protokoll, Gründe beim Urteil, Hinweise). Weg: erst alle Texte der Oberfläche in eine
+  Wörterliste mit `t("…")`, dann geben `planner.py` und `sync.py` Kennungen mit Werten statt
+  fertiger Sätze zurück. Zahlen, Daten und Beträge über `Intl` nach Sprache formatiert. README
+  zusätzlich auf Englisch. Ohne neue Abhängigkeiten machbar, aber eine Version je Reiter.
+- [ ] 6.4 **Zielsprache wählbar** (mittel bis groß): Heute fragt die Sprachregel fest nach
+  Deutsch (`planner.german`), die Quellen liefern aber schon alle Sprachen. Machbar:
+  `german` wird `has_lang(Zielsprache)`, dazu je Sprache die Namen bei Nintendo Japan
+  (wie ドイツ語). Wichtig: Zielsprache und Heimatland sind zwei Einstellungen. Deutschland als
+  Vergleichsbasis, Euro als Rechenwährung, die fehlenden Euroländer, Kartenstufen in Euro und die
+  Gebühren hängen am Heimatland, nicht an der Sprache. Darum zuerst ein Heimatland mit Währung
+  (eigener Schritt), dann die Zielsprache. Bei einem Wechsel fragt das Tool, ob die Vorgaben
+  mitwechseln sollen: welche Länder sichtbar sind, welche zählen, welche Region „ohne Wechsel“
+  ist. Danach mit der Prüfumgebung (`tools/replay.py`) Szenarien je Zielsprache durchrechnen,
+  etwa Englisch (fast jede Region zählt) und Japanisch (oft nur Japan und Asien).
+- [ ] 6.5 **Neuer Name** (klein, aber erst klären): Ein Name mit „eShop“ benutzt eine Marke
+  von Nintendo. Privat stört das kaum, mit eigener Domain und Werbung ist es ein Risiko,
+  ebenso das Nintendo-Rot im Logo. Vor dem Umbenennen einen Namen ohne „eShop“ und ohne
+  „Nintendo“ erwägen, Hinweis „kein Angebot von Nintendo“ einbauen und Marke und Domain prüfen.
+  Umbenennen selbst ist leicht (Titel, Kennung beim Abruf, Image, README), alte Daten laden weiter.
+- [ ] 6.6 **Öffentliches Angebot** (sehr groß, mit offenen Rechtsfragen). Was dafür nötig wäre:
+  - *Daten je Nutzer:* Heute gehört der Server einer Person (`settings.json`, `data.json`,
+    Kaufverlauf). Einstellungen passen in den Browser (localStorage, für Cookies sind sie zu
+    groß), Sicherung als Datei gibt es schon. Wishlist, Sammlung, Kaufverlauf und abgehakte DLC
+    müssten ebenfalls im Browser liegen; der Server hält nur, was alle teilen: Preise je
+    Nintendo-ID, Kurse, Artikelseiten, Sprachen. Das ist ein Umbau von `sync.py` und `server.py`.
+  - *Last bei den Quellen:* Geteilte Daten wachsen mit der Zahl der Titel, nicht der Nutzer, und
+    bleiben schonend (Preise in Gruppen zu 50 IDs). Je Nutzer kommen aber Wishlist- und
+    Sammlungsseiten bei DekuDeals dazu; bei 100 Nutzern und 6 Stunden sind das Hunderte Abrufe
+    am Tag. Nötig wären Abruf nur bei Besuch, längere Abstände und eine Obergrenze je Nutzer.
+  - *Nutzungsbedingungen:* DekuDeals hat keine öffentliche Schnittstelle und finanziert sich
+    selbst über Werbung; ein Angebot mit Werbung auf ihren Daten braucht vorher deren
+    Zustimmung. Die Preisschnittstelle von Nintendo ist nicht offiziell freigegeben, Eneba-Links
+    sind eigene Einträge. Ohne Zustimmung von DekuDeals kein öffentliches Angebot.
+  - *Recht in Deutschland:* Impressum mit ladungsfähiger Anschrift (Werbung macht das Angebot
+    geschäftsmäßig), Datenschutzerklärung, Vertrag mit dem Hoster. Werbenetzwerke setzen Cookies
+    und brauchen ein Einwilligungsbanner; Einstellungen im Browser brauchen keins, solange sie
+    nur dem Tool dienen.
+  - *Sicherheit:* Der Server ruft heute Adressen aus den Einstellungen ab (Wishlist, Kartenlinks).
+    Öffentlich nur mit fester Liste erlaubter Seiten, sonst lässt er sich auf fremde Ziele
+    lenken. Dazu Begrenzung der Anfragen je Adresse und HTTPS. Die Härtung des Containers bleibt.
+  - *Lesezeichen „Käufe lesen“:* Fremde müssten einem Skript in ihrer angemeldeten
+    Nintendo-Seite vertrauen. Geht nur, wenn die Daten im Browser bleiben und der Code offen liegt.
+  - *Kosten und Nutzen:* Ein kleiner Server kostet wenige Euro im Monat; Werbung bringt bei
+    einem Nischenwerkzeug wenig. Zuerst günstiger testen, ob es jemanden interessiert (6.7).
+- [ ] 6.7 **Interesse testen, bevor es einen Server gibt** (klein): Das Image ist schon
+  öffentlich. Eine englische Kurzanleitung zum Selbstbetrieb (ein `docker run`, Wishlist-Link
+  eintragen), Screenshots mit Testdaten und ein Beitrag in einer Switch-Community zeigen, ob
+  jemand es nutzt (Sterne, Fragen, Pull-Downloads). Jeder betreibt dann seinen eigenen Server mit
+  eigener Kennung, die Last bei den Quellen verteilt sich, und es gibt keine Rechtsfragen zu
+  Werbung und fremden Daten. Setzt 6.3 (Englisch) und 6.5 (Name) voraus.
+
+Weitere Ideen aus der Prüfung:
+- **Einrichtung beim ersten Start:** ein kurzer Ablauf (Wishlist-Link, Heimatland, Zielsprache,
+  Karten), statt alles in den Einstellungen zu suchen. Wird mit 6.4 und 6.7 wichtig.
+- **Beispieldaten zum Ausprobieren:** eine Ansicht mit erfundener Wishlist, damit Fremde das
+  Tool sehen, ohne etwas einzutragen. Hilft auch bei Screenshots für README und Tests.
+- **Mehrere Personen auf einem Server ohne Hosting:** etwa ein Haushalt; braucht dieselbe
+  Trennung der Daten wie 6.6, aber keine Werbung und kein Impressum. Ein Zwischenschritt, falls
+  6.7 Interesse zeigt.
+
 ## Ohne Arbeit für uns
 
 - **Sprache in Japan:** Titel, die titledb nicht kennt, liest der Browser-Helfer (siehe 4.6).
