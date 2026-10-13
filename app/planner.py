@@ -3,6 +3,7 @@
 Beträge in Landeswährung werden intern als ganze Hundertstel gerechnet.
 """
 import math
+from decimal import Decimal, ROUND_HALF_UP
 import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -21,7 +22,9 @@ CARD_STEPS = ((1.005, "top", "Top"), (1.02, "good", "gut"), (1.05, "ok", "okay")
 
 
 def _fac(f):
-    return f"{f:.2f}".replace(".", ",")
+    # Wie die Oberfläche: erst auf 4 Stellen (so kommt der Faktor dort an), dann kaufmännisch
+    # auf 2, damit Spalte und Bewertungstext dieselbe Zahl zeigen
+    return str(Decimal(str(round(f, 4))).quantize(Decimal("0.01"), ROUND_HALF_UP)).replace(".", ",")
 
 
 def card_hist_window(hist, now):
@@ -514,12 +517,12 @@ class Context:
                # Karten nur mit Wert und ohne Shop-Link: Guthaben zum Kurs, wie bei Amazon Japan.
                # Karten mit Link, aber ohne bekannten Preis, bleiben eine Schätzung.
                "at_rate": any(x["stock"] and x["cost"] is None and not x["url"] for x in c["cards"])}
-        out["factor"] = round(c["unit"] / mid, 3)
+        out["factor"] = round(c["unit"] / mid, 4)
         card = None
         if c["currency"] == "EUR":
             card = self._euro_card(c)[1]
             out["via"] = "giftcard" if card else "eur"
-            out["factor"] = round(c["unit"] / 0.01, 3)
+            out["factor"] = round(c["unit"] / 0.01, 4)
         elif gift:
             card = self._gift(c)[1]
             if card and card["cost"] is None:
@@ -529,7 +532,7 @@ class Context:
             out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
                            "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur"),
                            "value": round(card["face"] / 100 / (1.0 if c["currency"] == "EUR" else c["rate"]), 2),
-                           "factor": round(f, 3)}
+                           "factor": round(f, 4)}
             out["rating"] = self.rate_card(c, f, card["url"])
         return out
 
@@ -1904,11 +1907,12 @@ def card_status(data, settings, now=None):
                 error = f"gelesen {_eur(odd_shop[x['face']])}, unglaubhaft, ignoriert"
             f = ctx.factor(c, x) if c["rate"] else None
             rows.append({"face": x["face"] / 100, "cost": x["cost"], "live": x.get("live"),
+                         "fee": x.get("fee"), "fee_eur": x.get("fee_eur"),
                          "manual": x.get("manual", x["cost"]), "checked": e.get("checked"),
                          "error": error, "url": bool(x["url"]), "stock": x["stock"],
                          "value": round(x["face"] / 100 / (1.0 if c["currency"] == "EUR" else c["rate"]), 2)
                          if c["rate"] else None,
-                         "factor": round(f, 3) if f is not None else None,
+                         "factor": round(f, 4) if f is not None else None,
                          "rating": ctx.rate_card(c, f, x["url"]) if c["rate"] else None,
                          "used": bool(used) and used.get("face") == x["face"] / 100 and x["stock"]})
         if rows:

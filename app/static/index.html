@@ -10,13 +10,13 @@
   --bg:#f4f2ec; --card:#fffdf8; --ink:#1d2320; --muted:#667069; --line:#dcd8cc;
   --accent:#2f3b35; --warn:#8a5a00; --warn-bg:#fbefd2;
   --sale:#b3261e; --best:#ebe8de; --chip:#ece9df; --gold:#c28800; --gold-ink:#2b2000;
-  --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690;
+  --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690; --brand:#e60012;
 }
 @media (prefers-color-scheme: dark){:root{
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#f0c36a; --warn-bg:#3a2e12;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
-  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8;
+  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -26,6 +26,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 header.top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:14px 0 6px}
 header.top h1{font-size:19px;margin:0;letter-spacing:-.01em}
 header.top h1 a.home{color:inherit;text-decoration:none}
+header.top h1 .brand{color:var(--brand)}
 header.top .meta{color:var(--muted);font-size:13px;flex:1;min-width:200px}
 button,select,input{font:inherit;color:inherit}
 button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
@@ -406,7 +407,7 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 <body>
 <div class="wrap">
   <header class="top">
-    <h1><a class="home" href="/" title="Startseite, lädt die Seite neu">eShop-Kompass</a></h1>
+    <h1><a class="home" href="/" title="Startseite, lädt die Seite neu"><span class="brand">eShop</span>Kompass</a></h1>
     <div class="meta" id="meta"></div>
     <button class="help" data-act="legend" title="Legende: Urteil, Farben, Begriffe">?</button>
     <button class="primary" id="syncBtn" data-act="sync">Aktualisieren</button>
@@ -579,7 +580,8 @@ const feeTxt = (pct, fix) => pct || fix ? ` mit Servicegebühr ${[fix ? eur(fix)
 const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 /* Faktor einer Guthabenkarte: Preis ÷ Wert zum Mittelkurs (0.53) */
 const fac = f => f === null || f === undefined ? "–" : f.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2});
-const RATE_CLS = {top: "gn", good: "gn", cheaper: "gn", ok: "", same: "", bad: "warnc", dearer: "mut"};
+const RATE_CLS = {top: "gn", good: "gn", cheaper: "gn", ok: "", same: "", bad: "warnc", dearer: "abv"};
+const rateCls = r => r && r.level ? RATE_CLS[r.level] ?? "" : "";
 const rateHtml = r => r ? `<span class="${r.level ? RATE_CLS[r.level] ?? "" : "mut"}"${r.best ? ` title="Maßstab: ${r.level === "cheaper" || r.level === "dearer" || r.level === "same" ? "Faktor deiner Kreditkarte" : "bester Faktor dieser Karte in 90 Tagen"} ${fac(r.best)}"` : ""}>${esc(r.text)}</span>` : "";
 /* Guthabenkarten eines Landes für die Einstellungen: Wert, Preis, Faktor, Bewertung */
 function cardRows(code){ return (S.state.card_status || {})[code] || []; }
@@ -590,13 +592,14 @@ function cardSummary(code){
   const x = S.state.settings.countries[code] || {};
   const verdict = x.pay === "auto" || x.pay === "card" ? (best.rating && best.rating.level === "cheaper" ? "Guthaben günstiger" : "Kreditkarte günstiger")
     : pi.rating && pi.rating.level ? pi.rating.text.split(",")[0] : "";
-  return ` · bester Faktor ${fac(best.factor)}${verdict ? ` · ${esc(verdict)}` : ""}`;
+  const vc = verdict === "Guthaben günstiger" ? "gn" : verdict === "Kreditkarte günstiger" ? "" : rateCls(pi.rating);
+  return ` · bester Faktor <span class="${rateCls(best.rating)}">${fac(best.factor)}</span>${verdict ? ` · <span class="${vc}">${esc(verdict)}</span>` : ""}`;
 }
 function cardTable(code, cur){
   const rows = cardRows(code);
   if(!rows.length) return "";
   const price = r => {
-    if(r.live) return `${eur(r.cost)} <small class="mut">Shop, ${new Date(r.live * 1000).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})}</small>` +
+    if(r.live) return `<span title="Shop-Preis vom ${stamp(r.live)}${feeTxt(r.fee, r.fee_eur)}">${eur(r.cost)}</span> <small class="mut">Shop, ${new Date(r.live * 1000).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})}${r.fee || r.fee_eur ? ", mit Gebühr" : ""}</small>` +
       (r.error ? ` <small class="warnc" title="Der letzte Abruf scheiterte. Der zuletzt gelesene Preis gilt bis zu 14 Tage weiter.">letzter Abruf: ${esc(r.error)}</small>` : "");
     if(r.url && r.checked) return `${r.manual === null ? "–" : `${eur(r.manual)} <small class="mut">eingetragen</small>`} <small class="warnc">${esc(r.error || "kein Preis")}</small>`;
     if(r.url && r.manual === null) return `<small class="mut">wird beim nächsten Abgleich gelesen</small>`;
@@ -605,7 +608,7 @@ function cardTable(code, cur){
   };
   return `<table class="cards"><thead><tr><th>Karte</th><th title="Wert zum Mittelkurs">Wert</th><th>Preis</th><th title="Preis ÷ Wert. 1,00 heißt: Guthaben zum Kurs. 0,85 heißt: 100 € Guthaben kosten 85 €.">Faktor</th><th>Bewertung</th></tr></thead><tbody>${rows.map(r =>
     `<tr class="${r.stock ? "" : "mut"}"><td>${cur ? money(r.face, cur) : num(r.face)}</td><td>${r.value === null ? "–" : eur(r.value)}</td><td>${price(r)}</td>
-      <td>${fac(r.factor)}</td><td>${r.stock ? rateHtml(r.rating) : "nicht vorrätig"}${r.used ? ` <span class="chip" title="Diese Karte rechnet das Tool für die Preise dieses Landes">genutzt</span>` : ""}</td></tr>`).join("")}</tbody></table>`;
+      <td class="${r.stock ? rateCls(r.rating) : ""}">${fac(r.factor)}</td><td>${r.stock ? rateHtml(r.rating) : "nicht vorrätig"}${r.used ? ` <span class="chip" title="Diese Karte rechnet das Tool für die Preise dieses Landes">genutzt</span>` : ""}</td></tr>`).join("")}</tbody></table>`;
 }
 /* Einzelkauf: welche Karten ein Titel allein braucht und was übrig bleibt */
 function aloneTxt(x, cur){
@@ -1005,7 +1008,7 @@ function titleDetail(r){
       : langTag(c, true);
     return `<div class="${counts ? "" : "nc"}"><span>${star(c)}${counts ? "" : `<span class="q">?</span>`}</span><b>${ax(c)}${buyLink(code, c, eur(c.eur))}</b>
       <span>${esc(co.name)} ${tierTag((S.state.matrix.cols.find(k => k.code === code) || {}).tier)}</span>
-      <span class="mut">${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${extra}</span></div>`;
+      <span class="mut">${counts && ce && !atBest(c.eur, ce.eur) ? `<span title="über dem Bestpreis ${eur(ce.eur)} (${esc(ce.name)})">+${eur(c.eur - ce.eur)} über Bestpreis</span> · ` : ""}${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${extra}</span></div>`;
   }).join("") + (na.length ? `<div class="mut nc"><span></span><span></span><span>${na.map(([code, c]) => esc(country(code).name) + (c.nolang ? " (ohne Deutsch)" : "")).join(", ")}</span><span>nicht kaufbar</span></div>` : "") + `</div>`;
   h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}` : ""}${nextBest(x, list)}</span>`;
   const rh = rhythmLines(r.rhythm || []);
@@ -1023,11 +1026,12 @@ function titleDetail(r){
   return h + `</div>`;
 }
 /* Landestief neben dem Preis eines Landes: erreicht (grün) oder wie viel darüber (rot), 0.53.3 */
+/* Landestief nur als Auskunft, grau: Maßstab der Kaufentscheidung ist der Bestpreis aller Länder (0.53.5) */
 function lowTxt(c){
   if(c.low_eur === null || c.low_eur === undefined) return "";
   // Normalpreis am Landestief: nie im Angebot gewesen, nichts Besonderes
-  if(c.eur <= c.low_eur * 1.02 + 0.005) return c.sale ? ` · <span class="gn" title="Landestief ${eur(c.low_eur)}">am Landestief</span>` : "";
-  return ` · Landestief ${eur(c.low_eur)} <span class="abv">+${eur(c.eur - c.low_eur)}</span>`;
+  if(c.eur <= c.low_eur * 1.02 + 0.005) return c.sale ? ` · am Landestief` : "";
+  return ` · Landestief ${eur(c.low_eur)}`;
 }
 /* Angebotsrhythmus je Land aus den DekuDeals-Verläufen, ohne Vorhersage */
 const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];

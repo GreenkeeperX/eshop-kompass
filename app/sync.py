@@ -1525,9 +1525,14 @@ def membership_probe(probe, sleep=time.sleep):
     def deku_info(t):
         info = sources.parse_item_page(t)
         shops = sorted(set(sources.re.findall(r"https://ec\.nintendo\.com/[A-Z]{2}/[a-z]{2}/[a-z]+", t)))[:4]
+        hist = sources.parse_history(t)
+        # Wo steht der Preis jetzt? Ausschnitt um den eShop-Link, ohne Bilder und Skripte
+        i = t.find("ec.nintendo.com")
+        cut = sources.re.sub(r"\s+", " ", sources.re.sub(r"<(script|style|svg|picture)\b.*?</\1>", "", t[max(0, i - 900):i + 300], flags=sources.re.S))
         return (f"Titel „{(sources.page_title(t) or '')[:60]}“, Preise in Produktdaten: "
                 f"{sorted(sources.ld_prices(t))[:8]}, Tiefstpreis {info['low']}, IDs {info['nsuids']}, "
-                f"eShop-Links: {' '.join(shops) or 'keine'}")
+                f"eShop-Links: {' '.join(shops) or 'keine'}, Verlauf: {len(hist)} Tage"
+                f"{', zuletzt ' + str(hist[-3:]) if hist else ''}, Ausschnitt: {cut[:700] if i >= 0 else 'kein eShop-Link'}")
     for country in ("de", "br"):
         probe(f"Mitgliedschaft DekuDeals ({country.upper()})",
               f"https://www.dekudeals.com/items/{MEMBERSHIP_SLUG}?country={country}", None, deku_info)
@@ -1546,6 +1551,12 @@ def membership_probe(probe, sleep=time.sleep):
     q = urllib.parse.urlencode({"q": '"Nintendo Switch Online"', "fl": "title,type,nsuid_txt",
                                 "rows": 12, "wt": "json"})
     probe("Mitgliedschaft Nintendo Europa (Suche)", f"{sources.SOLR_URL}?{q}", None, solr_info)
+    if not found:
+        # Freitext fand nichts; Suche im Titelfeld
+        sleep(LOW_PAUSE)
+        q = urllib.parse.urlencode({"q": "*", "fq": 'title:*Online*', "fl": "title,type,nsuid_txt",
+                                    "rows": 12, "wt": "json"})
+        probe("Mitgliedschaft Nintendo Europa (Titelfeld)", f"{sources.SOLR_URL}?{q}", None, solr_info)
     if found:
         ids = ",".join(dict.fromkeys(found[:10]))
         probe("Mitgliedschaft Nintendo-Preise (DE)", sources.NINTENDO_PRICE_URL + f"?country=DE&lang=de&ids={ids}",

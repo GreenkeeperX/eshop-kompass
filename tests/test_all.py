@@ -779,7 +779,11 @@ class PlanTest(unittest.TestCase):
         rate_no = self.data["fx"]["rates"]["NOK"]
         self.settings["countries"]["NO"].update(pay="auto", cards="500 = 50,63")
         row = planner.card_status(self.data, self.settings, now=NOW)["NO"][0]
-        self.assertAlmostEqual(row["factor"], round(50.63 / (500 / rate_no), 3))
+        self.assertAlmostEqual(row["factor"], round(50.63 / (500 / rate_no), 4))
+        # 0.53.5: Spalte und Bewertungstext runden gleich (vorher 1,11 in der Spalte, 1,10 im Text)
+        self.assertEqual(planner._fac(1.10476), "1,10")
+        self.assertEqual(planner._fac(1.10496), "1,11")
+        self.assertEqual(planner._fac(1.105), "1,11")
         self.assertEqual(row["value"], round(500 / rate_no, 2))
         self.assertEqual(row["rating"]["level"], "dearer" if row["factor"] > 1.0175 else "cheaper")
         self.assertFalse(row["used"] and row["rating"]["level"] == "dearer")
@@ -809,7 +813,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(len(self.data["card_hist"][url]), 3)
         self.assertEqual(rating["level"], "ok")                  # 4 % über dem Bestwert 1,00
         info = planner.pay_info(self.data, self.settings, now=when)["BR"]
-        self.assertEqual((info["card"]["factor"], info["rating"]["level"]), (1.04, "ok"))
+        self.assertEqual((round(info["card"]["factor"], 3), info["rating"]["level"]), (1.04, "ok"))
         self.assertAlmostEqual(info["card"]["value"], round(50 / rate_br, 2))
         # Verlauf: Älteres als 90 Tage und entfernte Links fallen weg
         sync.record_card_factors(self.data, self.settings, now=t0 + 100 * 86400)
@@ -1613,6 +1617,27 @@ class SafetyTest(unittest.TestCase):
         self.assertIn("ec.nintendo.com/DE/de/membership", text)
         self.assertIn("Mitgliedschaft Nintendo Europa (Suche): HTTP 200, Server t, Kodierung keine, 1 Treffer", text)
         self.assertTrue(any("ids=70070000000001" in u for u in urls))
+
+    def test_diagnose_membership_history_and_title_search(self):
+        # 0.53.5: Der Verlauf je Land nennt den Preis jetzt; findet die Freitextsuche nichts,
+        # sucht der Test im Titelfeld
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
+        urls = []
+        hist = json.dumps({"headers": ["Nintendo eShop"], "data": [["2026-10-01", None, 109.9], ["2026-10-12", None, 74.25]]})
+        page = (f'<title>NSO</title><script id="price_history_data" type="application/json">{hist}</script>'
+                '<script id="price_history_indices" type="application/json">{"all":[0,1,2],"physical":[0,1],"digital":[0,1,2]}</script>'
+                '<div class="price">R$ 74,25</div><a href="https://ec.nintendo.com/BR/pt/membership">eShop</a>')
+        empty = json.dumps({"response": {"docs": []}})
+
+        def request(url, ua=None, timeout=25):
+            urls.append(url)
+            text = page if sync.MEMBERSHIP_SLUG in url else empty if "solr" in url or "select" in url else ""
+            return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
+        with mock.patch.object(sources, "request", request):
+            text = "\n".join(sync.diagnose(sleep=lambda s: None))
+        self.assertIn("Verlauf: 2 Tage, zuletzt [('2026-10-01', 109.9), ('2026-10-12', 74.25)]", text)
+        self.assertIn("R$ 74,25", text)
+        self.assertIn("Mitgliedschaft Nintendo Europa (Titelfeld)", text)
 
     def test_diagnose_with_dlc_sections(self):
         # 0.50 bis 0.53.2: Die Liste der gefundenen Abschnitte (Texte) brach den Test ab,

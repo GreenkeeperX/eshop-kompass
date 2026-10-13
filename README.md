@@ -122,7 +122,7 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Unter dem Urteil steht, ob der Titel im Plan ist oder warum nicht. Filter
   nach Urteil und Suche oben. Ein Klick auf den Titel klappt die Einzelheiten
   auf: die Rechnung, alle Länder mit Preis, Stufe, Rabatt, Angebotsende und
-  Landestief (ungeprüfte Sprache direkt bestätigen), Bestpreis, typischer
+  Abstand zum Bestpreis, Landestief als graue Auskunft (ungeprüfte Sprache direkt bestätigen), Bestpreis, typischer
   Angebotspreis, die Ersparnis gegenüber dem nächstbesten zählenden Land (Deutschland
   steht nur zur Information daneben), Zielpreis (leer heißt: das Urteil misst am Bestpreis;
   "Bestpreis übernehmen" setzt ihn) und die Links zu DekuDeals, eShop-Prices
@@ -355,7 +355,8 @@ Sicherung und Protokoll.
   Mittelkurs. 1,00 heißt zum Kurs, 1,08 heißt 8 % teurer, 0,85 heißt: 100 € Guthaben
   kosten 85 €. Die Spalte "Dein Faktor" nennt ihn je Land mit Zahlweg ("1,00 Kreditkarte",
   "0,98 Guthaben"), aufgeklappt stehen unter dem Land alle Karten mit Wert, Preis, Faktor
-  und Bewertung, zugeklappt eine Zeile mit dem besten Faktor. Bewertet wird je nach Land
+  und Bewertung (der Faktor in der Farbe der Bewertung, ein gelesener Preis mit Servicegebühr),
+  zugeklappt eine Zeile mit dem besten Faktor. Bewertet wird je nach Land
   (Entscheidung 13.10.2026):
   - Kreditkarte möglich ("das Günstigere", "Karte"): gegen den Faktor der Kreditkarte
     (1 plus Fremdwährungsgebühr): "günstiger als Kreditkarte" oder "teurer als
@@ -535,7 +536,9 @@ beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
 auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Seit 0.53.2
 prüft er auch, woher Preise der Online-Mitgliedschaft kommen könnten: die
 12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland und Brasilien, die Suche
-bei Nintendo Europa und, falls sie IDs nennt, deren Preise. Gespeichert wird nichts.
+bei Nintendo Europa (frei und im Titelfeld) und, falls sie IDs nennt, deren Preise. Seit
+0.53.5 zeigt er auch den Preisverlauf der Seite je Land und einen Ausschnitt um den
+eShop-Link, um die Preisangabe zu finden. Gespeichert wird nichts.
 
 Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so
 keine Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen
