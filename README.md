@@ -109,6 +109,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
 - Titel, Liste: eine Zeile je Wishlist-Titel mit Urteil, Einkaufspreis samt
   Land und Stufe, Abstand zum Bestpreis und, wenn das beste Angebot in einem
   schweren Land liegt, der Alternative in einem leichten oder mittleren Land.
+  Steht der Titel im Kaufplan, zeigt die Zeile den Preis im Land des Plans; ist
+  er anderswo günstiger, steht dieses Land als Alternative daneben. Bis 2 % über
+  dem Bestpreis heißt es "am Bestpreis", wie im Urteil.
   Unter dem Urteil steht, ob der Titel im Plan ist oder warum nicht. Filter
   nach Urteil und Suche oben. Ein Klick auf den Titel klappt die Einzelheiten
   auf: die Rechnung, alle Länder mit Preis, Stufe, Rabatt, Angebotsende und
@@ -125,7 +128,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   unter dem Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der
   Sicherung. Für fehlende DLC, die nicht auf der Wishlist stehen, sucht das Tool
   die Nintendo-IDs über die DekuDeals-Artikelseiten (höchstens 40 Seiten je
-  Abgleich, Abbruch bei Sperren; gefundene IDs bleiben, ohne ID wieder nach 14 Tagen;
+  Abgleich, Abbruch bei Sperren; gefundene IDs bleiben, ohne ID wieder nach 14 Tagen, nach zwei erfolglosen
+  Suchen nur noch alle drei Monate (meist Inhalte, die es nur im Spiel gibt);
   den Stand je Region nennt das Protokoll). Die Japan- und Amerika-ID eines DLC holt es
   zuerst aus titledb: über die Programm-ID der Europa-ID, die in allen Regionen meist
   gleich ist (dafür einmal zusätzlich die US-Liste, rund 25 MB gepackt). Nur was titledb
@@ -187,7 +191,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   setzt "alle zurücksetzen" in der Leiste alle auf einmal zurück. Jede
   Karte enthält die Angebote des Landes, die günstiger als in Deutschland
   sind, und dauerhaft günstige Normalpreise mit dem Urteil "kaufen", also
-  dieselben Titel, mit denen auch der Kaufplan rechnet. Die
+  dieselben Titel, mit denen auch der Kaufplan rechnet. Steht das Land im
+  Kaufplan, zeigt die Karte genau dessen Korb ("Korb: wie im Kaufplan"), denn der
+  Einkaufspreis hängt an den Guthabenkarten für den ganzen Korb; so stimmen Karte
+  und "Jetzt" überein. Änderst du die Karte, wird daraus ein eigener Korb. Die
   Kopfzahl ist der Einkaufspreis des Pakets. Darunter drei Zeilen:
   "Preis" nennt den Abstand der Spiele zur Summe ihrer Bestpreise (rot, grün nur
   "am Bestpreis") und zählt die Urteile; "Wechsel" sagt, ob sich der

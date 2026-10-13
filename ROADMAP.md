@@ -137,6 +137,11 @@ Reihenfolge und Begründung:
   titledb-Wartezeit und Warteraum in Japan klarer im Protokoll, kein zweiter Versuch im selben Abgleich.
   0.47.2: Europa-Sprachen ohne Angabe (meist DLC) wie die anderen Regionen nach drei Versuchen nur
   noch monatlich statt bei jedem Abgleich.
+- [x] Review mit echten Daten (0.48): DLC, die DekuDeals zweimal nicht kennt, nur noch alle drei
+  Monate suchen; Titelliste zeigt den Preis im Land des Kaufplans; Länderkarten von Ländern im Plan
+  zeigen den Korb des Plans; "am Bestpreis" bis 2 % wie im Urteil; "morgen" beim nächsten Abgleich;
+  kostenlose DLC als "kostenlos" (Entscheidung 13.10.2026). Offen: Pakete mit "Teil schon da"
+  (Bestpreis wirkt wie der Restpreis für Besitzer), wartet auf eine Rückmeldung.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

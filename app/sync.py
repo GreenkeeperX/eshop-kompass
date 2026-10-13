@@ -11,6 +11,7 @@ from . import countries, planner, sources, store
 
 ID_RECHECK_SECONDS = 14 * 24 * 3600   # fehlende IDs alle zwei Wochen neu suchen
 ID_RECHECK_LONG = 90 * 24 * 3600      # ... DLC, die auch titledb nicht kennt, nur alle drei Monate
+ID_MISSES = 2                         # ... ebenso nach so vielen erfolglosen DekuDeals-Suchen
 DEKU_PAUSE = 1.0                      # Sekunden zwischen DekuDeals-Abrufen
 NINTENDO_PAUSE = 0.3
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
@@ -974,6 +975,13 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
     for slug in [s for s in extra if s not in wanted]:
         del extra[slug]                     # gekauft, ignoriert oder jetzt auf der Wishlist
     fams = needed_families(settings)
+    if data.get("ids_misses_v", 0) < 1:
+        # Bis 0.47 zählte das Tool erfolglose Suchen nicht: eine bisherige gilt als erste
+        for rec in list(extra.values()) + list((data.get("glangs") or {}).values()):
+            for fam in (rec.get("ids_checked") or {}):
+                if not (rec.get("ids") or {}).get(fam):
+                    rec.setdefault("ids_misses", {}).setdefault(fam, 1)
+        data["ids_misses_v"] = 1
     todo = []
     for slug, (title, parent) in wanted.items():
         e = extra.setdefault(slug, {"title": title, "parent": parent, "ids": {}, "ids_checked": {}})
@@ -1040,6 +1048,10 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
         elif reached:
             e["ids"][fam] = found
             e["ids_checked"][fam] = now
+            # Erfolglose Suchen zählen: was DekuDeals zweimal nicht kennt, steht meist nicht
+            # (mehr) im eShop, etwa Inhalte, die es nur im Spiel gibt (0.48)
+            misses = e.setdefault("ids_misses", {})
+            misses[fam] = 0 if found else misses.get(fam, 0) + 1
             if found and slug not in extra:
                 # Spiel-ID neu: Sprache dort gleich fragen, die DLC-Seite zählt nicht mehr
                 for k in ("langs_checked", "langs_tries"):
@@ -1052,9 +1064,11 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
 
 def _recheck(e, fam):
     """Abstand bis zur nächsten DekuDeals-Suche nach einer fehlenden ID. Kennt auch titledb
-    den DLC in dieser Region nicht, gibt es ihn dort meist nicht; titledb sieht weiter
-    wöchentlich nach, DekuDeals nur noch selten (0.47)."""
-    return ID_RECHECK_LONG if fam in (e.get("tdb_ids") or {}) else ID_RECHECK_SECONDS
+    den DLC in dieser Region nicht (0.47) oder fand DekuDeals zweimal keine (0.48), gibt es
+    ihn dort meist nicht: DekuDeals nur noch selten, titledb sieht weiter wöchentlich nach."""
+    if fam in (e.get("tdb_ids") or {}) or (e.get("ids_misses") or {}).get(fam, 0) >= ID_MISSES:
+        return ID_RECHECK_LONG
+    return ID_RECHECK_SECONDS
 
 
 def _log_extra_ids(extra, glangs, fams, now):

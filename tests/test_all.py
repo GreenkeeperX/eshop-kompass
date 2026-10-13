@@ -2158,6 +2158,33 @@ class ExtraDlcTest(unittest.TestCase):
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 33 * 86400)
             self.assertEqual(len(asked), 4)                         # danach monatlich
 
+    def test_dlc_without_eshop_entry_searched_rarely(self):
+        # Kennt DekuDeals einen DLC zweimal nicht (nur im Spiel kaufbar, abgeschaltet), sucht
+        # das Tool nur noch alle drei Monate; frühere erfolglose Suchen zählen als erste
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code == "DE"
+        t0 = 1736467200
+        data = self.data()
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": []}, "ids_checked": {"EU": t0}}}
+        data["glangs"] = {}
+        got = []
+        with mock.patch.object(sources, "fetch_item", lambda slug, c, fetch=None: got.append(slug) or {"nsuids": []}), \
+                mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}):
+            sync.sync_extra_ids(data, settings, None, lambda s: None, now=t0 + 15 * 86400)
+            self.assertEqual(data["extra"]["rl-b"]["ids_misses"], {"EU": 2})
+            self.assertEqual(len(got), 3)                           # de, gb, au
+            got.clear()
+            sync.sync_extra_ids(data, settings, None, lambda s: None, now=t0 + 30 * 86400)
+            self.assertEqual(got, [])                               # nicht nach zwei Wochen
+            sync.sync_extra_ids(data, settings, None, lambda s: None, now=t0 + 106 * 86400)
+            self.assertEqual(len(got), 3)
+        # Findet die Suche doch eine ID, beginnt die Zählung von vorn
+        e = {"ids": {}, "ids_checked": {}, "ids_misses": {"EU": 3}}
+        self.assertEqual(sync._recheck(e, "EU"), sync.ID_RECHECK_LONG)
+        e["ids_misses"]["EU"] = 0
+        self.assertEqual(sync._recheck(e, "EU"), sync.ID_RECHECK_SECONDS)
+
     def test_which_dlc_need_prices(self):
         data, settings = self.data(), {"dlc_marks": {"rl-c": "ignore"}}
         # rl-a hast du, rl-c ignoriert, rl-w steht auf der Wishlist, Abo-Inhalte zählen nicht

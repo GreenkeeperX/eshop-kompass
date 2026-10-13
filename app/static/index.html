@@ -488,6 +488,12 @@ function ago(iso){
   return `vor ${Math.round(min / 1440)} Tagen`;
 }
 const clock = d => d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+/* "morgen " oder "15.10. " vor einer Uhrzeit, die nicht mehr heute ist */
+function whenDay(d){
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const n = Math.round((day(d) - day(new Date())) / 86400000);
+  return n <= 0 ? "" : n === 1 ? "morgen " : d.toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"}) + " ";
+}
 function toast(msg, undo){
   document.querySelectorAll(".toast").forEach(t => t.remove());
   const t = document.createElement("div");
@@ -706,7 +712,7 @@ function renderHead(){
     let next = last ? new Date(+last + hours * 3600000) : null;
     if(st.boot_sync && (!next || new Date(st.boot_sync) < next)) next = new Date(st.boot_sync);   // einmal nach dem Start
     m.innerHTML = `<span class="${stale ? "warnc" : ""}" title="${last ? esc(last.toLocaleString("de-DE")) : ""}">Stand ${ago(S.state.last_sync)}</span>` +
-      (next ? ` · nächster Abgleich ${next < new Date() ? "in Kürze" : "ca. " + clock(next)}` : "") +
+      (next ? ` · nächster Abgleich ${next < new Date() ? "in Kürze" : "ca. " + whenDay(next) + clock(next)}` : "") +
       ` · ${S.state.item_count} Titel · v${esc(S.state.version)}`;
   }
   $("syncBtn").disabled = st.running;
@@ -751,12 +757,15 @@ const TIER = {1:"leicht", 2:"mittel", 3:"schwer"};
 const tierTag = t => t && TIER[t] ? `<span class="tier" title="Wechselstufe">${TIER[t]}</span>` : "";
 const pill = v => v === "none" || !v ? `<span class="mut">kein Urteil</span>` : `<span class="vd ${v}">${VERDICT[v]}</span>`;
 const star = x => x && x.mark === "best" ? `<span class="star" title="Einkaufspreis erreicht den Bestpreis">★</span>` : "";
+/* Bis 2 % über dem Bestpreis gilt ein Preis als Bestpreis, wie im Urteil (BEST_TOLERANCE) */
+const atBest = (eurNow, champ) => eurNow <= champ * 1.02 + 0.005;
+const nearTip = d => d >= 0.005 ? ` title="${eur(d)} über dem Bestpreis, das zählt noch als Bestpreis (bis 2 %)"` : "";
 /* Abstand zum Bestpreis als Text: am Bestpreis in der Farbe des Urteils, +x € rot (teurer) */
 function overBest(eurNow, champ, grade){
   if(eurNow === null || eurNow === undefined || !champ) return `<span class="mut">–</span>`;
   const d = eurNow - champ;
   const cls = grade ? "g-" + grade : "";
-  return d < 0.005 ? `<span class="${cls}">am Bestpreis</span>` : `<span class="abv">+${eur(d)}</span>`;
+  return atBest(eurNow, champ) ? `<span class="${cls}"${nearTip(d)}>am Bestpreis</span>` : `<span class="abv">+${eur(d)}</span>`;
 }
 /* Wo ein Titel im Kaufplan steht: im Plan, Wechsel lohnt nicht, besser warten */
 function planState(slug){
@@ -780,6 +789,15 @@ function shownOffer(r){
   if(!r.shown) return null;
   return [r.easy, r.hard].find(b => b && b.code === r.shown.code) || null;
 }
+/* Steht ein Titel im Kaufplan, zählt dessen Preis: dort, mit diesen Karten, wird gekauft */
+function planOffer(r){
+  const p = S.kauf && S.kauf.steps.find(p => p.items.some(i => i.slug === r.slug));
+  if(!p) return null;
+  const i = p.items.find(i => i.slug === r.slug);
+  return Object.assign({}, i, {code: p.code, name: p.name, currency: p.currency, tier: p.tier, plan: true,
+                               reason: (p.reasons || {})[r.slug] || ""});
+}
+const cheapestOffer = r => [r.easy, r.hard].filter(Boolean).sort((a, b) => a.eur - b.eur)[0] || null;
 function titleFilterBar(){
   const n = v => S.state.radar.filter(r => r.verdict === v).length;
   const f = S.vf || "all";
@@ -796,7 +814,7 @@ function collDlc(d){
   else if(d.ignored) state = `<span class="mut">ignoriert</span>${d.mark === "ignore" ? " · " + mk("", "zurücksetzen", "Wieder als fehlend zählen") : ""}`;
   else {
     if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
-    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""} · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool auch Urteil und Bestpreis">bei DekuDeals ansehen</a>`;
+    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.eur < 0.005 ? "kostenlos" : `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}`}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""} · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool auch Urteil und Bestpreis">bei DekuDeals ansehen</a>`;
     state += ` · ${mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht")} · ${mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend")}`;
   }
   return `<tr class="${d.ignored ? "ign" : ""}"><td class="l">${esc(d.title)}${tag}</td><td class="l">${state}</td></tr>`;
@@ -838,13 +856,13 @@ function viewCollection(){
 }
 function viewTitles(){
   const q = S.rq.toLowerCase(), f = S.vf || "all";
-  const off = r => shownOffer(r) || [r.easy, r.hard].filter(Boolean).sort((a, b) => a.eur - b.eur)[0] || null;
+  const off = r => planOffer(r) || shownOffer(r) || cheapestOffer(r);
   const rows = sortRows("titel", S.state.radar.filter(r => (!q || r.title.toLowerCase().includes(q)) && (f === "all" || r.verdict === f)), {
     title: r => r.title, verdict: r => VORDER[r.verdict], price: r => off(r)?.eur,
     over: r => off(r) && r.champ ? off(r).eur - r.champ.eur : null, end: r => off(r)?.sale && off(r).end ? +new Date(off(r).end) : null,
     alt: r => { const x = shownOffer(r); return x && x.tier >= 3 && r.easy ? r.easy.eur : null; }});
   let h = `<div class="tools"><input type="search" id="rq" placeholder="Titel filtern" value="${esc(S.rq)}">${titleFilterBar()}${titleSortSel()}${viewSeg()}</div>
-    <div class="radar"><table><thead><tr>${sth("titel", "title", "Titel")}${sth("titel", "verdict", "Urteil", "", "l")}${sth("titel", "price", "Einkaufspreis", "Was du im günstigsten zählenden Land zahlst: mit Steuer, Kurs, Guthabenkarten und Gebühr")}
+    <div class="radar"><table><thead><tr>${sth("titel", "title", "Titel")}${sth("titel", "verdict", "Urteil", "", "l")}${sth("titel", "price", "Einkaufspreis", "Was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr: im Land des Kaufplans, sonst im günstigsten zählenden Land")}
     ${sth("titel", "over", "über Bestpreis", "Einkaufspreis minus Bestpreis. Bestpreis: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet")}
     ${sth("titel", "alt", "Alternative", "Liegt das beste Angebot in einem Land der Stufe schwer: das beste Angebot in einem leichten oder mittleren Land")}<th>Korb</th></tr></thead><tbody>`;
   h += rows.map(titleRow).join("");
@@ -862,16 +880,18 @@ function titleSortSel(){
 }
 function titleRow(r){
   const x = shownOffer(r), open = S.openTitle === r.slug, ce = r.champ;
-  const cheapest = [r.easy, r.hard].filter(Boolean).sort((a, b) => a.eur - b.eur)[0] || null;
-  const off = x || cheapest;
+  const cheapest = cheapestOffer(r), pl = planOffer(r);
+  const off = pl || x || cheapest;
   const hit = r.target !== null && cheapest && cheapest.eur <= r.target + 0.005;
   const ps = r.verdict === "buy" || r.verdict === "good" ? planState(r.slug) : "";
   const why = r.verdict === "none" ? esc(r.reason) : "";
   const price = off ? `${star(off)}${ax(off)}<b>${buyLink(off.code, off, eur(off.eur))}</b> ${off.sale ? `<span class="pct" title="${esc(markTip(off, off.currency))}">−${off.pct} %</span>` : `<span class="pct np">Normalpreis</span>`}
       <small>${esc(off.name)} ${tierTag(off.tier)}${off.currency === "EUR" ? "" : " · " + priceLink(r.slug, off.code, money(off.local, off.currency), off, off.currency)}${off.sale && off.end ? " · " + endCell(off.end, "bis ") : ""}</small>` : `<span class="mut">–</span>`;
-  const over = off && ce ? `${overBest(off.eur, ce.eur, r.verdict === "none" ? null : r.verdict)}<small>${r.gap ? r.gap + " % · " : ""}Bestpreis ${ce.est ? APPROX : ""}${eur(ce.eur)} ${esc(ce.code)}</small>` : `<span class="mut">–</span>`;
+  const over = off && ce ? `${overBest(off.eur, ce.eur, r.verdict === "none" ? null : r.verdict)}<small>${(pl ? pl.gap : r.gap) && !atBest(off.eur, ce.eur) ? (pl ? pl.gap : r.gap) + " % · " : ""}Bestpreis ${ce.est ? APPROX : ""}${eur(ce.eur)} ${esc(ce.code)}</small>` : `<span class="mut">–</span>`;
   let alt = "";
-  if(x && x.tier >= 3 && r.easy) alt = `${eur(r.easy.eur)} ${esc(r.easy.name)}<small>${TIER[r.easy.tier]}${ce ? ` · <span class="abv">+${eur(Math.max(0, r.easy.eur - ce.eur))}</span>` : ""}</small>`;
+  if(pl && cheapest && cheapest.code !== pl.code && cheapest.eur < pl.eur - 0.005)
+    alt = `<span title="${esc(`Günstigstes Land. Der Plan kauft in ${pl.name}${pl.reason ? ": " + pl.reason : ""}`)}">${eur(cheapest.eur)} ${esc(cheapest.name)}</span><small>${TIER[cheapest.tier]} · ${eur(pl.eur - cheapest.eur)} günstiger</small>`;
+  else if(!pl && x && x.tier >= 3 && r.easy) alt = `${eur(r.easy.eur)} ${esc(r.easy.name)}<small>${TIER[r.easy.tier]}${ce ? ` · <span class="abv">+${eur(Math.max(0, r.easy.eur - ce.eur))}</span>` : ""}</small>`;
   const marks = (r.cashback ? ` <span class="ok" title="Mit ${String(r.cashback.pct).replace(".", ",")} % Cashback des Kartenshops wären es in ${esc(country(r.cashback.code).name)} etwa ${eur(r.cashback.eur)}, also Bestpreis. Cashback gibt es nicht immer, bitte beim Kauf prüfen.">✱</span>` : "") +
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
@@ -988,7 +1008,7 @@ function viewKauf(){
   if(!k) return `<p class="hint">Kaufplan wird berechnet …</p>`;
   const sums = planSums(k.steps);
   const head = k.count
-    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${sums.gap < 0.005 ? `<span class="g-buy">am Bestpreis</span>` : `<span class="abv">+${eur(sums.gap)}</span> über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)} Rest verfällt beim Wechsel</span>` : ""}</span>`
+    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${atBest(sums.opt + sums.gap, sums.opt) ? `<span class="g-buy"${nearTip(sums.gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(sums.gap)}</span> über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)} Rest verfällt beim Wechsel</span>` : ""}</span>`
     : `<span>Gerade steht kein Titel auf „kaufen“${!S.ui.plan_good && k.good_left ? `, aber ${k.good_left} auf „gut“: rechts „auch gute Angebote“ anhaken` : ""}.</span>`;
   let h = `<div class="bar on"><b>Jetzt kaufen</b>${head}<span class="sp"></span>
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
@@ -1068,7 +1088,7 @@ function viewCards(){
     <select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Bestpreis")}${opt("saving","nach Wechselgewinn")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
     <span class="sp"></span>${Object.values(S.ui.overrides).some(ov => ov && ((ov.add || []).length || (ov.remove || []).length)) ? `<button class="sm" data-act="resetall" title="Eigene Änderungen an allen Warenkörben verwerfen">alle zurücksetzen</button><span class="sp"></span>` : ""}${basketSeg()}</div>`;
   const cards = [], empty = [];
-  for(const p of sortPlans(S.plans)){
+  for(const p of sortPlans(cardPlans())){
     if(S.ui.hidden.includes(p.code) && !p.is_ref) continue;
     (!p.items.length && !p.fillers.length ? empty : cards).push(p);
   }
@@ -1100,7 +1120,7 @@ function priceLine(p){
   const tip = `Bestpreis-Summe ${eur(p.optimum)}: was diese ${p.items.length} Titel zum jeweiligen Bestpreis gekostet hätten. Die Spiele kosten hier ${eur(games)}` +
     (p.rest_value >= 0.5 ? ` (von ${eur(p.cost)} für die Karten bleiben ${eur(p.rest_value)} als Rest)` : "") + `. Rot ist der Betrag über der Bestpreis-Summe, die Urteile stehen dahinter.`;
   const main = under ? `<span class="warnc" title="${esc(tip)} So billig nur mit Angeboten, die nicht zählen (Sprache ungeprüft oder ohne Guthabenkarte): erst prüfen."><span class="q">?</span> ${eur(p.optimum - games)} unter Bestpreis-Summe, zählt nicht</span>`
-    : `<span title="${esc(tip)}">${p.opt_gap < 0.005 ? `<span class="g-${p.grade || "buy"}">am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span> über Bestpreis-Summe ${eur(p.optimum)}${p.opt_pct ? ` (${p.opt_pct} %)` : ""}`}</span>`;
+    : `<span title="${esc(tip)}">${atBest(p.optimum + p.opt_gap, p.optimum) ? `<span class="g-${p.grade || "buy"}"${nearTip(p.opt_gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span> über Bestpreis-Summe ${eur(p.optimum)}${p.opt_pct ? ` (${p.opt_pct} %)` : ""}`}</span>`;
   return `${spiele}${main}${counts ? ` <span class="mut">· ${counts}</span>` : ""}`;
 }
 /* Was beim Wechsel verfällt: Guthaben aus dem Kontoland, Rest dieses Schritts */
@@ -1173,6 +1193,7 @@ function planCard(p, step){
       : p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</header>`;
   if(has){
     h += `<div class="money" title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}${cur === "EUR" ? "" : `<small>${money(p.total, cur)}</small>`}${p.balance_value ? `<small>${p.cost < 0.005 ? "ganz aus deinem Guthaben" : "neu zu zahlen, dazu dein Guthaben"}</small>` : ""}</div>`;
+    if(p.from_step && !step) h += `<div class="ln"><span class="k">Korb</span><span class="mut" title="Die Karte rechnet mit den Titeln, die der Kaufplan hier kauft. Ändern, entfernen oder hinzufügen macht daraus einen eigenen Korb.">wie im Kaufplan, Schritt ${p.from_step}</span></div>`;
     h += `<div class="ln"><span class="k">Preis</span>${priceLine(p)}</div>`;
     h += `<div class="ln"><span class="k">Wechsel</span>${switchLine(p)}</div>`;
     const last = !!(step && S.kauf && step === S.kauf.steps.length);
@@ -1192,7 +1213,7 @@ function planCard(p, step){
         const first = step ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
         return `<tr>${first}${wide ? `<td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
           <td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
-          <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : i.eur - i.champ < 0.005 ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">am Bestpreis</span>` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
+          <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
           ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
       }).join("") + `</tbody></table></div>`;
   } else {
@@ -1348,7 +1369,7 @@ function viewCompare(){
   const row = (label, fn, extra) => `<tr class="${extra || ""}"><td>${label}</td>${cols.map(p => `<td class="${cls(p)}">${fn(p)}</td>`).join("")}</tr>`;
   h += `</tbody><tfoot>` +
     row("Einkaufspreis", p => `<span title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}</span>`, "pay sumtop") +
-    row("Preis", p => p.opt_gap === null || p.opt_gap === undefined ? "–" : `${p.opt_gap < 0.005 ? `<span class="g-${p.grade || "buy"}">am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span>`}<small>Bestpreis-Summe ${eur(p.optimum)}</small>`) +
+    row("Preis", p => p.opt_gap === null || p.opt_gap === undefined ? "–" : `${atBest(p.optimum + p.opt_gap, p.optimum) ? `<span class="g-${p.grade || "buy"}"${nearTip(p.opt_gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span>`}<small>Bestpreis-Summe ${eur(p.optimum)}</small>`) +
     row("Wechsel", p => {
       if(p.is_ref) return `<span class="mut">Basis</span>`;
       if(p.gain === null || p.gain === undefined) return "–";
@@ -1701,7 +1722,33 @@ async function saveSettings(form, rerender){
 
 /* ---------- Ereignisse ---------- */
 function go(tab, top = true){ S.tab = tab; saveView(); render(); if(top) window.scrollTo(0, 0); }
-function ov(code){ return S.ui.overrides[code] || (S.ui.overrides[code] = {add:[], remove:[]}); }
+/* Länderkarten: Steht ein Land im Kaufplan, zeigt seine Karte den Korb des Plans, damit
+   Preise und Summen mit „Jetzt“ übereinstimmen (die Kartenkosten hängen am ganzen Korb).
+   Eigene Änderungen an der Karte gehen vor. */
+function planStepFor(code){
+  if(S.ui.basket || !S.kauf) return null;
+  const n = S.kauf.steps.findIndex(st => st.code === code);
+  if(n < 0) return null;
+  const st = S.kauf.steps[n], slugs = new Set(st.items.map(i => i.slug)), o = S.ui.overrides[code];
+  if(o && ((o.add || []).length || (o.remove || []).some(x => slugs.has(x)))) return null;
+  return {st, n};
+}
+function cardPlans(){
+  return S.plans.map(own => {
+    const f = !own.is_ref && planStepFor(own.code);
+    return f ? Object.assign({}, f.st, {from_step: f.n + 1, own_slugs: own.items.map(i => i.slug), current: own.current}) : own;
+  });
+}
+function ov(code){
+  const p = cardPlans().find(x => x.code === code);
+  if(p && p.from_step){
+    // Erste Änderung an einer Karte mit Plan-Korb: vom Plan-Korb ausgehen, nicht vom eigenen
+    const own = new Set(p.own_slugs), plan = p.items.map(i => i.slug), prev = S.ui.overrides[code] || {add:[], remove:[]};
+    S.ui.overrides[code] = {add: plan.filter(x => !own.has(x)),
+                            remove: [...new Set([...(prev.remove || []), ...[...own].filter(x => !plan.includes(x))])]};
+  }
+  return S.ui.overrides[code] || (S.ui.overrides[code] = {add:[], remove:[]});
+}
 function addTo(code, slugs){
   if(S.ui.basket){ for(const s of slugs) if(!S.ui.basket.includes(s)) S.ui.basket.push(s); return; }
   const o = ov(code);
@@ -1808,7 +1855,7 @@ document.addEventListener("click", async e => {
     else if(a === "hide"){ await change(`${country(d.c).name} ausgeblendet`, () => { if(!S.ui.hidden.includes(d.c)) S.ui.hidden.push(d.c); }); }
     else if(a === "unhide"){ S.ui.hidden = S.ui.hidden.filter(c => c !== d.c); await replan(); }
     else if(a === "share"){
-      const slugs = S.plans.find(p => p.code === d.c).items.map(i => i.slug);
+      const slugs = cardPlans().find(p => p.code === d.c).items.map(i => i.slug);
       await change("Korb gilt jetzt für alle Länder", () => { S.ui.basket = slugs; });
       window.scrollTo(0, 0);
     }
