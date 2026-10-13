@@ -177,7 +177,8 @@ Reihenfolge und Begründung:
   eingeklappt, A–Z spaltenweise, die Suche klappt Treffer auf.
 - [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
-  Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen.
+  Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen. Erster Schritt (0.53.2): Probe im Verbindungstest, woher Preise je Land kommen (DekuDeals
+  führt die Mitgliedschaft mit eShop-Preis je Land, Nintendo Europa vielleicht mit ID).
 - [ ] Viele Kleinteile eines Spiels zusammenfassen (etwa Kostüme), erst nach Erfahrung mit den
   gruppierten Pässen.
 - [ ] Abgleich Kaufverlauf mit der ganzen DekuDeals-Sammlung (Slug-Stufe, „Bei DekuDeals

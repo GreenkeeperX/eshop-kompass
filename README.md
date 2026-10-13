@@ -523,7 +523,10 @@ Das Tool fragt immer mit seiner eigenen Kennung an (`eshop-kompass/<Version>`),
 macht Pausen zwischen den Abrufen und hört bei einer Sperre (HTTP 403 oder 429)
 oder einer Prüfseite auf, statt sich als Browser auszugeben. Der Rest folgt
 beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
-auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?).
+auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Seit 0.53.2
+prüft er auch, woher Preise der Online-Mitgliedschaft kommen könnten: die
+12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland und Brasilien, die Suche
+bei Nintendo Europa und, falls sie IDs nennt, deren Preise. Gespeichert wird nichts.
 
 Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so
 keine Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen
