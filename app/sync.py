@@ -1763,6 +1763,13 @@ def membership_probe(probe, sleep=time.sleep):
               sources.NINTENDO_PRICE_URL + f"?country={code}&lang={lang}&ids={','.join(ids[code][:10])}",
               None, lambda t: t[:500])
         sleep(1)
+    # Japan (0.56.3): DekuDeals führt die Mitgliedschaft dort nicht. Nintendos eigene Seite zeigt die
+    # Preise auch ohne passendes Konto; ob ihr HTML die eShop-IDs enthält, zeigt diese eine Abfrage.
+    def ec_page(t):
+        found = sorted(set(sources.re.findall(r"7008\d{10}", t)))
+        yen = sorted(set(sources.re.findall(r"[0-9][0-9,]{2,6}\s*円", t)))[:8]
+        return f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, eShop-IDs {found[:12]}, Yen-Preise {yen}"
+    probe("Mitgliedschaft Nintendo-Seite (JP)", "https://ec.nintendo.com/JP/ja/membership", None, ec_page)
     return lines
 
 

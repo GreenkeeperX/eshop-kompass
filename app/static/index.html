@@ -31,9 +31,11 @@
 body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{padding:0 16px 60px}
+body.fit .wrap{padding-bottom:10px}
 .narrow{max-width:1280px}
 header.top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:14px 0 6px}
-header.top h1{font-size:19px;margin:0;letter-spacing:-.01em}
+header.top h1{font-size:23px;margin:0;letter-spacing:-.015em}
+header.top #syncBtn{font-size:14px;padding:5px 12px}
 header.top h1 a.home{color:inherit;text-decoration:none}
 header.top h1 .brand{color:var(--brand)}
 header.top .meta{color:var(--muted);font-size:13px;flex:1;min-width:200px}
@@ -46,11 +48,12 @@ button:disabled{opacity:.5;cursor:default}
 nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
 /* Kopf und Reiter kommen beim Scrollen mit, verschwinden nach unten weiter, kommen beim Hochscrollen zurück */
 .stick{position:sticky;top:0;z-index:4;background:var(--bg);margin-bottom:10px;
-  transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .45s ease}
+  transition:transform .8s cubic-bezier(.4,0,.2,1),opacity .7s ease,margin-top .8s cubic-bezier(.4,0,.2,1)}
 .stick.hid{transform:translateY(-100%);opacity:0;pointer-events:none}
-.radar thead th,.jump,.matrix th{transition:top .55s cubic-bezier(.4,0,.2,1)}
-.matrix.scroll{transition:max-height .55s cubic-bezier(.4,0,.2,1)}
-@media (prefers-reduced-motion: reduce){.stick,.radar thead th,.jump,.matrix th,.matrix.scroll{transition:none}}
+body.fit .stick.hid{transform:none;margin-top:calc(-1 * var(--sh,0px))}
+.radar thead th,.jump{transition:top .8s cubic-bezier(.4,0,.2,1)}
+body.fit .matrix.scroll{max-height:none;transition:height .8s cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion: reduce){.stick,.radar thead th,.jump,.matrix.scroll{transition:none}}
 nav button{white-space:nowrap}
 a.btn{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--ink);text-decoration:none}
 a.btn:hover{border-color:var(--accent)}
@@ -201,7 +204,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .tools input[type=search]{flex:1;min-width:180px;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .matrix{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
 .matrix td,.matrix th{padding:3px 6px}
-.matrix.scroll{overflow:auto;max-height:calc(100vh - var(--stick,0px) - 40px)}
+.matrix.scroll{overflow:auto;max-height:calc(100vh - 150px)}
 .matrix th{z-index:2}.matrix th:first-child{z-index:3}.matrix td:first-child{z-index:1}
 .matrix td:not(:first-child){white-space:nowrap}
 .matrix th{position:sticky;top:0;background:var(--card)}
@@ -840,6 +843,7 @@ function banners(){
   }
   return h;
 }
+let fitMatrix = () => {}, showStick = () => {};
 function render(){
   renderHead();
   const m = $("main");
@@ -849,6 +853,9 @@ function render(){
   else if(S.tab === "sammlung") m.innerHTML = banners() + viewCollection();
   else if(S.tab === "laender") m.innerHTML = banners() + (S.ui.basket ? viewCompare() : viewCards());
   else { m.innerHTML = viewSettings(); showLog(S.state.status.log); }
+  document.body.classList.toggle("fit", S.tab === "titel" && S.tview === "table" && innerWidth > 700);
+  if(!document.body.classList.contains("fit")) showStick();
+  fitMatrix();
   const grp = m.querySelector(".matrix tr.grp");
   if(grp) grp.closest(".matrix").style.setProperty("--grp", grp.getBoundingClientRect().height + "px");
 }
@@ -945,12 +952,14 @@ function dlcPrice(d){
 function collGame(g){
   const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 vorhanden – 7 ignoriert“.
+  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 vorhanden und 7 ignoriert“.
   // Alles da: „5 von 5“ grün, „vorhanden“ grau; nichts mehr offen: die Zahl vorhandener grün, ignorierte rot,
   // Wörter grau (0.55.1, Wortlaut 0.56.2)
-  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span> vorhanden` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> vorhanden` : `${g.have} vorhanden`) : "",
-    g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
-    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" – ");
+  const parts = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span> vorhanden` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> vorhanden` : `${g.have} vorhanden`) : "",
+    g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : ""].filter(Boolean);
+  // Wie ein Satz: „10 vorhanden und 7 ignoriert“, „3 vorhanden, 2 fehlen und 1 ignoriert“ (0.56.3)
+  const sum = [parts.length > 1 ? parts.slice(0, -1).join(", ") + " und " + parts[parts.length - 1] : parts[0] || "",
+    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
   const sumTip = `${g.dlc.length} DLC insgesamt`;
   const key = "ign:" + g.slug;
   const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
@@ -1814,10 +1823,12 @@ function viewSettings(){
     <h3 class="sec" id="set-laender">Länder</h3>
     <div class="fields" style="max-width:380px"><label class="f" title="Für dieses Land gilt keine Mindestersparnis, du bist ja schon dort.">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
       [...S.state.countries].sort((x, y) => x.name.localeCompare(y.name, "de")).map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label></div>
+    <details class="fold" data-k="setcountries" ${S.folds.setcountries ? "open" : ""}><summary class="hint">Länder, Zahlwege und Guthabenkarten <span class="mut">(${act.length} aktiv${off.length ? `, ${off.length} weitere` : ""})</span></summary>
     ${table(act)}
     <p class="hint">Das Preisniveau vergleicht deine Wishlist mit Deutschland. Eine Guthabenkarte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>; mehr unter „So trägst du Karten ein“.</p>
     <details class="hint" data-k="cardhelp" ${S.folds.cardhelp ? "open" : ""}><summary>So trägst du Karten ein</summary><p>Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Nur Werte wie <code>500 1000 3000</code> ohne Link heißen: Guthaben zum Kurs, bezahlt mit deiner Karte wie im eShop (Amazon Japan), dann zählt auch der Rest. Hat eine Karte einen Link, liest das Tool den Preis einmal am Tag von der Shopseite, sofern die Seite ihn ohne Browser verrät. Sonst gilt dein Wert.</p></details>
     ${off.length ? `<details class="box fold" data-k="morecountries" ${S.folds.morecountries ? "open" : ""}><summary>weitere Länder (${off.length})</summary><p class="hint">Einschalten und aktualisieren; das Preisniveau zeigt, ob es sich lohnt.</p>${table(off)}</details>` : ""}
+    </details>
     <h3 class="sec" id="set-regeln">Regeln</h3>
     <p class="rule">„kaufen“ bis ${eur(de.buy)} oder 2 % über dem Bestpreis, „gut“ bis ${eur(de.good)} oder 15 %. Ein Wechsel lohnt ab ${eur(t["1"])} Gewinn in einem leichten, ${eur(t["2"])} in einem mittleren und ${eur(t["3"])} in einem schweren Land. Regionen ohne deutsche Fassung ${({exclude: "fallen weg", warn: "bekommen einen Hinweis", off: "werden nicht geprüft"})[s.lang_rule] || "fallen weg"}.</p>
     <details class="fold" data-k="rulefields" ${S.folds.rulefields ? "open" : ""}><summary class="hint">Grenzen anpassen</summary>
@@ -1970,7 +1981,7 @@ box.append(p,go,ta,c,b);
    ein Link zum Ziehen und „Code kopieren“ für ein von Hand angelegtes Lesezeichen (auch am Handy).
    v: Stand des Codes, need: ab welchem Stand ein altes Lesezeichen noch genügt. Ältere melden
    sich beim Übernehmen, damit niemand unbemerkt mit einem alten Lesezeichen weiterarbeitet. */
-const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 4, need: 4, label: "JP-Sprachen lesen"}};
+const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 5, need: 4, label: "JP-Sprachen lesen"}};
 const BM_CODE = {};
 function helpersOld(){ try{ return JSON.parse(localStorage.getItem("ek.helpers") || "{}") || {}; }catch(e){ return {}; } }
 function helperSeen(k, hv){
@@ -1984,7 +1995,7 @@ function bmLink(k, code){
   BM_CODE[k] = "javascript:" + encodeURIComponent(code);
   return `<span class="bm-w"><a class="bm" href="${BM_CODE[k]}" title="In die Lesezeichenleiste ziehen" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')">⠿ <b>${esc(h.label)}</b></a>
     <button data-act="bmcopy" data-k="${k}" title="Für ein von Hand angelegtes Lesezeichen">Code kopieren</button></span>
-    ${helpersOld()[k] ? `<br><span class="warnc">Dein Lesezeichen „${esc(h.label)}“ ist veraltet. Bitte das alte löschen und neu anlegen.</span>` : ""}
+    ${helpersOld()[k] ? `<br><span class="warnc">Dein Lesezeichen „${esc(h.label)}“ ist veraltet. Bitte das alte löschen und neu anlegen.</span> <button class="link" data-act="bmdone" data-k="${k}" title="Der Hinweis verschwindet sonst erst beim nächsten Übernehmen mit dem neuen Lesezeichen">erledigt, neu angelegt</button>` : ""}
     <details class="fold" data-k="bmhow_${k}" ${S.folds["bmhow_" + k] ? "open" : ""}><summary class="hint">So legst du es an</summary><ul class="hint">
       <li>Am Computer: Lesezeichenleiste einblenden (Strg+Umschalt+B, am Mac ⌘+Umschalt+B) und den Knopf hineinziehen.</li>
       <li>Ohne Ziehen, auch am Handy: „Code kopieren“, ein beliebiges Lesezeichen anlegen, bearbeiten, „${esc(h.label)}“ als Namen und den Code als Adresse einfügen. Am Handy startet es aus den Lesezeichen oder über seinen Namen in der Adresszeile.</li>
@@ -2035,10 +2046,15 @@ function eshopBox(){
 function jpHelperCode(tool){ return `(async()=>{
 if(location.hostname!=="store-jp.nintendo.com"){alert("Bitte zuerst eine Seite von store-jp.nintendo.com öffnen und dann das Lesezeichen anklicken.");return}
 const fromLink=decodeURIComponent(((location.search+location.hash).match(/ek-ids=([^&#]*)/)||[])[1]||"");
-let src=fromLink;if(!/\\d{14}/.test(src)){try{src=await navigator.clipboard.readText()}catch(e){src=""}}
-const ids=[...new Set(((/\\d{14}/.test(src)?src:(prompt("Japan-IDs aus eShop-Kompass einfügen")||"")).match(/\\d{14}/g))||[])];
-if(!ids.length)return;
 const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";document.body.appendChild(box);
+const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.style.marginRight="8px";b.onclick=f;return b};
+let src=fromLink;
+if(!/\\d{14}/.test(src))src=await new Promise(res=>{const p=document.createElement("p");p.textContent="eShop-Kompass: Japan-IDs hier einfügen (Strg+V) oder aus der Zwischenablage holen.";p.style.margin="0 0 6px";
+const t=document.createElement("textarea");t.style.cssText="width:100%;height:70px;margin:0 0 6px";
+box.append(p,t,btn("Aus Zwischenablage",async()=>{try{t.value=await navigator.clipboard.readText()}catch(e){}}),btn("Lesen",()=>res(t.value)),btn("Abbrechen",()=>res("")));t.focus()});
+const ids=[...new Set(src.match(/\\d{14}/g)||[])];
+if(!ids.length){box.remove();return}
+box.textContent="";
 const wait=()=>new Promise(r=>setTimeout(r,2500));
 const read=async path=>{try{const r=await fetch(path,{credentials:"include"});if(r.status===404)return{v:"",gone:true};if(!r.ok)return{v:null};
 const d=new DOMParser().parseFromString(await r.text(),"text/html");
@@ -2069,7 +2085,7 @@ function jpHelper(todo){
   return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>
-      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit und legt sie zugleich in die Zwischenablage. Verliert der Store die IDs unterwegs, holt das Lesezeichen sie aus der Zwischenablage (Firefox zeigt dafür einen kleinen Knopf „Einfügen“); erst wenn auch das nicht geht, fragt es danach." : ""}</li>
+      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit und legt sie zugleich in die Zwischenablage. Verliert der Store die IDs unterwegs, öffnet das Lesezeichen ein Feld: einfügen (Strg+V) oder „Aus Zwischenablage“ (Firefox fragt dann mit einem kleinen Knopf „Einfügen“), dann „Lesen“." : ""}</li>
       <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
     </ol>
     <details class="fold" data-k="jpfb" ${S.folds.jpfb ? "open" : ""}><summary class="hint">Geht das nicht? IDs und Ergebnis von Hand</summary>
@@ -2183,6 +2199,7 @@ document.addEventListener("click", async e => {
       S.state = await api("/api/state"); S.ui = S.state.ui; render();
       toast({have: "Als vorhanden abgehakt", ignore: "DLC ignoriert", ignore_all: "Alle DLC des Spiels ignoriert", missing: "Zählt wieder als fehlend"}[d.v] || "Zurückgesetzt");
     }
+    else if(a === "bmdone"){ const o = helpersOld(); delete o[d.k]; try{ localStorage.setItem("ek.helpers", JSON.stringify(o)); }catch(e){} render(); }
     else if(a === "jpopen"){ const ta = $("jpids"); if(ta && ta.value) try{ await navigator.clipboard.writeText(ta.value); }catch(e){} }
     else if(a === "jpcopy"){
       const ta = $("jpids"); ta.select();
@@ -2347,14 +2364,22 @@ document.addEventListener("toggle", e => {
     hidden = hid; const el = $("stick");
     el.classList.toggle("hid", hid);
     document.documentElement.style.setProperty("--stick", hid ? "0px" : el.offsetHeight + "px");
-    // Titel-Tabelle oben auf der Seite: Ohne Ausgleich bliebe beim Ausblenden ein leerer Streifen
-    // über ihr, beim Einblenden läge die Leiste über ihrem Kopf. Die Seite rückt deshalb mit.
-    const box = document.querySelector(".matrix.scroll");
-    if(box){
-      const top = box.getBoundingClientRect().top, need = el.offsetHeight;
-      if(hid && top > 0) scrollBy({top: top - 4, behavior: "smooth"});
-      else if(!hid && top < need && top > -need) scrollBy({top: top - need - 6, behavior: "smooth"});
-    }
+    document.documentElement.style.setProperty("--sh", el.offsetHeight + "px");
+    fitMatrix();
+  };
+  // Titel-Tabelle: genau so hoch, dass nur sie scrollt, nicht das Fenster. Ausgeblendet klappt die
+  // Leiste weg (body.fit) und die Tabelle wächst um ihre Höhe, so verdeckt nichts die Filterzeile (0.56.3).
+  fitMatrix = () => {
+    const box = document.querySelector("body.fit .matrix.scroll");
+    if(!box) return;
+    const st = $("stick"), sh = st.offsetHeight, r = box.getBoundingClientRect();
+    // Alles unter der Tabelle (Hinweis, Abstände) und ihr Platz mit sichtbarer Leiste; der Rand der
+    // Leiste kann gerade mitten in der Bewegung stecken, deshalb der aktuelle Wert
+    const bodyEnd = document.body.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(document.body).marginBottom) || 0);
+    const after = bodyEnd - r.bottom;
+    const topShown = r.top - (parseFloat(getComputedStyle(st).marginTop) || 0);
+    const base = Math.max(240, Math.floor(innerHeight - topShown - after - 2));
+    box.style.height = (base + (hidden ? sh : 0)) + "px";
   };
   // Die Titel-Tabelle scrollt in einem eigenen Kasten: ihr Scrollen zählt mit (0.56.2)
   document.addEventListener("scroll", () => {
@@ -2368,6 +2393,7 @@ document.addEventListener("toggle", e => {
     lastY = y;
   }, {passive: true, capture: true});
   addEventListener("resize", () => set(hidden));
+  showStick = () => { if(hidden) set(false); };
   set(false);
 })();
 document.addEventListener("keydown", e => { if(e.key === "Escape") themeMenu(false); });

@@ -38,10 +38,12 @@ stehen dezent blau daneben. Die verbindlichen Regeln stehen in
 Hell oder dunkel: Der runde Knopf rechts vom "?" zeigt die aktuelle Ansicht (System, Hell
 oder Dunkel); ein Klick öffnet die Auswahl. Vorgabe ist System, also wie das Gerät. Die
 Wahl merkt sich der Browser. Kopf und Reiter blenden sich beim Scrollen nach unten aus und
-beim Hochscrollen wieder ein.
+beim Hochscrollen wieder ein. Die Titel-Tabelle füllt das Fenster, es scrollt nur sie. In den
+Einstellungen ist die Ländertabelle mit Zahlwegen und Guthabenkarten eingeklappt; das
+Kontoland steht darüber.
 
 Lesezeichen (Käufe lesen, JP-Sprachen lesen): Webseiten dürfen selbst keine Lesezeichen
-anlegen. Den gestrichelten Knopf zieht man deshalb in die Lesezeichenleiste; „Code kopieren“
+anlegen. Den Knopf zieht man deshalb in die Lesezeichenleiste; „Code kopieren“
 ist der Weg ohne Ziehen, auch am Handy (Lesezeichen anlegen, Code als Adresse einfügen).
 Beide Lesezeichen geben ihr Ergebnis mit „Im eShop-Kompass übernehmen“ direkt ans Tool;
 die Textfelder zum Kopieren stehen eingeklappt unter „Geht das nicht?“. Ist ein angelegtes

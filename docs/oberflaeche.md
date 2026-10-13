@@ -36,12 +36,17 @@ Länder ohne Guthabenkarte blass mit bernsteinfarbenem Grund.
 
 Kopf und Reiter kommen beim Scrollen mit. Erst nach 300 px weiter nach unten blenden sie sich
 aus, 40 px nach oben oder nahe am Seitenanfang zeigen sie sich wieder; Zittern unter 8 px zählt
-nicht. Die Bewegung dauert 0,55 s, sanft an- und auslaufend, bei „Bewegung reduzieren“ springt sie.
+nicht. Die Bewegung dauert 0,8 s, sanft an- und auslaufend, bei „Bewegung reduzieren“ springt sie.
 Tabellenköpfe und die Sprungleiste halten über `--stick` Abstand und gleiten im selben Takt mit.
-Kein `will-change` an der Leiste, sonst zeichnen Browser den Text dünner. Die Titel-Tabelle scrollt
-in einem eigenen Kasten: Ihr Scrollen zählt mit, und die Seite rückt so nach, dass weder ein leerer
-Streifen über der Tabelle bleibt noch die Leiste ihren Kopf verdeckt. Ihre zweite Kopfzeile sitzt an
-der gemessenen Höhe der ersten (`--grp`), ohne Spalt.
+Kein `will-change` an der Leiste, sonst zeichnen Browser den Text dünner.
+
+Titel-Tabelle (ab 0.56.3, breiter als 700 px): Die Seite ist genau fensterhoch (`body.fit`), es
+scrollt nur die Tabelle. Ihr Scrollen steuert die Leiste. Ausgeblendet klappt die Leiste weg
+(negativer Rand statt Verschieben), und die Tabelle wächst im selben Takt um ihre Höhe. So bleibt
+kein leerer Streifen, und die zurückkehrende Leiste verdeckt nie die Filterzeile. Die zweite
+Kopfzeile sitzt an der gemessenen Höhe der ersten (`--grp`), ohne Spalt.
+
+Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü abhebt.
 
 ## Lesezeichen
 
@@ -92,10 +97,11 @@ der gemessenen Höhe der ersten (`--grp`), ohne Spalt.
 ## Zahlen in Sätzen
 
 Nur die Zahl trägt die Farbe, Verbindungswörter bleiben grau. Sammlung je Spiel: eine Zahl je
-Art, mit Gedankenstrich getrennt und ohne Gesamtzahl („10 vorhanden – 7 ignoriert“, die
-Gesamtzahl steht im Tooltip), damit nichts wie „17,7“ liest. Ist alles da, steht „5 von 5“ grün und
+Art, wie ein Satz aufgezählt und ohne Gesamtzahl („10 vorhanden und 7 ignoriert“, „3 vorhanden,
+2 fehlen und 1 ignoriert“; die Gesamtzahl steht im Tooltip), damit nichts wie „17,7“ liest. Der
+Betrag dahinter folgt mit „·“. Ist alles da, steht „5 von 5“ grün und
 „vorhanden“ grau; sonst bei nichts Offenem nur die Zahl vorhandener grün, die Zahl ignorierter rot
-(Entscheidung 13.10.2026, Wortlaut ab 0.56.2). Der Kopf der Sammlung steht als kompakter Kasten über den
+(Entscheidung 13.10.2026, Wortlaut ab 0.56.3). Der Kopf der Sammlung steht als kompakter Kasten über den
 Gruppen: Zahlen fett in zwei kurzen Zeilen, die Erklärung eingeklappt darunter.
 
 ## Flächen
