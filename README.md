@@ -339,8 +339,27 @@ Sicherung und Protokoll.
 - Steuer: Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt
   (USA, Kanada).
 - "Das Günstigere" nimmt Guthabenkarten nur, wenn sie weniger kosten als die
-  Kreditkarte. Die Spalte "Dein Kurs" zeigt, was dabei herauskommt. Einen Aufschlag
+  Kreditkarte. Die Spalte "Dein Faktor" zeigt, was dabei herauskommt. Einen Aufschlag
   je Land gibt es seit 0.52.1 nicht mehr (Entscheidung 13.10.2026).
+- Faktor (0.53): Preis einer Guthabenkarte in Euro geteilt durch ihren Wert zum
+  Mittelkurs. 1,00 heißt zum Kurs, 1,08 heißt 8 % teurer, 0,85 heißt: 100 € Guthaben
+  kosten 85 €. Die Spalte "Dein Faktor" nennt ihn je Land mit Zahlweg ("1,00 Kreditkarte",
+  "0,98 Guthaben"), aufgeklappt stehen unter dem Land alle Karten mit Wert, Preis, Faktor
+  und Bewertung, zugeklappt eine Zeile mit dem besten Faktor. Bewertet wird je nach Land
+  (Entscheidung 13.10.2026):
+  - Kreditkarte möglich ("das Günstigere", "Karte"): gegen den Faktor der Kreditkarte
+    (1 plus Fremdwährungsgebühr): "günstiger als Kreditkarte" oder "teurer als
+    Kreditkarte, nicht genutzt".
+  - Nur Guthaben (Amerika, Australien): gegen den besten Faktor derselben Karte in den
+    letzten 90 Tagen. Am Bestwert Top, bis 2 % darüber gut, bis 5 % okay, darüber teuer.
+    Das Tool merkt sich dafür je Karten-Link einen Faktor am Tag (der niedrigste). Bis der
+    Verlauf zwei Wochen umfasst, steht "noch kein Vergleich".
+  - Euro-Guthaben ("Deutschland (Guthaben)"): feste Stufen wie bei Kenixa, Top bis 0,81,
+    gut bis 0,83, okay bis 0,86, darüber teuer; einstellbar unter Gebühren, Erweitert.
+  Im Kaufplan steht der Faktor hinter den Karten in der Rechnung. Liegt Guthaben in einem
+  reinen Guthabenland gerade über "okay", zeigt der Schritt "Guthaben teuer": Wenn die
+  Titel nicht drängen, lohnt Warten eher wegen des Guthabens. Der Tooltip am Preis nennt
+  Karte, Wert, Preis und Faktor. Eine eigene Zeile unter "Zu erledigen" gibt es dafür nicht.
 - Sammlung: Titel aus deiner DekuDeals-Sammlung werden als vorhanden markiert,
   bei DLC steht dabei, ob du das Hauptspiel hast.
 - Guthabenkarten: eine Karte je Zeile, `Wert = Preis in Euro | Link`. Ein
@@ -350,7 +369,7 @@ Sicherung und Protokoll.
   Fremdwährungsgebühr, bei einer Karte ohne Gebühr genau zum Kurs), und der Rest zählt mit.
   Hat eine Karte einen Link, liest das Tool beim Abgleich höchstens einmal am
   Tag den Preis von der Shopseite (aus den Produktdaten der Seite; nennt sie
-  mehrere Angebote, zählt das günstigste). Unter dem
+  mehrere Angebote, zählt das günstigste). Über dem
   Eingabefeld steht, was es gelesen hat. Scheitert ein Abruf, gilt der zuletzt gelesene
   Preis mit seinem Datum weiter; erst wenn 14 Tage lang kein Abruf gelingt, gilt dein
   eingetragener Preis.
@@ -387,7 +406,9 @@ Sicherung und Protokoll.
   Abgleich (beide Durchgänge eines Abgleichs zusammen), ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
   Titel kommt beim nächsten Abgleich wieder dran. Liefert eine gelesene Seite
   keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich; ebenso Europa, wenn
-  die Antwort für einen Titel keine nennt (meist DLC, die die Sprache ihres Spiels übernehmen). Amerika liefert Angaben.
+  die Antwort für einen Titel keine nennt (meist DLC, die die Sprache ihres Spiels übernehmen).
+  Für fehlende DLC fragt Europa deshalb seit 0.53 auch das Spiel selbst (eine ID-Suche je Spiel,
+  einmalig); kennt das Spiel die Sprache, braucht sein DLC keine eigene Angabe. Amerika liefert Angaben.
   Japan: store-jp steht hinter einem Warteraum (Queue-it) mit Bot-Schutz, durch kommt
   nur ein Browser mit JavaScript. Das Tool erkennt den Warteraum, fragt dann je
   Abgleich nur eine Seite und hört auf. Die Sprachen kommen stattdessen aus zwei Wegen:

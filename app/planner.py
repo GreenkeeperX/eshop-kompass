@@ -13,6 +13,21 @@ from .sources import ec_url, parse_amount
 
 MAX_STATES = 3_000_000
 CARD_PRICE_MAX_AGE = 14 * 24 * 3600  # zuletzt gelesene Kartenpreise gelten so lange, auch wenn ein Abruf scheitert
+# Faktor einer Guthabenkarte = Preis in Euro ÷ Wert zum Mittelkurs (0.53). Reines Guthabenland:
+# gemessen am besten Faktor der Karte in CARD_HIST_DAYS Tagen, aussagekräftig ab CARD_HIST_MIN_DAYS
+CARD_HIST_DAYS = 90
+CARD_HIST_MIN_DAYS = 14
+CARD_STEPS = ((1.005, "top", "Top"), (1.02, "good", "gut"), (1.05, "ok", "okay"))
+
+
+def _fac(f):
+    return f"{f:.2f}".replace(".", ",")
+
+
+def card_hist_window(hist, now):
+    """Faktoren einer Karte aus den letzten CARD_HIST_DAYS Tagen: {Datum: Faktor}."""
+    since = (now - timedelta(days=CARD_HIST_DAYS)).date().isoformat()
+    return {d: f for d, f in hist.items() if d >= since}
 MIN_FILLER_GAIN = 0.5    # Füllartikel erst ab dieser Ersparnis in Euro vorschlagen
 BEST_TOLERANCE = 0.02    # bis 2 % über dem Bestpreis gilt ein Angebot als Bestpreis
 GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
@@ -312,6 +327,7 @@ class Context:
         rates = data["fx"]["rates"]
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
+        self.card_hist = data.get("card_hist") or {}
         self._payers, self._shares = {}, {}
         self.countries = {}
         for code in countries.ORDER:
@@ -442,6 +458,47 @@ class Context:
             return card           # „das Günstigere“ wählt nie eine Schätzung (0.52.1)
         return card if pay == "card" else gift if pay == "giftcard" else min(card, gift)
 
+    def factor(self, c, x):
+        """Faktor einer Karte: was sie kostet ÷ was sie zum Mittelkurs wert ist; None = Preis
+        unbekannt. Euro-Guthaben ist zum Nennwert wert."""
+        cost = self.face_cost(c, x) if c["currency"] != "EUR" else x["cost"]
+        if cost is None or not c["rate"]:
+            return None
+        return cost / (x["face"] / 100 / (1.0 if c["currency"] == "EUR" else c["rate"]))
+
+    def rate_card(self, c, factor, url=None):
+        """Bewertung eines Faktors, je nach Land (Entscheidung 13.10.2026):
+        Kreditkarte möglich: gegen deren Faktor. Nur Guthaben: gegen den besten Faktor dieser
+        Karte in CARD_HIST_DAYS Tagen. Euro-Guthaben: feste Stufen (einstellbar).
+        Ergebnis: {"level": top|good|ok|bad|cheaper|dearer|None, "text", "best"}."""
+        if factor is None:
+            return {"level": None, "text": "Preis unbekannt", "best": None}
+        if c["currency"] == "EUR":
+            steps = self.settings["eur_card_steps"]
+            for key, level, text in (("top", "top", "Top"), ("good", "good", "gut"), ("ok", "ok", "okay")):
+                if factor <= steps[key] + 1e-9:
+                    return {"level": level, "text": text, "best": None}
+            return {"level": "bad", "text": "teuer", "best": None}
+        if c["cfg"]["pay"] in ("auto", "card"):
+            ref = 1 + self.settings["card_fee_pct"] / 100
+            if abs(factor - ref) < 0.0005:
+                return {"level": "same", "text": "wie Kreditkarte", "best": ref}
+            if factor < ref:
+                return {"level": "cheaper", "text": "günstiger als Kreditkarte", "best": ref}
+            return {"level": "dearer", "text": f"teurer als Kreditkarte ({_fac(factor)} zu {_fac(ref)})"
+                    + (", nicht genutzt" if c["cfg"]["pay"] == "auto" else ""), "best": ref}
+        if not url:
+            return {"level": None, "text": "zum Kurs" if factor and abs(factor - 1 - self.settings["card_fee_pct"] / 100) < 1e-6
+                    else "dein eingetragener Preis", "best": None}
+        hist = card_hist_window(self.card_hist.get(url) or {}, self.now)
+        if not hist or (self.now - datetime.fromisoformat(min(hist)).replace(tzinfo=timezone.utc)).days < CARD_HIST_MIN_DAYS:
+            return {"level": None, "text": "noch kein Vergleich", "best": min(hist.values()) if hist else None}
+        best = min(min(hist.values()), factor)
+        for limit, level, text in CARD_STEPS:
+            if factor <= best * limit + 1e-9:
+                return {"level": level, "text": text, "best": best}
+        return {"level": "bad", "text": f"teuer, {round(100 * (factor / best - 1))} % über Bestwert", "best": best}
+
     def how(self, c):
         """Woraus sich der Europreis eines Landes zusammensetzt, für die Anzeige."""
         if c["unit"] is None:
@@ -457,17 +514,23 @@ class Context:
                # Karten nur mit Wert und ohne Shop-Link: Guthaben zum Kurs, wie bei Amazon Japan.
                # Karten mit Link, aber ohne bekannten Preis, bleiben eine Schätzung.
                "at_rate": any(x["stock"] and x["cost"] is None and not x["url"] for x in c["cards"])}
+        out["factor"] = round(c["unit"] / mid, 3)
+        card = None
         if c["currency"] == "EUR":
             card = self._euro_card(c)[1]
             out["via"] = "giftcard" if card else "eur"
-            if card:
-                out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur")}
+            out["factor"] = round(c["unit"] / 0.01, 3)
         elif gift:
             card = self._gift(c)[1]
-            if card and card["cost"] is not None:
-                out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
-                               "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur")}
+            if card and card["cost"] is None:
+                card = None
+        if card:
+            f = self.factor(c, card)
+            out["card"] = {"face": card["face"] / 100, "cost": card["cost"], "url": card["url"],
+                           "live": card.get("live"), "fee": card.get("fee"), "fee_eur": card.get("fee_eur"),
+                           "value": round(card["face"] / 100 / (1.0 if c["currency"] == "EUR" else c["rate"]), 2),
+                           "factor": round(f, 3)}
+            out["rating"] = self.rate_card(c, f, card["url"])
         return out
 
     def estimated(self, c):
@@ -1819,18 +1882,38 @@ def card_status(data, settings, now=None):
     for code, c in ctx.countries.items():
         rows = []
         odd_shop = {round(i["face"] * 100): i["price"] for i in c["implausible"] if i["src"] == "shop"}
+        how = ctx.how(c) if c["rate"] else None
+        used = (how or {}).get("card") or {}
         for x in c["cards"]:
-            if not x["url"]:
-                continue
-            e = ctx.card_prices.get(x["url"]) or {}
+            e = ctx.card_prices.get(x["url"]) or {} if x["url"] else {}
             error = e.get("error")
             if x["face"] in odd_shop:
                 error = f"gelesen {_eur(odd_shop[x['face']])}, unglaubhaft, ignoriert"
+            f = ctx.factor(c, x) if c["rate"] else None
             rows.append({"face": x["face"] / 100, "cost": x["cost"], "live": x.get("live"),
                          "manual": x.get("manual", x["cost"]), "checked": e.get("checked"),
-                         "error": error})
+                         "error": error, "url": bool(x["url"]), "stock": x["stock"],
+                         "value": round(x["face"] / 100 / (1.0 if c["currency"] == "EUR" else c["rate"]), 2)
+                         if c["rate"] else None,
+                         "factor": round(f, 3) if f is not None else None,
+                         "rating": ctx.rate_card(c, f, x["url"]) if c["rate"] else None,
+                         "used": bool(used) and used.get("face") == x["face"] / 100 and x["stock"]})
         if rows:
             out[code] = rows
+    return out
+
+
+def card_factors(data, settings, now=None):
+    """Faktor jeder Karte mit gelesenem Shop-Preis, für den Verlauf: {Link: (Datum, Faktor)}."""
+    ctx = Context(data, settings, now, include_all=True)
+    out = {}
+    for c in ctx.countries.values():
+        if not c["rate"]:
+            continue
+        for x in c["cards"]:
+            if x["url"] and x.get("live"):
+                day = datetime.fromtimestamp(x["live"], timezone.utc).date().isoformat()
+                out[x["url"]] = (day, round(ctx.factor(c, x), 4))
     return out
 
 

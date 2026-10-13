@@ -6,16 +6,17 @@
 <title>eShop-Kompass</title>
 <style>
 :root{
+  color-scheme:light dark;
   --bg:#f4f2ec; --card:#fffdf8; --ink:#1d2320; --muted:#667069; --line:#dcd8cc;
   --accent:#2f3b35; --warn:#8a5a00; --warn-bg:#fbefd2;
   --sale:#b3261e; --best:#ebe8de; --chip:#ece9df; --gold:#c28800; --gold-ink:#2b2000;
-  --go:#0d6b4f; --go-bg:#dcefe4; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690;
+  --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690;
 }
 @media (prefers-color-scheme: dark){:root{
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#f0c36a; --warn-bg:#3a2e12;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
-  --go:#5fd0a5; --go-bg:#183328; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8;
+  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8;
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -188,8 +189,10 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .matrix td:not(:first-child){white-space:nowrap}
 .matrix th{position:sticky;top:0;background:var(--card)}
 .matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);min-width:150px;max-width:210px;white-space:normal;box-shadow:1px 0 0 var(--line)}
-.matrix td.c-buy{background:var(--go);color:var(--card);font-weight:600}
-.matrix td.c-buy small,.matrix td.c-buy .pct{color:var(--card);opacity:.85}
+/* „kaufen“ als kräftiges, aber dunkles Grün: Stern und DE✓ bleiben darauf lesbar (0.53) */
+.matrix td.c-buy{background:var(--go-fill);color:var(--on-go);font-weight:600}
+.matrix td.c-buy small,.matrix td.c-buy .pct{color:var(--on-go);opacity:.85}
+.matrix td.c-buy .lgt.de{color:var(--on-go);border-color:currentColor;opacity:.85}
 .matrix td.c-good{background:var(--go-bg)}
 .matrix td.nc{opacity:.6}
 .matrix tr.grp th{font-size:10px;padding:4px 6px 0;text-align:center;border-bottom:1px solid var(--line);top:0}
@@ -231,7 +234,7 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .radar tr.v-none td{opacity:.62}
 .tgtc{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.tgtc button.mini{margin-left:0;min-width:72px}.mini-ph{display:inline-block;min-width:72px;font-size:11px;color:var(--muted);text-align:left}.tgt{width:62px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px;text-align:right;font-size:12px}
 .vd{display:inline-block;border-radius:999px;padding:0 8px;font-size:11.5px;white-space:nowrap}
-.vd.buy{background:var(--go);color:var(--card);font-weight:700}
+.vd.buy{background:var(--go-fill);color:var(--on-go);font-weight:700}
 .vd.good{background:var(--go-bg);color:var(--go);font-weight:600}
 .vd.wait,.vd.none{background:var(--chip);color:var(--muted)}
 .cg h3{font-size:14px;margin:2px 0 6px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
@@ -265,6 +268,10 @@ h3.sec{margin:22px 0 8px;font-size:14px;scroll-margin-top:52px}
 .set tr.cardrow summary{cursor:pointer;font-size:12px;color:var(--muted)}
 .set tr.cardrow textarea{font:12px/1.4 ui-monospace,monospace;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:74px;resize:vertical;width:100%;max-width:640px;display:block;margin:4px 0}
 .set tr.cardrow small{display:block}
+.set table.cards{width:auto;max-width:720px;margin:4px 0;font-size:12.5px}
+.set table.cards th,.set table.cards td{padding:2px 10px 2px 0;border:0;white-space:nowrap}
+.set table.cards th{color:var(--muted);font-weight:500;font-size:11.5px}
+.set table.cards small{display:inline}
 .rule{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:13.5px}
 details.hint{margin:6px 0}
 details.hint summary{cursor:pointer}
@@ -337,7 +344,7 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 dialog#legend{width:min(760px,calc(100vw - 32px))}
 .lgd{display:grid;gap:8px;font-size:13.5px;line-height:1.5}
 .lgd .sw{display:inline-block;padding:0 6px;border-radius:4px;font-weight:600}
-.lgd .sw.c-buy{background:var(--go);color:var(--card)}
+.lgd .sw.c-buy{background:var(--go-fill);color:var(--on-go)}
 .lgd .sw.c-good{background:var(--go-bg)}
 .lgd .sw.champ{box-shadow:inset 0 0 0 2px var(--gold)}
 
@@ -543,7 +550,7 @@ function compose(code, x){
     const a = x.alone, cards = a.cards.map(c => `${c.count}× ${eur(c.face)}`).join(" + ");
     return parts.concat(`Guthaben passend gekauft: ${cards} für ${eur(a.eur)}` + (a.rest ? `, ${eur(a.rest)} bleiben als Rest auf dem Konto` : "")).join(" · ") + ` · anteilig ${eur(x.eur)}`;
   }
-  if(cur === "EUR" && p.card) return parts.concat(`Guthabenkarte ${eur(p.card.face)} für ${eur(p.card.cost)}${cardSrc(p.card)}, ein Rest bleibt auf dem Konto`).join(" · ") + ` · ergibt ${eur(x.eur)}`;
+  if(cur === "EUR" && p.card) return parts.concat(`Guthabenkarte ${eur(p.card.face)} für ${eur(p.card.cost)}${cardSrc(p.card)}, Faktor ${fac(p.card.factor)}, ein Rest bleibt auf dem Konto`).join(" · ") + ` · ergibt ${eur(x.eur)}`;
   parts.push(`Mittelkurs 1 € = ${p.rate.toLocaleString("de-DE", {maximumFractionDigits: p.rate > 20 ? 1 : 3})} ${cur}` +
     (S.state.fx_updated ? ` (Stand ${fxDate()})` : ""));
   if(p.via === "card") parts.push(`Kartenzahlung plus ${pctTxt(p.fee)} Fremdwährungsgebühr, die Bank rechnet mit eigenem Kurs`);
@@ -554,7 +561,7 @@ function compose(code, x){
       (a.rest ? `, davon ${money(x.local, cur)} für den Titel, ${money(a.rest, cur)} bleiben als Rest` : "")).join(" · ") +
       ` · anteilig ${x.est ? "ungefähr " : ""}${eur(x.eur)}`;
   }
-  else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} für ${eur(p.card.cost)}${cardSrc(p.card)}, das sind ${p.vs_mid > 0 ? "+" : ""}${pctTxt(p.vs_mid)} zum Kurs`);
+  else if(p.card) parts.push(`Guthabenkarte ${money(p.card.face, cur)} (Wert ${eur(p.card.value)}) für ${eur(p.card.cost)}${cardSrc(p.card)}, Faktor ${fac(p.card.factor)}`);
   else if(p.at_rate) parts.push(`Guthaben in festen Werten zum Kurs${p.fee ? ` plus ${pctTxt(p.fee)} Gebühr deiner Karte` : ""}`);
   else parts.push(`Guthaben geschätzt mit Kurs ${p.markup >= 0 ? "+" : ""}${pctTxt(p.markup)}, weil kein Kartenpreis bekannt ist`);
   return parts.join(" · ") + ` · ergibt ${x.est ? "ungefähr " : ""}${eur(x.eur)}` + aloneTxt(x, cur);
@@ -563,17 +570,35 @@ function compose(code, x){
 const cardSrc = k => k.live ? ` (Shop-Preis vom ${stamp(k.live)}${feeTxt(k.fee, k.fee_eur)})` : "";
 const feeTxt = (pct, fix) => pct || fix ? ` mit Servicegebühr ${[fix ? eur(fix) : "", pct ? pctTxt(pct) : ""].filter(Boolean).join(" + ")}` : "";
 const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
-/* Gelesene Shop-Preise der Guthabenkarten eines Landes, für die Einstellungen */
-function cardStatus(code, cur){
-  const rows = (S.state.card_status || {})[code];
-  if(!rows) return "";
-  return rows.map(r => {
-    const face = cur ? money(r.face, cur) : num(r.face);
-    if(r.live) return `${face}: <span class="ok">${eur(r.cost)}</span> vom Shop (${stamp(r.live)}${feeTxt(S.state.settings.shop_fee_pct, S.state.settings.shop_fee_eur)})` +
-      (r.error ? ` <span class="warnc" title="Der letzte Abruf scheiterte. Der zuletzt gelesene Preis gilt bis zu 14 Tage weiter.">· letzter Abruf: ${esc(r.error)}</span>` : "");
-    if(r.checked) return `${face}: <span class="warnc">${esc(r.error || "kein Preis")}</span>, es gilt ${r.manual === null ? "die Schätzung (Kurs plus Aufschlag)" : eur(r.manual)}`;
-    return `${face}: wird beim nächsten Abgleich gelesen`;
-  }).join(" · ");
+/* Faktor einer Guthabenkarte: Preis ÷ Wert zum Mittelkurs (0.53) */
+const fac = f => f === null || f === undefined ? "–" : f.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const RATE_CLS = {top: "ok", good: "ok", cheaper: "ok", ok: "", same: "", bad: "warnc", dearer: "mut"};
+const rateHtml = r => r ? `<span class="${r.level ? RATE_CLS[r.level] ?? "" : "mut"}"${r.best ? ` title="Maßstab: ${r.level === "cheaper" || r.level === "dearer" || r.level === "same" ? "Faktor deiner Kreditkarte" : "bester Faktor dieser Karte in 90 Tagen"} ${fac(r.best)}"` : ""}>${esc(r.text)}</span>` : "";
+/* Guthabenkarten eines Landes für die Einstellungen: Wert, Preis, Faktor, Bewertung */
+function cardRows(code){ return (S.state.card_status || {})[code] || []; }
+function cardSummary(code){
+  const rows = cardRows(code).filter(r => r.stock && r.factor !== null), pi = S.state.pay[code] || {};
+  if(!rows.length) return "";
+  const best = rows.reduce((a, r) => r.factor < a.factor ? r : a);
+  const x = S.state.settings.countries[code] || {};
+  const verdict = x.pay === "auto" || x.pay === "card" ? (best.rating && best.rating.level === "cheaper" ? "Guthaben günstiger" : "Kreditkarte günstiger")
+    : pi.rating && pi.rating.level ? pi.rating.text.split(",")[0] : "";
+  return ` · bester Faktor ${fac(best.factor)}${verdict ? ` · ${esc(verdict)}` : ""}`;
+}
+function cardTable(code, cur){
+  const rows = cardRows(code);
+  if(!rows.length) return "";
+  const price = r => {
+    if(r.live) return `${eur(r.cost)} <small class="mut">Shop, ${new Date(r.live * 1000).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})}</small>` +
+      (r.error ? ` <small class="warnc" title="Der letzte Abruf scheiterte. Der zuletzt gelesene Preis gilt bis zu 14 Tage weiter.">letzter Abruf: ${esc(r.error)}</small>` : "");
+    if(r.url && r.checked) return `${r.manual === null ? "–" : `${eur(r.manual)} <small class="mut">eingetragen</small>`} <small class="warnc">${esc(r.error || "kein Preis")}</small>`;
+    if(r.url && r.manual === null) return `<small class="mut">wird beim nächsten Abgleich gelesen</small>`;
+    if(r.cost !== null) return `${eur(r.cost)} <small class="mut">eingetragen</small>`;
+    return `<small class="mut">zum Kurs</small>`;
+  };
+  return `<table class="cards"><thead><tr><th>Karte</th><th title="Wert zum Mittelkurs">Wert</th><th>Preis</th><th title="Preis ÷ Wert. 1,00 heißt: Guthaben zum Kurs. 0,85 heißt: 100 € Guthaben kosten 85 €.">Faktor</th><th>Bewertung</th></tr></thead><tbody>${rows.map(r =>
+    `<tr class="${r.stock ? "" : "mut"}"><td>${cur ? money(r.face, cur) : num(r.face)}</td><td>${r.value === null ? "–" : eur(r.value)}</td><td>${price(r)}</td>
+      <td>${fac(r.factor)}</td><td>${r.stock ? rateHtml(r.rating) : "nicht vorrätig"}${r.used ? ` <span class="chip" title="Diese Karte rechnet das Tool für die Preise dieses Landes">genutzt</span>` : ""}</td></tr>`).join("")}</tbody></table>`;
 }
 /* Einzelkauf: welche Karten ein Titel allein braucht und was übrig bleibt */
 function aloneTxt(x, cur){
@@ -1180,9 +1205,22 @@ function restLine(p, last){
 }
 /* DLC, deren Hauptspiel nicht im Korb liegt und aus dieser Region kommen muss (Europa passt zum deutschen Konto) */
 function needTag(p){ return !p.is_ref && p.family !== "Europa"; }
+/* Faktor der Karten eines Schritts: Kartenkosten ÷ Wert zum Mittelkurs */
+function planFactor(p){
+  const info = S.state.pay[p.code] || {}, face = p.cards.reduce((a, c) => a + c.count * c.face, 0);
+  if(!face || !info.rate || p.estimated) return null;
+  return p.cost / (face / (p.currency === "EUR" ? 1 : info.rate));
+}
+/* Nur Guthaben: wie weit die Karte gerade über ihrem 90-Tage-Bestwert liegt, ab „teuer“ */
+function giftOver(p){
+  const r = (S.state.pay[p.code] || {}).rating, k = (S.state.pay[p.code] || {}).card;
+  if(p.is_ref || !r || r.level !== "bad" || !r.best || !k || p.currency === "EUR") return 0;
+  return Math.round(100 * (k.factor / r.best - 1));
+}
 /* Hürden: was den Kauf hier erschwert, rot heißt nein, bernstein heißt prüfen */
 function hurdles(p, last){
   const out = [];
+  if(giftOver(p)) out.push(`<span class="warnc" title="Guthaben gerade ${giftOver(p)} % über seinem Bestwert der letzten 90 Tage. Wenn die Titel nicht drängen: Warten lohnt eher wegen des Guthabens.">Guthaben teuer</span>`);
   for(const w of p.warnings){
     // Im letzten Schritt des Kaufplans folgt kein Wechsel mehr: Der Rest bleibt, ein späterer Wechsel wartet auf ihn
     if(w.startsWith("Rest blockiert") && last) out.push(`<span class="warnc" title="Der Kaufplan wechselt danach nicht mehr. Ein späterer Wechsel geht erst, wenn das Guthaben aufgebraucht ist.">Rest bleibt, blockiert spätere Wechsel</span>`);
@@ -1203,7 +1241,12 @@ function hurdles(p, last){
 function billHtml(p){
   const cur = p.currency, rows = [];
   rows.push(`Shop: ${money(p.total, cur)}${p.tax ? ` inkl. ${String(p.tax).replace(".", ",")} % Steuer` : ""} → ${p.estimated ? "ca. " : ""}${eur(p.cost)}: ${esc(costTip(p))}`);
-  if(p.cards.length) rows.push(`Karten: ${cardsHtml(p)}`);
+  if(p.cards.length){
+    const f = planFactor(p), r = (S.state.pay[p.code] || {}).rating;
+    rows.push(`Karten: ${cardsHtml(p)}${f ? ` · Faktor ${fac(f)}${r && r.level && !["cheaper", "same", "dearer"].includes(r.level) ? ` · ${esc(r.text.split(",")[0])}` : ""}` : ""}`);
+    const over = giftOver(p);
+    if(over) rows.push(`<span class="warnc">Guthaben gerade ${over} % über seinem Bestwert. Wenn die Titel nicht drängen: Warten lohnt eher wegen des Guthabens.</span>`);
+  }
   if(p.balance_value) rows.push(`Vorhandenes Guthaben zählt zum Kurs mit: ${eur(p.balance_value)}`);
   if(!p.is_ref && p.rest_value >= 0.5) rows.push(`Rest: ${eur(p.rest_value)} der Kartenkosten bleiben als Guthaben, die Spiele kosten ${eur(p.games_cost - (p.rest_lost || 0))}`);
   if(p.gain !== null && p.gain !== undefined && !p.home) rows.push(`Ohne diesen Wechsel: ${eur(p.alt_total)} in ${esc(altNames(p.alt_codes))}`);
@@ -1572,13 +1615,24 @@ function cardInfo(text){
   }
   return n ? `${n} ${n === 1 ? "Karte" : "Karten"} erkannt${out ? `, ${out} nicht vorrätig` : ""}` : "keine Karten eingetragen";
 }
+/* Spalte „Dein Faktor“: was 1 € Guthaben dort kostet, mit Zahlweg und Bewertung (0.53) */
+function faktorCell(pi){
+  const k = pi.card, est = pi.via === "giftcard" && !k && !pi.at_rate;
+  const tip = pi.via === "card" ? `Kreditkarte: Mittelkurs plus ${pctTxt(pi.fee)} Gebühr` :
+    k ? `Karte ${money(k.face, pi.currency)} (Wert ${eur(k.value)}) für ${eur(k.cost)}${k.live ? `, Shop-Preis vom ${stamp(k.live)}` : ", dein eingetragener Preis"}` :
+    pi.via === "eur" ? "kein Guthaben unter Nennwert eingetragen" :
+    pi.at_rate ? "Guthaben zum Kurs (Werte ohne Link)" : "geschätzt: kein Kartenpreis bekannt, entscheidet nichts";
+  const how = pi.via === "card" ? "Kreditkarte" : pi.via === "eur" ? "Shop-Preis" : est ? "geschätzt" : "Guthaben";
+  const r = pi.rating && pi.rating.level && !["cheaper", "same", "dearer"].includes(pi.rating.level) ? pi.rating.text.split(",")[0] : "";
+  return `<span title="${esc(tip)} · 1 € = ${(1 / pi.unit).toLocaleString("de-DE", {maximumFractionDigits: 3})} ${esc(pi.currency)}" class="${pi.factor < 1 ? "lvl-neg" : "lvl-pos"}">${est ? "≈ " : ""}${fac(pi.factor)}</span> <small class="hint">${how}${r ? `, ${esc(r)}` : ""}</small>`;
+}
 function viewSettings(){
   const s = S.state.settings, lv = S.state.levels;
   const sel = (v, cur, l) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${l}</option>`;
   const on = c => c.code === "DE" || s.countries[c.code].enabled;
   const row = c => {
     const x = s.countries[c.code], ref = c.code === "DE", l = lv[c.code], pi = S.state.pay[c.code];
-    const kurs = ref || !pi ? "" : `<span title="${pi.via === "card" ? "Kartenzahlung" : pi.card ? `beste Karte: ${money(pi.card.face, pi.currency)} für ${eur(pi.card.cost)}${pi.card.live ? `, Shop-Preis vom ${stamp(pi.card.live)}` : ", dein eingetragener Preis"}` : pi.at_rate ? "Guthaben zum Kurs (Werte ohne Link)" : "geschätzt: kein Kartenpreis bekannt, entscheidet nichts"} · 1 € = ${(1 / pi.unit).toLocaleString("de-DE", {maximumFractionDigits: 3})} ${esc(pi.currency)}" class="${pi.vs_mid < 0 ? "lvl-neg" : "lvl-pos"}">${pi.via === "giftcard" && !pi.card && !pi.at_rate ? "≈ " : ""}${pi.vs_mid > 0 ? "+" : ""}${String(pi.vs_mid).replace(".", ",")} %</span>`;
+    const kurs = ref || !pi ? "" : faktorCell(pi);
     const level = ref ? "Basis" : !l ? "–" : `<span class="${l.level < 0 ? "lvl-neg" : "lvl-pos"}" title="gemessen an ${l.titles} gemeinsamen Titeln">${l.level > 0 ? "+" : ""}${l.level} %</span> <small class="hint">${l.cheaper} günstiger, ${l.sale} im Angebot</small>`;
     return `<tr data-code="${c.code}"><td>${esc(c.name)}<span class="code">${c.code}</span></td>
       <td><input type="checkbox" data-k="enabled" ${x.enabled ? "checked" : ""} ${ref ? "disabled" : ""}></td>
@@ -1594,12 +1648,12 @@ function viewSettings(){
     const x = s.countries[c.code];
     if(c.code === "DE" || (x.pay === "card" && !x.cards)) return "";
     const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000, k = "cards:" + c.code;
-    const cs = cardStatus(c.code, (S.state.pay[c.code] || {}).currency);
-    return `<tr class="cardrow"><td colspan="10"><details data-k="${k}" ${S.folds[k] ? "open" : ""}><summary>Guthabenkarten: <span data-info="${c.code}">${cardInfo(x.cards)}</span>${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</summary>
+    const cs = cardTable(c.code, (S.state.pay[c.code] || {}).currency);
+    return `<tr class="cardrow"><td colspan="10"><details data-k="${k}" ${S.folds[k] ? "open" : ""}><summary>Guthabenkarten: <span data-info="${c.code}">${cardInfo(x.cards)}</span>${cardSummary(c.code)}${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</summary>
       ${c.code === "DG" ? `<small class="hint">Deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest bleibt auf dem Konto und wird ab 5 € gewarnt; Deutschland zum Shop-Preis bleibt die Vergleichsbasis.</small>` : ""}
-      <textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea>${cs ? `<small class="hint">${cs}</small>` : ""}</details></td></tr>`;
+      ${cs}<textarea data-cards="${c.code}" spellcheck="false">${esc(x.cards)}</textarea></details></td></tr>`;
   };
-  const table = list => `<div class="scroll"><table><thead><tr>${sth("laender", "name", "Land")}<th title="Land in Titeln, Kaufplan und Ländern zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th>${sth("laender", "tier", "Wechsel", "Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt beim nächsten Wechsel. schwer: Wechsel mit Guthaben nur über den Support. Je Stufe gilt unter Regeln eine eigene Mindestersparnis.")}${sth("laender", "pay", "Bezahlen", "Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der Karten, den das Tool über den Link liest; Werte ohne Link gelten als Guthaben zum Kurs (etwa Amazon Japan). Das Günstigere: nimmt Guthaben nur, wenn es weniger kostet als die Kreditkarte.")}<th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th>${sth("laender", "balance", "Guthaben", "Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.")}<th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er aufgebraucht oder über den Support gelöst ist. Ab Werk nirgends angehakt. Sonst bleibt ein Rest Guthaben, solange du im Land bleibst, und verfällt erst beim Wechsel.">Rest blockiert</th><th title="So viel teurer (oder günstiger) als der Mittelkurs bekommst du die Landeswährung. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne lesbaren Kartenpreis: die Schätzung unter Gebühren.">Dein Kurs</th>${sth("laender", "level", "Preisniveau", "Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.")}</tr></thead><tbody>${sortRows("laender", list, {name: c => c.name, tier: c => c.code === "DE" ? 0 : s.countries[c.code].tier,
+  const table = list => `<div class="scroll"><table><thead><tr>${sth("laender", "name", "Land")}<th title="Land in Titeln, Kaufplan und Ländern zeigen. Preise holt das Tool für alle Länder, damit das Preisniveau stimmt.">Aktiv</th>${sth("laender", "tier", "Wechsel", "Wie mühsam der Wechsel des Nintendo-Kontos dorthin ist. leicht: Karte, kein Rest. mittel: Guthabenkarten, ein Rest verfällt beim nächsten Wechsel. schwer: Wechsel mit Guthaben nur über den Support. Je Stufe gilt unter Regeln eine eigene Mindestersparnis.")}${sth("laender", "pay", "Bezahlen", "Karte: Kreditkarte im eShop, Kosten sind Mittelkurs plus Fremdwährungsgebühr. Guthabenkarte: Preis der Karten, den das Tool über den Link liest; Werte ohne Link gelten als Guthaben zum Kurs (etwa Amazon Japan). Das Günstigere: nimmt Guthaben nur, wenn es weniger kostet als die Kreditkarte.")}<th title="Nur dort, wo der eShop Preise ohne Steuer zeigt (USA, Kanada). Wird auf den Shop-Preis aufgeschlagen.">Steuer %</th>${sth("laender", "balance", "Guthaben", "Was auf deinem Konto in diesem Land noch liegt, in Landeswährung. Wird vom Paket abgezogen.")}<th title="Angehakt: Ein Rest verhindert den Länderwechsel, bis er aufgebraucht oder über den Support gelöst ist. Ab Werk nirgends angehakt. Sonst bleibt ein Rest Guthaben, solange du im Land bleibst, und verfällt erst beim Wechsel.">Rest blockiert</th><th title="Was 1 € Guthaben dort kostet, gemessen am Mittelkurs. Karte: die Fremdwährungsgebühr. Guthabenkarte: Kartenpreis gegen Kurs. Ohne lesbaren Kartenpreis: die Schätzung unter Gebühren. Faktor 1,00 heißt zum Kurs, 1,08 heißt 8 % teurer, 0,98 heißt 2 % günstiger.">Dein Faktor</th>${sth("laender", "level", "Preisniveau", "Deine Wishlist-Titel dort gegenüber Deutschland, zum heutigen Preis mit allen Kosten. Negativ heißt günstiger.")}</tr></thead><tbody>${sortRows("laender", list, {name: c => c.name, tier: c => c.code === "DE" ? 0 : s.countries[c.code].tier,
     pay: c => c.code === "DE" ? "" : s.countries[c.code].pay, balance: c => c.code === "DE" ? null : +s.countries[c.code].balance || 0,
     level: c => c.code === "DE" ? 0 : lv[c.code] ? lv[c.code].level : null}).map(c => row(c) + cardRow(c)).join("")}</tbody></table></div>`;
   const act = S.state.countries.filter(on), off = S.state.countries.filter(c => !on(c));
@@ -1624,7 +1678,9 @@ function viewSettings(){
     <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label></div>
     <details class="fold" data-k="feeadv" ${S.folds.feeadv ? "open" : ""}><summary class="hint">Erweitert</summary>
     <p class="hint">Nur ein Notbehelf: Zahlt ein Land mit Guthaben und ist kein Kartenpreis bekannt (kein Link mit lesbarem Preis in den letzten 14 Tagen, kein eigener Preis, keine Werte ohne Link), zeigt das Tool seine Preise geschätzt als Kurs plus diesen Wert, markiert mit ≈. Solche Preise entscheiden nichts: kein Urteil, kein Kaufplan, und „das Günstigere“ nimmt dann die Kreditkarte. Unter „Zu erledigen“ steht, wo Karten fehlen.</p>
-    <div class="fields" style="max-width:300px"><label class="f">Schätzung ohne lesbaren Kartenpreis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label></div></details>
+    <div class="fields" style="max-width:300px"><label class="f">Schätzung ohne lesbaren Kartenpreis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label></div>
+    <p class="hint" style="margin-top:10px">Euro-Guthaben (Deutschland mit Guthaben) bewertet das Tool nach festen Stufen für den Faktor: bis zu diesem Wert Top, gut, okay, darüber teuer. Andere Länder misst es an der Kreditkarte oder am besten Faktor der Karte in 90 Tagen.</p>
+    <div class="fields" style="max-width:640px;grid-template-columns:repeat(3,1fr)"><label class="f">Top bis Faktor<input name="eur_top" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.top}"></label><label class="f">gut bis<input name="eur_good" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.good}"></label><label class="f">okay bis<input name="eur_ok" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.ok}"></label></div></details>
     </form>` + langSection() + `
     <h3 class="sec" id="set-quellen">Quellen</h3>
     <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
@@ -1645,6 +1701,7 @@ function settingsBody(form){
     body[k] = form.elements[k].value;
   for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;
   body.deal_eur = {buy: form.elements.deal_buy.value, good: form.elements.deal_good.value};
+  body.eur_card_steps = {top: form.elements.eur_top.value, good: form.elements.eur_good.value, ok: form.elements.eur_ok.value};
   form.querySelectorAll("tr[data-code]").forEach(tr => {
     const c = {};
     tr.querySelectorAll("[data-k]").forEach(el => { c[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value; });
@@ -1685,14 +1742,14 @@ function langDe(text){
    Korrektur als kleines Symbol. Die Quelle nennt die Gruppe, titledb zusätzlich gepunktet */
 function langCell(t){
   const act = (v, sym, tip) => `<button class="ico" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${v}" title="${tip}" aria-label="${tip}">${sym}</button>`;
-  const what = t.state ? "Deutsch" : "ohne Deutsch", sym = t.state ? "✓" : "–";
+  const what = t.state ? "Deutsch ✓" : "ohne Deutsch";
   if(t.manual){
     const nin = t.nintendo === null ? "Nintendo liefert keine Angabe" : `${t.src === "titledb" ? "titledb" : "Nintendo"} sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`;
-    return `<span class="lg hand ${t.state ? "ok" : "bad"}" title="Von dir festgelegt. ${nin}">${sym} ${what}</span>${act("", "↺", "Zurücksetzen: wieder die gelesene Angabe nehmen")}`;
+    return `<span class="lg hand ${t.state ? "ok" : "bad"}" title="Von dir festgelegt. ${nin}">${what}</span>${act("", "↺", "Zurücksetzen: wieder die gelesene Angabe nehmen")}`;
   }
   if(t.state !== null){
     const src = t.src === "titledb" ? "Laut titledb (offene Titelliste, nicht von Nintendo)" : "Von Nintendo gelesen";
-    return `<span class="lg ${t.state ? "ok" : "bad"}${t.src === "titledb" ? " tdb" : ""}" title="${src}: ${esc(langDe(t.text) || "–")}">${sym} ${what}</span>` +
+    return `<span class="lg ${t.state ? "ok" : "bad"}${t.src === "titledb" ? " tdb" : ""}" title="${src}: ${esc(langDe(t.text) || "–")}">${what}</span>` +
       act(t.state ? 0 : 1, "✎", `Stimmt nicht? Klick setzt „${t.state ? "ohne Deutsch" : "Deutsch"}“, gilt dauerhaft und geht der gelesenen Angabe vor`);
   }
   return `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`;

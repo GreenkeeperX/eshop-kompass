@@ -33,6 +33,9 @@ DEFAULT_SETTINGS = {
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
     # Angebot als Kauf bzw. gutes Angebot, auch wenn es prozentual mehr ist
     "deal_eur": {"buy": 0.5, "good": 2.0},
+    # Euro-Guthaben (Deutschland mit Guthaben): Faktor bis zu diesem Wert gilt als Top, gut,
+    # okay; darüber teuer. Stufen wie bei Kenixa (Entscheidung 13.10.2026)
+    "eur_card_steps": {"top": 0.81, "good": 0.83, "ok": 0.86},
     "countries": countries.default_country_settings(),
 }
 
@@ -72,7 +75,7 @@ def load_settings():
         for k, v in DEFAULT_SETTINGS.items():
             s.setdefault(k, json.loads(json.dumps(v)))
         s.pop("card_market", None)    # gg.deals ist seit 0.20 ausgebaut
-        for group in ("tier_min_saving", "deal_eur"):
+        for group in ("tier_min_saving", "deal_eur", "eur_card_steps"):
             for k, value in DEFAULT_SETTINGS[group].items():
                 s[group].setdefault(k, value)
         defaults = countries.default_country_settings()
@@ -169,6 +172,12 @@ def save_settings(new):
             if k in s["deal_eur"]:
                 try:
                     s["deal_eur"][k] = min(100.0, max(0.0, float(value)))
+                except (TypeError, ValueError):
+                    pass
+        for k, value in (new.get("eur_card_steps") or {}).items():
+            if k in s["eur_card_steps"]:
+                try:
+                    s["eur_card_steps"][k] = min(1.0, max(0.5, float(value)))
                 except (TypeError, ValueError):
                     pass
         incoming = dict(new.get("countries") or {})

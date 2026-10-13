@@ -743,7 +743,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(len(calls), 2)                       # höchstens einmal am Tag
         # Der gelesene Preis ersetzt den von Hand eingetragenen, mit der Servicegebühr des Shops
         st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
-        self.assertEqual(st[1]["cost"], round(8.90 * 1.0775 + 0.40, 2))   # Vorgabe 0,40 € + 7,75 %
+        self.assertEqual(st[2]["cost"], round(8.90 * 1.0775 + 0.40, 2))   # Vorgabe 0,40 € + 7,75 %
         # Die Vorgabe trifft echte Eneba-Käufe auf den Cent
         for sub, fee in ((5.57, 0.83), (16.58, 1.68), (49.26, 4.22), (93.03, 7.61)):
             self.assertAlmostEqual(sub * 0.0775 + 0.40, fee, delta=0.006)
@@ -752,7 +752,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual((info["card"]["face"], info["card"]["cost"], info["card"]["live"]), (50.0, 8.9, t0))
         st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
         self.assertEqual([(r["face"], r["cost"], r["manual"], r["error"]) for r in st],
-                         [(25.0, 4.8, 4.8, "Seite nennt keinen Preis"), (50.0, 8.9, 9.5, None)])
+                         [(15.0, 3.0, 3.0, None), (25.0, 4.8, 4.8, "Seite nennt keinen Preis"), (50.0, 8.9, 9.5, None)])
         # Ein gescheiterter Abruf löscht den Preis nicht: Er gilt mit seinem Datum weiter (0.52.1)
         sync.sync_card_prices(self.data, self.settings, lambda u, ua=None: "<p>leer</p>", lambda s: None, now=t0 + 86400)
         self.assertEqual((cp["https://shop.example/br50"]["price"], cp["https://shop.example/br50"]["ok"]), (8.9, t0))
@@ -773,6 +773,50 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertNotIn("https://shop.example/br25", self.data["card_prices"])
         self.assertIn("lehnt Abrufe ab", sync.status["log"][-2])
+
+    def test_card_factor_and_rating(self):
+        # Faktor = Preis ÷ Wert zum Mittelkurs, bewertet je nach Land (0.53)
+        rate_no = self.data["fx"]["rates"]["NOK"]
+        self.settings["countries"]["NO"].update(pay="auto", cards="500 = 50,63")
+        row = planner.card_status(self.data, self.settings, now=NOW)["NO"][0]
+        self.assertAlmostEqual(row["factor"], round(50.63 / (500 / rate_no), 3))
+        self.assertEqual(row["value"], round(500 / rate_no, 2))
+        self.assertEqual(row["rating"]["level"], "dearer" if row["factor"] > 1.0175 else "cheaper")
+        self.assertFalse(row["used"] and row["rating"]["level"] == "dearer")
+        # Euro-Guthaben: feste Stufen, einstellbar
+        self.settings["countries"]["DG"].update(enabled=True, cards="50 = 41,00\n25 = 22,00")
+        rows = planner.card_status(self.data, self.settings, now=NOW)["DG"]
+        self.assertEqual([(r["factor"], r["rating"]["text"], r["used"]) for r in rows],
+                         [(0.88, "teuer", False), (0.82, "gut", True)])
+        info = planner.pay_info(self.data, self.settings, now=NOW)["DG"]
+        self.assertEqual((info["factor"], info["rating"]["level"]), (0.82, "good"))
+        self.settings["eur_card_steps"]["top"] = 0.82
+        self.assertEqual(planner.card_status(self.data, self.settings, now=NOW)["DG"][1]["rating"]["text"], "Top")
+        # Nur Guthaben: gegen den eigenen Bestwert der Karte, erst nach zwei Wochen Verlauf
+        url = "https://shop.example/br50"
+        self.settings["countries"]["BR"].update(pay="giftcard", cards=f"50 | {url}")
+        rate_br = self.data["fx"]["rates"]["BRL"]
+        self.settings["shop_fee_pct"], self.settings["shop_fee_eur"] = 0, 0
+        t0 = NOW.timestamp()
+        for day, price in ((0, 50 / rate_br * 1.0), (1, 50 / rate_br * 1.01), (20, 50 / rate_br * 1.04)):
+            self.data["card_prices"] = {url: {"checked": t0 + day * 86400, "ok": t0 + day * 86400,
+                                              "price": round(price, 2), "currency": "EUR"}}
+            sync.record_card_factors(self.data, self.settings, now=t0 + day * 86400)
+            when = datetime.fromtimestamp(t0 + day * 86400, timezone.utc)
+            rating = planner.card_status(self.data, self.settings, now=when)["BR"][0]["rating"]
+            if day < 14:
+                self.assertEqual(rating["text"], "noch kein Vergleich")
+        self.assertEqual(len(self.data["card_hist"][url]), 3)
+        self.assertEqual(rating["level"], "ok")                  # 4 % über dem Bestwert 1,00
+        info = planner.pay_info(self.data, self.settings, now=when)["BR"]
+        self.assertEqual((info["card"]["factor"], info["rating"]["level"]), (1.04, "ok"))
+        self.assertAlmostEqual(info["card"]["value"], round(50 / rate_br, 2))
+        # Verlauf: Älteres als 90 Tage und entfernte Links fallen weg
+        sync.record_card_factors(self.data, self.settings, now=t0 + 100 * 86400)
+        self.assertEqual(len(self.data["card_hist"][url]), 1)
+        self.data["card_prices"] = {}
+        sync.record_card_factors(self.data, self.settings, now=t0 + 100 * 86400)
+        self.assertEqual(self.data["card_hist"], {})
 
     def test_auto_never_picks_an_estimate(self):
         # „das Günstigere“ ohne Kartenpreis: Kreditkarte, auch wenn die Schätzung niedriger wäre
@@ -1419,6 +1463,8 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 2.0})
         s = store.save_settings({"deal_eur": {"buy": "0,3", "good": -4, "x": 1}})
         self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 0.0})
+        s = store.save_settings({"eur_card_steps": {"top": "0.8", "good": 2, "x": 1}})
+        self.assertEqual(s["eur_card_steps"], {"top": 0.8, "good": 1.0, "ok": 0.86})
         s = store.save_settings({"countries": {"JP": {"rest_blocks": True}}})
         self.assertTrue(store.load_settings()["countries"]["JP"]["rest_blocks"])  # deine Wahl bleibt
         # Stand 0.35: Amerika blockierte ab Werk, ab 0.36 nirgends mehr
@@ -2357,7 +2403,8 @@ class ExtraDlcTest(unittest.TestCase):
         t0 = 1736467200
         data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["70050000000001"], "JP": []},
                                   "ids_checked": {"EU": t0, "JP": t0}, "tdb_ids": {"JP": t0}}}
-        data["glangs"] = {"rl": {"ids": {"JP": ["70010000000009"]}, "ids_checked": {"JP": t0}}}
+        data["glangs"] = {"rl": {"ids": {"JP": ["70010000000009"], "EU": ["70010000000008"]},
+                                 "ids_checked": {"JP": t0, "EU": t0}, "ids_tdb": {"JP": "70010000000009"}}}
         data["titledb_at"] = t0
         got, regions = [], []
         jp = {}
@@ -2413,6 +2460,8 @@ class ExtraDlcTest(unittest.TestCase):
                 sync.sync_langs(data, settings, None, lambda s: None, now=t0 + day * 86400)
             self.assertEqual(len(asked), 3)
             self.assertEqual(data["items"]["d"]["langs_tries"]["EU"], 3)
+            self.assertIn("Sprachen Europa: 0 von 1 Titeln; 1 ohne Angabe (meist DLC), nach 3 Versuchen",
+                          sync.status["log"][-1])
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 33 * 86400)
             self.assertEqual(len(asked), 4)                         # danach monatlich
 
@@ -2425,7 +2474,7 @@ class ExtraDlcTest(unittest.TestCase):
         t0 = 1736467200
         data = self.data()
         data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": []}, "ids_checked": {"EU": t0}}}
-        data["glangs"] = {}
+        data["glangs"] = {"rl": {"ids": {"EU": ["70010000000008"]}, "ids_checked": {"EU": t0}}}
         got = []
         with mock.patch.object(sources, "fetch_item", lambda slug, c, fetch=None: got.append(slug) or {"nsuids": []}), \
                 mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}):
@@ -2468,7 +2517,7 @@ class ExtraDlcTest(unittest.TestCase):
             # Das Protokoll zeigt den Stand je Region, auch wenn nichts zu suchen ist
             line = sync.status["log"][-1]
             # Japan und Amerika der DLC warten auf titledb, die Spiele selbst sucht DekuDeals
-            self.assertIn("Fehlende DLC der Sammlung: 2 DLC, 1 Spiele; IDs EU 2 gefunden; JP 0 gefunden, 2 noch nie gesucht (Spiele 0 gefunden, 1 ohne ID)", line)
+            self.assertIn("Fehlende DLC der Sammlung: 2 DLC, 1 Spiele; IDs EU 2 gefunden (Spiele 1 gefunden); JP 0 gefunden, 2 noch nie gesucht (Spiele 0 gefunden, 1 ohne ID)", line)
             self.assertIn("Nächste Wiederholung ohne ID: 24.01.", line)
             sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 15 * 86400)
             self.assertIn("IDs fehlender DLC gesucht: ", sync.status["log"][-2])
@@ -2593,7 +2642,7 @@ class ExtraDlcTest(unittest.TestCase):
         data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["2"], "AM": ["12"], "JP": ["22"]},
                                   "ids_checked": {"EU": 1, "AM": 1, "JP": 1}}}
         data["glangs"] = {"rl": {"langs_checked": {"JP": 1736467200}, "langs_tries": {"JP": 1}}}
-        pages = {("rl", "us"): ["111"], ("rl", "jp"): ["121"]}
+        pages = {("rl", "us"): ["111"], ("rl", "jp"): ["121"], ("rl", "de"): ["101"]}
         asked = []
 
         def item(slug, country, fetch=None):
@@ -2602,17 +2651,26 @@ class ExtraDlcTest(unittest.TestCase):
         with mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}), \
                 mock.patch.object(sources, "fetch_item", item):
             sync.sync_extra_ids(data, settings, None, lambda s: None, now=1736467200)
-        self.assertEqual(sorted(asked), [("rl", "jp"), ("rl", "us")])  # Europa je DLC, nicht nötig
+        # Europa seit 0.53 auch: Dort nennt kaum ein DLC Sprachen
+        self.assertEqual(sorted(asked), [("rl", "de"), ("rl", "jp"), ("rl", "us")])
         g = data["glangs"]["rl"]
-        self.assertEqual(g["ids"], {"AM": ["111"], "JP": ["121"]})
+        self.assertEqual(g["ids"], {"AM": ["111"], "JP": ["121"], "EU": ["101"]})
         self.assertNotIn("JP", g["langs_tries"])                         # gleich neu fragen
         self.assertEqual(sync.jp_targets(data)["121"], [g])
-        jp, am = [], []
-        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: {}), \
+        jp, am, eu = [], [], []
+        with mock.patch.object(sources, "fetch_langs_eu",
+                               lambda ids, fetch=None: eu.append(sorted(ids)) or {"101": "english, german"}), \
                 mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: am.append(n) or "english, german"), \
                 mock.patch.object(sources, "fetch_langs_jp", lambda n, fetch=None: jp.append(n) or "日本語, ドイツ語"):
             sync.sync_langs(data, settings, None, lambda s: None, now=1736467200 + 60)
-        self.assertEqual((am, jp), (["111"], ["121"]))
+        self.assertEqual((am, jp, eu), (["111"], ["121"], [["101", "2"]]))
+        self.assertEqual(g["langs"]["EU"], "english, german")
+        self.assertEqual(data["extra"]["rl-b"]["langs_tries"]["EU"], 1)
+        # Kennt das Spiel die Sprache, fragt Europa den DLC nicht mehr eigens
+        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: self.fail(ids)):
+            sync.sync_langs(data, settings, None, lambda s: None, now=1736467200 + 2 * 86400)
+        self.assertIs(planner.extra_context(data, settings).german(
+            planner.extra_context(data, settings).items["rl-b"], "EU", "rl-b"), True)
         data["extra"]["rl-b"]["langs"] = {"EU": "english, german"}
         with mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}):
             row = {(t["slug"], t["family"]): t for t in planner.lang_todo(data, settings)}.get(("rl", "JP"))

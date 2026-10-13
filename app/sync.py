@@ -402,6 +402,22 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
          ("" if got == len(todo) else ", für die übrigen gilt der Wert von Hand"))
 
 
+def record_card_factors(data, settings, now=None):
+    """Verlauf der Faktoren je Karten-Link, einer je Tag (der niedrigste), für die
+    Bewertung in reinen Guthabenländern. Älteres als CARD_HIST_DAYS fällt weg (0.53)."""
+    now = now or time.time()
+    when = datetime.fromtimestamp(now, timezone.utc)
+    hist = data.setdefault("card_hist", {})
+    for url, (day, factor) in planner.card_factors(data, settings, when).items():
+        h = hist.setdefault(url, {})
+        h[day] = min(factor, h.get(day, factor))
+    known = data.get("card_prices") or {}
+    for url in list(hist):
+        hist[url] = planner.card_hist_window(hist[url], when)
+        if url not in known or not hist[url]:
+            del hist[url]
+
+
 UNIT_JUMP = 0.15        # mehr Änderung je Währungseinheit seit dem letzten Abgleich ist auffällig
 FX_MAX_AGE_DAYS = 3
 
@@ -772,8 +788,13 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
         wait = LANG_RECHECK_SECONDS if tries >= (1 if fam == "JP" else LANG_TRIES) else LANG_RETRY_SECONDS
         return now - (rec.get("langs_checked") or {}).get(fam, 0) > wait
 
+    # Europa nennt die Sprachen meist nur beim Spiel, kaum beim DLC: Fehlende DLC fragen
+    # deshalb auch die Seite ihres Spiels, und ein DLC, dessen Spiel die Angabe schon hat,
+    # braucht keine eigene (0.53)
     eu = {}
-    for rec in list(items.values()) + list(extra.values()):
+    game_eu = {g for g, rec in glangs.items() if (rec.get("langs") or {}).get("EU")}
+    for rec in list(items.values()) + [e for e in extra.values() if e.get("parent") not in game_eu] \
+            + list(glangs.values()):
         ids = (rec.get("ids") or {}).get("EU")
         if ids and due(rec, "EU"):
             eu.setdefault(ids[0], []).append(rec)
@@ -795,7 +816,10 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
                         # Regionen nach LANG_TRIES Versuchen nur noch monatlich (0.47.2)
                         tries = rec.setdefault("langs_tries", {})
                         tries["EU"] = tries.get("EU", 0) + 1
-            _log(f"Sprachen Europa: {len(found)} von {len(eu)} Titeln")
+            missing = len(eu) - len(set(found) & set(eu))
+            _log(f"Sprachen Europa: {len(set(found) & set(eu))} von {len(eu)} Titeln"
+                 + (f"; {missing} ohne Angabe (meist DLC), nach {LANG_TRIES} Versuchen nur noch monatlich"
+                    if missing else ""))
 
     # Japan und Amerika: eine Seite je Titel, einmal verlässlich, danach nur, wo sie fehlt.
     # DLC übernimmt die Sprache des Hauptspiels, eigene Seiten braucht es dafür nicht;
@@ -1069,7 +1093,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
     store.save_data(data)
     _log_links(notes)
     games = [s for s in deku if s in rel and not rel[s].get("parent")]
-    _log(f"DLC und Pakete: {len(games)} Spiele der Sammlung gelesen, "
+    _log(f"DLC und Pakete: {status['done']} Seiten gelesen; bekannt sind {len(games)} Spiele der Sammlung, "
          f"{sum(1 for s in games if rel[s]['dlc'])} davon mit Zusatzinhalten"
          + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else "")
          + (f"; Pakete bekannt: {len(data.get('links') or {})}" if data.get("links") else ""))
@@ -1100,15 +1124,15 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
             if not e["ids"].get(fam) and now - e["ids_checked"].get(fam, 0) >= _recheck(e, fam):
                 todo.append((bool(e["ids_checked"]), slug, fam, e))
     # Auch die IDs der Spiele selbst: Ihre Shopseite nennt die Sprachen, die eines DLC oft
-    # nicht (Japan: DLC-Seiten gibt es dort unter dieser Adresse gar nicht). Europa liest
-    # die Sprache je DLC, dafür braucht es keine.
+    # nicht (Japan: DLC-Seiten gibt es dort unter dieser Adresse gar nicht). Seit 0.53 auch
+    # Europa: Dort fehlte die Angabe bei fast allen DLC.
     glangs = data.setdefault("glangs", {})
     for game in dict.fromkeys(parent for _, parent in wanted.values()):
         g = glangs.setdefault(game, {})
         g.setdefault("ids", {})
         g.setdefault("ids_checked", {})
         for fam in fams:
-            if fam != "EU" and ((g.get("ids_suspect") or {}).get(fam) or (
+            if ((g.get("ids_suspect") or {}).get(fam) or (
                     not g["ids"].get(fam) and now - g["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS)):
                 todo.append((bool(g["ids_checked"]), game, fam, g))
     if not todo:
@@ -1198,10 +1222,10 @@ def _log_extra_ids(extra, glangs, fams, now):
         return f"{found} gefunden" + (f", {never} noch nie gesucht" if never else "") \
             + (f", {len(mine) - found - never} ohne ID" if len(mine) - found - never else "")
     for fam in fams:
-        # Spiele zählen getrennt: Ihre ID braucht es außerhalb Europas für die Sprache (0.51)
+        # Spiele zählen getrennt: Ihre ID braucht es für die Sprache (0.51, Europa seit 0.53)
         parts.append(f"{fam} {count(list(extra.values()), fam)}"
-                     + (f" (Spiele {count(games, fam)})" if fam != "EU" and games else ""))
-        for e in list(extra.values()) + (games if fam != "EU" else []):
+                     + (f" (Spiele {count(games, fam)})" if games else ""))
+        for e in list(extra.values()) + games:
             if not (e.get("ids") or {}).get(fam) and fam in (e.get("ids_checked") or {}):
                 due = e["ids_checked"][fam] + _recheck(e, fam)
                 nxt = due if nxt is None else min(nxt, due)
@@ -1327,6 +1351,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_prices(data, settings, fetch, sleep, history)
         store.save_history(history)
         sync_card_prices(data, settings, fetch, sleep)
+        record_card_factors(data, settings)
         self_check(data, settings)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell

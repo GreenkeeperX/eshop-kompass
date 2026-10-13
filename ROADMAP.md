@@ -168,6 +168,16 @@ Reihenfolge und Begründung:
 - [x] Guthabenpreise in fester Reihenfolge (0.52.1): keine Spalte „Aufschlag“ je Land mehr,
   Werte ohne Link rechnen zum Kurs, gelesener Preis gilt nach gescheitertem Abruf 14 Tage
   weiter, Schätzwert zugeklappt und ohne Einfluss auf Entscheidungen.
+- [x] Faktor für Guthabenkarten (0.53, Entscheidung 13.10.2026): Preis ÷ Wert zum Mittelkurs,
+  bewertet gegen die Kreditkarte, den eigenen 90-Tage-Bestwert der Karte oder feste Stufen für
+  Euro-Guthaben; Kartentabelle je Land, Spalte „Dein Faktor“, Faktor im Plan und im Tooltip.
+  Dazu: Europa-Sprachen fehlender DLC über die Seite ihres Spiels, „kaufen“ in der Titeltabelle
+  dunkler, damit Stern und DE✓ lesbar bleiben.
+- [ ] Sammlung übersichtlicher: vollständige Spiele und „Ohne Zusatzinhalte“ eingeklappt,
+  A–Z spaltenweise (Konzept liegt vor, wartet auf Freigabe).
+- [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
+  Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
+  Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen.
 - [ ] Viele Kleinteile eines Spiels zusammenfassen (etwa Kostüme), erst nach Erfahrung mit den
   gruppierten Pässen.
 - [ ] Abgleich Kaufverlauf mit der ganzen DekuDeals-Sammlung (Slug-Stufe, „Bei DekuDeals
