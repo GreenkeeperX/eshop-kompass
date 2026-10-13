@@ -1140,9 +1140,16 @@ def import_eshop_history(text, now=None):
         found = json.loads(text or "")
     except ValueError:
         raise ValueError("Das ist nicht der Text des Browser-Helfers (JSON erwartet)")
-    region = ""
+    region, newest, complete = "", 0, True
     if isinstance(found, dict):
+        complete = found.get("complete") is not False
         region = str(found.get("region") or "")[:4]
+        # Nur ein lückenloser Lauf setzt den Stand, ab dem das Lesezeichen künftig liest
+        if found.get("complete") is True:
+            try:
+                newest = int(found.get("newest") or 0)
+            except (TypeError, ValueError):
+                newest = 0
         found = found.get("entries")
     if not isinstance(found, list):
         raise ValueError("Das ist nicht der Text des Browser-Helfers (Liste erwartet)")
@@ -1159,11 +1166,11 @@ def import_eshop_history(text, now=None):
                         "title": title, "date": date, "region": str(e.get("region") or region)[:4],
                         "type": str(e.get("type") or "")[:30], "item": str(e.get("item") or "")[:30],
                         "amount": str(e.get("amount") or "")[:30]})
-    new, total = store.merge_eshop_history(entries, now or time.time())
+    new, total = store.merge_eshop_history(entries, now or time.time(), newest)
     data = store.load_data()
     remember_eshop(data)
     rows = planner.eshop_matches(data)["rows"]
-    return {"read": len(entries), "new": new, "total": total,
+    return {"read": len(entries), "new": new, "total": total, "complete": complete,
             "matched": sum(1 for r in rows if r["slug"]),
             "open": sum(1 for r in rows if r["how"] is None)}
 

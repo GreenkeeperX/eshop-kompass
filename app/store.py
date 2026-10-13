@@ -263,8 +263,9 @@ def load_eshop_history():
         return h
 
 
-def merge_eshop_history(entries, now):
-    """Neue Einträge anhängen, bekannte (gleicher Schlüssel) überspringen. Gibt (neu, gesamt)."""
+def merge_eshop_history(entries, now, newest=0):
+    """Neue Einträge anhängen, bekannte (gleicher Schlüssel) überspringen. newest: neuester
+    Vorgang eines lückenlosen Laufs, ab dem das Lesezeichen künftig liest. Gibt (neu, gesamt)."""
     with lock:
         h = load_eshop_history()
         known = {e["key"] for e in h["entries"]}
@@ -276,6 +277,8 @@ def merge_eshop_history(entries, now):
                 new += 1
         h["entries"] = h["entries"][-3000:]
         h["at"] = now
+        if newest and newest > (h.get("seit") or 0):
+            h["seit"] = newest
         _save("eshop_history.json", h)
         return new, len(h["entries"])
 

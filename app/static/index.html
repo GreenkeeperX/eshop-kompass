@@ -1691,13 +1691,15 @@ const H={"accept":"application/json","content-type":"application/json","x-ninten
 const get=async(off,lim)=>{const r=await fetch(ep+"?operationName=TransactionsClientRootClient&variables="+encodeURIComponent(JSON.stringify(Object.assign({},v,{idToken:s.idToken,limit:lim,offset:off})))+"&extensions="+encodeURIComponent(JSON.stringify(ext)),{headers:H});if(r.status===403||r.status===429)throw"gesperrt ("+r.status+")";const j=await r.json();if(!r.ok||j.errors)throw"Nintendo meldet "+r.status;return j.data.account.transactionHistories};
 const wait=()=>new Promise(r=>setTimeout(r,1200));
 let lim=100,page;try{page=await get(0,lim)}catch(e){if(String(e).startsWith("gesperrt"))throw e;lim=10;await wait();page=await get(0,lim)}
+const seit=Number((location.hash.match(/ek-seit=(\\d+)/)||[])[1]||0),alt=t=>seit&&Number(t.transactionId)<=seit;
 const all=[...page.transactionHistories],total=page.offsetInfo.total;
-while(all.length<total){box.textContent="eShop-Kompass: lese "+all.length+" von "+total+" …";await wait();const p=await get(all.length,lim);if(!p.transactionHistories.length)break;all.push(...p.transactionHistories)}
-const out=[];for(const t of all){const d=String(t.datetime||"").slice(0,10);
+let err="";while(all.length<total&&!all.some(alt)){box.textContent="eShop-Kompass: lese "+all.length+" von "+total+" …";await wait();let p;try{p=await get(all.length,lim)}catch(e){err=String(e);break}if(!p.transactionHistories.length)break;all.push(...p.transactionHistories)}
+const complete=!err,newest=Math.max(0,...all.map(t=>Number(t.transactionId)||0));
+const out=[];for(const t of all.filter(t=>!alt(t))){const d=String(t.datetime||"").slice(0,10);
 if(t.grantedItems)t.grantedItems.forEach((g,i)=>out.push({k:t.transactionId+"-"+i,title:g.title,date:d,type:"EXTERNAL",item:g.itemType,plat:g.labelPlatform}));
 else if(t.title)out.push({k:String(t.transactionId),title:t.title,date:d,type:t.transactionType,item:t.itemType,plat:t.labelPlatform,amount:t.amount&&t.amount.formattedValue})}
-const txt=JSON.stringify({region:v.country||s.country,entries:out});
-box.textContent="";const p=document.createElement("p");p.textContent="Fertig: "+out.length+" Einträge aus "+all.length+" Vorgängen ("+(v.country||s.country)+").";
+const txt=JSON.stringify({region:v.country||s.country,complete,newest,entries:out});
+box.textContent="";const p=document.createElement("p");p.textContent=(complete?"Fertig: ":"Unvollständig ("+err+"), das Tool merkt sich den alten Stand: ")+out.length+" Einträge"+(seit?" seit dem letzten Lesen":"")+" ("+(v.country||s.country)+").";
 const go=document.createElement("button");go.textContent="Im eShop-Kompass übernehmen";go.style.marginRight="8px";go.onclick=()=>window.open(${JSON.stringify(tool)}+"/#kaeufe="+encodeURIComponent(txt),"_blank");
 const ta=document.createElement("textarea");ta.value=txt;ta.readOnly=true;ta.style.cssText="width:100%;height:80px;margin:8px 0";
 const c=document.createElement("button");c.textContent="Kopieren";c.style.marginRight="8px";c.onclick=async()=>{ta.select();try{await navigator.clipboard.writeText(txt)}catch(e){document.execCommand("copy")}c.textContent="Kopiert ✓"};
@@ -1713,12 +1715,14 @@ function eshopBox(){
         rest = rows.filter(r => !r.slug && !(r.how === null && r.suggest.length) && r.how !== "void"), voids = rows.filter(r => r.how === "void");
   const when = r => r.date ? `<small class="mut">${esc(dmy(r.date))}</small>` : "";
   const how = {id: "über die Nintendo-ID", title: "Titel passt genau", pick: "von dir zugeordnet"};
+  // Neuester bekannter Vorgang: Der Link zur Kaufhistorie gibt ihn mit, das Lesezeichen hört dort auf
+  const seit = S.state.eshop_seit || 0;
   const line = (r, extra) => `<tr><td class="l">${esc(r.title)} ${when(r)}</td><td class="l">${extra}</td></tr>`;
   let h = `<details class="box" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Einträge gelesen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch nicht gelesen"}</span></summary>
     <p class="hint">Was du bei Nintendo gekauft hast, fällt aus dem Kaufplan, auch ohne Eintrag bei DekuDeals. Der Kaufverlauf reicht laut Nintendo zwei Jahre zurück.</p>
     <ol class="hint">
       <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(eshopHelper(location.origin))}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>Käufe lesen</b></a></li>
-      <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a>, warte, bis die Liste da ist, und klick das Lesezeichen an.</li>
+      <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? " Über den Link liest es nur, was seit dem letzten vollständigen Lesen dazugekommen ist." : ""}</li>
       <li>Klick dort auf „Im eShop-Kompass übernehmen“. Geht das nicht, kopiere den Text und füge ihn hier ein: <textarea id="eshopimport" rows="2" style="width:100%"></textarea> <button data-act="eshopimport">Übernehmen</button></li>
     </ol>`;
   if(sug.length) h += `<h4>Vorschläge: Ist das derselbe Titel?</h4><table class="mini-t">${sug.map(r => line(r, r.suggest.map(x =>
@@ -2019,7 +2023,7 @@ document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preve
 async function eshopImport(text){
   const r = await api("/api/eshop_history", {text});
   await refresh();
-  toast(`${r.read} Einträge gelesen, ${r.new} neu. ${r.matched} zählen als Besitz` + (r.open ? `, ${r.open} ohne Zuordnung` : ""));
+  toast(`${r.read} Einträge gelesen, ${r.new} neu. ${r.matched} zählen als Besitz` + (r.open ? `, ${r.open} ohne Zuordnung` : "") + (r.complete ? "" : ". Unvollständig gelesen: Beim nächsten Mal liest das Lesezeichen wieder ab dem alten Stand"));
 }
 // Vom Lesezeichen „Käufe lesen“: Daten im Adressteil hinter #, gehen nicht übers Netz
 const KAEUFE = location.hash.startsWith("#kaeufe=") ? decodeURIComponent(location.hash.slice(8)) : null;

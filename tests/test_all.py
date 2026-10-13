@@ -1758,6 +1758,15 @@ class EshopHistoryTest(unittest.TestCase):
         self.assertEqual([x["slug"] for x in rows["Hades Deluxe"]["suggest"]], ["hades"])
         self.assertEqual(rows["Hades Deluxe"]["key"], "nin:BR:3")
 
+    def test_reading_point_only_after_complete_run(self):
+        e = [{"k": "5", "title": "Hades", "date": "2026-10-01"}]
+        sync.import_eshop_history(json.dumps({"region": "BR", "complete": False, "newest": 9, "entries": e}))
+        self.assertNotIn("seit", store.load_eshop_history())       # abgebrochen: Stand bleibt
+        sync.import_eshop_history(json.dumps({"region": "BR", "complete": True, "newest": 7, "entries": e}))
+        self.assertEqual(store.load_eshop_history()["seit"], 7)
+        sync.import_eshop_history(json.dumps({"region": "BR", "complete": True, "newest": 3, "entries": []}))
+        self.assertEqual(store.load_eshop_history()["seit"], 7)    # nie zurück
+
     def test_wrong_text_rejected(self):
         with self.assertRaises(ValueError):
             sync.import_eshop_history("kein json")

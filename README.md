@@ -129,8 +129,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   als „Spiel: DLC“), zählt er als Besitz und fällt aus dem Kaufplan, auch ohne Eintrag bei
   DekuDeals. Ist er nur ähnlich, schlägt das Tool bis zu drei Titel vor, die erst nach
   deiner Bestätigung zählen. Der Rest, meist längst Besessenes, steht eingeklappt darunter.
-  Erstattete Käufe zählen nicht. Zuordnungen bleiben, beim nächsten Lesen kommen nur neue
-  Einträge dazu; sie stecken in der Sicherung.
+  Erstattete Käufe zählen nicht. Zuordnungen bleiben und stecken in der Sicherung. Der Link
+  zur Kaufhistorie im Tool gibt den Stand des letzten lückenlosen Laufs mit, das Lesezeichen
+  liest dann nur bis dorthin. Bricht ein Lauf ab, übernimmt das Tool das Gelesene, behält aber
+  den alten Stand, der nächste Lauf liest wieder ab dort.
 - Sammlung (eigener Reiter): alle Spiele deiner DekuDeals-Sammlung mit ihren
   Zusatzinhalten (Abschnitt "DLC" der DekuDeals-Artikelseite), je DLC "hast du"
   oder "fehlt". Ob du einen DLC hast, sagt deine Sammlung bei DekuDeals; was sie

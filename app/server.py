@@ -46,6 +46,7 @@ def state():
         "matrix": planner.matrix(data, settings),
         "lang_todo": planner.lang_todo(data, settings),
         "eshop": planner.eshop_matches(data)["rows"],
+        "eshop_seit": (data.get("_eshop") or {}).get("seit") or 0,
     }
 
 
@@ -151,7 +152,7 @@ class Handler(BaseHTTPRequestHandler):
                     store.merge_history(body["history"])
                 eh = body.get("eshop_history")
                 if isinstance(eh, dict) and isinstance(eh.get("entries"), list):
-                    store.merge_eshop_history([e for e in eh["entries"] if isinstance(e, dict) and e.get("key")], eh.get("at"))
+                    store.merge_eshop_history([e for e in eh["entries"] if isinstance(e, dict) and e.get("key")], eh.get("at"), eh.get("seit") or 0)
                     for k, v in (eh.get("picks") or {}).items():
                         store.pick_eshop_history(str(k), str(v or ""))
                 self._send(200, {"ok": True})
