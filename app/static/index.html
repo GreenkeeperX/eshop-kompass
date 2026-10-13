@@ -1638,7 +1638,7 @@ function langSection(){
   if(done.length || auto.length)
   {
     const tdb = auto.filter(t => t.src === "titledb"), nin = auto.filter(t => t.src !== "titledb");
-    h += `<details><summary class="hint">Geprüft ${auto.length + done.length}: ${nin.length} von Nintendo gelesen${tdb.length ? `, ${tdb.length} laut titledb` : ""}, ${done.length} von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(srt(done), "Von dir bestätigt")}${group(srt(nin), "Von Nintendo gelesen")}${group(srt(tdb), "Laut titledb (nicht von Nintendo)")}</tbody></table></div></details>`;
+    h += `<details data-k="langdone" ${S.folds.langdone ? "open" : ""}><summary class="hint">Geprüft ${auto.length + done.length}: ${nin.length} von Nintendo gelesen${tdb.length ? `, ${tdb.length} laut titledb` : ""}, ${done.length} von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(srt(done), "Von dir bestätigt")}${group(srt(nin), "Von Nintendo gelesen")}${group(srt(tdb), "Laut titledb (nicht von Nintendo)")}</tbody></table></div></details>`;
   }
   return h;
 }
@@ -1675,7 +1675,7 @@ function jpHelper(todo){
   const jp = todo.filter(t => t.family === "JP");
   if(!jp.length) return "";
   const ids = [...new Set(jp.filter(t => !t.manual && (t.state === null || t.src === "titledb")).map(t => t.nsuid))];
-  return `<details class="box"><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
+  return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     <ol class="hint">
       <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(JP_HELPER)}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>JP-Sprachen lesen</b></a></li>
       <li>Kopiere die IDs: <textarea id="jpids" readonly rows="2" style="width:100%">${ids.join(" ")}</textarea> <button data-act="jpcopy">IDs kopieren</button></li>
