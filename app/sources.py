@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.49.3"
+VERSION = "0.50.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -354,17 +354,19 @@ def parse_related(page_html):
     DekuDeals setzt über jeden Abschnitt eine Überschrift ("DLC", "Included In",
     "Contains"). Ein Abschnitt reicht bis zur nächsten Überschrift gleicher oder
     höherer Ebene, kleinere Überschriften in den Kacheln gehören dazu. Liefert
-    {"dlc": [(Kürzel, Name)], "included_in": [...], "contains": [...]}, in der
-    Reihenfolge der Seite, jedes Kürzel einmal."""
+    {"dlc": [(Kürzel, Name)], "included_in": [...], "contains": [...], "found": [Abschnitte]},
+    in der Reihenfolge der Seite, jedes Kürzel einmal."""
     page_html = _norm(page_html)
     heads = list(_HEADING_RE.finditer(page_html))
     out = {k: [] for k in RELATED}
+    found = set()
     for n, h in enumerate(heads):
         name = re.sub(r"\s+", " ", html.unescape(_TAG_RE.sub(" ", h.group(2)))).strip().lower()
         name = re.sub(r"\s*\(?\d+\)?$", "", name)          # "DLC (12)"
         key = next((k for k, names in RELATED.items() if name in names), None)
         if not key:
             continue
+        found.add(key)
         level = int(h.group(1))
         end = len(page_html)
         for later in heads[n + 1:]:
@@ -382,6 +384,7 @@ def parse_related(page_html):
                 seen[slug] = title
         out[key] += [(s, t or s.replace("-", " ")) for s, t in seen.items()
                      if s not in {x for x, _ in out[key]}]
+    out["found"] = sorted(found)          # welche Abschnitte die Seite überhaupt hat
     return out
 
 

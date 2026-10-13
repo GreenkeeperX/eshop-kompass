@@ -105,9 +105,43 @@ def eshop_matches(data):
     return {"rows": rows, "owned": owned}
 
 
+def pack_parts(data, base):
+    """Alles, was in base steckt, auch über mehrere Stufen (Edition → Pass → DLC):
+    {Teil: Paket, über das er kommt}. Die Verbindungen stammen aus den Abschnitten
+    „Contains“ und „Included In“ bei DekuDeals (sync.update_links). Nur in eine Richtung:
+    Wer das Paket hat, hat die Teile, nicht umgekehrt."""
+    links = data.get("links") or {}
+    via, stack = {}, [s for s in base if s in links]
+    seen = set(base)
+    while stack:
+        c = stack.pop()
+        for p in links.get(c) or {}:
+            if p not in seen:
+                seen.add(p)
+                via[p] = c
+                stack.append(p)
+    return via
+
+
 def owned_set(data):
-    """Was du hast: deine DekuDeals-Sammlung plus Käufe aus dem eShop-Kaufverlauf."""
-    return set(data.get("owned") or []) | eshop_matches(data)["owned"]
+    """Was du hast: deine DekuDeals-Sammlung plus Käufe aus dem eShop-Kaufverlauf, dazu
+    alles, was in diesen Paketen steckt. Abgeleitet bei jedem Aufruf, nie gespeichert:
+    Ändert sich eine Verbindung, stimmt das Ergebnis von selbst."""
+    base = set(data.get("owned") or []) | eshop_matches(data)["owned"]
+    return base | set(pack_parts(data, base))
+
+
+def owned_games(data):
+    """Spiele, deren DLC die Sammlung zeigt: die der DekuDeals-Sammlung und Spiele, die du
+    nur über ein Paket hast (etwa eine Deluxe Edition), sobald ihre Seite gelesen ist."""
+    rel = data.get("rel") or {}
+    games = list(dict.fromkeys(data.get("owned") or []))
+    known = set(games)
+    for slug in sorted(pack_parts(data, set(games) | eshop_matches(data)["owned"])):
+        e = rel.get(slug)
+        if slug not in known and e and not e.get("parent"):
+            games.append(slug)
+    return games
 
 def cents(value):
     return int(round(float(value) * 100))
@@ -1430,7 +1464,7 @@ def extra_dlc(data, settings):
     marks = settings.get("dlc_marks") or {}
     wished = {s for s, it in (data.get("items") or {}).items() if it.get("active")}
     out = {}
-    for game in dict.fromkeys(data.get("owned") or []):
+    for game in owned_games(data):
         e = rel.get(game)
         if not e or e.get("parent") or marks.get(game) == "ignore_all":
             continue
@@ -1485,6 +1519,8 @@ def collection(data, settings, targets=None, now=None, rows=None):
     rel = data.get("rel") or {}
     owned_list = list(dict.fromkeys(data.get("owned") or []))
     owned = owned_set(data)
+    direct = set(owned_list) | eshop_matches(data)["owned"]
+    via = pack_parts(data, direct)          # nur über ein Paket vorhanden: {Teil: Paket}
     by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
     items = data.get("items") or {}
     marks = settings.get("dlc_marks") or {}
@@ -1494,7 +1530,10 @@ def collection(data, settings, targets=None, now=None, rows=None):
     def name(slug, e=None):
         return (e or {}).get("title") or (items.get(slug) or {}).get("title") or \
             slug.replace("-", " ").title()
-    for slug in owned_list:
+    def pack_name(slug):
+        c = via.get(slug)
+        return name(c, rel.get(c)) if c else None
+    for slug in owned_games(data):
         e = rel.get(slug)
         if not e:
             unread += 1
@@ -1510,6 +1549,8 @@ def collection(data, settings, targets=None, now=None, rows=None):
             mark = marks.get(d_slug)
             row = {"slug": d_slug, "title": d_title, "owned": d_slug in owned,
                    "wish": r is not None, "upgrade": is_upgrade(d_slug, d_title)}
+            if row["owned"] and d_slug in via and d_slug not in direct:
+                row["via"] = pack_name(d_slug)       # „im Paket …“
             row["have"] = row["owned"] or mark == "have"
             row["by_hand"] = not row["owned"] and mark == "have"
             row["ignored"] = not row["have"] and (mark == "ignore" or marks.get(slug) == "ignore_all")
@@ -1530,13 +1571,15 @@ def collection(data, settings, targets=None, now=None, rows=None):
             dlc.append(row)
         if not dlc:
             no_dlc += 1
-            plain.append({"slug": slug, "title": name(slug, e)})
+            plain.append({"slug": slug, "title": name(slug, e),
+                          "via": pack_name(slug) if slug not in direct else None})
             continue
         have = sum(1 for d in dlc if d["have"])
         ignored = sum(1 for d in dlc if d["ignored"])
         open_ = [d for d in dlc if not d["have"] and not d["ignored"]]
         priced = [d for d in open_ if d.get("eur") is not None]
         games.append({"slug": slug, "title": e.get("title") or slug, "dlc": dlc,
+                      "via": pack_name(slug) if slug not in direct else None,
                       "have": have, "ignored": ignored, "ignore_all": marks.get(slug) == "ignore_all",
                       "missing": len(dlc) - have - ignored,
                       "missing_eur": _r(sum(d["eur"] for d in priced)) if priced else None,

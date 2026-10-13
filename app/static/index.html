@@ -811,7 +811,7 @@ function collDlc(d){
   const tag = d.upgrade ? ` <span class="chip" title="Upgrade-Paket: macht die Switch-1-Fassung zur Nintendo Switch 2 Edition">Switch-2-Upgrade</span>` : "";
   const mk = (v, label, tip) => `<button class="link" data-act="dlcmark" data-s="${esc(d.slug)}" data-v="${v}" title="${tip}">${label}</button>`;
   let state;
-  if(d.owned) state = `<span class="mut">✓ hast du</span>`;
+  if(d.owned) state = `<span class="mut">✓ hast du${d.via ? `, im Paket ${esc(d.via)}` : ""}</span>`;
   else if(d.by_hand) state = `<span class="mut">✓ hast du (von dir abgehakt)</span> · ${mk("", "zurücksetzen", "Haken entfernen")}`;
   else if(d.ignored) state = `<span class="mut">ignoriert</span>${d.mark === "ignore" ? " · " + mk("", "zurücksetzen", "Wieder als fehlend zählen") : ""}`;
   else {
@@ -827,7 +827,7 @@ function collGame(g){
   const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : "",
     g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(", ");
   const key = "ign:" + g.slug;
-  return `<section class="box cg"><h3>${esc(g.title)} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>` +
+  return `<section class="box cg"><h3>${esc(g.title)}${g.via ? ` <small class="mut">über ${esc(g.via)}</small>` : ""} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>` +
     (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
     (ign.length ? `<details class="fold" data-k="${esc(key)}" ${S.folds[key] ? "open" : ""}><summary class="hint">${ign.length} ignoriert</summary><table class="mini-t">${ign.map(collDlc).join("")}</table></details>` : "") + `</section>`;
 }
@@ -851,7 +851,7 @@ function viewCollection(){
   h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung${missing ? `, ${missing} DLC fehlen` : ""}.${total} Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
   h += games.map(collGame).join("");
-  const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">${esc(g.title)}</a>`).join("")}</div></section>` : "";
+  const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener"${g.via ? ` title="über ${esc(g.via)}"` : ""}>${esc(g.title)}</a>`).join("")}</div></section>` : "";
   h += list(plain, "Ohne Zusatzinhalte", "");
   h += list(waiting, "Noch nicht gelesen", "Das Tool liest je Abgleich höchstens 40 Artikelseiten, diese folgen bei den nächsten Abgleichen.");
   if(!games.length && !plain.length && !waiting.length) h += `<p class="mut">${q || S.collMissing ? "Kein Spiel passt zum Filter." : "Noch keine Spiele bekannt."}</p>`;

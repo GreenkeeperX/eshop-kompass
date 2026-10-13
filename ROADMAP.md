@@ -154,6 +154,14 @@ Reihenfolge und Begründung:
   Schlüssel, nach einem Länderwechsel kommt nichts doppelt.
   Als Nächstes (Konzept liegt vor): Abgleich mit der ganzen DekuDeals-Sammlung, Hinweis auf
   gekaufte Spiele, die dort fehlen.
+- [x] Pakete und Verbindungen, Teil 1 (0.50): Verbindungsnetz aus „Contains“ und „Included In“,
+  Besitz über Pakete abgeleitet (mehrstufig, nur abwärts), Verbindung fällt erst nach zweimaligem
+  Fehlen weg, Spiele aus Editionen in der Sammlung (Entscheidung 13.10.2026).
+- [ ] Pakete, Teil 2: fehlende Pässe gruppiert mit Teilen („einzeln … · als Pass …“), „fehlen“
+  ohne Doppelzählung, „stimmt nicht“ gegen falsche Verbindungen, nicht mehr erhältliche DLC
+  eingeklappt statt „fehlt“, Kaufplan nimmt Teile eines gewählten Passes heraus.
+- [ ] Abgleich Kaufverlauf mit der ganzen DekuDeals-Sammlung (Slug-Stufe, „Bei DekuDeals
+  nachtragen“, eine Zeile in „Zu erledigen“ nur für neue Spiele).
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

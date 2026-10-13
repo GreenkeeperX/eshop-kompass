@@ -1727,7 +1727,8 @@ class EshopHistoryTest(unittest.TestCase):
         # Der gekaufte DLC fällt aus den fehlenden DLC, die Zuordnung bleibt trotzdem
         del data["extra"]["vs-foscari"]
         self.assertIn("vs-foscari", planner.owned_set(data))
-        self.assertNotIn("_eshop", json.load(open(os.path.join(store.DATA_DIR, "data.json"))))
+        with open(os.path.join(store.DATA_DIR, "data.json"), encoding="utf-8") as f:
+            self.assertNotIn("_eshop", json.load(f))
 
     def test_same_entries_not_added_twice_and_picks(self):
         e = [{"id": "", "title": "Algo desconhecido", "date": "2026-10-01"}]
@@ -1867,7 +1868,7 @@ class CollectionTest(unittest.TestCase):
         # "Other users also liked" gehört nicht dazu, eine Seite ohne Abschnitte liefert nichts
         self.assertNotIn("hades", [x for x, _ in r["dlc"]])
         self.assertEqual(sources.parse_related("<h3>Details</h3><a href='/items/x'>X</a>"),
-                         {"dlc": [], "included_in": [], "contains": []})
+                         {"dlc": [], "included_in": [], "contains": [], "found": []})
         bundle = '<h3>Contains</h3><a href="/items/mario-kart-8-deluxe">Mario Kart 8 Deluxe $59.99 $41.97 -30%</a>'
         self.assertEqual(sources.parse_related(bundle)["contains"], [("mario-kart-8-deluxe", "Mario Kart 8 Deluxe")])
 
@@ -1940,6 +1941,58 @@ class NsoItemsTest(unittest.TestCase):
         self.assertEqual(([d["slug"] for d in g["dlc"]], g["missing"]), (["acnh-happy-home-paradise"], 1))
 
 
+class PackLinksTest(unittest.TestCase):
+    """Pakete und Verbindungen (0.50): wer das Paket hat, hat die Teile."""
+    def rel_page(self, contains=(), included_in=(), found=None):
+        r = {"contains": list(contains), "included_in": list(included_in)}
+        r["found"] = found if found is not None else [k for k, v in r.items() if v]
+        return r
+
+    def test_links_from_both_sides_and_removal_only_after_two_misses(self):
+        data = {"rel": {}}
+        sync.update_links(data, "pass", self.rel_page(contains=[("d1", "DLC 1"), ("d2", "DLC 2")]), 1)
+        sync.update_links(data, "d3", self.rel_page(included_in=[("pass", "Pass")]), 1)
+        self.assertEqual(set(data["links"]["pass"]), {"d1", "d2", "d3"})
+        # Neue Verbindung auf der schon gelesenen Paketseite: gilt sofort, steht im Protokoll
+        notes = sync.update_links(data, "pass", self.rel_page(contains=[("d1", "DLC 1"), ("d2", "DLC 2"), ("d4", "DLC 4")]), 2)
+        self.assertEqual(notes, ["pass enthält jetzt auch: DLC 4"])
+        # d2 fehlt einmal: bleibt; Abschnitt fehlt ganz: nichts ändert sich; zweites Fehlen: weg
+        sync.update_links(data, "pass", self.rel_page(contains=[("d1", "DLC 1"), ("d4", "DLC 4")]), 3)
+        self.assertIn("d2", data["links"]["pass"])
+        sync.update_links(data, "pass", self.rel_page(found=[]), 4)
+        self.assertIn("d2", data["links"]["pass"])
+        notes = sync.update_links(data, "pass", self.rel_page(contains=[("d1", "DLC 1"), ("d4", "DLC 4")]), 5)
+        self.assertEqual(notes, ["pass enthält nicht mehr: DLC 2"])
+        # d3 kennt das Tool von der Seite des Teils: die Paketseite allein nimmt es nicht weg
+        self.assertIn("d3", data["links"]["pass"])
+
+    def test_owned_through_nested_packs_and_games_from_editions(self):
+        data = {"owned": ["gold", "sr-deluxe"], "items": {}, "rel": {
+            "gold": {"title": "Gold Edition", "dlc": []},
+            "sr-deluxe": {"title": "SpeedRunners: Deluxe Edition", "dlc": []},
+            "speedrunners": {"title": "SpeedRunners", "dlc": [["sr-a", "Pack A"], ["sr-b", "Pack B"], ["sr-new", "Neues Pack"]]}},
+            "links": {"gold": {"game": {}, "season-pass": {}}, "season-pass": {"pixel": {}, "dk": {}},
+                      "sr-deluxe": {"speedrunners": {}, "sr-a": {}, "sr-b": {}}}}
+        self.assertTrue({"game", "season-pass", "pixel", "dk", "speedrunners", "sr-a"} <= planner.owned_set(data))
+        self.assertNotIn("sr-new", planner.owned_set(data))
+        self.assertNotIn("gold", planner.owned_set({"owned": ["pixel"], "links": data["links"]}))  # nur abwärts
+        c = planner.collection(data, {}, rows=[])
+        g = next(g for g in c["games"] if g["slug"] == "speedrunners")
+        self.assertEqual(g["via"], "SpeedRunners: Deluxe Edition")
+        rows = {d["slug"]: d for d in g["dlc"]}
+        self.assertEqual((rows["sr-a"]["have"], rows["sr-a"]["via"]), (True, "SpeedRunners: Deluxe Edition"))
+        self.assertEqual((g["have"], g["missing"]), (2, 1))           # das neuere Pack fehlt
+        self.assertEqual(set(planner.extra_dlc(data, {})), {"sr-new"})
+        self.assertEqual(c["owned"], 2)                                # Zahl der DekuDeals-Sammlung
+
+    def test_migration_from_rel(self):
+        data = {"rel": {"pass": {"checked": 5, "has": [["d1", "DLC 1"]], "in": []},
+                        "game": {"checked": 5, "has": [], "in": [["bundle", "Bundle"]]}}}
+        sync.migrate_links(data)
+        self.assertEqual({c: set(p) for c, p in data["links"].items()}, {"pass": {"d1"}, "bundle": {"game"}})
+        self.assertEqual(data["links_v"], 1)
+
+
 class CollectionTabTest(unittest.TestCase):
     def test_all_games_of_the_collection(self):
         data = {"owned": ["acnh", "celeste", "hades"], "items": {}, "rel": {
@@ -1947,7 +2000,7 @@ class CollectionTabTest(unittest.TestCase):
             "celeste": {"title": "Celeste", "dlc": []}}}
         c = planner.collection(data, {}, rows=[])
         self.assertEqual([g["slug"] for g in c["games"]], ["acnh"])
-        self.assertEqual(c["plain"], [{"slug": "celeste", "title": "Celeste"}])
+        self.assertEqual(c["plain"], [{"slug": "celeste", "title": "Celeste", "via": None}])
         self.assertEqual(c["waiting"], [{"slug": "hades", "title": "Hades"}])     # noch nicht gelesen
 
 

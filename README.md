@@ -133,6 +133,17 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   zur Kaufhistorie im Tool gibt den Stand des letzten lückenlosen Laufs mit, das Lesezeichen
   liest dann bis dorthin und zur Sicherheit eine ganze Seite bereits bekannter Käufe weiter. Bricht ein Lauf ab, übernimmt das Tool das Gelesene, behält aber
   den alten Stand, der nächste Lauf liest wieder ab dort.
+- Pakete (Editionen, Season und Expansion Passes, DLC-Bundles): Wer ein Paket hat, hat seine
+  Teile, auch über mehrere Stufen (Edition → Pass → DLC). Die Verbindungen kommen aus den
+  Abschnitten „Contains“ (Paketseite) und „Included In“ (Seite eines Teils) bei DekuDeals und
+  werden gespeichert; was du hast, rechnet das Tool jedes Mal neu aus Sammlung, Kaufverlauf
+  und diesen Verbindungen, nur abwärts (ein Teil macht nie das Paket). Neue Verbindungen
+  gelten sofort, eine Verbindung fällt erst weg, wenn sie zweimal hintereinander fehlt; fehlt
+  ein Abschnitt ganz, ändert sich nichts. Änderungen nennt das Protokoll. Die Seiten fehlender
+  DLC liest das Tool für die ID-Suche ohnehin und merkt sich ihre Pakete dabei, sonst
+  vierteljährlich im Rahmen der 40 Seiten je Abgleich. Spiele, die du nur über eine Edition
+  hast, stehen in der Sammlung mit „über …“, ihre neueren DLC als fehlend, enthaltene als
+  „hast du, im Paket …“.
 - Sammlung (eigener Reiter): alle Spiele deiner DekuDeals-Sammlung mit ihren
   Zusatzinhalten (Abschnitt "DLC" der DekuDeals-Artikelseite), je DLC "hast du"
   oder "fehlt". Ob du einen DLC hast, sagt deine Sammlung bei DekuDeals; was sie

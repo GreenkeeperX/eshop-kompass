@@ -37,6 +37,8 @@ CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag le
 CARD_PAUSE = 3.0
 REL_RECHECK_SECONDS = 30 * 24 * 3600  # DLC und Pakete eines Titels monatlich auffrischen
 REL_PER_SYNC = 40                     # höchstens so viele Artikelseiten je Abgleich
+LINK_MISSES = 2                       # so oft muss eine Verbindung fehlen, bis sie wegfällt
+LINKS_RECHECK_SECONDS = 90 * 24 * 3600  # Pakete fehlender DLC vierteljährlich nachsehen
 REL_V = 1                             # erhöht sich, wenn alle Seiten neu zu lesen sind
 EXTRA_PER_SYNC = 40                   # Artikelseiten je Abgleich für IDs fehlender DLC der Sammlung
 
@@ -918,26 +920,120 @@ def sync_lows(data, settings, fetch, sleep, now=None):
     _log(f"Tiefstpreise bekannt: {known}, Angebotsverläufe: {runs}, Seiten ohne Tiefstpreis: {missing}")
 
 
+def update_links(data, slug, related, now):
+    """Verbindungen „Paket enthält Teil“ aus einer gelesenen DekuDeals-Seite übernehmen:
+    „Contains“ (die Seite ist das Paket) und „Included In“ (die Seite ist ein Teil).
+    data["links"] = {Paket: {Teil: {"t": Name, "src": {Seite: Fehlversuche}}}}.
+    Neue Verbindungen gelten sofort. Eine Verbindung fällt erst weg, wenn sie auf jeder Seite,
+    die sie genannt hat, LINK_MISSES-mal hintereinander fehlt. Fehlt ein Abschnitt ganz,
+    ändert die Seite nichts (umgebaute oder kaputte Seite). Gibt Protokollzeilen zurück."""
+    links = data.setdefault("links", {})
+    lchk = data.setdefault("lchk", {})
+    before = lchk.get(slug)                 # Seite schon einmal gelesen: Neues ist eine Änderung
+    lchk[slug] = now
+    found = set(related.get("found") or [k for k in ("contains", "included_in") if related.get(k)])
+    rel = data.get("rel") or {}
+
+    def name(x, fallback=None):
+        return (rel.get(x) or {}).get("title") or fallback or x.replace("-", " ")
+    seen, notes = set(), []
+    edges = []
+    if "contains" in found:
+        edges += [(slug, p, t) for p, t in related.get("contains") or [] if p != slug]
+    if "included_in" in found:
+        edges += [(c, slug, name(slug)) for c, _ in related.get("included_in") or [] if c != slug]
+    for c, p, t in edges:
+        parts = links.setdefault(c, {})
+        if p not in parts:
+            if before and c == slug:
+                notes.append(f"{name(c)} enthält jetzt auch: {t}")
+            parts[p] = {"t": t, "src": {}}
+        parts[p]["src"][slug] = 0
+        seen.add((c, p))
+    # Was diese Seite früher genannt hat und jetzt nicht mehr
+    for c, parts in list(links.items()):
+        for p, e in list(parts.items()):
+            if slug not in e["src"] or (c, p) in seen:
+                continue
+            if not ((c == slug and "contains" in found) or (p == slug and "included_in" in found)):
+                continue
+            e["src"][slug] += 1
+            if e["src"][slug] >= LINK_MISSES:
+                del e["src"][slug]
+                if not e["src"]:
+                    del parts[p]
+                    notes.append(f"{name(c)} enthält nicht mehr: {e['t']}")
+        if not parts:
+            del links[c]
+    return notes
+
+
+def migrate_links(data):
+    """Bis 0.49 standen die Pakete nur je Seite in rel: einmal ins Verbindungsnetz (0.50)."""
+    if data.get("links_v", 0) >= 1:
+        return
+    for slug, e in (data.get("rel") or {}).items():
+        related = {"contains": e.get("has") or [], "included_in": e.get("in") or []}
+        related["found"] = [k for k, v in related.items() if v]
+        if related["found"]:
+            update_links(data, slug, related, e.get("checked") or 0)
+    data["links_v"] = 1
+
+
+def _log_links(notes):
+    for line in notes[:10]:
+        _log("Pakete: " + line)
+    if len(notes) > 10:
+        _log(f"Pakete: {len(notes) - 10} weitere Änderungen")
+
+
 def sync_related(data, settings, fetch, sleep, now=None):
     """Liest DLC, Pakete ("Included In") und Inhalt ("Contains") der Artikelseiten von
     Sammlung und Wishlist. Schonend: höchstens REL_PER_SYNC Seiten je Abgleich,
     zuerst die noch nie gelesenen und die Sammlung, dann monatlich auffrischen."""
     now = now or time.time()
     rel = data.setdefault("rel", {})
+    migrate_links(data)
     owned = list(data.get("owned") or [])
     wished = [s for s, it in data["items"].items() if it.get("active")]
+    # Teile von Paketen, die du hast und die kein bekannter DLC sind: vermutlich Spiele (etwa
+    # aus einer Deluxe Edition), deren DLC die Sammlung zeigen soll (0.50)
+    known_dlc = {d for e in rel.values() for d, _ in e.get("dlc") or []}
+    deku = list(owned)
+    owned += [s for s in sorted(planner.pack_parts(data, set(owned) | planner.eshop_matches(data)["owned"]))
+              if s not in known_dlc]
     todo = []
     for pos, slug in enumerate(dict.fromkeys(owned + wished)):
         e = rel.get(slug)
         if e and e.get("v", 0) >= REL_V and now - e.get("checked", 0) < REL_RECHECK_SECONDS:
             continue
         todo.append((e is not None, e.get("checked", 0) if e else 0, pos, slug))
-    if not todo:
-        return
     todo.sort()
     todo = todo[:REL_PER_SYNC]
-    _step("DLC und Pakete lesen", len(todo))
-    fails = 0
+    # Fehlende DLC: ihre Pakete kennt das Tool aus der ID-Suche; wessen Seite länger nicht
+    # gelesen wurde, wird mit dem Rest des Budgets nachgesehen (rel bleibt dafür unberührt)
+    lchk = data.get("lchk") or {}
+    links_todo = sorted((lchk.get(s, 0), s) for s in (data.get("extra") or {})
+                        if now - lchk.get(s, 0) >= LINKS_RECHECK_SECONDS)
+    links_todo = [s for _, s in links_todo[:REL_PER_SYNC - len(todo)]]
+    if not todo and not links_todo:
+        return
+    _step("DLC und Pakete lesen", len(todo) + len(links_todo))
+    fails, notes = 0, []
+    for slug in links_todo:
+        try:
+            info = sources.fetch_item(slug, "de", fetch=fetch)
+        except sources.FetchError as e:
+            if e.status in sources.BLOCKED or fails >= 4:
+                _log(f"DLC und Pakete unterbrochen ({e}), Rest beim nächsten Abgleich")
+                todo = []
+                break
+            fails += 1
+            sleep(LOW_PAUSE)
+            continue
+        notes += update_links(data, slug, info.get("related") or {}, now)
+        status["done"] += 1
+        sleep(LOW_PAUSE)
     for *_, slug in todo:
         try:
             info = sources.fetch_item(slug, "de", fetch=fetch)
@@ -954,15 +1050,18 @@ def sync_related(data, settings, fetch, sleep, now=None):
                      "dlc": [list(x) for x in r.get("dlc", []) if x[0] != slug],
                      "in": [list(x) for x in r.get("included_in", []) if x[0] != slug],
                      "has": [list(x) for x in r.get("contains", []) if x[0] != slug]}
+        notes += update_links(data, slug, r, now)
         status["done"] += 1
         if status["done"] % 10 == 0:
             store.save_data(data)
         sleep(LOW_PAUSE)
     store.save_data(data)
-    games = [s for s in owned if s in rel and not rel[s].get("parent")]
+    _log_links(notes)
+    games = [s for s in deku if s in rel and not rel[s].get("parent")]
     _log(f"DLC und Pakete: {len(games)} Spiele der Sammlung gelesen, "
          f"{sum(1 for s in games if rel[s]['dlc'])} davon mit Zusatzinhalten"
-         + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else ""))
+         + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else "")
+         + (f"; Pakete bekannt: {len(data.get('links') or {})}" if data.get("links") else ""))
 
 
 def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
@@ -1040,6 +1139,8 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
                 sleep(LOW_PAUSE)
                 continue
             reached, fails = True, 0
+            # Die Seite nennt auch die Pakete des DLC: nebenbei merken, kein eigener Abruf
+            _log_links(update_links(data, slug, info.get("related") or {}, now))
             sleep(LOW_PAUSE)
             if info["nsuids"]:
                 found = info["nsuids"]
