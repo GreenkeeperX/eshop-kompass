@@ -112,7 +112,8 @@ Reihenfolge und Begründung:
   Abgleich der Japan-IDs mit titledb (0.42): Programm-ID Japan gegen Europa. Ab 0.43 gilt bei
   Abweichung der titledb-Kandidat, ohne Kandidaten „ID fraglich“ (Entscheidung 13.10.2026).
   Ab 0.44 lädt titledb für neu gefundene IDs schon am nächsten Tag und nach der ID-Suche;
-  offene Einträge, die dort gerade nicht kaufbar sind, stehen zugeklappt.
+  offene Einträge, die dort gerade nicht kaufbar sind, stehen zugeklappt. Ab 0.44.1 lädt titledb
+  neue IDs gleich im nächsten Abgleich, nicht Kaufbares steht nicht mehr in der Liste.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

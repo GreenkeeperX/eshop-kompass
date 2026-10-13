@@ -27,7 +27,7 @@ LANG_TRIES = 3                        # so viele Versuche, bevor nur noch monatl
 LANG_PER_SYNC = 40                    # Seiten je Region und Abgleich, ungeprüfte zuerst
 TITLEDB_SECONDS = 7 * 24 * 3600       # titledb höchstens wöchentlich laden ...
 TITLEDB_RECHECK_SECONDS = 30 * 24 * 3600  # ... und je Titel ohne Angabe monatlich nachsehen
-TITLEDB_FRESH_SECONDS = 20 * 3600      # für noch nie nachgesehene IDs schon am nächsten Tag
+TITLEDB_FRESH_SECONDS = 3600          # noch nie nachgesehene IDs gleich im nächsten Abgleich
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
 CARD_PAUSE = 3.0
@@ -546,7 +546,8 @@ def sync_titledb(data, settings, fetch, now=None):
     titledb nennt zu jeder ID die Programm-ID, die in allen Regionen gleich ist. Weicht sie
     bei Japan und Europa ab, gehört die Japan-ID vermutlich zu einem anderen Titel: Der
     nächste Abgleich sucht sie einmal neu. Lädt nur, wenn etwas zu tun ist, und höchstens
-    einmal die Woche (Japan rund 24 MB, für den ID-Abgleich zusätzlich Deutschland)."""
+    einmal die Woche (Japan rund 24 MB, für den ID-Abgleich zusätzlich Deutschland), für
+    neue IDs gleich. Jede ID gilt danach als nachgesehen, auch wenn titledb sie nicht kennt."""
     now = now or time.time()
     if not any(settings["countries"][code]["enabled"] for code in countries.ORDER
                if countries.BY_CODE[code]["family"] == "JP"):
@@ -561,7 +562,7 @@ def sync_titledb(data, settings, fetch, now=None):
             eu = ((r.get("ids") or {}).get("EU") or [None])[0]
             if eu and (r.get("ids_tdb") or {}).get("JP") != n:
                 verify[n] = (r, str(eu))
-    # Neue IDs, die titledb noch nie gesehen hat: schon nach einem Tag, sonst wöchentlich
+    # Neue IDs, die titledb noch nie gesehen hat: gleich, sonst wöchentlich
     fresh = any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
         (r.get("ids_tdb") or {}).get("JP") is None for r, _ in verify.values())
     wait = TITLEDB_FRESH_SECONDS if fresh else TITLEDB_SECONDS
