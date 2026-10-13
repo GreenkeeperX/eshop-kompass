@@ -150,7 +150,8 @@ Reihenfolge und Begründung:
   ähnlich nach Bestätigung, erstattet nie). Gekauftes fällt aus dem Kaufplan, auch ohne Eintrag bei
   DekuDeals (Entscheidung 13.10.2026). Offen: Kaufverlauf reicht nur zwei Jahre zurück.
   0.49.1: Das Lesezeichen liest nur bis zum Stand des letzten lückenlosen Laufs; 0.49.2: dazu
-  zur Sicherheit eine ganze Seite bereits bekannter Käufe.
+  zur Sicherheit eine ganze Seite bereits bekannter Käufe. 0.49.3: Vorgangsnummer ohne Land als
+  Schlüssel, nach einem Länderwechsel kommt nichts doppelt.
   Als Nächstes (Konzept liegt vor): Abgleich mit der ganzen DekuDeals-Sammlung, Hinweis auf
   gekaufte Spiele, die dort fehlen.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region

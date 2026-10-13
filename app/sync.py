@@ -1160,9 +1160,10 @@ def import_eshop_history(text, now=None):
         nid = str(e.get("id") or "").strip()[:20]
         title = " ".join(str(e["title"]).split())[:200]
         date = str(e.get("date") or "")[:25]
-        # Schlüssel: die Vorgangsnummer von Nintendo, sonst ID oder Titel mit Datum
+        # Schlüssel: die Vorgangsnummer von Nintendo (gilt fürs ganze Konto, auch nach einem
+        # Länderwechsel), sonst ID oder Titel mit Datum
         k = str(e.get("k") or "").strip()[:40]
-        entries.append({"key": f"nin:{region}:{k}" if k else f"{nid or title}|{date}", "id": nid,
+        entries.append({"key": f"nin:{k}" if k else f"{nid or title}|{date}", "id": nid,
                         "title": title, "date": date, "region": str(e.get("region") or region)[:4],
                         "type": str(e.get("type") or "")[:30], "item": str(e.get("item") or "")[:30],
                         "amount": str(e.get("amount") or "")[:30]})

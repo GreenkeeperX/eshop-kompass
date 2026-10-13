@@ -1,5 +1,6 @@
 """Zwischenspeicher (data.json) und Einstellungen (settings.json)."""
 import json
+import re
 import os
 import threading
 from datetime import date
@@ -260,6 +261,18 @@ def load_eshop_history():
         h = _load("eshop_history.json", {})
         h.setdefault("entries", [])
         h.setdefault("picks", {})
+        # 0.49.0 bis 0.49.2 hatten das Land im Schlüssel ("nin:BR:123"): Nach einem
+        # Länderwechsel wäre derselbe Kauf doppelt gekommen
+        if any(e.get("key", "").count(":") == 2 and e["key"].startswith("nin:") for e in h["entries"]):
+            fix = lambda k: re.sub(r"^nin:[A-Z]*:", "nin:", k)
+            seen, entries = set(), []
+            for e in h["entries"]:
+                e["key"] = fix(e.get("key", ""))
+                if e["key"] not in seen:
+                    seen.add(e["key"])
+                    entries.append(e)
+            h["entries"] = entries
+            h["picks"] = {fix(k): v for k, v in h["picks"].items()}
         return h
 
 

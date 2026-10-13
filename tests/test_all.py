@@ -1756,7 +1756,7 @@ class EshopHistoryTest(unittest.TestCase):
         self.assertEqual(rows["Spiritfarer®"]["how"], "void")          # erstattet: zählt nicht
         self.assertIsNone(rows["Hades Deluxe"]["slug"])                  # nur ähnlich: Vorschlag
         self.assertEqual([x["slug"] for x in rows["Hades Deluxe"]["suggest"]], ["hades"])
-        self.assertEqual(rows["Hades Deluxe"]["key"], "nin:BR:3")
+        self.assertEqual(rows["Hades Deluxe"]["key"], "nin:3")
 
     def test_reading_point_only_after_complete_run(self):
         e = [{"k": "5", "title": "Hades", "date": "2026-10-01"}]
@@ -1766,6 +1766,15 @@ class EshopHistoryTest(unittest.TestCase):
         self.assertEqual(store.load_eshop_history()["seit"], 7)
         sync.import_eshop_history(json.dumps({"region": "BR", "complete": True, "newest": 3, "entries": []}))
         self.assertEqual(store.load_eshop_history()["seit"], 7)    # nie zurück
+
+    def test_no_duplicates_after_country_switch_or_old_keys(self):
+        e = [{"k": "5", "title": "Hades", "date": "2026-10-01"}]
+        sync.import_eshop_history(json.dumps({"region": "BR", "entries": e}))
+        self.assertEqual(sync.import_eshop_history(json.dumps({"region": "PL", "entries": e}))["new"], 0)
+        store._save("eshop_history.json", {"entries": [{"key": "nin:BR:7", "title": "A"}, {"key": "nin:PL:7", "title": "A"}],
+                                           "picks": {"nin:BR:7": "-"}})
+        h = store.load_eshop_history()                       # Schlüssel bis 0.49.2 mit Land
+        self.assertEqual(([x["key"] for x in h["entries"]], h["picks"]), (["nin:7"], {"nin:7": "-"}))
 
     def test_wrong_text_rejected(self):
         with self.assertRaises(ValueError):
