@@ -1587,6 +1587,28 @@ function settingsBody(form){
   return body;
 }
 /* Sprachen von Hand bestätigen: einmal je Titel und Region */
+/* Gelesene Sprachangaben auf Deutsch: Japan liefert japanische Wörter (ドイツ語), Amerika,
+   Europa und titledb englische (german). Unbekanntes bleibt, wie es ist. */
+const LANG_DE = {
+  "日本語": "Japanisch", "英語": "Englisch", "ドイツ語": "Deutsch", "フランス語": "Französisch",
+  "イタリア語": "Italienisch", "スペイン語": "Spanisch", "オランダ語": "Niederländisch",
+  "ポルトガル語": "Portugiesisch", "ロシア語": "Russisch", "韓国語": "Koreanisch",
+  "中国語": "Chinesisch", "簡体中国語": "Chinesisch (vereinfacht)", "繁体中国語": "Chinesisch (traditionell)",
+  "ポーランド語": "Polnisch", "タイ語": "Thailändisch", "スウェーデン語": "Schwedisch",
+  "デンマーク語": "Dänisch", "ノルウェー語": "Norwegisch", "フィンランド語": "Finnisch",
+  "チェコ語": "Tschechisch", "ハンガリー語": "Ungarisch", "ギリシャ語": "Griechisch",
+  "トルコ語": "Türkisch", "ウクライナ語": "Ukrainisch", "アラビア語": "Arabisch",
+  english: "Englisch", french: "Französisch", german: "Deutsch", italian: "Italienisch",
+  spanish: "Spanisch", dutch: "Niederländisch", portuguese: "Portugiesisch", russian: "Russisch",
+  japanese: "Japanisch", korean: "Koreanisch", chinese: "Chinesisch", polish: "Polnisch",
+  swedish: "Schwedisch", danish: "Dänisch", norwegian: "Norwegisch", finnish: "Finnisch",
+  czech: "Tschechisch", hungarian: "Ungarisch", greek: "Griechisch", turkish: "Türkisch",
+  ukrainian: "Ukrainisch", arabic: "Arabisch", thai: "Thailändisch"};
+function langDe(text){
+  if(!text) return "";
+  const out = text.split(/\s*[,、]\s*/).filter(Boolean).map(w => LANG_DE[w] || LANG_DE[w.toLowerCase()] || w);
+  return [...new Set(out)].join(", ");
+}
 function langSection(){
   const todo = S.state.lang_todo || [];
   // „ID fraglich“ steht oben, auch wenn schon eine Sprache gelesen ist: Sie kann zu einem anderen Titel gehören
@@ -1603,7 +1625,7 @@ function langSection(){
     <td><small>${t.here ? `dort ${t.dlc ? "ab " : ""}${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
     <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `${t.src === "titledb" ? "titledb" : "Nintendo"} sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
-      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline;text-decoration:underline dotted" title="Gelesen: ${esc(t.text || "–")}">${t.src === "titledb" ? "laut titledb" : "von Nintendo gelesen"}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Gelesene Angabe überschreiben">stimmt nicht</button>`
+      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline;text-decoration:underline dotted" title="Gelesen: ${esc(langDe(t.text) || "–")}">${t.src === "titledb" ? "laut titledb" : "von Nintendo gelesen"}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Gelesene Angabe überschreiben">stimmt nicht</button>`
       : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
   const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
   const L = "sprachen", srt = arr => sortRows(L, arr, {title: t => t.title, region: t => t.family_name, price: t => t.here ? t.here.eur : null});

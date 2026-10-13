@@ -359,7 +359,7 @@ Sicherung und Protokoll.
   Link in den Store und "Deutsch ja"/"nein" (was dort gerade nicht kaufbar ist, steht unten);
   wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:
-  von Nintendo gelesen ("stimmt nicht" überschreibt) und von Hand gesetzt
+  von Nintendo gelesen (der Tooltip nennt die gelesenen Sprachen auf Deutsch; "stimmt nicht" überschreibt) und von Hand gesetzt
   ("zurücksetzen" stellt die Angabe von Nintendo wieder her). Von Hand gilt
   dauerhaft und geht der Angabe von Nintendo vor. Steht ein Titel weder auf der
   Wishlist noch in der Sammlung, löscht der Abgleich seine Angaben wieder. Ist

@@ -122,6 +122,7 @@ Reihenfolge und Begründung:
 
 - [x] Prüfumgebung (0.45): `tools/replay.py` rechnet Momentaufnahmen ohne Netz durch, prüft
   feste Regeln, spielt Szenarien und vergleicht zwei Versionen auf denselben Daten.
+  0.45.1: gelesene Sprachen im Tooltip auf Deutsch, auch die japanischen.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle
