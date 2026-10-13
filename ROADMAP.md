@@ -249,20 +249,18 @@ Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
 Noch nichts davon ist begonnen. Reihenfolge nach Aufwand und Nutzen: zuerst, was dem heutigen
 Betrieb hilft, zuletzt das öffentliche Angebot, weil es von den Schritten davor abhängt.
 
-- [ ] 6.1 **Hell, dunkel, System** (klein): Umschalter mit drei Stufen, Vorgabe „System“.
-  Machbar ohne Umbau: Die Farben stehen schon als Tokens, heute schaltet nur
-  `prefers-color-scheme`. Künftig setzt die Wahl `data-theme` am `html`-Element und wird wie
-  die übrige Ansicht im Browser gemerkt. Der helle Modus wird dafür erstmals eigens geprüft
-  (Kontraste von Gold, Grün, Bernstein); `docs/oberflaeche.md` wird angepasst.
-- [ ] 6.2 **Lesezeichen leichter anlegen** (klein): Ein Knopf, der selbst ein Lesezeichen
-  anlegt, geht nicht. Browser erlauben Webseiten das aus Sicherheitsgründen nicht mehr
-  (Firefox hat die letzte Schnittstelle dafür entfernt, Chrome hatte nie eine). Machbar ist:
-  - der Link zum Ziehen sieht aus wie ein Knopf, mit kurzer Anleitung je Browser,
-  - „Code kopieren“ als zweiter Weg (neues Lesezeichen, Code als Adresse einfügen), der auch
-    auf Tablet und Handy geht, wo Ziehen nicht klappt,
-  - die Textfelder zum Kopieren und Einfügen stehen eingeklappt unter „Geht das nicht?“,
-  - jedes Lesezeichen trägt seine Version; ist es älter als das Tool, meldet es das und bittet,
-    es neu zu ziehen. Heute merkt niemand, wenn ein altes Lesezeichen weiterläuft.
+- [x] 6.1 **Hell, dunkel, System** (0.55): runder Knopf neben dem „?“, der nur die aktuelle Wahl
+  zeigt; ein Klick öffnet die drei Stufen, Vorgabe „System“ (Entscheidung 13.10.2026). Die Wahl
+  setzt `data-theme` am `html`-Element und bleibt im Browser. Der helle Modus wird seitdem bei
+  jeder Farbänderung mitgeprüft.
+- [x] 6.2 **Lesezeichen leichter anlegen** (0.55): Ein Knopf, der selbst ein Lesezeichen anlegt,
+  geht nicht; Browser erlauben Webseiten das nicht (Firefox hat die letzte Schnittstelle dafür
+  entfernt, Chrome hatte nie eine). Umgesetzt: gestrichelter Knopf zum Ziehen, „Code kopieren“
+  für ein von Hand angelegtes Lesezeichen (auch am Handy), kurze Anleitung eingeklappt,
+  Textfelder unter „Geht das nicht?“. Jedes Lesezeichen gibt seinen Stand mit, ein veraltetes
+  meldet sich. „JP-Sprachen lesen“ gibt sein Ergebnis jetzt direkt ans Tool und bekommt die IDs
+  über den Link zu store-jp; ob der Link den Warteraum übersteht, zeigt der Gebrauch, sonst fragt
+  es wie bisher.
   Verworfen: ein Lesezeichen, das seinen Code jedes Mal vom Tool nachlädt. Das holte fremden
   Code in eine angemeldete Nintendo-Seite und scheitert oft an deren Sicherheitsregeln.
   Später möglich: eine Browser-Erweiterung statt Lesezeichen. Sie wäre einmal installiert und
@@ -274,16 +272,16 @@ Betrieb hilft, zuletzt das öffentliche Angebot, weil es von den Schritten davor
   Wörterliste mit `t("…")`, dann geben `planner.py` und `sync.py` Kennungen mit Werten statt
   fertiger Sätze zurück. Zahlen, Daten und Beträge über `Intl` nach Sprache formatiert. README
   zusätzlich auf Englisch. Ohne neue Abhängigkeiten machbar, aber eine Version je Reiter.
-- [ ] 6.4 **Zielsprache wählbar** (mittel bis groß): Heute fragt die Sprachregel fest nach
-  Deutsch (`planner.german`), die Quellen liefern aber schon alle Sprachen. Machbar:
-  `german` wird `has_lang(Zielsprache)`, dazu je Sprache die Namen bei Nintendo Japan
-  (wie ドイツ語). Wichtig: Zielsprache und Heimatland sind zwei Einstellungen. Deutschland als
-  Vergleichsbasis, Euro als Rechenwährung, die fehlenden Euroländer, Kartenstufen in Euro und die
-  Gebühren hängen am Heimatland, nicht an der Sprache. Darum zuerst ein Heimatland mit Währung
-  (eigener Schritt), dann die Zielsprache. Bei einem Wechsel fragt das Tool, ob die Vorgaben
-  mitwechseln sollen: welche Länder sichtbar sind, welche zählen, welche Region „ohne Wechsel“
-  ist. Danach mit der Prüfumgebung (`tools/replay.py`) Szenarien je Zielsprache durchrechnen,
-  etwa Englisch (fast jede Region zählt) und Japanisch (oft nur Japan und Asien).
+- [ ] 6.4 **Heimatland wählbar** (mittel bis groß): Ein Heimatland bestimmt Zielsprache,
+  Vergleichsland und Rechenwährung zugleich (Entscheidung 13.10.2026). Heute fragt die
+  Sprachregel fest nach Deutsch (`planner.german`), Deutschland ist Vergleichsbasis, gerechnet
+  wird in Euro, die Euroländer fehlen bewusst, Kartenstufen und Gebühren stehen in Euro. Die
+  Quellen liefern schon alle Sprachen. Machbar: `german` wird `has_lang(Zielsprache)`, dazu je
+  Sprache die Namen bei Nintendo Japan (wie ドイツ語); `REFERENCE` und Euro werden zur Einstellung.
+  Bei einem Wechsel fragt das Tool, ob die Vorgaben mitwechseln sollen: welche Länder sichtbar
+  sind, welche zählen, welche Region „ohne Wechsel“ ist. Danach mit der Prüfumgebung
+  (`tools/replay.py`) Szenarien je Heimatland durchrechnen, etwa USA (Englisch, fast jede Region
+  zählt) und Japan (oft nur Japan und Asien). Lohnt erst mit einem öffentlichen Angebot.
 - [ ] 6.5 **Neuer Name** (klein, aber erst klären): Ein Name mit „eShop“ benutzt eine Marke
   von Nintendo. Privat stört das kaum, mit eigener Domain und Werbung ist es ein Risiko,
   ebenso das Nintendo-Rot im Logo. Vor dem Umbenennen einen Namen ohne „eShop“ und ohne

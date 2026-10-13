@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>eShop-Kompass</title>
+<script>try{var t=localStorage.getItem("ek.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
 :root{
   color-scheme:light dark;
@@ -12,12 +13,20 @@
   --sale:#b3261e; --best:#ebe8de; --chip:#ece9df; --gold:#c28800; --gold-ink:#2b2000;
   --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690; --brand:#e60012;
 }
-@media (prefers-color-scheme: dark){:root{
+/* Ansicht: data-theme am html-Element (hell/dunkel), ohne Angabe wie das Gerät */
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]){
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#f0c36a; --warn-bg:#3a2e12;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
   --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
 }}
+:root[data-theme=dark]{color-scheme:dark;
+  --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
+  --accent:#cdd6d1; --warn:#f0c36a; --warn-bg:#3a2e12;
+  --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
+  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
+}
+:root[data-theme=light]{color-scheme:light}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -298,6 +307,19 @@ details.hint summary{cursor:pointer}
 .tier{font-size:10.5px;font-weight:500;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted);vertical-align:2px;white-space:nowrap}
 .tier.cur{border-color:var(--ink);color:var(--ink)}
 button.help{width:30px;height:30px;padding:0;border-radius:50%;font-weight:700}
+/* Hell, dunkel, System: sichtbar ist nur die aktuelle Wahl, ein Klick öffnet die drei Stufen */
+.thm{position:relative}
+.thm>button{width:30px;height:30px;padding:0;border-radius:50%;display:inline-grid;place-items:center}
+.thm-m{position:absolute;right:0;top:36px;z-index:6;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px;display:flex;flex-direction:column;min-width:150px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.thm-m[hidden]{display:none}
+.thm-m button{border:0;background:none;text-align:left;border-radius:6px;padding:6px 10px;white-space:nowrap}
+.thm-m button:hover{background:var(--chip)}
+.thm-m button.on{font-weight:600}
+.thm-m .ic{display:inline-block;width:22px;vertical-align:-3px}
+/* Lesezeichen: Link zum Ziehen sieht aus wie ein Knopf */
+a.bm{display:inline-block;border:1px dashed var(--accent);border-radius:8px;padding:4px 10px;color:var(--ink);text-decoration:none;cursor:grab;background:var(--card)}
+a.bm:active{cursor:grabbing}
+.bm-w{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0}
 button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 .fb{padding:3px 10px;font-size:13px;border-radius:999px}
 .fb.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
@@ -409,6 +431,7 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
   <header class="top">
     <h1><a class="home" href="/" title="Startseite, lädt die Seite neu"><span class="brand">eShop</span>Kompass</a></h1>
     <div class="meta" id="meta"></div>
+    <div class="thm"><button id="thmBtn" data-act="thm" aria-haspopup="true" aria-expanded="false"></button><div class="thm-m" id="thmMenu" role="menu" hidden></div></div>
     <button class="help" data-act="legend" title="Legende: Urteil, Farben, Begriffe">?</button>
     <button class="primary" id="syncBtn" data-act="sync">Aktualisieren</button>
   </header>
@@ -422,6 +445,27 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 /* Ansicht je Browser: Reiter, Titelansicht, Filter, aufgeklappte Kästen */
 function loadView(){ try{ return JSON.parse(localStorage.getItem("ek.view") || "{}") || {}; }catch(e){ return {}; } }
 function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder})); }catch(e){} }
+/* Hell, dunkel oder wie das Gerät. Gemerkt je Browser (ek.theme); das Skript im Kopf setzt es
+   vor dem ersten Zeichnen, damit nichts aufblitzt. */
+const ICO = d => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${d}</svg>`;
+const THEMES = [
+  ["system", ICO(`<circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/>`), "System", "wie dein Gerät"],
+  ["light", ICO(`<circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3 3l1 1M12 12l1 1M3 13l1-1M12 4l1-1"/>`), "Hell", ""],
+  ["dark", ICO(`<path d="M13.5 10A6 6 0 0 1 6 2.5a6 6 0 1 0 7.5 7.5z"/>`), "Dunkel", ""]];
+function themeNow(){ const t = document.documentElement.dataset.theme; return t === "light" || t === "dark" ? t : "system"; }
+function renderTheme(){
+  const cur = THEMES.find(x => x[0] === themeNow()), b = $("thmBtn");
+  b.innerHTML = cur[1];
+  b.title = `Ansicht: ${cur[2]}${cur[3] ? ` (${cur[3]})` : ""}. Klick zum Ändern`;
+  $("thmMenu").innerHTML = THEMES.map(([k, ic, l, h]) =>
+    `<button role="menuitemradio" aria-checked="${k === cur[0]}" class="${k === cur[0] ? "on" : ""}" data-act="thmset" data-v="${k}"><span class="ic">${ic}</span>${l}${h ? ` <small class="mut">${h}</small>` : ""}</button>`).join("");
+}
+function themeMenu(open){ $("thmMenu").hidden = !open; $("thmBtn").setAttribute("aria-expanded", open); }
+function setTheme(k){
+  if(k === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = k;
+  try{ if(k === "system") localStorage.removeItem("ek.theme"); else localStorage.setItem("ek.theme", k); }catch(e){}
+  renderTheme(); themeMenu(false);
+}
 const TABS = [["jetzt","Jetzt"],["titel","Titel"],["sammlung","Sammlung"],["laender","Länder"],["settings","Einstellungen"]];
 const V0 = loadView();
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
@@ -1855,7 +1899,7 @@ const complete=!err,newest=Math.max(0,...all.map(t=>Number(t.transactionId)||0))
 const out=[];for(const t of all){const d=String(t.datetime||"").slice(0,10);
 if(t.grantedItems)t.grantedItems.forEach((g,i)=>out.push({k:t.transactionId+"-"+i,title:g.title,date:d,type:"EXTERNAL",item:g.itemType,plat:g.labelPlatform}));
 else if(t.title)out.push({k:String(t.transactionId),title:t.title,date:d,type:t.transactionType,item:t.itemType,plat:t.labelPlatform,amount:t.amount&&t.amount.formattedValue})}
-const txt=JSON.stringify({region:v.country||s.country,complete,newest,entries:out});
+const txt=JSON.stringify({hv:${HELPERS.eshop.v},region:v.country||s.country,complete,newest,entries:out});
 box.textContent="";const p=document.createElement("p");p.textContent=(complete?"Fertig: ":"Unvollständig ("+err+"), das Tool merkt sich den alten Stand: ")+all.filter(t=>!alt(t)).length+" Vorgänge"+(seit?" seit dem letzten Lesen, dazu eine Seite bekannter zur Sicherheit":"")+" ("+(v.country||s.country)+").";
 const go=document.createElement("button");go.textContent="Im eShop-Kompass übernehmen";go.style.marginRight="8px";go.onclick=()=>window.open(${JSON.stringify(tool)}+"/#kaeufe="+encodeURIComponent(txt),"_blank");
 const ta=document.createElement("textarea");ta.value=txt;ta.readOnly=true;ta.style.cssText="width:100%;height:80px;margin:8px 0";
@@ -1864,6 +1908,39 @@ const b=document.createElement("button");b.textContent="Schließen";b.onclick=()
 box.append(p,go,ta,c,b);
 }catch(e){fail("Abgebrochen: "+e+". Bitte die Seite neu laden und noch einmal versuchen.")}
 })();`; }
+/* Lesezeichen: Ein Knopf, der selbst ein Lesezeichen anlegt, ist Webseiten nicht erlaubt. Darum
+   ein Link zum Ziehen und „Code kopieren“ für ein von Hand angelegtes Lesezeichen (auch am Handy).
+   v: Stand des Codes, need: ab welchem Stand ein altes Lesezeichen noch genügt. Ältere melden
+   sich beim Übernehmen, damit niemand unbemerkt mit einem alten Lesezeichen weiterarbeitet. */
+const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 2, need: 2, label: "JP-Sprachen lesen"}};
+const BM_CODE = {};
+function helpersOld(){ try{ return JSON.parse(localStorage.getItem("ek.helpers") || "{}") || {}; }catch(e){ return {}; } }
+function helperSeen(k, hv){
+  const old = helpersOld(), was = !!old[k];
+  if((Number(hv) || 1) < HELPERS[k].need) old[k] = 1; else delete old[k];
+  try{ localStorage.setItem("ek.helpers", JSON.stringify(old)); }catch(e){}
+  return !!old[k] && !was;
+}
+function bmLink(k, code){
+  const h = HELPERS[k];
+  BM_CODE[k] = "javascript:" + encodeURIComponent(code);
+  return `<span class="bm-w"><a class="bm" href="${BM_CODE[k]}" title="In die Lesezeichenleiste ziehen" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')">⠿ <b>${esc(h.label)}</b></a>
+    <button data-act="bmcopy" data-k="${k}" title="Für ein von Hand angelegtes Lesezeichen">Code kopieren</button></span>
+    ${helpersOld()[k] ? `<br><span class="warnc">Dein Lesezeichen „${esc(h.label)}“ ist veraltet. Bitte das alte löschen und neu anlegen.</span>` : ""}
+    <details class="fold" data-k="bmhow_${k}" ${S.folds["bmhow_" + k] ? "open" : ""}><summary class="hint">So legst du es an</summary><ul class="hint">
+      <li>Am Computer: Lesezeichenleiste einblenden (Strg+Umschalt+B, am Mac ⌘+Umschalt+B) und den Knopf hineinziehen.</li>
+      <li>Ohne Ziehen, auch am Handy: „Code kopieren“, ein beliebiges Lesezeichen anlegen, bearbeiten, „${esc(h.label)}“ als Namen und den Code als Adresse einfügen. Am Handy startet es aus den Lesezeichen oder über seinen Namen in der Adresszeile.</li>
+      <li>Ein älteres Lesezeichen mit demselben Namen vorher löschen.</li>
+    </ul></details>`;
+}
+async function jpImport(text){
+  let send = text, fresh = false;
+  try{ const o = JSON.parse(text); if(o && typeof o === "object" && !Array.isArray(o)){ fresh = helperSeen("jp", o.hv); delete o.hv; send = JSON.stringify(o); } }catch(e){}
+  const r = await api("/api/jp_langs", {text: send});
+  S.state.lang_todo = r.lang_todo; await refresh(); render();
+  toast(`${r.read} Titel übernommen` + (r.empty ? `, ${r.empty} ohne Sprachangabe` : "") + (r.unknown ? `, ${r.unknown} unbekannte IDs` : "") + (r.gone ? `, bei ${r.gone} ohne Seite sucht der nächste Abgleich die ID neu` : ""));
+  if(fresh) setTimeout(() => toast("Dein Lesezeichen „JP-Sprachen lesen“ ist veraltet. Bitte neu anlegen, siehe Browser-Helfer für Japan"), 4000);
+}
 /* Käufe aus dem eShop: drei Stufen. Sicher Zugeordnetes zählt als Besitz, Vorschläge erst
    nach Bestätigung, der Rest (meist längst Besessenes) steht eingeklappt darunter. */
 function eshopBox(){
@@ -1878,10 +1955,13 @@ function eshopBox(){
   let h = `<details class="box" id="eshophist" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Einträge gelesen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch nicht gelesen"}</span></summary>
     <p class="hint">Was du bei Nintendo gekauft hast, fällt aus dem Kaufplan, auch ohne Eintrag bei DekuDeals. Der Kaufverlauf reicht laut Nintendo zwei Jahre zurück.</p>
     <ol class="hint">
-      <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(eshopHelper(location.origin))}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>Käufe lesen</b></a></li>
+      <li>Leg einmal dieses Lesezeichen an: ${bmLink("eshop", eshopHelper(location.origin))}</li>
       <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? " Über den Link liest es nur, was seit dem letzten vollständigen Lesen dazugekommen ist." : ""}</li>
-      <li>Klick dort auf „Im eShop-Kompass übernehmen“. Geht das nicht, kopiere den Text und füge ihn hier ein: <textarea id="eshopimport" rows="2" style="width:100%"></textarea> <button data-act="eshopimport">Übernehmen</button></li>
-    </ol>`;
+      <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
+    </ol>
+    <details class="fold" data-k="eshopfb" ${S.folds.eshopfb ? "open" : ""}><summary class="hint">Geht das nicht? Text von Hand einfügen</summary>
+      <p class="hint">Kopiere im Fenster des Lesezeichens den Text und füge ihn hier ein: <textarea id="eshopimport" rows="2" style="width:100%"></textarea> <button data-act="eshopimport">Übernehmen</button></p>
+    </details>`;
   if(sug.length) h += `<h4>Vorschläge: Ist das derselbe Titel?</h4><table class="mini-t">${sug.map(r => line(r, r.suggest.map(x =>
       `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}">ist ${esc(x.title)}</button>`).join(" · ") +
       ` · <button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-">nein</button>`)).join("")}</table>`;
@@ -1894,9 +1974,10 @@ function eshopBox(){
 }
 /* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch
    den Warteraum von store-jp kommt, und gibt die Sprachen als Text zum Einfügen zurück. */
-const JP_HELPER = `(async()=>{
+function jpHelperCode(tool){ return `(async()=>{
 if(location.hostname!=="store-jp.nintendo.com"){alert("Bitte zuerst eine Seite von store-jp.nintendo.com öffnen und dann das Lesezeichen anklicken.");return}
-const ids=[...new Set((prompt("Japan-IDs aus eShop-Kompass einfügen")||"").match(/\\d{14}/g)||[])];
+const fromLink=decodeURIComponent((location.hash.match(/ek-ids=([^&]*)/)||[])[1]||"");
+const ids=[...new Set((fromLink.match(/\\d{14}/g)?fromLink:(prompt("Japan-IDs aus eShop-Kompass einfügen")||"")).match(/\\d{14}/g)||[])];
 if(!ids.length)return;
 const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";document.body.appendChild(box);
 const wait=()=>new Promise(r=>setTimeout(r,2500));
@@ -1913,25 +1994,29 @@ if(v===""&&d){const a=[...d.querySelectorAll("a[href*='/item/software/D7001']")]
 if(a){await wait();const g=await read("/item/software/D"+a[1]);if(g.v){v=g.v;viaGame++}}}
 if(v===null){if(++bad>=3){stop=true;break}}else{bad=0;if(v)out[ids[i]]=v}
 await wait()}
-const txt=JSON.stringify(out),n=Object.values(out).filter(x=>x!=="keine Seite").length;
-box.textContent="";const p=document.createElement("p");p.textContent=(stop?"Abgebrochen, der Store lässt gerade nicht durch. ":"Fertig. ")+n+" von "+ids.length+" Titeln mit Sprachen"+(viaGame?" ("+viaGame+" DLC über die Seite des Spiels)":"")+". Kopieren und im eShop-Kompass einfügen.";
+const txt=JSON.stringify(Object.assign({hv:${HELPERS.jp.v}},out)),n=Object.values(out).filter(x=>x!=="keine Seite").length;
+box.textContent="";const p=document.createElement("p");p.textContent=(stop?"Abgebrochen, der Store lässt gerade nicht durch. ":"Fertig. ")+n+" von "+ids.length+" Titeln mit Sprachen"+(viaGame?" ("+viaGame+" DLC über die Seite des Spiels)":"")+".";
+const go=document.createElement("button");go.textContent="Im eShop-Kompass übernehmen";go.style.marginRight="8px";go.onclick=()=>window.open(${JSON.stringify(tool)}+"/#jpsprachen="+encodeURIComponent(txt),"_blank");
 const ta=document.createElement("textarea");ta.value=txt;ta.readOnly=true;ta.style.cssText="width:100%;height:110px;margin:8px 0";
 const c=document.createElement("button");c.textContent="Kopieren";c.style.marginRight="8px";
 c.onclick=async()=>{ta.select();try{await navigator.clipboard.writeText(txt)}catch(e){document.execCommand("copy")}c.textContent="Kopiert ✓"};
 const b=document.createElement("button");b.textContent="Schließen";b.onclick=()=>box.remove();
-box.append(p,ta,c,b);
-})();`;
+box.append(p,go,ta,c,b);
+})();`; }
 function jpHelper(todo){
   const jp = todo.filter(t => t.family === "JP");
   if(!jp.length) return "";
   const ids = [...new Set(jp.filter(t => !t.manual && (t.state === null || t.src === "titledb")).map(t => t.nsuid))];
   return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     <ol class="hint">
-      <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(JP_HELPER)}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>JP-Sprachen lesen</b></a></li>
-      <li>Kopiere die IDs: <textarea id="jpids" readonly rows="2" style="width:100%">${ids.join(" ")}</textarea> <button data-act="jpcopy">IDs kopieren</button></li>
-      <li>Öffne <a href="https://store-jp.nintendo.com/" target="_blank" rel="noopener">store-jp.nintendo.com</a>, klick das Lesezeichen an und füge die IDs ein. Es liest eine Seite alle 2,5 Sekunden.</li>
-      <li>Füge das Ergebnis hier ein: <textarea id="jpimport" rows="3" style="width:100%" placeholder='{"70010000000000":"日本語, 英語, ドイツ語"}'></textarea> <button data-act="jpimport">Übernehmen</button></li>
-    </ol></details>`;
+      <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>
+      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Fragt es nach IDs, ist der Link unterwegs verloren gegangen: dann die IDs unten kopieren und einfügen." : ""}</li>
+      <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
+    </ol>
+    <details class="fold" data-k="jpfb" ${S.folds.jpfb ? "open" : ""}><summary class="hint">Geht das nicht? IDs und Ergebnis von Hand</summary>
+      <p class="hint">IDs zum Einfügen: <textarea id="jpids" readonly rows="2" style="width:100%">${ids.join(" ")}</textarea> <button data-act="jpcopy">IDs kopieren</button></p>
+      <p class="hint">Ergebnis aus dem Fenster des Lesezeichens: <textarea id="jpimport" rows="3" style="width:100%" placeholder='{"70010000000000":"日本語, 英語, ドイツ語"}'></textarea> <button data-act="jpimport">Übernehmen</button></p>
+    </details></details>`;
 }
 async function saveSettings(form, rerender){
   const active = () => JSON.stringify(Object.entries(S.state.settings.countries).filter(e => e[1].enabled).map(e => e[0]));
@@ -1989,12 +2074,15 @@ function dropFrom(code, s){
   if(!o.remove.includes(s)) o.remove.push(s);
 }
 document.addEventListener("click", async e => {
+  if(!e.target.closest(".thm")) themeMenu(false);
   const el = e.target.closest("[data-act]");
   if(!el) return;
   const a = el.dataset.act, d = el.dataset;
   try{
     if(a === "tab"){ go(d.tab); }
     else if(a === "legend"){ openLegend(); }
+    else if(a === "thm"){ themeMenu($("thmMenu").hidden); }
+    else if(a === "thmset"){ setTheme(d.v); }
     else if(a === "lgclose"){ $("legend").close(); }
     else if(a === "vf"){ S.vf = d.v; saveView(); render(); }
     else if(a === "tview"){ S.tview = d.v; saveView(); render(); }
@@ -2046,10 +2134,10 @@ document.addEventListener("click", async e => {
       await refresh();
       toast(d.v === "-" ? "Zählt nicht als Besitz" : d.v ? "Zugeordnet, zählt als Besitz" : "Zurückgenommen");
     }
-    else if(a === "jpimport"){
-      const r = await api("/api/jp_langs", {text: $("jpimport").value});
-      S.state.lang_todo = r.lang_todo; await refresh(); render();
-      toast(`${r.read} Titel übernommen` + (r.empty ? `, ${r.empty} ohne Sprachangabe` : "") + (r.unknown ? `, ${r.unknown} unbekannte IDs` : "") + (r.gone ? `, bei ${r.gone} ohne Seite sucht der nächste Abgleich die ID neu` : ""));
+    else if(a === "jpimport"){ await jpImport($("jpimport").value); }
+    else if(a === "bmcopy"){
+      try{ await navigator.clipboard.writeText(BM_CODE[d.k]); toast("Code kopiert. Jetzt ein Lesezeichen anlegen und den Code als Adresse einfügen"); }
+      catch(e){ toast("Kopieren ging nicht. Bitte den Knopf in die Lesezeichenleiste ziehen"); }
     }
     else if(a === "lang"){
       await api("/api/settings", {lang_confirm: {[d.s]: {[d.f]: d.v === "" ? null : d.v === "1"}}});
@@ -2186,17 +2274,25 @@ document.addEventListener("toggle", e => {
   if(e.target.open) S.folds[k] = 1; else delete S.folds[k];
   saveView();
 }, true);
+document.addEventListener("keydown", e => { if(e.key === "Escape") themeMenu(false); });
 document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });
 
 async function eshopImport(text){
+  let fresh = false;
+  try{ const o = JSON.parse(text); if(o && !Array.isArray(o)) fresh = helperSeen("eshop", o.hv); }catch(e){}
+  if(fresh) setTimeout(() => toast("Dein Lesezeichen „Käufe lesen“ ist veraltet. Bitte neu anlegen, siehe Käufe aus dem eShop"), 4000);
   const r = await api("/api/eshop_history", {text});
   await refresh();
   toast(`${r.read} Einträge gelesen, ${r.new} neu. ${r.matched} zählen als Besitz` + (r.open ? `, ${r.open} ohne Zuordnung` : "") + (r.complete ? "" : ". Unvollständig gelesen: Beim nächsten Mal liest das Lesezeichen wieder ab dem alten Stand"));
 }
+renderTheme();
 // Vom Lesezeichen „Käufe lesen“: Daten im Adressteil hinter #, gehen nicht übers Netz
+// Ebenso „JP-Sprachen lesen“ mit #jpsprachen=
 const KAEUFE = location.hash.startsWith("#kaeufe=") ? decodeURIComponent(location.hash.slice(8)) : null;
-if(KAEUFE) history.replaceState(null, "", location.pathname + location.search);
-refresh().then(() => KAEUFE && (S.tab = "sammlung", saveView(), eshopImport(KAEUFE))).catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });
+const JPSPR = location.hash.startsWith("#jpsprachen=") ? decodeURIComponent(location.hash.slice(12)) : null;
+if(KAEUFE || JPSPR) history.replaceState(null, "", location.pathname + location.search);
+refresh().then(() => KAEUFE ? (S.tab = "sammlung", saveView(), eshopImport(KAEUFE).catch(err => toast("Fehler: " + err.message)))
+  : JPSPR && (S.tab = "settings", saveView(), render(), jpImport(JPSPR).then(() => { const t = $("sprachen"); if(t) t.scrollIntoView(); }, err => toast("Fehler: " + err.message)))).catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });
 </script>
 </body>
 </html>

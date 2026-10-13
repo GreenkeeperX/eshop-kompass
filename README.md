@@ -35,6 +35,17 @@ blockiert, hier teurer als ohne den Wechsel, Betrag über dem Bestpreis). Rabatt
 stehen dezent blau daneben. Die verbindlichen Regeln stehen in
 `docs/oberflaeche.md`.
 
+Hell oder dunkel: Der runde Knopf neben dem "?" zeigt die aktuelle Ansicht (System, Hell
+oder Dunkel); ein Klick öffnet die Auswahl. Vorgabe ist System, also wie das Gerät. Die
+Wahl merkt sich der Browser.
+
+Lesezeichen (Käufe lesen, JP-Sprachen lesen): Webseiten dürfen selbst keine Lesezeichen
+anlegen. Den gestrichelten Knopf zieht man deshalb in die Lesezeichenleiste; „Code kopieren“
+ist der Weg ohne Ziehen, auch am Handy (Lesezeichen anlegen, Code als Adresse einfügen).
+Beide Lesezeichen geben ihr Ergebnis mit „Im eShop-Kompass übernehmen“ direkt ans Tool;
+die Textfelder zum Kopieren stehen eingeklappt unter „Geht das nicht?“. Ist ein angelegtes
+Lesezeichen älter als nötig, meldet das Tool es beim Übernehmen und am Knopf.
+
 Begriffe: Einkaufspreis ist, was du zahlst, mit Steuer, Kurs, Guthabenkarten
 und Gebühr. Bestpreis ist der niedrigste Einkaufspreis der letzten 24 Monate in
 einem zählenden Land, mit deinem heutigen Einkaufsweg gerechnet; Normalpreise
@@ -429,8 +440,9 @@ Sicherung und Protokoll.
   IDs gleich im nächsten Abgleich (rund 24 MB,
   Stück für Stück gelesen, nur die eigenen IDs behalten); und der Browser-Helfer unter
   „Sprachen prüfen“: ein Lesezeichen, das in deinem Browser die Shopseiten der
-  offenen Titel liest (eine alle 2,5 Sekunden) und das Ergebnis als Text mit
-  Kopieren-Knopf ausgibt. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des
+  offenen Titel liest (eine alle 2,5 Sekunden; die IDs bekommt es über den Link zu
+  store-jp im Tool, sonst fragt es danach) und das Ergebnis mit „Im eShop-Kompass
+  übernehmen“ ans Tool gibt, ersatzweise als Text mit Kopieren-Knopf. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des
   Spiels, auf die sie verweist. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
   Spiel und Region: die Shopseite des Spiels selbst, dessen IDs das Tool dafür einmal

@@ -3217,5 +3217,22 @@ class ReplayTest(unittest.TestCase):
         self.assertNotIn("Traceback", out3)
 
 
+class UiThemeTest(unittest.TestCase):
+    """Hell, dunkel, System (0.55): Die dunklen Farben stehen zweimal in index.html, für
+    „wie das Gerät“ und für die Wahl „Dunkel“. Beide Blöcke müssen gleich bleiben."""
+    def test_dark_tokens_match(self):
+        import re
+        path = os.path.join(os.path.dirname(__file__), "..", "app", "static", "index.html")
+        with open(path, encoding="utf-8") as f:
+            page = f.read()
+        auto = re.search(r"@media \(prefers-color-scheme: dark\)\{:root:not\(\[data-theme=light\]\)\{([^}]*)\}\}", page)
+        chosen = re.search(r":root\[data-theme=dark\]\{color-scheme:dark;([^}]*)\}", page)
+        self.assertTrue(auto and chosen)
+        tokens = lambda css: dict(re.findall(r"(--[\w-]+):\s*([^;]+);", css))
+        self.assertGreater(len(tokens(auto.group(1))), 10)
+        self.assertEqual(tokens(auto.group(1)), tokens(chosen.group(1)))
+        self.assertIn('localStorage.getItem("ek.theme")', page)   # vor dem ersten Zeichnen
+
+
 if __name__ == "__main__":
     unittest.main()

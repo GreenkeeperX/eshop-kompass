@@ -7,9 +7,28 @@ folgen dieser Datei.
 
 ## Grundsatz
 
-Jede Farbe hat genau eine Bedeutung. Was nichts entscheidet, bleibt grau. Die
-Oberfläche ist für den dunklen Modus abgestimmt; der helle Modus muss lesbar bleiben,
-wird aber nicht eigens optimiert.
+Jede Farbe hat genau eine Bedeutung. Was nichts entscheidet, bleibt grau. Beide Ansichten,
+hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft.
+
+## Hell, dunkel, System
+
+- Umschalter oben rechts neben dem "?": rund, zeigt nur das Zeichen der aktuellen Wahl
+  (halber Kreis System, Sonne Hell, Mond Dunkel); ein Klick öffnet die drei Stufen, ein Klick
+  daneben oder Esc schließt sie. Vorgabe ist System.
+- Technik: `data-theme="light|dark"` am `html`-Element, ohne Angabe gilt
+  `prefers-color-scheme`. Gemerkt in `localStorage` unter `ek.theme`; ein kleines Skript im
+  Kopf setzt es vor dem ersten Zeichnen.
+- Die dunklen Tokens stehen zweimal (Gerät dunkel, Wahl dunkel) und müssen gleich bleiben;
+  ein Test prüft das.
+
+## Lesezeichen
+
+- Ein Lesezeichen erscheint als gestrichelter Knopf zum Ziehen (⠿ Name) mit „Code kopieren“
+  daneben und „So legst du es an“ eingeklappt darunter.
+- Hauptweg zurück ist „Im eShop-Kompass übernehmen“; Textfelder zum Kopieren und Einfügen
+  stehen eingeklappt unter „Geht das nicht?“.
+- Namen der Lesezeichen bleiben stabil, ohne Versionsnummer. Ein veraltetes Lesezeichen meldet
+  sich beim Übernehmen und mit einem bernsteinfarbenen Satz am Knopf.
 
 ## Farben
 
