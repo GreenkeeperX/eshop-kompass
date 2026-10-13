@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.42.0"
+VERSION = "0.43.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -548,6 +548,14 @@ def titledb_entries(chunks, wanted):
     """Liest titledb ({nsuid: {..., "id": Programm-ID, "languages": [...]}}) aus Textstücken.
     Liefert für die gesuchten IDs {nsuid: {"langs": "japanese, …" oder None, "app": Programm-ID}}.
     Die Programm-ID ist in allen Regionen gleich, solange es dasselbe Spiel ist."""
+    return titledb_scan(chunks, wanted)[0]
+
+
+def titledb_scan(chunks, wanted, apps=()):
+    """Wie titledb_entries, dazu {Programm-ID: nsuid} für die gesuchten Programm-IDs
+    (ohne Demos): so findet sich die ID eines Spiels in einer anderen Region."""
+    apps = {str(a).upper() for a in apps}
+    by_app = {}
     dec, buf, pos, out = json.JSONDecoder(), "", 0, {}
     chunks = iter(chunks)
 
@@ -560,17 +568,17 @@ def titledb_entries(chunks, wanted):
         return True
     while "{" not in buf[pos:]:
         if not more():
-            return out
+            return out, by_app
     pos = buf.index("{", pos) + 1
     while True:
         while pos < len(buf) and buf[pos] in " \t\r\n,":
             pos += 1
         if pos >= len(buf):
             if not more():
-                return out
+                return out, by_app
             continue
         if buf[pos] == "}":
-            return out
+            return out, by_app
         try:
             key, end = dec.raw_decode(buf, pos)
             colon = buf.index(":", end)
@@ -585,6 +593,9 @@ def titledb_entries(chunks, wanted):
                 raise ValueError("titledb: Datei endet mitten in einem Eintrag")
             continue
         pos = end
+        app = str(val.get("id") or "").upper() if isinstance(val, dict) else ""
+        if app in apps and not val.get("isDemo") and app not in by_app:
+            by_app[app] = key
         if key in wanted and isinstance(val, dict):
             langs = val.get("languages") if isinstance(val.get("languages"), list) else []
             out[key] = {"langs": ", ".join(dict.fromkeys(_TDB_LANGS.get(str(l), str(l)) for l in langs)) or None,
@@ -612,11 +623,13 @@ def _stream(url, timeout=60):
         yield text.decode(unzip.flush() if unzip else b"", final=True)
 
 
-def fetch_titledb(nsuids, fetch=fetch, region="JP.ja"):
-    """Einträge einer titledb-Region (JP.ja, DE.de, …) für diese IDs, siehe titledb_entries."""
+def fetch_titledb(nsuids, fetch=fetch, region="JP.ja", apps=None):
+    """Einträge einer titledb-Region (JP.ja, DE.de, …) für diese IDs, siehe titledb_entries.
+    Mit `apps` zusätzlich {Programm-ID: nsuid} dieser Region, siehe titledb_scan."""
     url = TITLEDB_URL.format(region)
     chunks = _stream(url) if fetch is _plain_fetch else [fetch(url)]
-    return titledb_entries(chunks, {str(n) for n in nsuids})
+    found, by_app = titledb_scan(chunks, {str(n) for n in nsuids}, apps or ())
+    return found if apps is None else (found, by_app)
 
 
 # Amerika: Die Titelseite des eShops leitet auf die Produktseite von nintendo.com

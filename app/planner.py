@@ -373,8 +373,8 @@ class Context:
             if isinstance(v, bool):
                 return v
             text = (item.get("langs") or {}).get(fam)
-            if not text:
-                return None
+            if not text or (item.get("ids_doubt") or {}).get(fam):
+                return None          # ID fraglich: gelesene Sprache gehört vielleicht zu einem anderen Titel
             return "german" in text.lower() or "deutsch" in text.lower() or "ドイツ語" in text
         if it.get("dlc_of"):
             # fehlendes DLC deines Spiels: deine Angabe zum Spiel gilt auch für sein DLC
@@ -1508,7 +1508,7 @@ def lang_todo(data, settings, now=None):
             fams.setdefault(fam, []).append(c["code"])
     out, conf = [], settings.get("lang_confirm") or {}
 
-    def row(slug, title, fam, codes, nsuid, state, nintendo, text, here, champ, src=None, **more):
+    def row(slug, title, fam, codes, nsuid, state, nintendo, text, here, champ, src=None, doubt=None, **more):
         return dict({"slug": slug, "title": title, "family": fam,
                      "here": None if not here else {"eur": _r(here[0]), "code": here[1]},
                      "champ": None if not champ else {"eur": _r(champ[0]), "code": champ[1]},
@@ -1518,6 +1518,8 @@ def lang_todo(data, settings, now=None):
                      "url": LANG_CHECK_URL.get(fam, "").format(nsuid=nsuid),
                      "state": state, "manual": isinstance((conf.get(slug) or {}).get(fam), bool),
                      "text": text, "nintendo": nintendo, "nsuid": nsuid,
+                     # Programm-ID passt laut titledb nicht zu Europa, DekuDeals bleibt bei der ID
+                     "doubt": bool(doubt),
                      # Herkunft der gelesenen Angabe: None = Nintendo, "titledb" = Titelliste
                      "src": src if text else None}, **more)
     for slug in ctx.order:
@@ -1531,7 +1533,8 @@ def lang_todo(data, settings, now=None):
                 out.append(row(slug, it["title"], fam, codes, ids[0], ctx.german(it, fam, slug),
                                ctx.german(it, fam, slug, by_hand=False),
                                (it.get("langs") or {}).get(fam), cheapest(slug, codes),
-                               live.champ_all.get(slug), (it.get("langs_src") or {}).get(fam)))
+                               live.champ_all.get(slug), (it.get("langs_src") or {}).get(fam),
+                               (it.get("ids_doubt") or {}).get(fam)))
     if xctx:
         rel, games = data.get("rel") or {}, {}
         for s in xctx.order:

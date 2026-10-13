@@ -1588,14 +1588,15 @@ function settingsBody(form){
 /* Sprachen von Hand bestätigen: einmal je Titel und Region */
 function langSection(){
   const todo = S.state.lang_todo || [];
-  const open = todo.filter(t => !t.manual && t.state === null).sort((a, b) => b.matters - a.matters);
-  const done = todo.filter(t => t.manual), auto = todo.filter(t => !t.manual && t.state !== null);
+  // „ID fraglich“ steht oben, auch wenn schon eine Sprache gelesen ist: Sie kann zu einem anderen Titel gehören
+  const open = todo.filter(t => !t.manual && (t.state === null || t.doubt)).sort((a, b) => b.matters - a.matters);
+  const done = todo.filter(t => t.manual), auto = todo.filter(t => !t.manual && t.state !== null && !t.doubt);
   const now = open.filter(t => t.matters).length;
   let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
     <p class="hint">Gibt es einen Titel in Deutschland auf Deutsch, zählt eine Fassung aus einer anderen Region nur, wenn sie Deutsch enthält. Das Tool prüft jeden Titel einmal je Region und merkt sich das Ergebnis, unabhängig vom Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (ein Eintrag je Spiel gilt für alle seine DLC). Amerika liest es selbst von nintendo.com. Japan: Der Store zeigt dem Tool fast immer nur einen Warteraum. Die Angaben kommen dann aus titledb (eine offene Titelliste, nicht von Nintendo, deshalb so gekennzeichnet) oder vom Browser-Helfer unten, der die Seiten in deinem Browser liest. Ohne Angabe zählt die Fassung nicht. Deine Angabe gilt dauerhaft und geht der von Nintendo vor. Titel, die weder auf der Wishlist noch in der Sammlung stehen, räumt der Abgleich wieder ab.</p>`;
   if(!todo.length) return h + `<p class="hint">Keine Titel in Regionen außerhalb Europas.</p>`;
   h += jpHelper(todo);
-  const row = t => `<tr><td>${esc(t.title)}${t.dlc ? ` <small>${t.dlc} fehlende DLC</small>` : ""}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
+  const row = t => `<tr><td>${esc(t.title)}${t.dlc ? ` <small>${t.dlc} fehlende DLC</small>` : ""}${t.doubt ? ` <span class="chip w" title="Die Programm-ID dieser ID passt laut titledb nicht zur europäischen Fassung, DekuDeals nennt aber diese ID. Bitte im Store nachsehen, ob die Seite zum Titel gehört.">ID fraglich</span>` : ""}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
     <td><small>${t.here ? `dort ${t.dlc ? "ab " : ""}${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
     <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `${t.src === "titledb" ? "titledb" : "Nintendo"} sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`

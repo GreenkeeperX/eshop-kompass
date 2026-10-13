@@ -2277,9 +2277,10 @@ class ExtraDlcTest(unittest.TestCase):
             calls.append(n)
             raise sources.FetchError("u", 503, "Warteraum")
 
-        def titledb(ids, fetch=None, region="JP.ja"):
+        def titledb(ids, fetch=None, region="JP.ja", apps=None):
             tdb.append(sorted(ids))
-            return {"0": {"langs": "japanese, german"}, "1": {"langs": "japanese, english"}}
+            found = {"0": {"langs": "japanese, german"}, "1": {"langs": "japanese, english"}}
+            return found if apps is None else (found, {})
         t0 = 1736467200
         with mock.patch.object(sources, "fetch_langs_jp", jp), mock.patch.object(sources, "fetch_titledb", titledb):
             sync.sync_titledb(data, settings, None, now=t0)
@@ -2317,19 +2318,38 @@ class ExtraDlcTest(unittest.TestCase):
                 "prices": {}}
         regions = []
 
-        def titledb(ids, fetch=None, region="JP.ja"):
+        data["items"]["odd"] = {"title": "Odd", "active": True, "ids": {"EU": ["e4"], "JP": ["j4"]}, "langs": dict(lang)}
+
+        def titledb(ids, fetch=None, region="JP.ja", apps=None):
             regions.append(region)
-            return ({"j1": {"app": "0100A"}, "j2": {"app": "0100B"}} if region == "JP.ja"
-                    else {"e1": {"app": "0100A"}, "e2": {"app": "0100C"}})
+            if region == "DE.de":
+                return {"e1": {"app": "0100A"}, "e2": {"app": "0100C"}, "e4": {"app": "0100E"}}
+            self.assertEqual(apps, {"0100A", "0100C", "0100E"})
+            return ({"j1": {"app": "0100A"}, "j2": {"app": "0100B"}, "j4": {"app": "0100F"}},
+                    {"0100A": "j1", "0100C": "j9"})            # für 0100E kein Kandidat
         t0 = 1736467200
         with mock.patch.object(sources, "fetch_titledb", titledb):
             sync.sync_titledb(data, settings, None, now=t0)
-            self.assertEqual(regions, ["JP.ja", "DE.de"])
+            self.assertEqual(regions, ["DE.de", "JP.ja"])
             items = data["items"]
             self.assertEqual({s: it.get("ids_suspect") for s, it in items.items()},
-                             {"ok": None, "bad": {"JP": t0}, "new": None})
+                             {"ok": None, "bad": {"JP": t0}, "new": None, "odd": {"JP": t0}})
             sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
             self.assertEqual(len(regions), 2)                   # jede ID nur einmal abgleichen
+        # Neusuche bei DekuDeals bleibt bei der alten ID: der titledb-Kandidat gilt,
+        # ohne Kandidaten bleibt die ID, aber als fraglich markiert
+        sync.settle_ids(items["bad"], "JP", ["j2"], t0 + 60, "Bad")
+        sync.settle_ids(items["odd"], "JP", ["j4"], t0 + 60, "Odd")
+        self.assertEqual((items["bad"]["ids"]["JP"], items["bad"].get("langs", {}).get("JP")), (["j9"], None))
+        self.assertEqual((items["odd"]["ids"]["JP"], items["odd"]["ids_doubt"]), (["j4"], {"JP": "j4"}))
+        self.assertEqual(items["odd"]["langs"]["JP"], lang["JP"])
+        ctx = planner.Context.__new__(planner.Context)
+        ctx.settings, ctx.items = {}, items
+        self.assertIsNone(ctx.german(items["odd"], "JP", "odd"))       # zählt erst nach deiner Angabe
+        self.assertIs(ctx.german(items["ok"], "JP", "ok"), True)
+        ctx.settings = {"lang_confirm": {"odd": {"JP": True}}}
+        self.assertIs(ctx.german(items["odd"], "JP", "odd"), True)
+        self.assertFalse(sync.suspect_id(items["bad"], "JP", t0 + 120))
 
     def test_browser_helper_import(self):
         data = {"items": {"a": {"title": "A", "active": True, "ids": {"JP": ["70010000000001"]},

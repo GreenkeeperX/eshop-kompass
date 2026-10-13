@@ -109,7 +109,8 @@ Reihenfolge und Begründung:
   Seiten in deinem Browser liest; Nintendo geht titledb vor (Entscheidung 13.10.2026).
   Fehlende DLC deiner Spiele (0.40): Sprache und Store-Link über die Seite des Spiels selbst.
   Falsche IDs (0.41): keine Seite oder wiederholt keine Sprache -> ID einmal neu suchen.
-  Abgleich der Japan-IDs mit titledb (0.42): Programm-ID Japan gegen Europa.
+  Abgleich der Japan-IDs mit titledb (0.42): Programm-ID Japan gegen Europa. Ab 0.43 gilt bei
+  Abweichung der titledb-Kandidat, ohne Kandidaten „ID fraglich“ (Entscheidung 13.10.2026).
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

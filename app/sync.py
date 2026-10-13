@@ -484,15 +484,33 @@ def suspect_id(rec, fam, now):
 
 def settle_ids(rec, fam, found, now, title):
     """Ergebnis einer Neusuche: andere ID übernehmen und die Sprache neu fragen, sonst die
-    alte als geprüft vermerken, damit es nicht immer wieder sucht."""
+    alte als geprüft vermerken, damit es nicht immer wieder sucht. Hat titledb eine ID mit
+    derselben Programm-ID wie in Europa gefunden, gilt diese, auch wenn DekuDeals bei der
+    alten bleibt (Entscheidung 13.10.2026). Ohne solchen Kandidaten und ohne neue ID
+    bleibt die alte, aber als fraglich markiert."""
     (rec.get("ids_suspect") or {}).pop(fam, None)
+    hints = rec.get("ids_hint") or {}
+    from_tdb = fam in hints
+    hint = hints.pop(fam, None)
     old = (rec.get("ids") or {}).get(fam) or []
-    if found and found[0] != (old or [None])[0]:
-        rec.setdefault("ids", {})[fam] = found
-        for k in ("langs_checked", "langs_tries", "langs", "langs_src"):
+    oldest = (old or [None])[0]
+    via = ""
+    if hint and hint != oldest:
+        new, via = [hint], " (laut titledb)"
+    elif found and found[0] != oldest:
+        new = found
+    else:
+        new = None
+    if new:
+        rec.setdefault("ids", {})[fam] = new
+        for k in ("langs_checked", "langs_tries", "langs", "langs_src", "ids_doubt"):
             (rec.get(k) or {}).pop(fam, None)
-        _log(f"ID korrigiert: {title} ({countries.FAMILIES[fam]}) {old[0] if old else '–'} -> {found[0]}")
-    rec.setdefault("ids_verified", {})[fam] = (found or old or [None])[0]
+        _log(f"ID korrigiert: {title} ({countries.FAMILIES[fam]}) {oldest or '–'} -> {new[0]}{via}")
+    elif from_tdb:
+        rec.setdefault("ids_doubt", {})[fam] = oldest
+        _log(f"ID fraglich: {title} ({countries.FAMILIES[fam]}) {oldest}, Programm-ID passt laut "
+             "titledb nicht zu Europa, DekuDeals bleibt dabei; bitte unter Sprachen prüfen nachsehen")
+    rec.setdefault("ids_verified", {})[fam] = (new or old or [None])[0]
 
 
 def jp_targets(data):
@@ -546,9 +564,12 @@ def sync_titledb(data, settings, fetch, now=None):
         return
     _step("Sprachen Japan aus titledb")
     try:
-        found = sources.fetch_titledb(list(set(todo) | set(verify)), fetch=fetch)
         europe = sources.fetch_titledb([eu for _, eu in verify.values()], fetch=fetch,
                                        region="DE.de") if verify else {}
+        apps = {e["app"] for e in europe.values() if e.get("app")}
+        # Japan: Sprachen, Programm-IDs der eigenen IDs und die Japan-ID zu jeder
+        # Programm-ID aus Europa (Kandidat, falls die eigene nicht passt)
+        found, by_app = sources.fetch_titledb(list(set(todo) | set(verify)), fetch=fetch, apps=apps)
     except Exception as e:
         _log(f"titledb nicht abrufbar ({e})")
         return
@@ -569,6 +590,7 @@ def sync_titledb(data, settings, fetch, now=None):
         a, b = (found.get(nsuid) or {}).get("app"), (europe.get(eu) or {}).get("app")
         rec.setdefault("ids_tdb", {})["JP"] = nsuid       # einmal je ID, auch ohne Ergebnis
         if a and b and a != b and suspect_id(rec, "JP", now):
+            rec.setdefault("ids_hint", {})["JP"] = by_app.get(b)     # None: kein Kandidat
             odd += 1
     if odd:
         _log(f"Japan-IDs: bei {odd} Titeln passt die Programm-ID laut titledb nicht zu Europa, "
