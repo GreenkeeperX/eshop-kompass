@@ -2354,37 +2354,79 @@ def case_export(data, settings, history, slug, now=None):
     }
 
 
-NSO_TITLE = "Online-Mitgliedschaft, 12 Monate, einzeln"
+NSO_TITLE = "Online-Mitgliedschaft"
+# Varianten der Online-Mitgliedschaft, die DekuDeals führt (Verbindungstest 14.10.2026). 1 Monat und
+# Erweiterungspaket Familie verlinkt DekuDeals nicht. accounts: Konten, auf die sich der Preis verteilt.
+NSO_VARIANTS = [
+    {"key": "m12", "slug": "nintendo-switch-online-12-month-membership", "label": "12 Monate", "months": 12, "accounts": 1},
+    {"key": "m3", "slug": "nintendo-switch-online-3-month-membership", "label": "3 Monate", "months": 3, "accounts": 1},
+    {"key": "ep", "slug": "nintendo-switch-online-expansion-pack-12-month-individual-membership",
+     "label": "Erweiterungspaket, 12 Monate", "months": 12, "accounts": 1},
+    {"key": "fam", "slug": "nintendo-switch-online-12-month-family-membership", "label": "Familie, 12 Monate",
+     "months": 12, "accounts": 8, "family": True},
+]
+NSO_KEYS = [v["key"] for v in NSO_VARIANTS]
+
+
+def nso_variants(data):
+    """Je Variante {ids, checked, lows, urls}. Bis 0.56 lag nur „12 Monate“ flach in data.nso;
+    so gelesen laden alte Dateien weiter."""
+    nso = data.get("nso") or {}
+    v = dict(nso.get("v") or {})
+    if "ids" in nso and "m12" not in v:
+        v["m12"] = {k: nso.get(k) or {} for k in ("ids", "checked", "lows", "urls")}
+    return v
+
+
+def nso_price(table, key):
+    """Preis einer Variante aus nso_prices[Land]; bis 0.56 hieß „12 Monate“ dort „nso“."""
+    return (table or {}).get(key) or ((table or {}).get("nso") if key == "m12" else None)
 NSO_REMIND_DAYS = 30      # so lange vor Ablauf erscheint die Verlängerung unter „Zu erledigen“
 
 
 def membership(data, settings, now=None):
-    """Online-Mitgliedschaft (12 Monate, einzeln, ohne Erweiterungspaket): Einkaufspreis je
-    aktivem Land mit demselben Zahlweg wie bei Spielen (Kreditkarte oder Guthabenkarten).
-    Die Sprachregel gilt hier nicht. Sortiert nach Euro, dazu das Ablaufdatum aus den
-    Einstellungen und ob die Verlängerung ansteht."""
+    """Online-Mitgliedschaft in allen Varianten (ab 0.57): je Variante der Einkaufspreis je aktivem
+    Land mit demselben Zahlweg wie bei Spielen (Kreditkarte oder Guthabenkarten), Bestpreis, Güte
+    und ★ wie bei Titeln. Die Sprachregel gilt hier nicht. Dazu deine Variante und Ablaufdatum aus
+    den Einstellungen und ob die Verlängerung ansteht. rows und champ oben gelten deiner Variante."""
     now = now or datetime.now(timezone.utc)
     until = settings.get("nso_until") or ""
+    mine = settings.get("nso_variant") if settings.get("nso_variant") in NSO_KEYS else "m12"
     days = None
     if until:
         try:
             days = (datetime.strptime(until, "%Y-%m-%d").date() - now.date()).days
         except ValueError:
             days = None
-    out = {"title": NSO_TITLE, "until": until, "days_left": days, "rows": [],
+    var_data = nso_variants(data)
+    out = {"title": NSO_TITLE, "until": until, "days_left": days, "rows": [], "mine": mine, "variants": [],
            "due": days is not None and days <= NSO_REMIND_DAYS,
-           "ids_known": bool(((data.get("nso") or {}).get("ids") or {}))}
+           "ids_known": any((e or {}).get("ids") for e in var_data.values())}
     prices = data.get("nso_prices") or {}
     if not any(prices.values()):
         return out
+    current = settings.get("current_country") or ""
+    for v in NSO_VARIANTS:
+        e = var_data.get(v["key"]) or {}
+        vp = {code: {"nso": p} for code, t in prices.items() if (p := nso_price(t, v["key"]))}
+        rows, champ = _membership_rows(data, settings, now, vp, e.get("lows") or {}, e.get("urls") or {}, current, v)
+        out["variants"].append(dict({k: v[k] for k in ("key", "slug", "label", "months", "accounts")},
+                                    family=bool(v.get("family")), rows=rows, champ=champ,
+                                    best=next((r for r in rows if r["counts"]), None)))
+        if v["key"] == mine:
+            out["rows"], out["champ"] = rows, champ
+    return out
+
+
+def _membership_rows(data, settings, now, prices, lows, urls, current, v):
+    if not prices:
+        return [], None
     # Ein Kunstgriff: Die Mitgliedschaft ist ein Titel mit Deutsch in jeder Region, damit die
     # Sprachregel sie nicht ausschließt
     items = {"nso": {"title": NSO_TITLE, "active": True, "order": 0, "ids": {},
                      "langs": {f: "german" for f in countries.FAMILIES}}}
     ctx = Context(dict(data, items=items, prices=prices, lows={}), settings, now)
-    lows = (data.get("nso") or {}).get("lows") or {}
-    urls = (data.get("nso") or {}).get("urls") or {}
-    current = settings.get("current_country") or ""
+    rows = []
     for code, c in ctx.countries.items():
         o = c["offers"].get("nso")
         if not o or c["unit"] is None:
@@ -2392,9 +2434,10 @@ def membership(data, settings, now=None):
         eur = ctx.est(c, o["local"])
         if eur is None:
             continue
-        out["rows"].append({
+        rows.append({
             "code": code, "name": c["meta"]["name"], "tier": c["tier"], "eur": _r(eur),
-            "month": _r(eur / 12), "local": o["local"] / 100, "currency": o.get("currency") or c["currency"],
+            "month": _r(eur / v["months"]), "per_account": _r(eur / v["months"] / v["accounts"]),
+            "local": o["local"] / 100, "currency": o.get("currency") or c["currency"],
             "sale": o["sale"], "pct": round(100 * (1 - o["local"] / o["regular"])) if o["sale"] and o["regular"] else None,
             "end": o.get("end") if o["sale"] else None, "est": c["estimated"], "counts": ctx.decides(o),
             "current": code == current or (not current and code == countries.REFERENCE),
@@ -2403,15 +2446,14 @@ def membership(data, settings, now=None):
         low = lows.get(c["meta"]["shop"])
         if low:
             le = ctx.est(c, cents(low * (1 + c["tax"] / 100)))
-            out["rows"][-1]["low_eur"] = _r(min(le, eur)) if le is not None else None
+            rows[-1]["low_eur"] = _r(min(le, eur)) if le is not None else None
     # Bestpreis über alle zählenden Länder, Güte und ★ wie bei Titeln (0.56.1)
-    champ = min((r["low_eur"] if r["low_eur"] is not None else r["eur"] for r in out["rows"] if r["counts"]), default=None)
+    champ = min((r["low_eur"] if r["low_eur"] is not None else r["eur"] for r in rows if r["counts"]), default=None)
     if champ:
         ctx.champ_all["nso"] = (champ, None)
-        out["champ"] = champ
-        for r in out["rows"]:
+        for r in rows:
             r["grade"] = ctx.grade(r["eur"], "nso") if r["counts"] else None
             r["at_best"] = r["counts"] and r["eur"] <= champ * (1 + BEST_TOLERANCE) + 0.005
             r["over"] = _r(r["eur"] - champ)
-    out["rows"].sort(key=lambda r: (not r["counts"], r["eur"]))
-    return out
+    rows.sort(key=lambda r: (not r["counts"], r["eur"]))
+    return rows, champ

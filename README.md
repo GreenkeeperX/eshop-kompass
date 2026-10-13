@@ -91,7 +91,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Stufe, oder das Land, in dem dein Konto steht), minus was sie hier kosten.
   Das gilt auch für den Weg zurück nach Deutschland, wenn dein Konto woanders
   steht. Ohne eingetragenes Kontoland gilt Deutschland als Konto.
-  Unter dem Kaufplan, zugeklappt: Online-Mitgliedschaft (12 Monate, einzeln). Je aktivem
+  Unter dem Kaufplan, zugeklappt: Online-Mitgliedschaft. Seit 0.57 in allen Varianten, die
+  DekuDeals führt: 12 Monate, 3 Monate, Erweiterungspaket und Familie (nur zum Vergleich, kaufen
+  kann die Verwalterin oder der Verwalter der Gruppe). Oben je Variante das beste Land, darunter
+  die Länder der gewählten Variante; deine Variante stellst du im Kasten ein. Je aktivem
   Land der Einkaufspreis mit deinem Zahlweg wie bei Spielen, je Monat, der Shop-Preis,
   Angebote und ob das Land dein Konto ist oder im Kaufplan steht. Das Ablaufdatum trägst du
   dort ein; 30 Tage vorher klappt der Kasten auf. Die eShop-IDs der Mitgliedschaft je Land

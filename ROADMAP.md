@@ -11,10 +11,10 @@ Konto (siehe [CLAUDE.md](CLAUDE.md)).
 
 ## Offen
 
-- [ ] **Online-Mitgliedschaft ausbauen.** Da ist bisher: 12 Monate einzeln je aktivem Land mit
+- [ ] **Online-Mitgliedschaft ausbauen.** Da ist bisher: vier Varianten je aktivem Land mit
   Einkaufspreis, Bestpreis, Links und Erinnerung vor Ablauf. Fehlt noch:
-  - die weiteren Varianten (kürzer, Familie, Erweiterungspaket),
-  - Japan und die USA: DekuDeals nennt dort keine eShop-ID,
+  - 1 Monat und Erweiterungspaket Familie (DekuDeals führt sie nicht),
+  - Japan: DekuDeals hat dort keine Daten, der Verbindungstest liest Nintendos eigene Seite,
   - weitere Bezugsquellen: Händler-Codes (Keyshops), Amazon Japan, Deals etwa von mydealz,
   - die Mitgliedschaft als Füllartikel und wählbar im Warenkorb.
 - [ ] **Kleinteile zusammenfassen.** Viele Kleinteile eines Spiels (etwa Kostüme) zusammenfassen,

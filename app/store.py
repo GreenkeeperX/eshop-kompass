@@ -31,6 +31,7 @@ DEFAULT_SETTINGS = {
     "refresh_hours": 6,
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
     "nso_until": "",          # Online-Mitgliedschaft läuft bis (JJJJ-MM-TT), leer = unbekannt
+    "nso_variant": "m12",     # deine Mitgliedschaft: m12, m3, ep, fam (planner.NSO_VARIANTS)
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
     # Angebot als Kauf bzw. gutes Angebot, auch wenn es prozentual mehr ist
     "deal_eur": {"buy": 0.5, "good": 2.0},
@@ -141,6 +142,8 @@ def save_settings(new):
             s["current_country"] = new["current_country"]
         if isinstance(new.get("nso_until"), str) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", new["nso_until"]):
             s["nso_until"] = new["nso_until"]
+        if new.get("nso_variant") in ("m12", "m3", "ep", "fam"):
+            s["nso_variant"] = new["nso_variant"]
         if new.get("lang_rule") in ("exclude", "warn", "off"):
             s["lang_rule"] = new["lang_rule"]
         for slug, fams in (new.get("lang_confirm") or {}).items() if isinstance(

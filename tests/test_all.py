@@ -1730,7 +1730,7 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(data["lows"]["DE"]["vs-foscari"]["low"], 1.49)
         self.assertEqual(data["lows"]["BR"]["vs-foscari"], dict(
             data["lows"]["BR"]["vs-foscari"], low=3.5, src="deku"))
-        self.assertEqual(sum("country=br" in u and sync.MEMBERSHIP_SLUG not in u for u in calls), 1)
+        self.assertEqual(sum("country=br" in u and "nintendo-switch-online" not in u for u in calls), 1)
         hist = store.load_history()
         self.assertEqual(hist["BR"]["vs-foscari"][0][1], 4.0)
         self.assertEqual(len(hist["DE"]["vs-foscari"]), 1)
@@ -3236,24 +3236,31 @@ class MembershipTest(unittest.TestCase):
 
         def fake(url, ua=None):
             calls.append(url)
+            i = next(i for i, v in enumerate(planner.NSO_VARIANTS) if f"/items/{v['slug']}?" in url)
             if "country=de" in url:
-                return self.PAGE.format(cc="de", n="70080000000189")
+                return self.PAGE.format(cc="de", n=str(70080000000189 + 10 * i))
             if "country=br" in url:
-                return self.PAGE.format(cc="br", n="70080000000186")
+                return self.PAGE.format(cc="br", n=str(70080000000186 + 10 * i))
             raise AssertionError(url)
+        # Daten bis 0.56: nur 12 Monate, flach; sie wandern nach v.m12 (alte Dateien laden weiter)
+        data["nso"] = {"ids": {"DE": ["70080000000189"]}, "checked": {}, "lows": {}, "urls": {}}
+        self.assertEqual(planner.nso_variants(data)["m12"]["ids"], {"DE": ["70080000000189"]})
         sync.sync_nso(data, settings, fake, lambda s: None, now=1e9)
-        self.assertEqual(data["nso"]["ids"], {"DE": ["70080000000189"], "BR": ["70080000000186"]})
-        self.assertEqual(len(calls), 2)
+        self.assertNotIn("ids", data["nso"])
+        self.assertEqual(data["nso"]["v"]["m12"]["ids"], {"DE": ["70080000000189"], "BR": ["70080000000186"]})
+        self.assertEqual(data["nso"]["v"]["m3"]["ids"], {"DE": ["70080000000199"], "BR": ["70080000000196"]})
+        self.assertEqual(len(calls), 2 * len(planner.NSO_VARIANTS))       # je Variante und Land eine Seite
         # monatlich: im nächsten Abgleich nichts fällig
         sync.sync_nso(data, settings, fake, lambda s: None, now=1e9 + 3600)
-        self.assertEqual(len(calls), 2)
+        self.assertEqual(len(calls), 2 * len(planner.NSO_VARIANTS))
         self.assertEqual(sync.nso_ids_for(data, "MX"), ["70080000000186"])   # Region Amerika als Ersatz
 
         def prices(url, ua=None):
             self.assertIn("api.ec.nintendo.com", url)
             if "country=DE" in url:
                 self.assertIn("70080000000189", url)
-                return '{"prices":[{"title_id":70080000000189,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"19.99"}}]}'
+                return ('{"prices":[{"title_id":70080000000189,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"19.99"}},'
+                        '{"title_id":70080000000199,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"7.99"}}]}')
             if "country=BR" in url:
                 self.assertIn("70080000000186", url)
                 return '{"prices":[{"title_id":70080000000186,"sales_status":"onsale","regular_price":{"currency":"BRL","raw_value":"109.9"}}]}'
@@ -3261,8 +3268,9 @@ class MembershipTest(unittest.TestCase):
         data["items"] = {"t": {"title": "T", "active": True, "ids": {"EU": ["70010000000001"], "AM": ["70010000000002"]}}}
         data["fx"] = {"rates": {"EUR": 1.0, "BRL": 5.5}, "updated": ""}
         sync.sync_prices(data, settings, prices, lambda s: None)
-        self.assertEqual(data["nso_prices"]["DE"]["nso"]["regular"], 19.99)
-        self.assertEqual(data["nso_prices"]["BR"]["nso"]["regular"], 109.9)
+        self.assertEqual(data["nso_prices"]["DE"]["m12"]["regular"], 19.99)
+        self.assertEqual(data["nso_prices"]["DE"]["m3"]["regular"], 7.99)
+        self.assertEqual(data["nso_prices"]["BR"]["m12"]["regular"], 109.9)
         self.assertNotIn("nso", data["prices"]["DE"])          # nicht in der Wishlist
         settings["current_country"] = "BR"
         settings["nso_until"] = "2026-11-01"
@@ -3276,6 +3284,16 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(de["month"], 1.67)
         self.assertTrue(next(r for r in m["rows"] if r["code"] == "BR")["current"])
         self.assertEqual(m["rows"], sorted(m["rows"], key=lambda r: (not r["counts"], r["eur"])))
+        # 0.57: alle Varianten, Preis je Monat nach Laufzeit; deine Variante bestimmt rows
+        self.assertEqual([v["key"] for v in m["variants"]], planner.NSO_KEYS)
+        m3 = next(v for v in m["variants"] if v["key"] == "m3")
+        self.assertEqual([(r["code"], r["eur"], r["month"]) for r in m3["rows"]], [("DE", 7.99, 2.66)])
+        self.assertEqual(m["mine"], "m12")
+        settings["nso_variant"] = "m3"
+        self.assertEqual(planner.membership(data, settings)["rows"][0]["eur"], 7.99)
+        settings["nso_variant"] = "m12"
+        # Preise aus 0.56 (Schlüssel „nso“) zählen als 12 Monate
+        self.assertEqual(planner.nso_price({"nso": {"x": 1}}, "m12"), {"x": 1})
         # 0.56.1: Link in den eShop aus der DekuDeals-Seite, Bestpreis, ★ und Abstand wie bei Titeln
         self.assertEqual(de["url"], "https://ec.nintendo.com/X/x/membership")
         self.assertIsNotNone(m["champ"])
@@ -3289,6 +3307,8 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(store.save_settings({"nso_until": "2027-02-03"})["nso_until"], "2027-02-03")
         self.assertEqual(store.save_settings({"nso_until": "morgen"})["nso_until"], "2027-02-03")
         self.assertEqual(store.save_settings({"nso_until": ""})["nso_until"], "")
+        self.assertEqual(store.save_settings({"nso_variant": "ep"})["nso_variant"], "ep")
+        self.assertEqual(store.save_settings({"nso_variant": "jahr"})["nso_variant"], "ep")
         m = planner.membership(store.load_data(), store.load_settings())
         self.assertEqual(m["rows"], [])
         self.assertFalse(m["due"])

@@ -51,6 +51,7 @@ REL_V = 1                             # erhöht sich, wenn alle Seiten neu zu le
 EXTRA_PER_SYNC = 40                   # Artikelseiten je Abgleich für IDs fehlender DLC der Sammlung
 NSO_RECHECK = 30 * 24 * 3600          # eShop-IDs der Online-Mitgliedschaft: monatlich prüfen
 NSO_RETRY = 7 * 24 * 3600             # Land ohne ID auf der Seite: wöchentlich erneut
+NSO_PER_SYNC = 20                     # höchstens so viele Mitgliedschaftsseiten je Abgleich
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None, "boot_sync": None}
@@ -283,10 +284,10 @@ def _track(data, history, code, table, stamp):
             e.update(own_low=cur, own_since=stamp)
 
 
-def nso_ids_for(data, code):
-    """eShop-IDs der Mitgliedschaft für ein Land: die eigenen, sonst die der Länder derselben
-    Region (Spiele teilen ihre IDs je Region, bei der Mitgliedschaft ist das ungewiss)."""
-    ids = ((data.get("nso") or {}).get("ids") or {})
+def nso_ids_for(data, code, key="m12"):
+    """eShop-IDs einer Variante der Mitgliedschaft für ein Land: die eigenen, sonst die der Länder
+    derselben Region (so bekommt die USA ihren Preis über Kanada, Mexiko und Brasilien)."""
+    ids = (planner.nso_variants(data).get(key) or {}).get("ids") or {}
     if ids.get(code):
         return ids[code]
     fam = countries.BY_CODE[code]["family"]
@@ -298,27 +299,48 @@ def nso_ids_for(data, code):
 
 
 def sync_nso(data, settings, fetch, sleep, now=None):
-    """Online-Mitgliedschaft, 12 Monate, einzeln (Entscheidung 13.10.2026): Ihre eShop-ID je
-    Land steht in der Preistabelle der DekuDeals-Seite. Eine Seite je aktivem Land, monatlich;
-    ohne ID wöchentlich. Die Preise holt danach der normale Preisabruf."""
+    """Online-Mitgliedschaft in allen Varianten, die DekuDeals führt (ab 0.57): Ihre eShop-ID je
+    Land steht in der Preistabelle der DekuDeals-Seite. Eine Seite je Variante und aktivem Land,
+    monatlich, ohne ID wöchentlich, höchstens NSO_PER_SYNC je Abgleich. Die Preise holt danach
+    der normale Preisabruf."""
     now = now or time.time()
     nso = data.setdefault("nso", {})
-    ids, checked, lows, urls = (nso.setdefault(k, {}) for k in ("ids", "checked", "lows", "urls"))
+    var = nso.setdefault("v", {})
+    old = {k: nso.pop(k) for k in ("ids", "checked", "lows", "urls") if k in nso}
+    if old and "m12" not in var:                 # Daten bis 0.56: nur 12 Monate, flach
+        var["m12"] = old
     shops = [c for c in countries.ORDER if countries.BY_CODE[c]["shop"] == c and settings["countries"][c]["enabled"]]
-    due = [c for c in shops if now - checked.get(c, 0) > (NSO_RECHECK if ids.get(c) else NSO_RETRY)]
+    due = []
+    for v in planner.NSO_VARIANTS:
+        e = var.setdefault(v["key"], {})
+        ids, checked = e.setdefault("ids", {}), e.setdefault("checked", {})
+        due += [(v, c) for c in shops if now - checked.get(c, 0) > (NSO_RECHECK if ids.get(c) else NSO_RETRY)]
+
+    def known():
+        parts = [f"{v['label']} {sum(1 for c in shops if var[v['key']]['ids'].get(c))}/{len(shops)}" for v in planner.NSO_VARIANTS]
+        own = var["m12"]["ids"]
+        lack = [c for c in shops if not own.get(c)]
+        via = [c for c in lack if nso_ids_for(data, c)]
+        return ("IDs je Variante: " + ", ".join(parts)
+                + (f"; ohne eigene ID: {', '.join(lack)}" if lack else "")
+                + (f" ({', '.join(via)} über Nachbarländer der Region)" if via else ""))
     if not due:
-        _log(f"Mitgliedschaft: IDs für {sum(1 for c in shops if ids.get(c))} von {len(shops)} Ländern bekannt, nichts fällig")
+        _log(f"Mitgliedschaft: nichts fällig; {known()}")
         return
+    rest = max(0, len(due) - NSO_PER_SYNC)
+    due = due[:NSO_PER_SYNC]
     _step("Mitgliedschaft lesen", len(due))
     read = 0
-    for i, code in enumerate(due):
+    for i, (v, code) in enumerate(due):
+        ids, checked = var[v["key"]]["ids"], var[v["key"]]["checked"]
+        lows, urls = var[v["key"]].setdefault("lows", {}), var[v["key"]].setdefault("urls", {})
         if i and checked.get(code) == now:   # schon über die Seite eines anderen Landes gefunden
             status["done"] += 1
             continue
         if read:
             sleep(LOW_PAUSE)
         try:
-            info = sources.fetch_item(MEMBERSHIP_SLUG, code.lower(), fetch=fetch)
+            info = sources.fetch_item(v["slug"], code.lower(), fetch=fetch)
         except sources.FetchError as e:
             if e.status in sources.BLOCKED:
                 _log(f"Mitgliedschaft: DekuDeals sperrt ({e.status}), weiter beim nächsten Abgleich")
@@ -336,13 +358,12 @@ def sync_nso(data, settings, fetch, sleep, now=None):
                 urls[cc] = u
         # Bestpreis wie bei Titeln: tiefster Preis der letzten 24 Monate laut Verlauf, sonst Allzeittief
         since = datetime.fromtimestamp(now - 730 * 86400, timezone.utc).strftime("%Y-%m-%d")
-        recent = [v for d, v in info.get("history") or [] if d >= since and v]
+        recent = [x for d, x in info.get("history") or [] if d >= since and x]
         if recent or info.get("low") is not None:
             lows[code] = min(recent) if recent else info["low"]
         checked[code] = now
         status["done"] += 1
-    _log(f"Mitgliedschaft: {read} Seiten gelesen, eShop-IDs für {sum(1 for c in shops if ids.get(c))} von {len(shops)} Ländern"
-         + (f"; ohne eigene ID: {', '.join(c for c in shops if not ids.get(c))}" if any(not ids.get(c) for c in shops) else ""))
+    _log(f"Mitgliedschaft: {read} Seiten gelesen{f', {rest} folgen im nächsten Abgleich' if rest else ''}; {known()}")
 
 
 def sync_prices(data, settings, fetch, sleep, history=None):
@@ -359,7 +380,8 @@ def sync_prices(data, settings, fetch, sleep, history=None):
             continue
         fam = countries.BY_CODE[code]["family"]
         by_nsuid, extra_ids = {}, {}
-        nso_ids = {n: "nso" for n in nso_ids_for(data, code)} if settings["countries"][code]["enabled"] else {}
+        nso_ids = {n: v["key"] for v in planner.NSO_VARIANTS for n in nso_ids_for(data, code, v["key"])} \
+            if settings["countries"][code]["enabled"] else {}
         for slug, it in data["items"].items():
             if it.get("active"):
                 for n in it["ids"].get(fam, []):
@@ -1726,7 +1748,7 @@ def diagnose(sleep=time.sleep):
     return lines
 
 
-MEMBERSHIP_SLUG = "nintendo-switch-online-12-month-membership"
+MEMBERSHIP_SLUG = planner.NSO_VARIANTS[0]["slug"]
 
 
 def membership_probe(probe, sleep=time.sleep):

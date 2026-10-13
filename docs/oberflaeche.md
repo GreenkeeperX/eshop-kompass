@@ -24,7 +24,10 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 ## Online-Mitgliedschaft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
-Ablauf offen und eine Zeile unter „Zu erledigen“). Es gelten die Farben der Titel (ab 0.56.1):
+Ablauf offen und eine Zeile unter „Zu erledigen“). Die Kopfzeile nennt deine Variante (Auswahl im
+Kasten). Oben steht je Variante das beste Land; der günstigste Preis je Monat ist fett, die
+Familie zeigt ihn je Konto und zählt dafür nicht mit (Chip „kauft der Verwalter“). Ein Klick auf
+eine Variante zeigt ihre Länder darunter, die Zeile ist dann hinterlegt (`--best`). Es gelten die Farben der Titel (ab 0.56.1):
 ★ gold am Bestpreis (niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden
 Länder, 2 % Spielraum), Preis grün nach Urteil „kaufen“ oder „gut“, Abstand zum Bestpreis rot
 `+x €`, Rabatt blau. Der Preis führt in den eShop des Landes, daneben „DekuDeals“ zum Verlauf.
