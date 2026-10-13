@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.53.6"
+VERSION = "0.54.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -682,19 +682,19 @@ def fetch_langs_am(nsuid, fetch=fetch):
 # ------------------------------------------------------------ Wechselkurse
 
 def fetch_fx(fetch=fetch):
-    """Kurse je 1 EUR. Liefert (rates, stand)."""
+    """Kurse je 1 EUR. Liefert (rates, stand, quelle)."""
     try:
         data = json.loads(fetch(FX_URL))
         if data.get("result") == "success" and data.get("rates"):
             rates = {k: float(v) for k, v in data["rates"].items()}
             rates["EUR"] = 1.0
-            return rates, data.get("time_last_update_utc", "")
+            return rates, data.get("time_last_update_utc", ""), "open.er-api"
     except (FetchError, ValueError):
         pass
     data = json.loads(fetch(FX_FALLBACK_URL))
     rates = {k: float(v) for k, v in data["rates"].items()}
     rates["EUR"] = 1.0
-    return rates, data.get("date", "")
+    return rates, data.get("date", ""), "frankfurter (EZB)"
 
 
 # ----------------------------------------------------------- Guthabenkarten

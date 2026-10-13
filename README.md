@@ -320,7 +320,8 @@ dafür jede Artikelseite einmal neu (etwa 15 bis 25 Minuten).
 
 Fehlt auf der DekuDeals-Seite ein digitaler Tiefstpreis (manchmal steht
 dort nur der eines Händlers), gilt der niedrigste Preis aus dem digitalen
-Verlauf. Das Protokoll zählt Seiten, die gar keinen nennen. Spiele für
+Verlauf. Das Protokoll zählt, wie viele Wishlist-Titel einen Tiefstpreis und einen
+Angebotsverlauf haben (bis 0.53 die Summe aller je gelesenen Seiten). Spiele für
 Switch und Switch 2 haben je Plattform einen Tiefstpreis; es gilt der
 höchste, den der Preis jetzt nicht übersteigt, also der der eigenen Fassung.
 
@@ -465,10 +466,13 @@ Sicherung und Protokoll.
   ergänzt, nicht ersetzt; alles andere holt das Tool beim Abgleich neu.
 
 Jede Spalte und jedes Feld erklärt sich im Tooltip. Das Protokoll unter
-Einstellungen läuft während eines Abgleichs mit, nennt oben den Start des
-Laufs und zeigt die Uhrzeit deines Browsers. "Verbindung testen" schreibt in
-eine eigene Box darüber. Die Wechselkurse holt das Tool bei jedem Abgleich,
-die Quelle erneuert sie einmal am Tag.
+Einstellungen läuft während eines Abgleichs mit, nennt oben Start und Version des
+Laufs und zeigt die Uhrzeit deines Browsers. Seit 0.54 schreibt jeder Schritt eine Zeile,
+auch wenn nichts fällig ist ("nichts fällig", "alle aktuell"), damit sich Abgleiche
+vergleichen lassen. "Verbindung testen" schreibt in eine eigene Box darüber. Die
+Wechselkurse erneuert die Quelle einmal am Tag; das Tool holt sie nur dann, wenn es
+Neues gibt. Was das Tool woher, wann und wie oft holt und wo es die Daten ablegt, steht in
+`docs/abrufe.md`.
 
 ## Tiefstpreise und Verlauf
 

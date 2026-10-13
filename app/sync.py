@@ -35,6 +35,10 @@ TDB_DLC_REGIONS = {"JP": "JP.ja", "AM": "US.en"}   # DLC-IDs dieser Regionen zue
 NET_RETRY_PAUSE = 5.0                 # nach einem kurzen Netzfehler einmal neu versuchen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
+TITLEDB_FAIL_WAIT = 86400            # titledb nach einem Fehlschlag einen Tag ruhen lassen
+JP_WAIT_SECONDS = 7 * 86400          # nach dem Warteraum von store-jp eine Woche Ruhe
+FX_SOURCE_DAY = 24 * 3600            # die Kursquellen erneuern einmal am Tag
+FX_RECHECK = 20 * 3600               # höchstens so oft selbst nachfragen, auch wenn die Quelle hängt
 CARD_PAUSE = 3.0
 REL_RECHECK_SECONDS = 30 * 24 * 3600  # DLC und Pakete eines Titels monatlich auffrischen
 REL_PER_SYNC = 40                     # höchstens so viele Artikelseiten je Abgleich
@@ -125,9 +129,12 @@ def sync_ids(data, settings, fetch, sleep, now=None):
             if now - it["ids_checked"].get(fam, 0) < ID_RECHECK_SECONDS:
                 continue
             todo.append((slug, fam))
-    _step("Titel-IDs suchen", len(todo))
-    misses = 0
+    if todo:
+        _step("Titel-IDs suchen", len(todo))
+    misses, pages, got, stop = 0, 0, 0, None
     for slug, fam in todo:
+        if stop:
+            break
         it = data["items"][slug]
         found, reached = [], False
         for lookup in countries.FAMILY_LOOKUP[fam]:
@@ -136,18 +143,19 @@ def sync_ids(data, settings, fetch, sleep, now=None):
             except sources.FetchError as e:
                 _log(f"{slug} ({lookup}): {e}")
                 misses += 1
+                # Eine Sperre beendet nur diesen Schritt; Preise und Kurse kommen trotzdem (0.54)
                 if e.status in sources.BLOCKED:
-                    store.save_data(data)
-                    raise RuntimeError(f"DekuDeals lehnt Abrufe ab (HTTP {e.status}), "
-                                       "nächster Versuch beim nächsten Abgleich")
+                    stop = f"DekuDeals lehnt Abrufe ab (HTTP {e.status})"
+                    break
                 if misses >= 6:            # nicht hundertfach gegen eine Sperre anrennen
                     for line in sources.attempts:
                         _log("  " + line)
-                    store.save_data(data)
-                    raise RuntimeError("Artikelseiten bei DekuDeals nicht lesbar")
+                    stop = "Artikelseiten bei DekuDeals nicht lesbar"
+                    break
                 sleep(DEKU_PAUSE)
                 continue
             reached, misses = True, 0
+            pages += 1
             if info["title"]:
                 it["title"] = info["title"]
             if info["parent"]:
@@ -160,6 +168,9 @@ def sync_ids(data, settings, fetch, sleep, now=None):
             if info["nsuids"]:
                 found = info["nsuids"]
                 break
+        if stop and not reached:
+            break
+        got += bool(found)
         if (it.get("ids_suspect") or {}).get(fam):
             if reached:
                 settle_ids(it, fam, found, now, it.get("title") or slug)
@@ -171,6 +182,10 @@ def sync_ids(data, settings, fetch, sleep, now=None):
         if status["done"] % 10 == 0:
             store.save_data(data)
     merge_aliases(data)
+    if stop:
+        _log(f"Titel-IDs: {stop}, {len(todo)} offen, nächster Versuch beim nächsten Abgleich")
+    _log(f"Titel-IDs: {pages} Seiten gelesen, {got} von {len(todo)} gefunden" if todo
+         else "Titel-IDs: alle bekannt, nichts zu suchen")
     missing = [it["title"] for it in data["items"].values()
                if it.get("active") and not any(it["ids"].values())]
     if missing:
@@ -362,7 +377,7 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
     """
     now = now or time.time()
     prices = data.setdefault("card_prices", {})
-    urls = []
+    urls, label = [], {}
     for code in countries.ORDER:
         cfg = settings["countries"][code]
         if not cfg["enabled"]:
@@ -370,6 +385,7 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
         for x in planner.parse_card_list(cfg.get("cards")):
             if x["url"] and x["stock"] and x["url"] not in urls:
                 urls.append(x["url"])
+                label[x["url"]] = f"{code} {x['face'] / 100:g}"
     for url in list(prices):                  # Links, die nicht mehr eingetragen sind
         if url not in urls:
             del prices[url]
@@ -379,10 +395,14 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
     # nicht gelesen wurden, sonst kämen immer dieselben dran und die hinteren nie
     first = _plan_card_urls(data, settings, now)
     todo.sort(key=lambda u: (u not in first, (prices.get(u) or {}).get("checked", 0)))
+    fresh = len(urls) - len(todo)
     if not todo:
+        # Immer eine Zeile, auch ohne Abruf (0.54)
+        _log(f"Kartenpreise: alle {len(urls)} aktuell (gelesen in den letzten 20 Stunden)" if urls
+             else "Kartenpreise: keine Karte mit Link eingetragen")
         return
     _step("Kartenpreise lesen", len(todo))
-    got = 0
+    got, failed = 0, []
     for url in todo:
         try:
             found = sources.fetch_card_price(url, fetch=fetch)
@@ -391,16 +411,20 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
                 _log(f"Kartenpreise: Shop lehnt Abrufe ab ({e}), Werte von Hand gelten weiter")
                 break
             prices[url] = _card_miss(prices.get(url), now, f"HTTP {e.status or 'Fehler'}")
+            failed.append(f"{label[url]} (HTTP {e.status or 'Fehler'})")
         else:
             if found:
                 prices[url] = {"checked": now, "ok": now, "price": found[0], "currency": found[1]}
                 got += 1
             else:
                 prices[url] = _card_miss(prices.get(url), now, "Seite nennt keinen Preis")
+                failed.append(f"{label[url]} (kein Preis)")
         status["done"] += 1
         sleep(CARD_PAUSE)
-    _log(f"Kartenpreise: {got} von {len(todo)} gelesen" +
-         ("" if got == len(todo) else ", für die übrigen gilt der Wert von Hand"))
+    _log(f"Kartenpreise: {got} von {len(todo)} gelesen"
+         + (f", {fresh} weitere aktuell" if fresh else "")
+         + (f"; ohne Preis: {', '.join(failed)}, dort gilt der letzte Preis bis 14 Tage, sonst der Wert von Hand" if failed else "")
+         + ("; Rest nach Sperre nicht gelesen" if got + len(failed) < len(todo) else ""))
 
 
 def record_card_factors(data, settings, now=None):
@@ -421,6 +445,38 @@ def record_card_factors(data, settings, now=None):
 
 UNIT_JUMP = 0.15        # mehr Änderung je Währungseinheit seit dem letzten Abgleich ist auffällig
 FX_MAX_AGE_DAYS = 3
+
+
+def _fx_stamp(updated):
+    """Kursstand als „13.10., 02:02“ (Ortszeit des Servers), sonst der Text der Quelle."""
+    age = _fx_age_days(updated, datetime.now(timezone.utc))
+    if age is None:
+        return updated or "unbekannt"
+    return (datetime.now(timezone.utc) - timedelta(days=age)).astimezone().strftime("%d.%m., %H:%M")
+
+
+def sync_fx(data, fetch, now=None):
+    """Wechselkurse. Die Quellen erneuern sie einmal am Tag: Abruf nur, wenn der Stand älter
+    als FX_SOURCE_DAY ist und der letzte eigene Abruf länger als FX_RECHECK zurückliegt (0.54)."""
+    now = now or time.time()
+    fx = data.get("fx") or {}
+    age = _fx_age_days(fx.get("updated"), datetime.fromtimestamp(now, timezone.utc))
+    if fx.get("rates") and age is not None and (age * 86400 < FX_SOURCE_DAY
+                                                 or now - fx.get("fetched", 0) < FX_RECHECK):
+        _log(f"Wechselkurse vom {_fx_stamp(fx.get('updated'))} ({fx.get('src') or 'Quelle'}), aktuell, nicht abgerufen")
+        return
+    _step("Wechselkurse abrufen")
+    try:
+        rates, updated, src = sources.fetch_fx(fetch=fetch)
+    except Exception as e:
+        _log(f"Wechselkurse nicht aktualisiert ({e}), letzter Stand vom {_fx_stamp(fx.get('updated'))} gilt")
+        return
+    # Fehlt in der Antwort eine Währung (Ersatzquelle EZB kennt weniger), gilt der letzte Kurs
+    old = fx.get("rates") or {}
+    kept = sorted(set(old) - set(rates))
+    data["fx"] = {"rates": dict(old, **rates), "updated": updated, "fetched": now, "src": src}
+    _log(f"Wechselkurse vom {_fx_stamp(updated)} ({src})"
+         + (f"; {len(kept)} Währungen ohne neuen Kurs, letzter Stand bleibt" if kept else ""))
 
 
 def _fx_age_days(updated, now):
@@ -633,6 +689,12 @@ def sync_titledb(data, settings, fetch, now=None):
         (r.get("ids_tdb") or {}).get("JP") is None for r, _ in verify.values())
     wait = TITLEDB_FRESH_SECONDS if fresh else TITLEDB_SECONDS
     if not (todo or verify or dlc):
+        _log("titledb: nichts fällig")
+        return
+    if now - data.get("titledb_fail_at", 0) < TITLEDB_FAIL_WAIT:
+        # Nach einem Fehlschlag nicht bei jedem Abgleich wieder bis zu 75 MB anfragen (0.54)
+        _log("titledb: zuletzt nicht abrufbar, nächster Versuch ab "
+             + datetime.fromtimestamp(data["titledb_fail_at"] + TITLEDB_FAIL_WAIT).strftime("%d.%m., %H:%M"))
         return
     if now - data.get("titledb_at", 0) < wait:
         if dlc_new:
@@ -641,6 +703,9 @@ def sync_titledb(data, settings, fetch, now=None):
                  + datetime.fromtimestamp(data["titledb_at"]).strftime("%H:%M")
                  + " geladen, wieder im nächsten Abgleich ab "
                  + datetime.fromtimestamp(data["titledb_at"] + wait).strftime("%H:%M"))
+        else:
+            _log("titledb: zuletzt am " + datetime.fromtimestamp(data["titledb_at"]).strftime("%d.%m.")
+                 + " geladen, wieder ab " + datetime.fromtimestamp(data["titledb_at"] + wait).strftime("%d.%m."))
         return
     _step("Sprachen Japan aus titledb" if todo or verify else "IDs fehlender DLC aus titledb")
     need = {fam for recs in dlc.values() for _, fam in recs}
@@ -744,7 +809,7 @@ def import_jp_langs(text, now=None):
     return {"read": got, "empty": empty, "unknown": unknown, "gone": gone}
 
 
-def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
+def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=True):
     """Sprache je Titel und Region, einmal geprüft und dauerhaft gespeichert, unabhängig vom
     Preis: Wishlist-Titel und die fehlenden DLC deiner Spiele (Füllartikel). Europa in einem
     Abruf, Amerika und Japan je Titel. DLC übernimmt die Sprache seines Spiels, deshalb
@@ -821,6 +886,8 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
             _log(f"Sprachen Europa: {len(set(found) & set(eu))} von {len(eu)} Titeln"
                  + (f"; {missing} ohne Angabe (meist DLC), nach {LANG_TRIES} Versuchen nur noch monatlich"
                     if missing else ""))
+    elif report_idle:
+        _log("Sprachen Europa: nichts fällig")
 
     # Japan und Amerika: eine Seite je Titel, einmal verlässlich, danach nur, wo sie fehlt.
     # DLC übernimmt die Sprache des Hauptspiels, eigene Seiten braucht es dafür nicht;
@@ -836,6 +903,14 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
             rec = glangs.setdefault(game, {})
             if due(rec, fam):
                 todo.append((rec, nsuid))
+        # Nach einem Warteraum ruht store-jp JP_WAIT_SECONDS: Japan kommt aus titledb und vom
+        # Browser-Helfer, ein Versuch je Abgleich brachte nur den Warteraum (0.54)
+        wait_until = (data.get("lang_wait") or {}).get(fam, 0)
+        if todo and now < wait_until:
+            if report_idle:
+                _log(f"Sprachen {name}: {len(todo)} offen, der Store zeigte zuletzt den Warteraum; nächster Versuch ab "
+                     f"{datetime.fromtimestamp(wait_until).strftime('%d.%m.')}, bis dahin titledb und Browser-Helfer")
+            continue
         # Schonend: ungeprüfte zuerst, höchstens LANG_PER_SYNC Seiten, der Rest beim nächsten Abgleich
         todo.sort(key=lambda t: (t[0].get("langs_tries") or {}).get(fam, 0))
         # `budget` teilt die Seiten auf beide Aufrufe eines Abgleichs auf
@@ -855,7 +930,9 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
                 if e.status == 404:
                     langs, gone = None, True   # keine Seite: als geprüft vermerken
                 elif e.status == 503:
-                    _log(f"Sprachen {name}: Der Store zeigt den Warteraum, nächster Versuch beim nächsten Abgleich")
+                    data.setdefault("lang_wait", {})[fam] = now + JP_WAIT_SECONDS
+                    _log(f"Sprachen {name}: Der Store zeigt den Warteraum, nächster Versuch ab "
+                         f"{datetime.fromtimestamp(now + JP_WAIT_SECONDS).strftime('%d.%m.')}")
                     queue = True
                     if budget is not None:
                         budget[fam] = 0    # im selben Abgleich nicht noch einmal anklopfen
@@ -882,6 +959,8 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
         if todo and not (queue and not got):
             _log(f"Sprachen {name}: {got} von {len(todo)} Titeln" + (f", {rest} folgen beim nächsten Abgleich" if rest else "")
                  + (f", bei {suspects} sucht der nächste Abgleich die ID neu" if suspects else ""))
+        elif not todo and report_idle:
+            _log(f"Sprachen {name}: nichts fällig")
     store.save_data(data)
 
 
@@ -920,9 +999,10 @@ def sync_lows(data, settings, fetch, sleep, now=None):
     xtodo.sort()
     todo += refresh[:SALES_PER_SYNC] + xtodo[:EXTRA_LOWS_PER_SYNC]
     if not todo:
+        _log(_lows_summary(data, settings, "nichts fällig"))
         return
     _step("Tiefstpreise nachladen", len(todo))
-    fails = 0
+    fails = read = 0
     for _, code, slug, table in todo:
         try:
             info = sources.fetch_item(slug, code.lower(), fetch=fetch)
@@ -951,15 +1031,26 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             low = cur
         _store_low(data, settings, code, slug, low, now, info.get("history") or [],
                    platforms=len(info.get("lows") or []))
+        read += 1
         status["done"] += 1
         if status["done"] % 20 == 0:
             store.save_data(data)
         sleep(LOW_PAUSE)
     store.save_data(data)
-    known = sum(1 for c in lows.values() for e in c.values() if "low" in e)
-    runs = sum(1 for c in lows.values() for e in c.values() if e.get("sales"))
-    missing = sum(1 for c in lows.values() for e in c.values() if "low" not in e and "own_low" not in e)
-    _log(f"Tiefstpreise bekannt: {known}, Angebotsverläufe: {runs}, Seiten ohne Tiefstpreis: {missing}")
+    _log(_lows_summary(data, settings, f"{read} von {len(todo)} Seiten gelesen"))
+
+
+def _lows_summary(data, settings, head):
+    """Eine Zeile, die zählt, was heute zählt: Wishlist-Titel in aktiven Ländern. Bis 0.53
+    stand hier die Summe aller je gelesenen Seiten, auch alter Titel (0.54)."""
+    lows = data.get("lows") or {}
+    codes = [c for c in countries.ORDER if settings["countries"][c]["enabled"]]
+    active = [s for s, it in data["items"].items() if it.get("active")]
+    has = lambda s, k: any(k(lows.get(c, {}).get(s) or {}) for c in codes)
+    known = sum(1 for s in active if has(s, lambda e: "low" in e or "own_low" in e))
+    runs = sum(1 for s in active if has(s, lambda e: e.get("sales")))
+    return (f"Tiefstpreise: {head}; Wishlist {known} von {len(active)} Titeln mit Tiefstpreis, "
+            f"{runs} mit Angebotsverlauf")
 
 
 def update_links(data, slug, related, now):
@@ -1059,7 +1150,14 @@ def sync_related(data, settings, fetch, sleep, now=None):
     links_todo = sorted((lchk.get(s, 0), s) for s in (data.get("extra") or {})
                         if now - lchk.get(s, 0) >= LINKS_RECHECK_SECONDS)
     links_todo = [s for _, s in links_todo[:REL_PER_SYNC - len(todo)]]
+    def summary(head):
+        games = [s for s in deku if s in rel and not rel[s].get("parent")]
+        _log(f"DLC und Pakete: {head}; bekannt sind {len(games)} Spiele der Sammlung, "
+             f"{sum(1 for s in games if rel[s]['dlc'])} davon mit Zusatzinhalten"
+             + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else "")
+             + (f"; Pakete bekannt: {len(data.get('links') or {})}" if data.get("links") else ""))
     if not todo and not links_todo:
+        summary("nichts fällig")
         return
     _step("DLC und Pakete lesen", len(todo) + len(links_todo))
     fails, notes = 0, []
@@ -1100,11 +1198,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
         sleep(LOW_PAUSE)
     store.save_data(data)
     _log_links(notes)
-    games = [s for s in deku if s in rel and not rel[s].get("parent")]
-    _log(f"DLC und Pakete: {status['done']} Seiten gelesen; bekannt sind {len(games)} Spiele der Sammlung, "
-         f"{sum(1 for s in games if rel[s]['dlc'])} davon mit Zusatzinhalten"
-         + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else "")
-         + (f"; Pakete bekannt: {len(data.get('links') or {})}" if data.get("links") else ""))
+    summary(f"{status['done']} Seiten gelesen")
 
 
 def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
@@ -1344,17 +1438,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         remember_eshop(data)
         store.save_data(data)
         sync_ids(data, settings, fetch, sleep)
-        _step("Wechselkurse abrufen")
-        try:
-            rates, updated = sources.fetch_fx(fetch=fetch)
-            # Fehlt in der Antwort eine Währung (Ersatzquelle EZB kennt weniger), gilt der letzte Kurs
-            old = (data.get("fx") or {}).get("rates") or {}
-            kept = sorted(set(old) - set(rates))
-            if kept:
-                _log(f"Wechselkurse: {len(kept)} Währungen ohne neuen Kurs, letzter Stand bleibt")
-            data["fx"] = {"rates": dict(old, **rates), "updated": updated}
-        except Exception as e:
-            _log(f"Wechselkurse nicht aktualisiert ({e})")
+        sync_fx(data, fetch)
         history = store.load_history()
         sync_prices(data, settings, fetch, sleep, history)
         store.save_history(history)
@@ -1381,7 +1465,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_titledb(data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
         # Stand der ID-Suche erst jetzt, mit den IDs aus titledb (0.48.1)
         _log_extra_ids(data.get("extra") or {}, data.get("glangs") or {}, needed_families(settings), time.time())
-        sync_langs(data, settings, fetch, sleep, budget=langs_budget)    # Sprachen der neu gefundenen DLC
+        sync_langs(data, settings, fetch, sleep, budget=langs_budget, report_idle=False)    # Sprachen der neu gefundenen DLC
         status["ok"] = True
         _step("Fertig")
     except Exception as e:

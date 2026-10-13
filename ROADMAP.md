@@ -191,6 +191,15 @@ Reihenfolge und Begründung:
   gefärbt, Länderkacheln mit gleichem Hintergrund, „Bewertung ab …“ statt „noch kein Vergleich“,
   Kopierknöpfe für Protokoll und Verbindungstest, Version im Protokoll; Verbindungstest fragt die
   Preise der Mitgliedschaft mit den eShop-IDs aus DekuDeals ab.
+- [x] Abrufe, Schritt 1 (0.54.0): `docs/abrufe.md` als gepflegte Übersicht aller Abrufe;
+  jeder Schritt schreibt eine Zeile, auch ohne Arbeit; Kartenpreise nennen fehlgeschlagene
+  Karten; Tiefstpreis-Zeile zählt nur die Wishlist; Wechselkurse nur bei neuem Stand der
+  Quelle; Sperre bei der ID-Suche beendet nur diesen Schritt; store-jp nach Warteraum eine
+  Woche, titledb nach Fehlschlag einen Tag Ruhe.
+- [ ] Abrufe, Schritt 2: eine DekuDeals-Seite in allen Schritten auswerten, Obergrenzen für
+  ID-Suche und Tiefstpreise der Wishlist, Verbindungstest für titledb und Ersatzkurse.
+- [ ] Abrufe, Schritt 3: Daten von Titeln, die 180 Tage weder auf Wishlist noch in der
+  Sammlung stehen, entfernen (eigene Preisaufzeichnung bleibt).
 - [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
   Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen. Erster Schritt (0.53.2): Probe im Verbindungstest, woher Preise je Land kommen (DekuDeals

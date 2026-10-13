@@ -739,8 +739,11 @@ class PlanTest(unittest.TestCase):
         cp = self.data["card_prices"]
         self.assertEqual(cp["https://shop.example/br50"], {"checked": t0, "ok": t0, "price": 8.9, "currency": "EUR"})
         self.assertEqual(cp["https://shop.example/br25"]["error"], "Seite nennt keinen Preis")
+        # 0.54: das Protokoll nennt, welche Karte keinen Preis lieferte
+        self.assertIn("Kartenpreise: 1 von 2 gelesen; ohne Preis: BR 25 (kein Preis)", sync.status["log"][-1])
         sync.sync_card_prices(self.data, self.settings, fake, lambda s: None, now=t0 + 3600)
         self.assertEqual(len(calls), 2)                       # höchstens einmal am Tag
+        self.assertIn("Kartenpreise: alle 2 aktuell", sync.status["log"][-1])     # auch ohne Abruf eine Zeile
         # Der gelesene Preis ersetzt den von Hand eingetragenen, mit der Servicegebühr des Shops
         st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
         self.assertEqual(st[2]["cost"], round(8.90 * 1.0775 + 0.40, 2))   # Vorgabe 0,40 € + 7,75 %
@@ -1518,10 +1521,12 @@ class SafetyTest(unittest.TestCase):
         def deny(url, ua=None):
             calls.append(url)
             raise sources.FetchError(url, 429)
-        with self.assertRaises(RuntimeError) as ctx:
-            sync.sync_ids(data, settings, deny, lambda s: None, now=10 ** 9)
-        self.assertIn("HTTP 429", str(ctx.exception))
+        sync.status["log"] = []
+        sync.sync_ids(data, settings, deny, lambda s: None, now=10 ** 9)
+        # 0.54: Die Sperre beendet nur die ID-Suche, der Abgleich läuft mit Preisen weiter
+        self.assertTrue(any("HTTP 429" in l and "5 offen" in l for l in sync.status["log"]))
         self.assertEqual(len(calls), 1)                    # nach der ersten Sperre Schluss
+        self.assertTrue(all(not it["ids_checked"] for it in data["items"].values()))
         for it in data["items"].values():
             it["ids"] = {"EU": ["70010000000001"]}
         calls.clear()
@@ -1793,6 +1798,40 @@ class SyncTest(unittest.TestCase):
             self.assertEqual((e.get("hist_multi"), "hist" in e, e["hist_v"]), (True, False, sync.HIST_V))
         finally:
             sources.fetch_item = orig
+
+
+class SyncLogTest(unittest.TestCase):
+    """0.54: jeder Schritt schreibt eine Zeile, Wechselkurse nur, wenn die Quelle Neues hat."""
+
+    def test_fx_only_when_the_source_has_new_rates(self):
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            return json.dumps({"result": "success", "time_last_update_utc": "Tue, 13 Oct 2026 00:02:31 +0000",
+                               "rates": {"NOK": 11.5}})
+        t = datetime(2026, 10, 13, 18, 0, tzinfo=timezone.utc).timestamp()
+        data = {"fx": {"rates": {"NOK": 11.0}, "updated": "Mon, 12 Oct 2026 00:02:31 +0000"}}
+        sync.status["log"] = []
+        sync.sync_fx(data, fake, now=t)
+        self.assertEqual((len(calls), data["fx"]["rates"]["NOK"], data["fx"]["src"]), (1, 11.5, "open.er-api"))
+        self.assertIn("(open.er-api)", sync.status["log"][-1])
+        sync.sync_fx(data, fake, now=t + 6 * 3600)                    # Quelle noch nicht erneuert
+        self.assertEqual(len(calls), 1)
+        self.assertIn("aktuell, nicht abgerufen", sync.status["log"][-1])
+        sync.sync_fx(data, fake, now=t + 21 * 3600)                   # nächster Tag: wieder fragen
+        self.assertEqual(len(calls), 2)
+
+    def test_lows_line_counts_the_wishlist_only(self):
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code == "DE"
+        data = {"items": {"a": {"active": True}, "b": {"active": True}, "old": {"active": False}},
+                "prices": {}, "lows": {"DE": {"a": {"low": 5.0, "sales": [[1]]}, "old": {"checked": 1}}}}
+        sync.status["log"] = []
+        sync.sync_lows(data, settings, None, lambda s: None)
+        self.assertEqual(sync.status["log"][-1][9:],
+                         "Tiefstpreise: nichts fällig; Wishlist 1 von 2 Titeln mit Tiefstpreis, 1 mit Angebotsverlauf")
 
 
 class EshopHistoryTest(unittest.TestCase):
@@ -2504,8 +2543,9 @@ class ExtraDlcTest(unittest.TestCase):
                 sync.sync_langs(data, settings, None, lambda s: None, now=t0 + day * 86400)
             self.assertEqual(len(asked), 3)
             self.assertEqual(data["items"]["d"]["langs_tries"]["EU"], 3)
-            self.assertIn("Sprachen Europa: 0 von 1 Titeln; 1 ohne Angabe (meist DLC), nach 3 Versuchen",
-                          sync.status["log"][-1])
+            self.assertTrue(any("Sprachen Europa: 0 von 1 Titeln; 1 ohne Angabe (meist DLC), nach 3 Versuchen" in l
+                                for l in sync.status["log"]))
+            self.assertIn("Sprachen Europa: nichts fällig", sync.status["log"][-1])     # 0.54: immer eine Zeile
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 33 * 86400)
             self.assertEqual(len(asked), 4)                         # danach monatlich
 
@@ -2906,8 +2946,14 @@ class ExtraDlcTest(unittest.TestCase):
         with mock.patch.object(sources, "fetch_langs_jp", jp):
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 1, budget=budget)
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 2, budget=budget)
-        self.assertEqual(len(calls), 2)
+        # 0.54: Nach dem Warteraum ruht store-jp eine Woche, auch im nächsten Abgleich
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(any("der Store zeigte zuletzt den Warteraum; nächster Versuch ab" in l for l in sync.status["log"]))
         self.assertFalse(any("Sprachen Japan: 0 von" in l for l in sync.status["log"]))
+        with mock.patch.object(sources, "fetch_langs_jp", jp):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 8 * 86400)
+        self.assertEqual(len(calls), 2)                                 # nach der Woche wieder eine Probe
+        data["lang_wait"] = {}
         items = data["items"]
         self.assertNotIn("langs_tries", items["t0"])                    # Warteraum zählt nicht
         self.assertEqual((items["t0"]["langs"]["JP"], items["t0"]["langs_src"]["JP"]),
