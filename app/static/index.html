@@ -69,7 +69,7 @@ th:first-child,td:first-child{text-align:left}
 th.sth{cursor:pointer;user-select:none}
 th.sth:hover{color:var(--ink)}
 th.sth .sa{font-size:9px;margin-left:2px}
-th small.bc{display:block;font-weight:400;color:var(--muted)}
+th small.bc{display:inline;margin-left:3px;font-weight:400;color:var(--muted)}
 .pct{color:var(--deal);font-size:11px;margin-left:3px}
 .pct.np{color:var(--muted)}
 .abv{color:var(--stop)}
@@ -334,6 +334,11 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 .fb{padding:3px 10px;font-size:13px;border-radius:999px}
 .fb.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:12px;font-size:13px}
+/* Einstellungen: jeder Bereich eine Karte, so ist klar, wozu Eingeklapptes gehört (0.57.1) */
+.setc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:2px 16px 16px;margin-top:16px}
+form.set > .setc{margin-top:0}
+.setc > h3.sec:first-child{margin-top:14px}
+.setc .box{background:var(--bg)}
 .fold>summary{cursor:pointer;font-weight:600}
 .mini-t{margin-top:4px}
 .box h4{margin:10px 0 2px;font-size:13px}
@@ -845,6 +850,17 @@ function banners(){
   return h;
 }
 let fitMatrix = () => {}, showStick = () => {};
+/* Sofort kopieren, noch im Klick: Öffnet der Klick einen neuen Tab, verliert die Seite den Fokus,
+   und navigator.clipboard lehnt danach ab (Firefox). execCommand kopiert synchron (0.57.1). */
+function copyNow(text){
+  const t = document.createElement("textarea");
+  t.value = text; t.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(t); t.select();
+  let ok = false;
+  try{ ok = document.execCommand("copy"); }catch(e){}
+  t.remove();
+  if(!ok) try{ navigator.clipboard.writeText(text); }catch(e){}
+}
 function render(){
   renderHead();
   const m = $("main");
@@ -1421,8 +1437,10 @@ function planCard(p, step){
         `<button data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: ${esc(money(f.local, cur))}, Aufpreis ${eur(f.extra)}, ohne den Wechsel ${eur(f.ref)}">
           <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)}, sonst ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>spart ${eur(f.gain)}</b></button>`));
     if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.ui.dense ? 3 : 99).join("")}</div>`;
-  } else if((p.fill || []).length){
-    h += `<div class="fillrow"><span class="mut">Passt in den Rest:</span> ` + p.fill.map(f => f.extra
+  } else if((p.fill || []).length || (p.fill_nso || []).length){
+    // Mitgliedschaft passt in den Rest: nur ein Hinweis, gekauft wird sie über ihren Kasten (0.57.1)
+    const nsoFit = (p.fill_nso || []).map(f => `<button class="sm" data-act="gonso" title="Online-Mitgliedschaft ${esc(f.label)} für ${esc(money(f.local, cur))}${f.at_best ? ", am Bestpreis" : ""}. Danach bleiben ${esc(money(f.left, cur))}. Sie verlängert deine laufende Mitgliedschaft. Klick zeigt den Kasten Online-Mitgliedschaft.">${f.at_best ? `<span class="star">★</span>` : ""}Mitgliedschaft ${esc(f.label)} <small style="display:inline">${money(f.local, cur)}</small></button>`);
+    h += `<div class="fillrow"><span class="mut">Passt in den Rest:</span> ` + nsoFit.join(" ") + (nsoFit.length && (p.fill || []).length ? " " : "") + (p.fill || []).map(f => f.extra
       ? `<a class="btn sm" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Er steht nicht auf der Wishlist: Setz ihn bei DekuDeals darauf, dann lässt er sich hier übernehmen. DLC gelten nur in der Region des Hauptspiels.">${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></a>`
       : `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`).join(" ") +
       `</div>`;
@@ -1537,7 +1555,8 @@ function nsoBox(){
   const priced = vs.filter(v => v.best);
   if(priced.length > 1){
     const cheapest = Math.min(...priced.filter(v => !v.family).map(v => v.best.per_account));   // Familie kaufst du nicht selbst
-    h += `<table class="mini-t nsov"><tr><th class="l">Variante</th><th class="l">bestes Land</th><th class="num">Einkaufspreis</th><th class="num">je Monat</th><th class="l"></th></tr>` + vs.map(v => {
+    h += `<table class="mini-t nsov"><tr>${sth("nsov", "label", "Variante", "", "l")}${sth("nsov", "land", "bestes Land", "", "l")}${sth("nsov", "eur", "Einkaufspreis", "", "num")}${sth("nsov", "month", "je Monat", "Bei der Familie je Konto", "num")}<th class="l"></th></tr>` + sortRows("nsov", vs, {
+      label: v => v.label, land: v => v.best ? v.best.name : null, eur: v => v.best ? v.best.eur : null, month: v => v.best ? v.best.per_account : null}).map(v => {
       const b = v.best;
       const name = `<button class="link" data-act="nsov" data-v="${v.key}" title="Länder für diese Variante zeigen">${esc(v.label)}</button>`;
       const tags = [v.key === m.mine ? `<span class="chip" title="Deine Mitgliedschaft, eingestellt oben">deine</span>` : "",
@@ -1545,19 +1564,24 @@ function nsoBox(){
       if(!b) return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l mut" colspan="4">noch kein Preis</td></tr>`;
       const month = v.family ? `<span title="${eur(b.month)} je Monat für die ganze Gruppe">${eur(b.per_account)} je Konto</span>` : eur(b.month);
       return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l">${esc(b.name)}</td><td class="num">${starOf(b)}<span class="${grade(b)}">${b.est ? "ca. " : ""}${eur(b.eur)}</span></td><td class="num">${!v.family && b.per_account <= cheapest + 0.005 ? `<b>${month}</b>` : month}</td><td class="l mut">${b.pct ? `<span class="pct">−${b.pct} %</span>` : ""}</td></tr>`;
-    }).join("") + `</table><p class="hint" style="margin:8px 0 2px">Länder für <b>${esc(sel.label)}</b>${sel.key === m.mine ? " (deine)" : ""}:</p>`;
+    }).join("") + `</table>`;
+  }
+  if(vs.length){
+    const atBestNow = rows.some(r => r.at_best);
+    h += `<p class="hint" style="margin:8px 0 2px">Länder für <b>${esc(sel.label)}</b>${sel.key === m.mine ? " (deine)" : ""}${sel.champ ? ` · Bestpreis der letzten 24 Monate ${eur(sel.champ)} in ${esc((rows[0] || {}).champ_name || "")}${atBestNow ? "" : ", gerade nirgends zu haben"}` : ""}:</p>`;
   }
   if(rows.length){
-    h += `<table class="mini-t"><tr><th class="l">Land</th><th class="num">Einkaufspreis</th><th>je Monat</th><th>im Shop</th><th class="l"></th></tr>` + rows.map(r => {
-      const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}` : "kein Tiefstpreis bekannt"}${sel.champ ? ` · Bestpreis aller Länder ${eur(sel.champ)}` : ""}`;
+    h += `<table class="mini-t"><tr>${sth("nso", "name", "Land", "", "l")}${sth("nso", "tier", "Wechsel", "Wie mühsam der Wechsel des Kontos dorthin ist", "l")}${sth("nso", "eur", "Einkaufspreis", "", "num")}${sth("nso", "month", "je Monat", "", "num")}<th class="num">im Shop</th><th class="l"></th></tr>` + sortRows("nso", rows, {
+      name: r => r.name, tier: r => r.tier, eur: r => r.eur, month: r => r.month}).map(r => {
+      const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}` : "kein Tiefstpreis bekannt"}${sel.champ ? ` · Bestpreis ${eur(sel.champ)} in ${esc(r.champ_name || "")}` : ""}`;
       let price = `<span class="${grade(r)}" title="${esc(tip)}">${r.est ? "ca. " : ""}${eur(r.eur)}</span>`;
       if(r.url) price = `<a class="pl" href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(tip)} · Klick öffnet den eShop ${esc(r.name)}">${price}</a>`;
       const tags = [r.current ? `<span class="chip" title="Dein Konto steht gerade in diesem Land: Hier kaufst du ohne Wechsel">Konto</span>` : "",
         planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land: Die Mitgliedschaft ließe sich im selben Schritt mitkaufen">im Plan</span>` : ""].filter(Boolean).join(" ");
       const chips = [r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
-        !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis aller Länder">+${eur(r.over)}</span>` : "",
+        !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis: ${eur(sel.champ)} in ${esc(r.champ_name || "")}">+${eur(r.over)}</span>` : "",
         `<a class="tl" href="${esc(deku(sel.slug, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>`].filter(Boolean).join(" ");
-      return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tierTag(r.tier)} ${tags}</td><td class="num">${starOf(r)}${price}</td><td class="mut">${eur(r.month)}</td><td class="mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
+      return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tags}</td><td class="l">${tierTag(r.tier)}</td><td class="num">${starOf(r)}${price}</td><td class="num mut">${eur(r.month)}</td><td class="num mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
     }).join("") + `</table>`;
   } else if(vs.length) h += `<p class="hint">Für ${esc(sel.label)} gibt es noch keine Preise. Die eShop-IDs liest der Abgleich nach und nach, höchstens 20 Seiten je Abgleich.</p>`;
   return h + `</details>`;
@@ -1841,7 +1865,7 @@ function viewSettings(){
   const jump = [["set-laender", "Länder"], ["set-regeln", "Regeln"], ["set-gebuehren", "Gebühren"], ["sprachen", "Sprachen"], ["set-quellen", "Quellen"], ["set-sicherung", "Sicherung und Protokoll"]];
   let h = `<div class="jump">${jump.map(([id, l]) => `<a href="#${id}">${l}</a>`).join("")}<span class="saved" id="saved"></span></div>
     <form class="set" id="setForm">
-    <h3 class="sec" id="set-laender">Länder</h3>
+    <section class="setc"><h3 class="sec" id="set-laender">Länder</h3>
     <div class="fields" style="max-width:380px"><label class="f" title="Für dieses Land gilt keine Mindestersparnis, du bist ja schon dort.">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
       [...S.state.countries].sort((x, y) => x.name.localeCompare(y.name, "de")).map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label></div>
     <details class="fold" data-k="setcountries" ${S.folds.setcountries ? "open" : ""}><summary class="hint">Länder, Zahlwege und Guthabenkarten <span class="mut">(${act.length} aktiv${off.length ? `, ${off.length} weitere` : ""})</span></summary>
@@ -1850,32 +1874,32 @@ function viewSettings(){
     <details class="hint" data-k="cardhelp" ${S.folds.cardhelp ? "open" : ""}><summary>So trägst du Karten ein</summary><p>Eine Karte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>. Preis und Link sind freiwillig, ein vorangestelltes <code>x</code> heißt nicht vorrätig. Nur Werte wie <code>500 1000 3000</code> ohne Link heißen: Guthaben zum Kurs, bezahlt mit deiner Karte wie im eShop (Amazon Japan), dann zählt auch der Rest. Hat eine Karte einen Link, liest das Tool den Preis einmal am Tag von der Shopseite, sofern die Seite ihn ohne Browser verrät. Sonst gilt dein Wert.</p></details>
     ${off.length ? `<details class="box fold" data-k="morecountries" ${S.folds.morecountries ? "open" : ""}><summary>weitere Länder (${off.length})</summary><p class="hint">Einschalten und aktualisieren; das Preisniveau zeigt, ob es sich lohnt.</p>${table(off)}</details>` : ""}
     </details>
-    <h3 class="sec" id="set-regeln">Regeln</h3>
+    </section><section class="setc"><h3 class="sec" id="set-regeln">Regeln</h3>
     <p class="rule">„kaufen“ bis ${eur(de.buy)} oder 2 % über dem Bestpreis, „gut“ bis ${eur(de.good)} oder 15 %. Ein Wechsel lohnt ab ${eur(t["1"])} Gewinn in einem leichten, ${eur(t["2"])} in einem mittleren und ${eur(t["3"])} in einem schweren Land. Regionen ohne deutsche Fassung ${({exclude: "fallen weg", warn: "bekommen einen Hinweis", off: "werden nicht geprüft"})[s.lang_rule] || "fallen weg"}.</p>
     <details class="fold" data-k="rulefields" ${S.folds.rulefields ? "open" : ""}><summary class="hint">Grenzen anpassen</summary>
     <div class="fields"><label class="f" title="Liegt der günstigste zählende Preis jetzt (in jedem Land, jeder Stufe, mit oder ohne Rabatt) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Amerika wird bei Nintendo geprüft, Japan bestätigst du von Hand. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
     <div class="fields" style="margin-top:12px"><label class="f" title="Kaufplan und Pakete: Ein Land lohnt sich erst, wenn es gegenüber dem, was dieselben Titel ohne diesen Wechsel kosten (günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), so viel spart. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Gewinn, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label><label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label><label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label></div>
     </details>
-    <h3 class="sec" id="set-gebuehren">Gebühren</h3>
+    </section><section class="setc"><h3 class="sec" id="set-gebuehren">Gebühren</h3>
     <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label></div>
     <details class="fold" data-k="feeadv" ${S.folds.feeadv ? "open" : ""}><summary class="hint">Erweitert</summary>
     <p class="hint">Nur ein Notbehelf: Zahlt ein Land mit Guthaben und ist kein Kartenpreis bekannt (kein Link mit lesbarem Preis in den letzten 14 Tagen, kein eigener Preis, keine Werte ohne Link), zeigt das Tool seine Preise geschätzt als Kurs plus diesen Wert, markiert mit ≈. Solche Preise entscheiden nichts: kein Urteil, kein Kaufplan, und „das Günstigere“ nimmt dann die Kreditkarte. Unter „Zu erledigen“ steht, wo Karten fehlen.</p>
     <div class="fields" style="max-width:300px"><label class="f">Schätzung ohne lesbaren Kartenpreis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label></div>
     <p class="hint" style="margin-top:10px">Euro-Guthaben (Deutschland mit Guthaben) bewertet das Tool nach festen Stufen für den Faktor: bis zu diesem Wert Top, gut, okay, darüber teuer. Andere Länder misst es an der Kreditkarte oder am besten Faktor der Karte in 90 Tagen.</p>
     <div class="fields" style="max-width:640px;grid-template-columns:repeat(3,1fr)"><label class="f">Top bis Faktor<input name="eur_top" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.top}"></label><label class="f">gut bis<input name="eur_good" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.good}"></label><label class="f">okay bis<input name="eur_ok" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.ok}"></label></div></details>
-    </form>` + langSection() + `
-    <h3 class="sec" id="set-quellen">Quellen</h3>
+    </section></form><section class="setc">` + langSection() + `</section>
+    <section class="setc"><h3 class="sec" id="set-quellen">Quellen</h3>
     <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist und Preise neu geholt werden. Wechselkurse nur, wenn die Quelle neue hat (einmal am Tag); was sonst wie oft geholt wird, steht in docs/abrufe.md.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
     <p class="hint" style="margin-top:8px">Wechselkurse vom ${esc(fxStamp())}. Die Quelle erneuert sie einmal am Tag, das Tool holt sie im ersten Abgleich danach ·
       <button class="link" type="button" data-act="diag">Verbindung testen</button><span id="diagCopy" ${S.diagText ? "" : "hidden"}> · <button class="link" type="button" data-act="copy" data-t="diag">Ergebnis kopieren</button></span></p>
     <pre class="log" id="diag" ${S.diagText ? "" : "hidden"}>${esc(S.diagText || "")}</pre>
-    <h3 class="sec" id="set-sicherung">Sicherung und Protokoll</h3>
+    </section><section class="setc"><h3 class="sec" id="set-sicherung">Sicherung und Protokoll</h3>
     <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise, Körbe, Kaufprotokoll und die eigene Preisaufzeichnung. Beim Einlesen wird die Aufzeichnung ergänzt, nicht ersetzt. Preise, Sammlung und DekuDeals-Verläufe holt das Tool selbst neu.</p>
-    <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
-      <a class="btn" style="margin-left:8px" href="/api/abgleich" download="eshop-kompass-abgleich.json" title="Abgleichsdaten (IDs, Sprachen, Preise) und Protokoll zum Nachprüfen, ohne Einstellungen. Zum Einlesen nicht nötig.">Abgleichsdaten herunterladen</a>
+    <p style="margin-top:8px"><a class="btn" href="/api/abgleich" download="eshop-kompass-abgleich.json" title="Abgleichsdaten (IDs, Sprachen, Preise) und Protokoll zum Nachprüfen, ohne Einstellungen. Zum Einlesen nicht nötig.">Abgleichsdaten herunterladen</a>
+      <a class="btn" style="margin-left:8px" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
       <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p>
     <p class="hint" style="margin-top:8px">Protokoll des letzten Abgleichs · <button class="link" type="button" data-act="copy" data-t="log">kopieren</button></p>
-    <pre class="log" id="log" style="margin-top:4px"></pre>`;
+    <pre class="log" id="log" style="margin-top:4px"></pre></section>`;
   return h;
 }
 function settingsBody(form){
@@ -2016,7 +2040,7 @@ function bmLink(k, code){
   BM_CODE[k] = "javascript:" + encodeURIComponent(code);
   return `<span class="bm-w"><a class="bm" href="${BM_CODE[k]}" title="In die Lesezeichenleiste ziehen" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')">⠿ <b>${esc(h.label)}</b></a>
     <button data-act="bmcopy" data-k="${k}" title="Für ein von Hand angelegtes Lesezeichen">Code kopieren</button></span>
-    ${helpersOld()[k] ? `<br><span class="warnc">Dein Lesezeichen „${esc(h.label)}“ ist veraltet. Bitte das alte löschen und neu anlegen.</span> <button class="link" data-act="bmdone" data-k="${k}" title="Der Hinweis verschwindet sonst erst beim nächsten Übernehmen mit dem neuen Lesezeichen">erledigt, neu angelegt</button>` : ""}
+    ${helpersOld()[k] ? `<br><span class="warnc">Dein Lesezeichen „${esc(h.label)}“ ist veraltet. Bitte das alte löschen und neu anlegen.</span> <button class="sm" data-act="bmdone" data-k="${k}" title="Hast du das Lesezeichen schon neu angelegt? Dann blendet das den Hinweis aus. Sonst verschwindet er beim nächsten Übernehmen mit dem neuen Lesezeichen">Neu angelegt ✓</button>` : ""}
     <details class="fold" data-k="bmhow_${k}" ${S.folds["bmhow_" + k] ? "open" : ""}><summary class="hint">So legst du es an</summary><ul class="hint">
       <li>Am Computer: Lesezeichenleiste einblenden (Strg+Umschalt+B, am Mac ⌘+Umschalt+B) und den Knopf hineinziehen.</li>
       <li>Ohne Ziehen, auch am Handy: „Code kopieren“, ein beliebiges Lesezeichen anlegen, bearbeiten, „${esc(h.label)}“ als Namen und den Code als Adresse einfügen. Am Handy startet es aus den Lesezeichen oder über seinen Namen in der Adresszeile.</li>
@@ -2222,7 +2246,7 @@ document.addEventListener("click", async e => {
       toast({have: "Als vorhanden abgehakt", ignore: "DLC ignoriert", ignore_all: "Alle DLC des Spiels ignoriert", missing: "Zählt wieder als fehlend"}[d.v] || "Zurückgesetzt");
     }
     else if(a === "bmdone"){ const o = helpersOld(); delete o[d.k]; try{ localStorage.setItem("ek.helpers", JSON.stringify(o)); }catch(e){} render(); }
-    else if(a === "jpopen"){ const ta = $("jpids"); if(ta && ta.value) try{ await navigator.clipboard.writeText(ta.value); }catch(e){} }
+    else if(a === "jpopen"){ const ta = $("jpids"); if(ta && ta.value) copyNow(ta.value); }
     else if(a === "jpcopy"){
       const ta = $("jpids"); ta.select();
       try{ await navigator.clipboard.writeText(ta.value); }catch(e){ document.execCommand("copy"); }

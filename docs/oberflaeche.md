@@ -25,7 +25,12 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
 Ablauf offen und eine Zeile unter „Zu erledigen“). Die Kopfzeile nennt deine Variante (Auswahl im
-Kasten). Oben steht je Variante das beste Land; der günstigste Preis je Monat ist fett, die
+Kasten). Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“). Beide Tabellen
+sind sortierbar wie alle anderen; die Ländertabelle hat die Wechselstufe als eigene Spalte nach
+dem Land, damit die Chips „Konto“ und „im Plan“ allein am Namen stehen. Über der Ländertabelle
+und im Tooltip steht, in welchem Land der Bestpreis war, auch wenn er gerade nirgends zu haben
+ist. Passt eine Variante in den Rest eines Kaufplan-Schritts, steht sie dort unter „Passt in den
+Rest“ als Hinweis, der zum Kasten führt. Oben steht je Variante das beste Land; der günstigste Preis je Monat ist fett, die
 Familie zeigt ihn je Konto und zählt dafür nicht mit (Chip „kauft der Verwalter“). Ein Klick auf
 eine Variante zeigt ihre Länder darunter, die Zeile ist dann hinterlegt (`--best`). Es gelten die Farben der Titel (ab 0.56.1):
 ★ gold am Bestpreis (niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden
@@ -60,7 +65,8 @@ Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü 
 - Hauptweg zurück ist „Im eShop-Kompass übernehmen“; Textfelder zum Kopieren und Einfügen
   stehen eingeklappt unter „Geht das nicht?“.
 - Namen der Lesezeichen bleiben stabil, ohne Versionsnummer. Ein veraltetes Lesezeichen meldet
-  sich beim Übernehmen und mit einem bernsteinfarbenen Satz am Knopf.
+  sich beim Übernehmen und mit einem bernsteinfarbenen Satz am Knopf; daneben ein kleiner Knopf
+  „Neu angelegt ✓“, der den Hinweis ausblendet.
 
 ## Farben
 
@@ -108,6 +114,11 @@ Betrag dahinter folgt mit „·“. Ist alles da, steht „5 von 5“ grün und
 Gruppen: Zahlen fett in zwei kurzen Zeilen, die Erklärung eingeklappt darunter.
 
 ## Flächen
+
+Einstellungen: Jeder Bereich (Länder, Regeln, Gebühren, Sprachen prüfen, Quellen, Sicherung und
+Protokoll) ist eine eigene Karte (`.setc`), damit klar bleibt, wozu Eingeklapptes gehört.
+Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Titel-Tabelle: Die Zahl der Bestpreise
+steht neben dem Länderkürzel („JP 17★“), nicht darunter.
 
 Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länderkarten im
 Reiter Länder (seit 0.53.6); Grün steht dort nur für „am Bestpreis“ in der Zeile Preis. Weniger Wichtiges wird über

@@ -1785,13 +1785,33 @@ def membership_probe(probe, sleep=time.sleep):
               sources.NINTENDO_PRICE_URL + f"?country={code}&lang={lang}&ids={','.join(ids[code][:10])}",
               None, lambda t: t[:500])
         sleep(1)
-    # Japan (0.56.3): DekuDeals führt die Mitgliedschaft dort nicht. Nintendos eigene Seite zeigt die
-    # Preise auch ohne passendes Konto; ob ihr HTML die eShop-IDs enthält, zeigt diese eine Abfrage.
-    def ec_page(t):
-        found = sorted(set(sources.re.findall(r"7008\d{10}", t)))
-        yen = sorted(set(sources.re.findall(r"[0-9][0-9,]{2,6}\s*円", t)))[:8]
-        return f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, eShop-IDs {found[:12]}, Yen-Preise {yen}"
-    probe("Mitgliedschaft Nintendo-Seite (JP)", "https://ec.nintendo.com/JP/ja/membership", None, ec_page)
+    # Nintendos eigene Mitgliedschaftsseite (0.56.3 Japan, 0.57.1 auch DE und US): Sie nennt die
+    # eShop-IDs aller Varianten, auch 1 Monat und Familie mit Erweiterungspaket, die DekuDeals nicht
+    # führt. Je ID der Text davor und danach, dazu ihre Preise: daraus wird die Zuordnung je Variante.
+    for code, lang in (("JP", "ja"), ("DE", "de"), ("US", "en")):
+        found = []
+
+        def ec_page(t, found=found):
+            found += sorted(set(sources.re.findall(r"7008\d{10}", t)))
+            ctx = []
+            for n in found[:16]:
+                i = t.find(n)
+                before = sources.re.sub(r"\s+", " ", sources.html.unescape(sources.re.sub(r"<[^>]+>", " ", t[max(0, i - 600):i]))).strip()
+                after = sources.re.sub(r"\s+", " ", sources.html.unescape(sources.re.sub(r"<[^>]+>", " ", t[i + 14:i + 300]))).strip()
+                ctx.append(f"{n} [{before[-90:]} | {after[:60]}]")
+            return f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, {len(found)} eShop-IDs: " + "; ".join(ctx)
+        probe(f"Mitgliedschaft Nintendo-Seite ({code})", f"https://ec.nintendo.com/{code}/{lang}/membership", None, ec_page)
+        sleep(1)
+        if found:
+            def amounts(t):
+                out = []
+                for p in json.loads(t).get("prices") or []:
+                    rp = p.get("discount_price") or p.get("regular_price") or {}
+                    out.append(f"{p.get('title_id')} {rp.get('amount') or p.get('sales_status')}")
+                return ", ".join(out)
+            probe(f"Mitgliedschaft Preise der Nintendo-Seite ({code})",
+                  sources.NINTENDO_PRICE_URL + f"?country={code}&lang={lang}&ids={','.join(found[:50])}", None, amounts)
+            sleep(1)
     return lines
 
 

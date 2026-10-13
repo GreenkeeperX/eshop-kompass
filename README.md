@@ -39,8 +39,8 @@ Hell oder dunkel: Der runde Knopf rechts vom "?" zeigt die aktuelle Ansicht (Sys
 oder Dunkel); ein Klick öffnet die Auswahl. Vorgabe ist System, also wie das Gerät. Die
 Wahl merkt sich der Browser. Kopf und Reiter blenden sich beim Scrollen nach unten aus und
 beim Hochscrollen wieder ein. Die Titel-Tabelle füllt das Fenster, es scrollt nur sie. In den
-Einstellungen ist die Ländertabelle mit Zahlwegen und Guthabenkarten eingeklappt; das
-Kontoland steht darüber.
+Einstellungen ist jeder Bereich eine eigene Karte, die Ländertabelle mit Zahlwegen und
+Guthabenkarten ist eingeklappt; das Kontoland steht darüber.
 
 Lesezeichen (Käufe lesen, JP-Sprachen lesen): Webseiten dürfen selbst keine Lesezeichen
 anlegen. Den Knopf zieht man deshalb in die Lesezeichenleiste; „Code kopieren“
@@ -137,7 +137,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Hauptspiel fehlen. Ein Klick nimmt den Titel in den Schritt, "Füller ×" nimmt
   ihn wieder heraus. Nach "gekauft" sind die Füller dieses Landes vergessen.
   Auch fehlende DLC deiner Spiele erscheinen dort, als Link zu DekuDeals:
-  Übernehmen lassen sie sich, sobald sie auf der Wishlist stehen. Ein DLC gilt
+  Übernehmen lassen sie sich, sobald sie auf der Wishlist stehen. Passt eine Online-Mitgliedschaft
+  (nicht die Familie) in den Rest, steht sie dort als Hinweis; gekauft wird sie über ihren Kasten
+  unter dem Kaufplan. Ein DLC gilt
   nur in der Region, in der du das Hauptspiel hast.
 - Titel, Liste: eine Zeile je Wishlist-Titel mit Urteil, Einkaufspreis samt
   Land und Stufe, Abstand zum Bestpreis und, wenn das beste Angebot in einem

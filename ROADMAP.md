@@ -16,7 +16,7 @@ Konto (siehe [CLAUDE.md](CLAUDE.md)).
   - 1 Monat und Erweiterungspaket Familie (DekuDeals führt sie nicht),
   - Japan: DekuDeals hat dort keine Daten, der Verbindungstest liest Nintendos eigene Seite,
   - weitere Bezugsquellen: Händler-Codes (Keyshops), Amazon Japan, Deals etwa von mydealz,
-  - die Mitgliedschaft als Füllartikel und wählbar im Warenkorb.
+  - die Mitgliedschaft wählbar im Warenkorb (als Hinweis im Rest steht sie seit 0.57.1).
 - [ ] **Kleinteile zusammenfassen.** Viele Kleinteile eines Spiels (etwa Kostüme) zusammenfassen,
   aber erst nach Erfahrung mit den gruppierten Pässen.
 - [ ] **Kaufverlauf und Sammlung abgleichen.** Den Kaufverlauf mit der ganzen DekuDeals-Sammlung

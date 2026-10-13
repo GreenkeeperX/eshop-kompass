@@ -2196,6 +2196,19 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         # deutschen Schritt (dort ist die Ersparnis dann 0)
         p["de_now"] = _r(sum(ctx.ref[i["slug"]] if i["slug"] in ctx.ref
                              else ctx.est(c, c["offers"][i["slug"]]["local"]) for i in p["items"]))
+    # Online-Mitgliedschaft als Füllartikel (0.57.1, Vorschlag ohne Übernahme): Varianten, die du
+    # selbst kaufen kannst und die in den Rest eines Schritts passen, die größte zuerst
+    ms = membership(data, settings, now) if any((p.get("rest") or 0) > 0 for p in steps) else {"variants": []}
+    for p in steps:
+        rest = round((p.get("rest") or 0) * 100)
+        fits = []
+        for v in ms["variants"]:
+            r = next((r for r in v["rows"] if r["code"] == p["code"] and r["counts"]), None)
+            if v.get("family") or not r or rest <= 0 or p.get("is_ref") or round(r["local"] * 100) > rest:
+                continue
+            fits.append({"key": v["key"], "label": v["label"], "local": r["local"], "eur": r["eur"],
+                         "left": (rest - round(r["local"] * 100)) / 100, "at_best": r.get("at_best", False)})
+        p["fill_nso"] = sorted(fits, key=lambda f: f["left"])[:2]
     total = sum(p["cost"] for p in steps if p["cost"] is not None)
     games = sum(p.get("games_cost", p["cost"]) for p in steps if p["cost"] is not None)
     ref_total = sum(p["de_now"] for p in steps)
@@ -2361,8 +2374,8 @@ NSO_VARIANTS = [
     {"key": "m12", "slug": "nintendo-switch-online-12-month-membership", "label": "12 Monate", "months": 12, "accounts": 1},
     {"key": "m3", "slug": "nintendo-switch-online-3-month-membership", "label": "3 Monate", "months": 3, "accounts": 1},
     {"key": "ep", "slug": "nintendo-switch-online-expansion-pack-12-month-individual-membership",
-     "label": "Erweiterungspaket, 12 Monate", "months": 12, "accounts": 1},
-    {"key": "fam", "slug": "nintendo-switch-online-12-month-family-membership", "label": "Familie, 12 Monate",
+     "label": "Erweiterungspaket (12 Monate)", "months": 12, "accounts": 1},
+    {"key": "fam", "slug": "nintendo-switch-online-12-month-family-membership", "label": "Familie (12 Monate)",
      "months": 12, "accounts": 8, "family": True},
 ]
 NSO_KEYS = [v["key"] for v in NSO_VARIANTS]
@@ -2448,8 +2461,12 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v):
             le = ctx.est(c, cents(low * (1 + c["tax"] / 100)))
             rows[-1]["low_eur"] = _r(min(le, eur)) if le is not None else None
     # Bestpreis über alle zählenden Länder, Güte und ★ wie bei Titeln (0.56.1)
-    champ = min((r["low_eur"] if r["low_eur"] is not None else r["eur"] for r in rows if r["counts"]), default=None)
+    # Bestpreis und sein Land: Ist er gerade nicht zu haben, sagt das Land, wo er war (0.57.1)
+    champ_row = min((r for r in rows if r["counts"]), key=lambda r: r["low_eur"] if r["low_eur"] is not None else r["eur"], default=None)
+    champ = (champ_row["low_eur"] if champ_row["low_eur"] is not None else champ_row["eur"]) if champ_row else None
     if champ:
+        for r in rows:
+            r["champ_name"] = champ_row["name"]
         ctx.champ_all["nso"] = (champ, None)
         for r in rows:
             r["grade"] = ctx.grade(r["eur"], "nso") if r["counts"] else None
