@@ -325,7 +325,7 @@ Sicherung und Protokoll.
   je Region und speichert das Ergebnis dauerhaft, unabhängig vom Preis:
   Wishlist-Titel und die fehlenden DLC deiner Spiele (Füllartikel). Europa in
   einem Abruf, Japan und Amerika je Titel bei Nintendo (store-jp.nintendo.com,
-  nintendo.com über ec.nintendo.com), höchstens 40 Seiten je Region und
+  nintendo.com über ec.nintendo.com, Pakete dort unter bundles), höchstens 40 Seiten je Region und
   Abgleich (beide Durchgänge eines Abgleichs zusammen), ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
   Titel kommt beim nächsten Abgleich wieder dran. Liefert eine gelesene Seite
   keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika liefert Angaben.

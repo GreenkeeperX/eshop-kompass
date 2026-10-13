@@ -115,6 +115,14 @@ class SourcesTest(unittest.TestCase):
         page = '<h3>Supported languages</h3><p>English, German</p>'
         self.assertEqual(sources.parse_langs_am(page), "english, german")
         self.assertIsNone(sources.parse_langs_am("<p>Nichts</p>"))
+        # Pakete liegen unter bundles, Spiele und DLC unter titles
+        urls = []
+        sources.fetch_langs_am("70070000000001", fetch=lambda u: urls.append(u) or "")
+        sources.fetch_langs_am("70010000000001", fetch=lambda u: urls.append(u) or "")
+        self.assertEqual(urls, ["https://ec.nintendo.com/US/en/bundles/70070000000001",
+                                "https://ec.nintendo.com/US/en/titles/70010000000001"])
+        self.assertEqual(sources.ec_url(planner.LANG_CHECK_URL["JP"], "70070000000001"),
+                         "https://store-jp.nintendo.com/item/software/D70070000000001")
 
     def test_low_prefers_digital(self):
         both = ("<h3>Price history</h3><table><tr><td>All time low</td></tr>"
@@ -2243,6 +2251,23 @@ class ExtraDlcTest(unittest.TestCase):
             calls.clear()
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 120)
             self.assertEqual(calls, [])
+
+    def test_americas_bundles_asked_once_more(self):
+        # Bis 0.44.2 fragte das Tool Pakete unter titles ab und fand nichts: einmal neu
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "US")
+        t0 = 1736467200
+        def rec(t, n):
+            return {"title": t, "active": True, "ids": {"AM": [n]},
+                    "langs_tries": {"AM": 3}, "langs_checked": {"AM": t0 - 86400}}
+        data = {"items": {"pack": rec("P", "70070000000001"), "game": rec("G", "70010000000001")},
+                "prices": {}, "langs_jp_reset": 1}
+        asked = []
+        with mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: asked.append(n) or "english, german"):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0)
+        self.assertEqual(asked, ["70070000000001"])
+        self.assertEqual((data["langs_bundle_reset"], data["items"]["pack"]["langs"]["AM"]), (1, "english, german"))
 
     def test_titledb_read_in_pieces(self):
         # titledb ist groß: Stück für Stück lesen, nur gesuchte IDs mit Sprachen behalten

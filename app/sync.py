@@ -663,6 +663,16 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
                 (rec.get("langs_tries") or {}).pop("JP", None)
                 (rec.get("langs_checked") or {}).pop("JP", None)
         data["langs_jp_reset"] = 1
+    # Bis 0.44.2 fragte das Tool Pakete (IDs ab 7007) unter titles statt bundles ab und
+    # fand keine Seite: Pakete ohne Angabe einmal von vorn (0.44.3)
+    if data.get("langs_bundle_reset", 0) < 1:
+        for rec in items.values():
+            for fam in ("AM", "AS"):
+                ids = (rec.get("ids") or {}).get(fam)
+                if ids and str(ids[0]).startswith("7007") and not (rec.get("langs") or {}).get(fam):
+                    (rec.get("langs_tries") or {}).pop(fam, None)
+                    (rec.get("langs_checked") or {}).pop(fam, None)
+        data["langs_bundle_reset"] = 1
     dropped = prune_langs(data, settings)
     if dropped:
         _log(f"Sprachen: {dropped} Bestätigungen für Titel gelöscht, die weder auf der Wishlist noch in der Sammlung stehen")

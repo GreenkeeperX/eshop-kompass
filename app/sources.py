@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.44.2"
+VERSION = "0.44.3"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -636,6 +636,12 @@ def fetch_titledb(nsuids, fetch=fetch, region="JP.ja", apps=None):
 # weiter. Dort stehen die Sprachen als "Supported languages" und in den
 # eingebetteten Seitendaten. Erlaubt laut robots.txt (User-agent *).
 AM_STORE_URL = "https://ec.nintendo.com/US/en/titles/{nsuid}"
+
+
+def ec_url(url, nsuid):
+    """Pakete (IDs ab 7007) liegen im eShop unter bundles, nicht unter titles."""
+    return url.replace("/titles/", "/bundles/" if str(nsuid).startswith("7007") else "/titles/") \
+        .format(nsuid=nsuid)
 _LANG_NAMES = ["english", "french", "german", "italian", "spanish", "dutch", "portuguese",
                "russian", "japanese", "korean", "chinese", "polish", "swedish", "danish",
                "norwegian", "finnish", "czech", "hungarian", "greek", "turkish", "ukrainian",
@@ -664,7 +670,7 @@ def parse_langs_am(page_html):
 
 
 def fetch_langs_am(nsuid, fetch=fetch):
-    return parse_langs_am(fetch(AM_STORE_URL.format(nsuid=nsuid)))
+    return parse_langs_am(fetch(ec_url(AM_STORE_URL, nsuid)))
 
 
 # ------------------------------------------------------------ Wechselkurse

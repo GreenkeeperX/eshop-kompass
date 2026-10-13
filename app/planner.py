@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from itertools import combinations
 
 from . import countries
-from .sources import parse_amount
+from .sources import ec_url, parse_amount
 
 MAX_STATES = 3_000_000
 CARD_PRICE_MAX_AGE = 3 * 24 * 3600   # gelesene Kartenpreise gelten so lange
@@ -1515,7 +1515,7 @@ def lang_todo(data, settings, now=None):
                      # dort gerade günstiger als der Bestpreis: die Antwort ändert jetzt etwas
                      "matters": bool(here and (not champ or here[0] < champ[0] - 0.005)),
                      "family_name": countries.FAMILIES[fam], "codes": codes,
-                     "url": LANG_CHECK_URL.get(fam, "").format(nsuid=nsuid),
+                     "url": ec_url(LANG_CHECK_URL.get(fam, ""), nsuid),
                      "state": state, "manual": isinstance((conf.get(slug) or {}).get(fam), bool),
                      "text": text, "nintendo": nintendo, "nsuid": nsuid,
                      # Programm-ID passt laut titledb nicht zu Europa, DekuDeals bleibt bei der ID
