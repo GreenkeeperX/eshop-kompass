@@ -131,7 +131,7 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   deiner Bestätigung zählen. Der Rest, meist längst Besessenes, steht eingeklappt darunter.
   Erstattete Käufe zählen nicht. Zuordnungen bleiben und stecken in der Sicherung. Der Link
   zur Kaufhistorie im Tool gibt den Stand des letzten lückenlosen Laufs mit, das Lesezeichen
-  liest dann nur bis dorthin. Bricht ein Lauf ab, übernimmt das Tool das Gelesene, behält aber
+  liest dann bis dorthin und zur Sicherheit eine ganze Seite bereits bekannter Käufe weiter. Bricht ein Lauf ab, übernimmt das Tool das Gelesene, behält aber
   den alten Stand, der nächste Lauf liest wieder ab dort.
 - Sammlung (eigener Reiter): alle Spiele deiner DekuDeals-Sammlung mit ihren
   Zusatzinhalten (Abschnitt "DLC" der DekuDeals-Artikelseite), je DLC "hast du"

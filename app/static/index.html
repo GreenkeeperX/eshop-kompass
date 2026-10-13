@@ -1693,13 +1693,13 @@ const wait=()=>new Promise(r=>setTimeout(r,1200));
 let lim=100,page;try{page=await get(0,lim)}catch(e){if(String(e).startsWith("gesperrt"))throw e;lim=10;await wait();page=await get(0,lim)}
 const seit=Number((location.hash.match(/ek-seit=(\\d+)/)||[])[1]||0),alt=t=>seit&&Number(t.transactionId)<=seit;
 const all=[...page.transactionHistories],total=page.offsetInfo.total;
-let err="";while(all.length<total&&!all.some(alt)){box.textContent="eShop-Kompass: lese "+all.length+" von "+total+" …";await wait();let p;try{p=await get(all.length,lim)}catch(e){err=String(e);break}if(!p.transactionHistories.length)break;all.push(...p.transactionHistories)}
+let err="",last=page.transactionHistories;while(all.length<total&&!(last.length&&last.every(alt))){box.textContent="eShop-Kompass: lese "+all.length+" von "+total+" …";await wait();let p;try{p=await get(all.length,lim)}catch(e){err=String(e);break}if(!p.transactionHistories.length)break;last=p.transactionHistories;all.push(...last)}
 const complete=!err,newest=Math.max(0,...all.map(t=>Number(t.transactionId)||0));
-const out=[];for(const t of all.filter(t=>!alt(t))){const d=String(t.datetime||"").slice(0,10);
+const out=[];for(const t of all){const d=String(t.datetime||"").slice(0,10);
 if(t.grantedItems)t.grantedItems.forEach((g,i)=>out.push({k:t.transactionId+"-"+i,title:g.title,date:d,type:"EXTERNAL",item:g.itemType,plat:g.labelPlatform}));
 else if(t.title)out.push({k:String(t.transactionId),title:t.title,date:d,type:t.transactionType,item:t.itemType,plat:t.labelPlatform,amount:t.amount&&t.amount.formattedValue})}
 const txt=JSON.stringify({region:v.country||s.country,complete,newest,entries:out});
-box.textContent="";const p=document.createElement("p");p.textContent=(complete?"Fertig: ":"Unvollständig ("+err+"), das Tool merkt sich den alten Stand: ")+out.length+" Einträge"+(seit?" seit dem letzten Lesen":"")+" ("+(v.country||s.country)+").";
+box.textContent="";const p=document.createElement("p");p.textContent=(complete?"Fertig: ":"Unvollständig ("+err+"), das Tool merkt sich den alten Stand: ")+all.filter(t=>!alt(t)).length+" Vorgänge"+(seit?" seit dem letzten Lesen, dazu eine Seite bekannter zur Sicherheit":"")+" ("+(v.country||s.country)+").";
 const go=document.createElement("button");go.textContent="Im eShop-Kompass übernehmen";go.style.marginRight="8px";go.onclick=()=>window.open(${JSON.stringify(tool)}+"/#kaeufe="+encodeURIComponent(txt),"_blank");
 const ta=document.createElement("textarea");ta.value=txt;ta.readOnly=true;ta.style.cssText="width:100%;height:80px;margin:8px 0";
 const c=document.createElement("button");c.textContent="Kopieren";c.style.marginRight="8px";c.onclick=async()=>{ta.select();try{await navigator.clipboard.writeText(txt)}catch(e){document.execCommand("copy")}c.textContent="Kopiert ✓"};
