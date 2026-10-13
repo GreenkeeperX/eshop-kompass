@@ -1,5 +1,6 @@
 """Kleiner Webserver: liefert die Oberfläche und eine JSON-Schnittstelle."""
 import json
+import re
 import os
 import threading
 import urllib.parse
@@ -106,6 +107,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, out)
             elif path == "/api/diag":
                 self._send(200, {"lines": sync.diagnose()})
+            elif path == "/api/abgleich":
+                # Abgleichsdaten und Protokoll zum Nachprüfen; keine Einstellungen, also auch
+                # kein Wishlist- oder Sammlungslink
+                self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
+                                 "data": store.load_data(),
+                                 "log": [re.sub(r"/(wishlist|collection)/[^/?\s]+", r"/\1/…", line)
+                                         for line in sync.status["log"]]})
             elif path == "/api/export":
                 self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
                                  "settings": store.load_settings(), "ui": store.load_ui(),

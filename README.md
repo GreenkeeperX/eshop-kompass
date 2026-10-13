@@ -384,6 +384,10 @@ von der DekuDeals-Artikelseite nach (ein Abruf alle 2,5 Sekunden, Angebote
 zuerst) und führt ihn danach selbst fort, auch dort, wo DekuDeals keinen Wert
 hat. Jeder Preiswechsel landet zusätzlich in `data/history.json`.
 
+"Abgleichsdaten herunterladen" unter Einstellungen, Sicherung und Protokoll, lädt die
+gesamten Abgleichsdaten (IDs, Sprachen, Preise, `data.json`) und das Protokoll als Datei,
+ohne Einstellungen. Damit lässt sich der Stand des Abgleichs genau nachprüfen.
+
 "Fall exportieren" im Verlauf-Fenster lädt alle Daten dieses Titels als Datei
 (Preise, Tiefstwerte, Verlauf, Karten, Kurse, Einstellungen ohne Wishlist- und
 Sammlungslink). Damit lässt sich ein auffälliger Fall genau nachrechnen.
