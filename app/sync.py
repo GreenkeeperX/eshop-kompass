@@ -14,6 +14,7 @@ ID_RECHECK_LONG = 90 * 24 * 3600      # ... DLC, die auch titledb nicht kennt, n
 ID_MISSES = 2                         # ... ebenso nach so vielen erfolglosen DekuDeals-Suchen
 DEKU_PAUSE = 1.0                      # Sekunden zwischen DekuDeals-Abrufen
 NINTENDO_PAUSE = 0.3
+EXTRA_LOWS_PER_SYNC = 30              # Tiefstpreis-Seiten fehlender DLC je Abgleich (0.53.3)
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
 LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu prüfen
 SALES_RECHECK_SECONDS = 30 * 24 * 3600  # Angebotsverlauf monatlich auffrischen
@@ -888,12 +889,18 @@ def sync_lows(data, settings, fetch, sleep, now=None):
     """Lädt fehlende Tiefstpreise von DekuDeals nach, Angebote zuerst."""
     now = now or time.time()
     lows = data.setdefault("lows", {})
-    todo, refresh = [], []
-    for code in countries.ORDER:
+    todo, refresh, xtodo = [], [], []
+    # Auch die fehlenden DLC der Sammlung, damit sie Bestpreis und Güte zeigen (0.53.3);
+    # schonend: höchstens EXTRA_LOWS_PER_SYNC Seiten je Abgleich, Angebote zuerst
+    extra = data.get("extra") or {}
+    sources_ = [("prices", lambda slug: data["items"].get(slug, {}).get("active")),
+                ("xprices", lambda slug: slug in extra and slug not in data["items"])]
+    for code, (table, wanted) in ((c, t) for c in countries.ORDER for t in sources_):
         if not settings["countries"][code]["enabled"]:
             continue
-        for slug, p in data["prices"].get(code, {}).items():
-            if p.get("status") != "onsale" or not data["items"].get(slug, {}).get("active"):
+        dest = todo if table == "prices" else xtodo
+        for slug, p in (data.get(table) or {}).get(code, {}).items():
+            if p.get("status") != "onsale" or not wanted(slug):
                 continue
             e = lows.get(code, {}).get(slug)
             # Seiten ohne Tiefstpreis aus der Zeit vor dem Verlauf-Ersatz einmal neu lesen
@@ -904,18 +911,19 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             if e and fresh and hist_ok and ("low" in e or now - e.get("checked", 0) < LOW_RECHECK_SECONDS):
                 # Tiefstpreis bekannt: Seite nur für den Angebotsverlauf erneut
                 # laden, wenn er fehlt oder alt ist und gerade ein Angebot läuft
-                if "discount" in p and now - e.get("sales_at", 0) >= SALES_RECHECK_SECONDS:
-                    refresh.append((0 if "sales_at" not in e else 1, code, slug))
+                if "discount" in p and now - e.get("sales_at", 0) >= SALES_RECHECK_SECONDS and table == "prices":
+                    refresh.append((0 if "sales_at" not in e else 1, code, slug, table))
                 continue
-            todo.append((0 if "discount" in p else 1, code, slug))
+            dest.append((0 if "discount" in p else 1, code, slug, table))
     todo.sort()
     refresh.sort()
-    todo += refresh[:SALES_PER_SYNC]
+    xtodo.sort()
+    todo += refresh[:SALES_PER_SYNC] + xtodo[:EXTRA_LOWS_PER_SYNC]
     if not todo:
         return
     _step("Tiefstpreise nachladen", len(todo))
     fails = 0
-    for _, code, slug in todo:
+    for _, code, slug, table in todo:
         try:
             info = sources.fetch_item(slug, code.lower(), fetch=fetch)
         except sources.FetchError as e:
@@ -925,7 +933,7 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             fails += 1
             sleep(LOW_PAUSE)
             continue
-        p = data["prices"][code][slug]
+        p = data[table][code][slug]
         cur = p.get("discount", p.get("regular"))
         # Spiele für Switch und Switch 2 haben je Plattform einen Tiefstpreis: Es gilt
         # der höchste, den das Angebot jetzt nicht übersteigt, also die eigene Fassung
@@ -1398,7 +1406,10 @@ def diagnose(sleep=time.sleep):
         if r["error"]:
             lines.append(f"{name}: keine Verbindung ({r['error']})")
             return r
-        info = extra(r["text"]) if extra else f"{len(r['text'])} Zeichen"
+        try:
+            info = extra(r["text"]) if extra else f"{len(r['text'])} Zeichen"
+        except Exception as e:        # ein Lesefehler soll nicht den ganzen Test abbrechen
+            info = f"{len(r['text'])} Zeichen, nicht auswertbar ({type(e).__name__}: {e})"
         lines.append(f"{name}: HTTP {r['status']}, Server {r['server'] or '?'}, "
                      f"Kodierung {r['enc'] or 'keine'}, {info}")
         return r
@@ -1473,7 +1484,8 @@ def diagnose(sleep=time.sleep):
     def rel_info(t):
         r = sources.parse_related(t)
         m = sources.re.search(r"(?i)<h[1-6][^>]*>(?:(?!</h).)*?\bDLC\b", t, sources.re.S)
-        return ("; ".join(f"{k}: {len(v)} ({', '.join(n for _, n in v[:3])})" for k, v in r.items())
+        return ("; ".join(f"{k}: {len(v)} ({', '.join(n for _, n in v[:3])})" for k, v in r.items() if k != "found")
+                + f"; Abschnitte: {', '.join(r.get('found') or []) or 'keine'}"
                 + (", Ausschnitt: " + sources.re.sub(r"\s+", " ", t[m.start():m.start() + 400]) if m else
                    ", keine Überschrift DLC"))
     probe(f"DLC und Pakete ({game})", f"https://www.dekudeals.com/items/{game}?country=de", None, rel_info)

@@ -53,6 +53,7 @@ th small.bc{display:block;font-weight:400;color:var(--muted)}
 .pct{color:var(--deal);font-size:11px;margin-left:3px}
 .pct.np{color:var(--muted)}
 .abv{color:var(--stop)}
+.gn{color:var(--go)}
 .pct.m-low{background:var(--accent);color:var(--card);border-radius:4px;padding:0 2px;font-weight:600}
 .pct.m-best{background:var(--gold);color:var(--gold-ink);border-radius:4px;padding:0 2px;font-weight:700}
 .pct.m-best_easy{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--ink);border-radius:4px;padding:0 2px;font-weight:600}
@@ -70,7 +71,6 @@ th small.bc{display:block;font-weight:400;color:var(--muted)}
 .pc .line .cost{font-size:16px}
 .bad{color:var(--stop);font-weight:600}
 .over,.over a{color:var(--stop)}
-.dlc.has{border-color:var(--accent);color:var(--accent)}
 .dlc.own{border-color:var(--warn);color:var(--warn)}
 tr.part td:first-child{padding-left:16px}
 td.lc{white-space:nowrap;text-align:left}
@@ -191,7 +191,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);min-width:150px;max-width:210px;white-space:normal;box-shadow:1px 0 0 var(--line)}
 /* „kaufen“ als kräftiges, aber dunkles Grün: Stern und DE✓ bleiben darauf lesbar (0.53) */
 .matrix td.c-buy{background:var(--go-fill);color:var(--on-go);font-weight:600}
-.matrix td.c-buy small,.matrix td.c-buy .pct{color:var(--on-go);opacity:.85}
+.matrix td.c-buy small{color:var(--on-go);opacity:.85}
 .matrix td.c-buy .lgt.de{color:var(--on-go);border-color:currentColor;opacity:.85}
 .matrix td.c-good{background:var(--go-bg)}
 .matrix td.nc{opacity:.6}
@@ -579,7 +579,7 @@ const feeTxt = (pct, fix) => pct || fix ? ` mit Servicegebühr ${[fix ? eur(fix)
 const stamp = sec => new Date(sec * 1000).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 /* Faktor einer Guthabenkarte: Preis ÷ Wert zum Mittelkurs (0.53) */
 const fac = f => f === null || f === undefined ? "–" : f.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2});
-const RATE_CLS = {top: "ok", good: "ok", cheaper: "ok", ok: "", same: "", bad: "warnc", dearer: "mut"};
+const RATE_CLS = {top: "gn", good: "gn", cheaper: "gn", ok: "", same: "", bad: "warnc", dearer: "mut"};
 const rateHtml = r => r ? `<span class="${r.level ? RATE_CLS[r.level] ?? "" : "mut"}"${r.best ? ` title="Maßstab: ${r.level === "cheaper" || r.level === "dearer" || r.level === "same" ? "Faktor deiner Kreditkarte" : "bester Faktor dieser Karte in 90 Tagen"} ${fac(r.best)}"` : ""}>${esc(r.text)}</span>` : "";
 /* Guthabenkarten eines Landes für die Einstellungen: Wert, Preis, Faktor, Bewertung */
 function cardRows(code){ return (S.state.card_status || {})[code] || []; }
@@ -859,7 +859,7 @@ function collDlc(d){
   else if(d.gone) state = `<span class="mut" title="Die ID-Suche fand ihn in keiner Region, mehrmals: meist nur im Spiel erhältlich oder aus dem eShop verschwunden">nicht mehr erhältlich</span> · ${mk("have", "habe ich", "Hast du schon")}`;
   else {
     if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
-    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.eur < 0.005 ? "kostenlos" : `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}`}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""} · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool auch Urteil und Bestpreis">bei DekuDeals ansehen</a>`;
+    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.eur < 0.005 ? "kostenlos" : `${dlcPrice(d)} in ${esc(d.name || "")}`}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""} · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool auch Urteil und Bestpreis">bei DekuDeals ansehen</a>`;
     const p = d.pack;
     if(p && p.open && p.single !== null && d.eur !== null && d.eur !== undefined){
       const b = (on, t) => on ? `<b>${t}</b>` : t;
@@ -871,10 +871,19 @@ function collDlc(d){
   const inner = d.pack ? ` <small class="mut" style="display:inline">enthält ${d.pack.n} DLC${d.pack.have ? `, ${d.pack.have} schon da` : ""}</small>` : "";
   return `<tr class="${d.ignored ? "ign" : ""}${d.in_pack ? " part" : ""}"><td class="l"${d.in_pack ? ` title="steckt in ${esc(d.in_pack)}"` : ""}>${d.in_pack ? "↳ " : ""}${esc(d.title)}${tag}${inner}</td><td class="l">${state}</td></tr>`;
 }
+/* Preis eines fehlenden DLC wie in der Titelliste: Stern am Bestpreis, grün bei „kaufen“
+   und „gut“, Rabatt blau (0.53.3). Ein Urteil gibt es nur auf der Wishlist. */
+function dlcPrice(d){
+  const tip = [d.champ !== null && d.champ !== undefined ? `Bestpreis ${eur(d.champ)} (24 Monate, alle zählenden Länder)` : "Bestpreis noch nicht bekannt",
+    d.grade === "buy" ? "am Bestpreis oder knapp darüber" : d.grade === "good" ? "gutes Angebot" : ""].filter(Boolean).join(" · ");
+  const cls = d.grade === "buy" ? "g-buy" : d.grade === "good" ? "g-good" : "";
+  return `${d.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}<span class="${cls}" title="${esc(tip)}">${d.est ? "ca. " : ""}${eur(d.eur)}</span>${d.sale && d.pct ? `<span class="pct">−${d.pct} %</span>` : ""}`;
+}
 function collGame(g){
   const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored || g.gone ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
+  // Alle da: grün; ignorierte Zahl rot (Entscheidung 13.10.2026)
+  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span>` : `${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored || g.gone ? "" : "alle da"), g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
     g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(", ");
   const key = "ign:" + g.slug;
   const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
@@ -882,7 +891,7 @@ function collGame(g){
     (gone.length ? `<details class="fold" data-k="${esc("gone:" + g.slug)}" ${S.folds["gone:" + g.slug] ? "open" : ""}><summary class="hint">${gone.length} nicht mehr erhältlich</summary><table class="mini-t">${gone.map(collDlc).join("")}</table></details>` : "");
   const via = g.via ? ` <small class="mut">über ${esc(g.via)}</small>` : "";
   // Vollständig (nichts mehr offen): eine Zeile, die DLC aufklappbar wie bei „alle ignoriert“ (0.53.1)
-  if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary><span class="ok">✓</span> ${esc(g.title)}${via} <span class="mut">${sum}</span></summary>${all ? `<div class="cga">${all}</div>` : ""}<table class="mini-t">${g.dlc.map(collDlc).join("")}</table></details>`;
+  if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary>${esc(g.title)}${via} <span class="mut">${sum}</span></summary>${all ? `<div class="cga">${all}</div>` : ""}<table class="mini-t">${g.dlc.map(collDlc).join("")}</table></details>`;
   return `<section class="box cg"><h3>${esc(g.title)}${via} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>${body}</section>`;
 }
 function viewCollection(){
@@ -904,12 +913,12 @@ function viewCollection(){
   const total = c.missing_eur !== null && c.missing_eur !== undefined
     ? ` ${c.missing_priced < missing ? `Für ${c.missing_priced} davon ist ein Preis bekannt: zusammen` : "Zusammen"} jetzt ${eur(c.missing_eur)}${c.missing_sale ? `, ${c.missing_sale} im Angebot` : ""}, jeweils im günstigsten zählenden Land.` : "";
   const nDone = c.games.filter(g => !g.missing).length;
-  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung: ${c.games.length} mit Zusatzinhalten (${c.games.length - nDone} mit fehlenden, ${nDone} vollständig), ${(c.plain || []).length} ohne${missing ? `. ${missing} DLC fehlen` : ""}.${total} Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
+  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung: ${c.games.length} mit Zusatzinhalten (${c.games.length - nDone} mit fehlenden, ${nDone} ohne offene), ${(c.plain || []).length} ohne${missing ? `. ${missing} DLC fehlen` : ""}.${total} Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
   h += games.map(collGame).join("");
   // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
   const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
-  h += fold("colldone", done, "Vollständig", "Nichts mehr offen: alle DLC da, ignoriert oder nicht mehr erhältlich. Klick auf ein Spiel zeigt seine DLC.", `<div class="cgl">${done.map(collGame).join("")}</div>`);
+  h += fold("colldone", done, "Ohne offene DLC", "Alle DLC da, ignoriert oder nicht mehr erhältlich. Klick auf ein Spiel zeigt seine DLC.", `<div class="cgl">${done.map(collGame).join("")}</div>`);
   h += fold("collplain", plain, "Ohne Zusatzinhalte", "", `<div class="cl">${plain.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener"${g.via ? ` title="über ${esc(g.via)}"` : ""}>${esc(g.title)}</a>`).join("")}</div>`);
   const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener"${g.via ? ` title="über ${esc(g.via)}"` : ""}>${esc(g.title)}</a>`).join("")}</div></section>` : "";
   h += list(waiting, "Noch nicht gelesen", "Das Tool liest je Abgleich höchstens 40 Artikelseiten, diese folgen bei den nächsten Abgleichen.");
@@ -984,9 +993,9 @@ function titleDetail(r){
       : langTag(c, true);
     return `<div class="${counts ? "" : "nc"}"><span>${star(c)}${counts ? "" : `<span class="q">?</span>`}</span><b>${ax(c)}${buyLink(code, c, eur(c.eur))}</b>
       <span>${esc(co.name)} ${tierTag((S.state.matrix.cols.find(k => k.code === code) || {}).tier)}</span>
-      <span class="mut">${c.sale ? `−${c.pct} %${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${c.low_eur !== null && c.low_eur !== undefined ? ` · Landestief ${eur(c.low_eur)}` : ""}</span><span>${extra}</span></div>`;
+      <span class="mut">${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${extra}</span></div>`;
   }).join("") + (na.length ? `<div class="mut nc"><span></span><span></span><span>${na.map(([code, c]) => esc(country(code).name) + (c.nolang ? " (ohne Deutsch)" : "")).join(", ")}</span><span>nicht kaufbar</span></div>` : "") + `</div>`;
-  h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}` : ""}</span>`;
+  h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}${x && x.code !== "DE" && x.code !== "DG" && r.de - x.eur >= 0.005 ? ` <span class="gn">(${esc(x.name)} spart ${eur(r.de - x.eur)})</span>` : ""}` : ""}</span>`;
   const rh = rhythmLines(r.rhythm || []);
   if(rh) h += `<span>Angebote</span><span>${rh}</span>`;
   const now = Math.min(...[r.easy, r.hard].filter(Boolean).map(b => b.eur));
@@ -1000,6 +1009,13 @@ function titleDetail(r){
   const pk = packLine(r.slug);
   if(pk) h += `<span>Pakete</span><span>${pk}</span>`;
   return h + `</div>`;
+}
+/* Landestief neben dem Preis eines Landes: erreicht (grün) oder wie viel darüber (rot), 0.53.3 */
+function lowTxt(c){
+  if(c.low_eur === null || c.low_eur === undefined) return "";
+  // Normalpreis am Landestief: nie im Angebot gewesen, nichts Besonderes
+  if(c.eur <= c.low_eur * 1.02 + 0.005) return c.sale ? ` · <span class="gn" title="Landestief ${eur(c.low_eur)}">am Landestief</span>` : "";
+  return ` · Landestief ${eur(c.low_eur)} <span class="abv">+${eur(c.eur - c.low_eur)}</span>`;
 }
 /* Angebotsrhythmus je Land aus den DekuDeals-Verläufen, ohne Vorhersage */
 const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];

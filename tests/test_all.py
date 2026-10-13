@@ -1614,6 +1614,19 @@ class SafetyTest(unittest.TestCase):
         self.assertIn("Mitgliedschaft Nintendo Europa (Suche): HTTP 200, Server t, Kodierung keine, 1 Treffer", text)
         self.assertTrue(any("ids=70070000000001" in u for u in urls))
 
+    def test_diagnose_with_dlc_sections(self):
+        # 0.50 bis 0.53.2: Die Liste der gefundenen Abschnitte (Texte) brach den Test ab,
+        # sobald das Spiel DLC hatte („too many values to unpack“)
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
+
+        def request(url, ua=None, timeout=25):
+            return {"url": url, "status": 200, "text": GAME_PAGE if "/items/" in url else "",
+                    "enc": "", "server": "t", "error": ""}
+        with mock.patch.object(sources, "request", request):
+            text = "\n".join(sync.diagnose(sleep=lambda s: None))
+        self.assertIn("Abschnitte: ", text)
+        self.assertNotIn("nicht auswertbar", text)
+
     def test_diagnose_skips_nintendo_co_jp(self):
         # 4.6 entschieden (13.10.2026): nintendo.co.jp kennt kaum Titel, der Test fragt es nicht mehr
         store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
@@ -2560,6 +2573,33 @@ class ExtraDlcTest(unittest.TestCase):
         settings["dlc_marks"] = {"rl-b": "ignore", "rl-c": "ignore"}
         self.assertIsNone(planner.collection(data, settings, rows=[])["missing_eur"])
         self.assertIsNone(planner.extra_context(data, settings))
+
+    def test_missing_dlc_get_best_price_marks(self):
+        # 0.53.3: Tiefstpreise auch für fehlende DLC, schonend; Güte erst mit DekuDeals-Daten
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code == "DE"
+        data = self.data()
+        data["xprices"] = {"DE": {"rl-b": {"status": "onsale", "currency": "EUR", "regular": 4.0,
+                                           "discount": 2.0, "nsuid": "70050000000001"}}}
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["70050000000001"]},
+                                  "ids_checked": {"EU": 1}}}
+        # ohne Tiefstpreis: Preis und Rabatt, aber kein Stern und keine Güte
+        with mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}):
+            row = {d["slug"]: d for d in planner.collection(data, settings, rows=[])["games"][0]["dlc"]}["rl-b"]
+            self.assertEqual((row["eur"], row["pct"], row["grade"], row["at_best"]), (2.0, 50, None, False))
+            got = []
+            with mock.patch.object(sources, "fetch_item", lambda slug, c, fetch=None: got.append((slug, c))
+                                   or {"lows": [1.5], "low": 1.5, "history": []}), \
+                    mock.patch.object(sync, "EXTRA_LOWS_PER_SYNC", 1):
+                sync.sync_lows(data, settings, None, lambda s: None, now=1736467200)
+            self.assertIn(("rl-b", "de"), got)
+            self.assertEqual(data["lows"]["DE"]["rl-b"]["low"], 1.5)
+            row = {d["slug"]: d for d in planner.collection(data, settings, rows=[])["games"][0]["dlc"]}["rl-b"]
+            self.assertEqual((row["champ"], row["at_best"], row["grade"]), (1.5, False, "buy"))   # 0,50 € darüber
+            data["lows"]["DE"]["rl-b"]["low"] = 2.0
+            row = {d["slug"]: d for d in planner.collection(data, settings, rows=[])["games"][0]["dlc"]}["rl-b"]
+            self.assertTrue(row["at_best"])
 
     def test_prices_of_missing_dlc_are_fetched_separately(self):
         settings = store.load_settings()

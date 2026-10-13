@@ -175,6 +175,11 @@ Reihenfolge und Begründung:
   dunkler, damit Stern und DE✓ lesbar bleiben.
 - [x] Sammlung übersichtlicher (0.53.1): vollständige Spiele und „Ohne Zusatzinhalte“
   eingeklappt, A–Z spaltenweise, die Suche klappt Treffer auf.
+- [x] Rückmeldungen zu 0.53 (0.53.3): Verbindungstest brach bei Spielen mit DLC ab (behoben);
+  Rabatt in der Tabelle bleibt blau, DLC-Zeichen einheitlich grau; im aufgeklappten Titel
+  Landestief mit Abstand und Ersparnis gegenüber Deutschland; Sammlung „Ohne offene DLC“ mit
+  farbigen Zahlen; fehlende DLC mit Stern, Güte und Rabatt (Tiefstpreise schonend nachgeladen);
+  Sprachprüfung ohne „ab 0,00 €“ durch kostenlose DLC.
 - [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
   Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen. Erster Schritt (0.53.2): Probe im Verbindungstest, woher Preise je Land kommen (DekuDeals

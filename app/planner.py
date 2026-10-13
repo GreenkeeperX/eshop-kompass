@@ -1575,8 +1575,8 @@ def extra_context(data, settings, now=None):
                  "langs": dict((glangs.get(e["parent"]) or {}).get("langs") or {}, **(e.get("langs") or {})),
                  "langs_src": (glangs.get(e["parent"]) or {}).get("langs_src") or {}}
              for i, (s, e) in enumerate(extra.items())}
-    return Context(dict(data, items=items, prices=data.get("xprices") or {}, lows={}),
-                   settings, now)
+    # Tiefstpreise liest der Abgleich seit 0.53.3 auch für fehlende DLC: Bestpreis wie bei Titeln
+    return Context(dict(data, items=items, prices=data.get("xprices") or {}), settings, now)
 
 
 def _extra_best(xctx, slug):
@@ -1589,7 +1589,18 @@ def _extra_best(xctx, slug):
         eur = xctx.est(c, o["local"])
         if best is None or eur < best["eur"] - 0.005:
             best = {"eur": _r(eur), "code": code, "name": c["meta"]["name"], "est": c["estimated"],
-                    "sale": o["sale"], "end": o.get("end") if o["sale"] else None}
+                    "sale": o["sale"], "end": o.get("end") if o["sale"] else None,
+                    "pct": round(100 * (1 - o["local"] / o["regular"])) if o["sale"] and o["regular"] else None}
+    if best:
+        # Güte wie bei Titeln: am Bestpreis (Stern), kaufen, gut (0.53.3)
+        # Ohne Tiefstpreis oder Verlauf von DekuDeals wäre jedes günstigste Land „am Bestpreis“:
+        # dann keine Güte (bis der Abgleich die Seiten gelesen hat)
+        known = any(slug in t and ("low" in t[slug] or t[slug].get("hist")) for t in xctx.lows.values())
+        champ = xctx.champ_all.get(slug) if known else None
+        best["grade"] = xctx.grade(best["eur"], slug) if champ and best["eur"] >= 0.005 else None
+        best["at_best"] = bool(champ and best["eur"] >= 0.005
+                               and best["eur"] <= champ[0] * (1 + BEST_TOLERANCE) + 0.005)
+        best["champ"] = _r(champ[0]) if champ else None
     return best
 
 
@@ -1718,7 +1729,8 @@ def collection(data, settings, targets=None, now=None, rows=None):
                 best = _extra_best(xctx, d_slug)
                 if best:
                     row.update(eur=best["eur"], est=best["est"], code=best["code"],
-                               name=best["name"], end=best["end"], sale=best["sale"])
+                               name=best["name"], end=best["end"], sale=best["sale"], pct=best.get("pct"),
+                               grade=best.get("grade"), at_best=best.get("at_best"), champ=best.get("champ"))
             dlc.append(row)
         if not dlc:
             no_dlc += 1
@@ -1861,7 +1873,8 @@ def lang_todo(data, settings, now=None):
                 prices, matters = [], False
                 for s in with_id:
                     p = cheapest(s, codes, xctx)
-                    if p:
+                    # Kostenlose DLC gibt es überall gratis: kein „ab 0,00 €“, kein „günstiger“ (0.53.3)
+                    if p and p[0] >= 0.005:
                         prices.append(p)
                         best = _extra_best(xctx, s)
                         matters = matters or not best or p[0] < best["eur"] - 0.005
