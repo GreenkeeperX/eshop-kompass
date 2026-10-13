@@ -124,7 +124,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   unter dem Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der
   Sicherung. Für fehlende DLC, die nicht auf der Wishlist stehen, sucht das Tool
   die Nintendo-IDs über die DekuDeals-Artikelseiten (höchstens 40 Seiten je
-  Abgleich, Abbruch bei Sperren) und holt die Preise mit der üblichen
+  Abgleich, Abbruch bei Sperren; gefundene IDs bleiben, ohne ID wieder nach 14 Tagen;
+  den Stand je Region nennt das Protokoll) und holt die Preise mit der üblichen
   Preisabfrage. Dann steht der günstigste Preis dabei, je Spiel und insgesamt die
   Summe der fehlenden DLC. Urteil und Bestpreis gibt es nur für die Wishlist.
   Steht

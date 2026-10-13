@@ -915,13 +915,17 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
                     not g["ids"].get(fam) and now - g["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS)):
                 todo.append((bool(g["ids_checked"]), game, fam, g))
     if not todo:
+        _log_extra_ids(extra, glangs, fams, now)
         return
     todo.sort(key=lambda t: t[:3])
     _step("IDs fehlender DLC suchen", min(len(todo), EXTRA_PER_SYNC))
     pages, fails = 0, 0
+    kinds = {"neu": 0, "erneut": 0, "fraglich": 0}
     for _, slug, fam, e in todo:
         if pages >= EXTRA_PER_SYNC:
             break
+        kinds["fraglich" if (e.get("ids_suspect") or {}).get(fam)
+              else "erneut" if fam in e["ids_checked"] else "neu"] += 1
         found, reached = [], False
         for lookup in countries.FAMILY_LOOKUP[fam]:
             if pages >= EXTRA_PER_SYNC:
@@ -934,6 +938,7 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
                 if err.status in sources.BLOCKED or fails >= 4:
                     _log(f"IDs fehlender DLC unterbrochen ({err}), Rest beim nächsten Abgleich")
                     store.save_data(data)
+                    _log_extra_ids(extra, glangs, fams, now)
                     return
                 sleep(LOW_PAUSE)
                 continue
@@ -954,8 +959,32 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
                     (e.get(k) or {}).pop(fam, None)
         status["done"] += 1
     store.save_data(data)
-    known = sum(1 for e in extra.values() if any(e["ids"].values()))
-    _log(f"Fehlende DLC der Sammlung: {len(extra)}, davon {known} mit eShop-ID")
+    _log("IDs fehlender DLC gesucht: " + ", ".join(f"{n} {k}" for k, n in kinds.items() if n))
+    _log_extra_ids(extra, glangs, fams, now)
+
+
+def _log_extra_ids(extra, glangs, fams, now):
+    """Stand der ID-Suche fürs Protokoll: je Region gefunden, noch nie gesucht, ohne ID
+    (Wiederholung nach ID_RECHECK_SECONDS) und wann die nächste Wiederholung fällig ist."""
+    recs = [(e, f) for e in extra.values() for f in fams] + \
+        [(g, f) for g in glangs.values() if "ids_checked" in g for f in fams if f != "EU"]
+    parts, nxt = [], None
+    for fam in fams:
+        mine = [e for e, f in recs if f == fam]
+        found = sum(1 for e in mine if (e.get("ids") or {}).get(fam))
+        never = sum(1 for e in mine if fam not in (e.get("ids_checked") or {}))
+        parts.append(f"{fam} {found} gefunden" + (f", {never} noch nie gesucht" if never else "")
+                     + (f", {len(mine) - found - never} ohne ID" if len(mine) - found - never else ""))
+        for e in mine:
+            if not (e.get("ids") or {}).get(fam) and fam in (e.get("ids_checked") or {}):
+                due = e["ids_checked"][fam] + ID_RECHECK_SECONDS
+                nxt = due if nxt is None else min(nxt, due)
+    line = f"Fehlende DLC der Sammlung: {len(extra)} DLC, {sum(1 for g in glangs.values() if 'ids_checked' in g)} Spiele; " \
+        + "; ".join(parts)
+    if nxt:
+        line += ". Nächste Wiederholung ohne ID: " + ("jetzt fällig" if nxt <= now else
+                                                     datetime.fromtimestamp(nxt).strftime("%d.%m."))
+    _log(line)
 
 
 def _better(new, cur):

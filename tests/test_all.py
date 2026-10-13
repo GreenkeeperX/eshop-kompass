@@ -2060,6 +2060,13 @@ class ExtraDlcTest(unittest.TestCase):
             n = len(got)
             sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 60)
             self.assertEqual(len(got), n)                       # gefunden: kein neuer Abruf
+            # Das Protokoll zeigt den Stand je Region, auch wenn nichts zu suchen ist
+            line = sync.status["log"][-1]
+            self.assertIn("Fehlende DLC der Sammlung: 2 DLC, 1 Spiele; EU 2 gefunden; JP 0 gefunden, 3 ohne ID", line)
+            self.assertIn("Nächste Wiederholung ohne ID: 24.01.", line)
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 15 * 86400)
+            self.assertIn("IDs fehlender DLC gesucht: ", sync.status["log"][-2])
+            self.assertIn("erneut", sync.status["log"][-2])
         finally:
             sources.fetch_item = orig
         # Preis aus der Preisabfrage (xprices), in der Sammlung mit Summe
