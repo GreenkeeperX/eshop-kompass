@@ -349,12 +349,12 @@ Sicherung und Protokoll.
   sucht der nächste Abgleich die ID bei DekuDeals einmal neu: Eine andere ID ersetzt die
   alte und die Sprache wird neu gefragt, dieselbe gilt danach als geprüft. Für Japan meldet
   das der Browser-Helfer („keine Seite“), weil das Tool selbst nur den Warteraum sieht. Dazu
-  gleicht es jede Japan-ID einmal mit titledb ab: Die Programm-ID eines Spiels ist in allen
-  Regionen gleich; weicht sie bei Japan und Europa ab, sucht es die Japan-ID ebenfalls neu
-  (dafür lädt es einmal zusätzlich die deutsche titledb-Liste, rund 28 MB). Bleibt DekuDeals
-  bei der alten ID, gilt die Japan-ID, die titledb zur europäischen Programm-ID kennt; gibt
-  es keine, bleibt die ID, steht aber unter „Sprachen prüfen“ als „ID fraglich“ oben, und
-  ihre gelesene Sprache zählt erst nach deiner Angabe. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
+  gleicht es jede Japan-ID einmal mit titledb ab: Die Programm-ID eines Spiels ist meist in
+  allen Regionen gleich. Kennt titledb in Japan einen anderen Titel mit der Programm-ID aus
+  Europa, sucht es die Japan-ID neu (dafür lädt es einmal zusätzlich die deutsche
+  titledb-Liste, rund 28 MB); bleibt DekuDeals bei der alten ID, gilt die aus titledb. Ohne
+  solchen Titel hat das Spiel in Japan eine eigene Programm-ID (etwa Hyrule Warriors), die
+  ID bleibt. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
   Link in den Store und "Deutsch ja"/"nein" (was dort gerade nicht kaufbar ist, steht unten);
   wo die Fassung gerade günstiger

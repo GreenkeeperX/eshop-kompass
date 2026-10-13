@@ -2338,8 +2338,9 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertNotIn("JP", items["t0"]["langs_src"])
 
     def test_titledb_checks_japan_id_against_europe(self):
-        # Die Programm-ID ist in allen Regionen gleich. Weicht sie ab, gehört die Japan-ID
-        # wohl zu einem anderen Titel: einmal neu suchen. Unbekannt in titledb: nichts tun.
+        # Kennt titledb in Japan einen Titel mit der Programm-ID aus Europa und ist es nicht
+        # die eigene Japan-ID, einmal neu suchen. Ohne Kandidaten hat das Spiel in Japan wohl
+        # eine eigene Programm-ID: nichts tun. Unbekannt in titledb: nichts tun.
         settings = store.load_settings()
         for code in settings["countries"]:
             settings["countries"][code]["enabled"] = code in ("DE", "JP")
@@ -2365,7 +2366,7 @@ class ExtraDlcTest(unittest.TestCase):
             self.assertEqual(regions, ["DE.de", "JP.ja"])
             items = data["items"]
             self.assertEqual({s: it.get("ids_suspect") for s, it in items.items()},
-                             {"ok": None, "bad": {"JP": t0}, "new": None, "odd": {"JP": t0}})
+                             {"ok": None, "bad": {"JP": t0}, "new": None, "odd": None})
             sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
             self.assertEqual(len(regions), 2)                   # jede ID nur einmal abgleichen
             # Neue ID, die titledb noch nie gesehen hat: gleich, nicht erst nach einer Woche
@@ -2377,9 +2378,10 @@ class ExtraDlcTest(unittest.TestCase):
             self.assertEqual(len(regions), 4)                   # höchstens einmal je Stunde
             sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400 + 7200)
             self.assertEqual(len(regions), 6)
-        # Neusuche bei DekuDeals bleibt bei der alten ID: der titledb-Kandidat gilt,
-        # ohne Kandidaten bleibt die ID, aber als fraglich markiert
+        # Neusuche bei DekuDeals bleibt bei der alten ID: der titledb-Kandidat gilt.
+        # Ältere Daten mit leerem Hinweis: die ID bleibt, aber als fraglich markiert
         sync.settle_ids(items["bad"], "JP", ["j2"], t0 + 60, "Bad")
+        items["odd"]["ids_hint"] = {"JP": None}
         sync.settle_ids(items["odd"], "JP", ["j4"], t0 + 60, "Odd")
         self.assertEqual((items["bad"]["ids"]["JP"], items["bad"].get("langs", {}).get("JP")), (["j9"], None))
         self.assertEqual((items["odd"]["ids"]["JP"], items["odd"]["ids_doubt"]), (["j4"], {"JP": "j4"}))
@@ -2391,6 +2393,24 @@ class ExtraDlcTest(unittest.TestCase):
         ctx.settings = {"lang_confirm": {"odd": {"JP": True}}}
         self.assertIs(ctx.german(items["odd"], "JP", "odd"), True)
         self.assertFalse(sync.suspect_id(items["bad"], "JP", t0 + 120))
+
+    def test_old_titledb_doubts_cleared_once(self):
+        # Bis 0.44.4 machte eine abweichende Programm-ID ohne Kandidaten die ID fraglich
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code == "DE"
+        data = {"items": {"hw": {"title": "HW", "active": True, "ids": {"JP": ["j1"]},
+                                 "ids_doubt": {"JP": "j1"}, "ids_verified": {"JP": "j1"}},
+                          "nh": {"title": "NH", "active": True, "ids": {"JP": ["j2"]},
+                                 "ids_suspect": {"JP": 5}, "ids_hint": {"JP": None}},
+                          "ok": {"title": "OK", "active": True, "ids": {"JP": ["j3"]},
+                                 "ids_suspect": {"JP": 5}, "ids_hint": {"JP": "j9"}}},
+                "prices": {}}
+        sync.sync_titledb(data, settings, None, now=10)
+        items = data["items"]
+        self.assertEqual((items["hw"]["ids_doubt"], items["nh"]["ids_suspect"], items["nh"]["ids_hint"]), ({}, {}, {}))
+        self.assertEqual((items["ok"]["ids_suspect"], items["ok"]["ids_hint"]), ({"JP": 5}, {"JP": "j9"}))
+        self.assertEqual(data["tdb_doubt_reset"], 1)
 
     def test_browser_helper_import(self):
         data = {"items": {"a": {"title": "A", "active": True, "ids": {"JP": ["70010000000001"]},

@@ -487,8 +487,9 @@ def settle_ids(rec, fam, found, now, title):
     """Ergebnis einer Neusuche: andere ID übernehmen und die Sprache neu fragen, sonst die
     alte als geprüft vermerken, damit es nicht immer wieder sucht. Hat titledb eine ID mit
     derselben Programm-ID wie in Europa gefunden, gilt diese, auch wenn DekuDeals bei der
-    alten bleibt (Entscheidung 13.10.2026). Ohne solchen Kandidaten und ohne neue ID
-    bleibt die alte, aber als fraglich markiert."""
+    alten bleibt (Entscheidung 13.10.2026). Ohne Kandidaten löst titledb seit 0.44.5 keine
+    Neusuche mehr aus; ältere Daten können noch einen leeren Hinweis tragen: dann bleibt die
+    alte ID, als fraglich markiert."""
     (rec.get("ids_suspect") or {}).pop(fam, None)
     hints = rec.get("ids_hint") or {}
     from_tdb = fam in hints
@@ -549,6 +550,15 @@ def sync_titledb(data, settings, fetch, now=None):
     einmal die Woche (Japan rund 24 MB, für den ID-Abgleich zusätzlich Deutschland), für
     neue IDs gleich. Jede ID gilt danach als nachgesehen, auch wenn titledb sie nicht kennt."""
     now = now or time.time()
+    if data.get("tdb_doubt_reset", 0) < 1:
+        # Bis 0.44.4 galt eine abweichende Programm-ID auch ohne Kandidaten als Hinweis auf
+        # eine falsche ID. Das traf Spiele mit eigener Programm-ID in Japan: einmal aufheben
+        for rec in list(data["items"].values()) + list((data.get("glangs") or {}).values()):
+            if "JP" in (rec.get("ids_hint") or {}) and not rec["ids_hint"]["JP"]:
+                rec["ids_hint"].pop("JP")
+                (rec.get("ids_suspect") or {}).pop("JP", None)
+            (rec.get("ids_doubt") or {}).pop("JP", None)
+        data["tdb_doubt_reset"] = 1
     if not any(settings["countries"][code]["enabled"] for code in countries.ORDER
                if countries.BY_CODE[code]["family"] == "JP"):
         return
@@ -595,11 +605,15 @@ def sync_titledb(data, settings, fetch, now=None):
     for nsuid, (rec, eu) in verify.items():
         a, b = (found.get(nsuid) or {}).get("app"), (europe.get(eu) or {}).get("app")
         rec.setdefault("ids_tdb", {})["JP"] = nsuid       # einmal je ID, auch ohne Ergebnis
-        if a and b and a != b and suspect_id(rec, "JP", now):
-            rec.setdefault("ids_hint", {})["JP"] = by_app.get(b)     # None: kein Kandidat
+        # Manche Spiele haben in Japan eine eigene Programm-ID (etwa Hyrule Warriors). Ein
+        # Hinweis ist eine Abweichung nur, wenn titledb in Japan einen Titel mit der
+        # Programm-ID aus Europa kennt (Entscheidung 13.10.2026, ab 0.44.5)
+        cand = by_app.get(b)
+        if a and b and a != b and cand and cand != nsuid and suspect_id(rec, "JP", now):
+            rec.setdefault("ids_hint", {})["JP"] = cand
             odd += 1
     if odd:
-        _log(f"Japan-IDs: bei {odd} Titeln passt die Programm-ID laut titledb nicht zu Europa, "
+        _log(f"Japan-IDs: bei {odd} Titeln kennt titledb eine andere Japan-ID mit der Programm-ID aus Europa, "
              "der nächste Abgleich sucht die ID neu")
     store.save_data(data)
 
