@@ -12,7 +12,7 @@ from . import countries
 from .sources import ec_url, parse_amount
 
 MAX_STATES = 3_000_000
-CARD_PRICE_MAX_AGE = 3 * 24 * 3600   # gelesene Kartenpreise gelten so lange
+CARD_PRICE_MAX_AGE = 14 * 24 * 3600  # zuletzt gelesene Kartenpreise gelten so lange, auch wenn ein Abruf scheitert
 MIN_FILLER_GAIN = 0.5    # Füllartikel erst ab dieser Ersparnis in Euro vorschlagen
 BEST_TOLERANCE = 0.02    # bis 2 % über dem Bestpreis gilt ein Angebot als Bestpreis
 GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
@@ -361,11 +361,12 @@ class Context:
 
     def _live_cards(self, cards, country_rate, implausible):
         """Setzt für Karten mit Link den zuletzt gelesenen Shop-Preis ein, solange
-        er frisch und glaubhaft ist. Sonst bleibt der von Hand eingetragene Preis."""
+        er glaubhaft und höchstens CARD_PRICE_MAX_AGE alt ist, auch wenn der letzte Abruf
+        scheiterte. Sonst bleibt der von Hand eingetragene Preis."""
         now = self.now.timestamp()
         for x in cards:
             e = self.card_prices.get(x["url"]) if x["url"] else None
-            if not e or e.get("price") is None or now - e.get("checked", 0) > CARD_PRICE_MAX_AGE:
+            if not e or e.get("price") is None or now - e.get("ok", e.get("checked", 0)) > CARD_PRICE_MAX_AGE:
                 continue
             rate = 1.0 if e.get("currency") == "EUR" else self.rates.get(e.get("currency"))
             if not rate:
@@ -379,15 +380,25 @@ class Context:
             if not plausible_card(cost, x["face"], country_rate):
                 implausible.append({"face": x["face"] / 100, "price": cost, "src": "shop"})
                 continue
-            x.update(manual=x["cost"], cost=cost, live=e["checked"], fee=fee, fee_eur=fee_eur)
+            x.update(manual=x["cost"], cost=cost, live=e.get("ok", e["checked"]), fee=fee, fee_eur=fee_eur)
         return cards
 
     # ---- Europreis je Währungseinheit
 
     def markup(self, c):
-        """Aufschlag in Prozent für Guthabenkarten ohne eigenen Preis."""
-        own = c["cfg"].get("markup_pct")
-        return float(self.settings["gift_markup_pct"] if own in ("", None) else own)
+        """Aufschlag in Prozent, wenn für Guthaben kein Kartenpreis lesbar ist (Schätzung).
+        Seit 0.52.1 ein Wert für alle Länder (Entscheidung 13.10.2026)."""
+        return float(self.settings["gift_markup_pct"])
+
+    def face_cost(self, c, x):
+        """Preis einer Karte in Euro: gelesen oder eingetragen; nur ein Wert ohne Link heißt
+        Guthaben zum Kurs, mit deiner Karte bezahlt wie im eShop (etwa Amazon Japan; bei einer
+        Karte ohne Fremdwährungsgebühr genau zum Kurs); None = unbekannt."""
+        if x["cost"] is not None:
+            return x["cost"]
+        if not x["url"]:
+            return x["face"] / 100 / c["rate"] * (1 + self.settings["card_fee_pct"] / 100)
+        return None
 
     def _gift(self, c):
         """Günstigste vorrätige Karte: (Euro je Hundertstel, Karte oder None)."""
@@ -396,7 +407,8 @@ class Context:
         for x in c["cards"]:
             if not x["stock"]:
                 continue
-            unit = x["cost"] / x["face"] if x["cost"] is not None else est
+            cost = self.face_cost(c, x)
+            unit = cost / x["face"] if cost is not None else est
             if card is None or unit < best - 1e-12:
                 best, card = unit, x
         return best, card
@@ -425,6 +437,9 @@ class Context:
             return None
         card, gift = self._units(c)
         pay = c["cfg"]["pay"]
+        if pay == "auto" and c["currency"] != "EUR" and c["code"] != countries.REFERENCE \
+                and not any(x["stock"] and self.face_cost(c, x) is not None for x in c["cards"]):
+            return card           # „das Günstigere“ wählt nie eine Schätzung (0.52.1)
         return card if pay == "card" else gift if pay == "giftcard" else min(card, gift)
 
     def how(self, c):
@@ -434,7 +449,7 @@ class Context:
         mid = 1 / 100 / c["rate"]
         card_unit, gift_unit = self._units(c)
         pay = c["cfg"]["pay"]
-        gift = pay == "giftcard" or (pay == "auto" and gift_unit < card_unit)
+        gift = pay == "giftcard" or (pay == "auto" and gift_unit < card_unit and c["unit"] < card_unit - 1e-12)
         out = {"currency": c["currency"], "rate": c["rate"], "tax": c["tax"],
                "via": "giftcard" if gift else "card", "unit": c["unit"] * 100,
                "vs_mid": round(100 * (c["unit"] / mid - 1), 1),
@@ -743,7 +758,7 @@ def make_payer(ctx, c):
     balance = cents(c["cfg"].get("balance") or 0)
     mode = c["cfg"]["pay"]
     card_unit, gift_unit = ctx._units(c)
-    stocked = [(x["face"], x["cost"]) for x in c["cards"] if x["stock"]]
+    stocked = [(x["face"], ctx.face_cost(c, x)) for x in c["cards"] if x["stock"]]
     solver = None
     if stocked and mode in ("giftcard", "auto"):
         solver = CardSolver(stocked, c["rate"], ctx.markup(c))

@@ -260,9 +260,12 @@ sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.
 Jeder Europreis enthält alles, was der Kauf dich kostet: Shop-Preis, Steuer,
 Wechselkurs und den Weg zum Guthaben (Kartengebühr oder Preis der
 Guthabenkarte). Der Tooltip am Preis zeigt die Rechnung samt Stand des
-Wechselkurses. Ein ≈ vor dem Preis heißt geschätzt: Für das Land ist keine
-Guthabenkarte mit bekanntem Preis eingetragen, gerechnet wird mit Kurs plus
-pauschalem Aufschlag.
+Wechselkurses. Den Preis einer Guthabenkarte nimmt das Tool in dieser Reihenfolge: der
+gelesene Preis vom Link (scheitert ein Abruf, gilt der zuletzt gelesene bis zu 14 Tage weiter,
+mit Datum), dein eingetragener Preis, bei Werten ohne Link Guthaben zum Kurs. Gibt es nichts
+davon, heißt ein ≈ vor dem Preis geschätzt (Kurs plus der Wert unter Gebühren, Erweitert):
+Solche Preise entscheiden nichts, „das Günstigere“ nimmt dann die Kreditkarte, und „Zu
+erledigen“ nennt das Land.
 Auch Kartenzahlung ist eine Näherung (Mittelkurs plus Fremdwährungsgebühr),
 die Bank rechnet mit ihrem eigenen Kurs.
 
@@ -335,22 +338,22 @@ Sicherung und Protokoll.
 - Bezahlen: Karte, Guthabenkarte oder das Günstigere von beiden.
 - Steuer: Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt
   (USA, Kanada).
-- Aufschlag: was Guthaben über dem Wechselkurs kostet, wenn bei einer Karte
-  kein Preis steht. Je Land einstellbar, zum Beispiel 1,75 für Japan, wenn du
-  das Guthaben dort per Kreditkarte zum Nennwert kaufst. Die Spalte "Dein Kurs"
-  zeigt, was dabei herauskommt.
+- "Das Günstigere" nimmt Guthabenkarten nur, wenn sie weniger kosten als die
+  Kreditkarte. Die Spalte "Dein Kurs" zeigt, was dabei herauskommt. Einen Aufschlag
+  je Land gibt es seit 0.52.1 nicht mehr (Entscheidung 13.10.2026).
 - Sammlung: Titel aus deiner DekuDeals-Sammlung werden als vorhanden markiert,
   bei DLC steht dabei, ob du das Hauptspiel hast.
 - Guthabenkarten: eine Karte je Zeile, `Wert = Preis in Euro | Link`. Ein
   vorangestelltes `x` heißt nicht vorrätig. Kaufst du Guthaben zum Kurs (etwa
-  bei Amazon Japan), genügen die Werte, zum Beispiel `500 1000 2000 3000 5000
-  9000` mit Aufschlag 0: Dann folgen die Kosten jedem neuen Kurs und der Rest
-  zählt mit.
+  bei Amazon Japan), genügen die Werte ohne Link, zum Beispiel `500 1000 2000 3000 5000
+  9000`: Dann rechnet das Tool zum Kurs, bezahlt mit deiner Karte (also plus deiner
+  Fremdwährungsgebühr, bei einer Karte ohne Gebühr genau zum Kurs), und der Rest zählt mit.
   Hat eine Karte einen Link, liest das Tool beim Abgleich höchstens einmal am
   Tag den Preis von der Shopseite (aus den Produktdaten der Seite; nennt sie
   mehrere Angebote, zählt das günstigste). Unter dem
-  Eingabefeld steht, was es gelesen hat. Liefert die Seite keinen Preis oder
-  ist der Wert älter als drei Tage, gilt dein eingetragener Preis.
+  Eingabefeld steht, was es gelesen hat. Scheitert ein Abruf, gilt der zuletzt gelesene
+  Preis mit seinem Datum weiter; erst wenn 14 Tage lang kein Abruf gelingt, gilt dein
+  eingetragener Preis.
   Auf gelesene Preise kommt die Servicegebühr des Shops (Einstellung,
   Vorgabe 0,40 € plus 7,75 %): Die Seite zeigt den Preis ohne sie, berechnet
   wird sie erst an der Kasse. Bei Eneba trafen diese Werte im Oktober 2026

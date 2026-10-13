@@ -165,6 +165,9 @@ Reihenfolge und Begründung:
   Spiele; die Prüfumgebung übernimmt Kaufverlauf und baut Verbindungen aus älteren Daten.
 - [x] Hinweise unter „Zu erledigen“ (0.52, Entscheidung 13.10.2026): kostenlose fehlende DLC,
   Pass statt Teile von der Wishlist, Erinnerung an „Käufe lesen“.
+- [x] Guthabenpreise in fester Reihenfolge (0.52.1): keine Spalte „Aufschlag“ je Land mehr,
+  Werte ohne Link rechnen zum Kurs, gelesener Preis gilt nach gescheitertem Abruf 14 Tage
+  weiter, Schätzwert zugeklappt und ohne Einfluss auf Entscheidungen.
 - [ ] Viele Kleinteile eines Spiels zusammenfassen (etwa Kostüme), erst nach Erfahrung mit den
   gruppierten Pässen.
 - [ ] Abgleich Kaufverlauf mit der ganzen DekuDeals-Sammlung (Slug-Stufe, „Bei DekuDeals

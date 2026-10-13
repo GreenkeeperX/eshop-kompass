@@ -13,7 +13,7 @@ DEFAULT_SETTINGS = {
     "wishlist_url": "",
     "collection_url": "",     # leer = Sammlung mit derselben Kennung wie die Wishlist
     "card_fee_pct": 1.75,     # Fremdwährungsgebühr der eigenen Karte
-    "gift_markup_pct": 5.0,   # Aufschlag für Guthabenkarten ohne eigenen Preis
+    "gift_markup_pct": 5.0,   # Schätzung: Aufschlag auf den Kurs, wenn kein Kartenpreis lesbar ist
     # Servicegebühr des Kartenshops auf gelesene Preise: fester Betrag plus Anteil.
     # Eneba, Okt. 2026: acht Käufe von 5,57 bis 93,03 € passen auf den Cent zu 0,40 € + 7,75 %
     "shop_fee_pct": 7.75,
@@ -106,6 +106,12 @@ def load_settings():
             for c in s["countries"].values():
                 c["rest_blocks"] = False
             s["settings_v"] = 4
+        if s.get("settings_v", 0) < 5:
+            # Ab 0.52.1 kein Aufschlag je Land mehr: Werte ohne Link rechnen zum Kurs wie
+            # Kartenzahlung, die Schätzung ohne Kartenpreis nimmt den allgemeinen Wert
+            for c in s["countries"].values():
+                c.pop("markup_pct", None)
+            s["settings_v"] = 5
         if not s["wishlist_url"]:
             s["wishlist_url"] = os.environ.get("WISHLIST_URL", "")
         return s
@@ -186,12 +192,6 @@ def save_settings(new):
                 cur["pay"] = c["pay"]
             if str(c.get("tier")) in ("1", "2", "3"):
                 cur["tier"] = int(c["tier"])
-            if "markup_pct" in c:
-                try:
-                    raw = c["markup_pct"]
-                    cur["markup_pct"] = "" if raw in ("", None) else min(100.0, max(-50.0, float(raw)))
-                except (TypeError, ValueError):
-                    pass
             if "tax_pct" in c:
                 try:
                     cur["tax_pct"] = min(50.0, max(0.0, float(c["tax_pct"] or 0)))

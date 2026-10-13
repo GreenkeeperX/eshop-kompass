@@ -708,7 +708,9 @@ class PlanTest(unittest.TestCase):
         self.assertFalse(cells["NO"]["est"])          # Kartenzahlung
         self.assertFalse(cells["DE"]["est"])
         # Werte ohne Preis folgen dem Kurs: Amazon Japan zum Nennwert, nur der Rest kostet
-        self.settings["countries"]["JP"].update(cards="500 1000 2000 3000 5000 9000", markup_pct=0)
+        # Karte ohne Fremdwährungsgebühr: genau zum Kurs
+        self.settings["countries"]["JP"]["cards"] = "500 1000 2000 3000 5000 9000"
+        self.settings["card_fee_pct"] = 0
         jp = self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]
         self.assertEqual(jp["cards"], [{"face": 1000.0, "count": 1, "url": ""},
                                        {"face": 500.0, "count": 1, "url": ""}])
@@ -735,7 +737,7 @@ class PlanTest(unittest.TestCase):
         t0 = NOW.timestamp()
         sync.sync_card_prices(self.data, self.settings, fake, lambda s: None, now=t0)
         cp = self.data["card_prices"]
-        self.assertEqual(cp["https://shop.example/br50"], {"checked": t0, "price": 8.9, "currency": "EUR"})
+        self.assertEqual(cp["https://shop.example/br50"], {"checked": t0, "ok": t0, "price": 8.9, "currency": "EUR"})
         self.assertEqual(cp["https://shop.example/br25"]["error"], "Seite nennt keinen Preis")
         sync.sync_card_prices(self.data, self.settings, fake, lambda s: None, now=t0 + 3600)
         self.assertEqual(len(calls), 2)                       # höchstens einmal am Tag
@@ -751,8 +753,14 @@ class PlanTest(unittest.TestCase):
         st = planner.card_status(self.data, self.settings, now=NOW)["BR"]
         self.assertEqual([(r["face"], r["cost"], r["manual"], r["error"]) for r in st],
                          [(25.0, 4.8, 4.8, "Seite nennt keinen Preis"), (50.0, 8.9, 9.5, None)])
-        # Veraltet: nach drei Tagen gilt wieder der Wert von Hand
-        later = datetime.fromtimestamp(t0 + 4 * 86400, timezone.utc)
+        # Ein gescheiterter Abruf löscht den Preis nicht: Er gilt mit seinem Datum weiter (0.52.1)
+        sync.sync_card_prices(self.data, self.settings, lambda u, ua=None: "<p>leer</p>", lambda s: None, now=t0 + 86400)
+        self.assertEqual((cp["https://shop.example/br50"]["price"], cp["https://shop.example/br50"]["ok"]), (8.9, t0))
+        mid = datetime.fromtimestamp(t0 + 5 * 86400, timezone.utc)
+        info = planner.pay_info(self.data, self.settings, now=mid)["BR"]
+        self.assertEqual((info["card"]["cost"], info["card"]["live"]), (8.9, t0))
+        # Veraltet: nach 14 Tagen ohne Erfolg gilt wieder der Wert von Hand
+        later = datetime.fromtimestamp(t0 + 15 * 86400, timezone.utc)
         self.assertEqual(planner.pay_info(self.data, self.settings, now=later)["BR"]["card"]["cost"], 9.5)
         # Sperre beendet das Lesen, gelöschte Links fallen aus dem Speicher
         self.settings["countries"]["BR"]["cards"] = "50 = 9,50 | https://shop.example/br50\n25 | https://shop.example/x"
@@ -765,6 +773,13 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertNotIn("https://shop.example/br25", self.data["card_prices"])
         self.assertIn("lehnt Abrufe ab", sync.status["log"][-2])
+
+    def test_auto_never_picks_an_estimate(self):
+        # „das Günstigere“ ohne Kartenpreis: Kreditkarte, auch wenn die Schätzung niedriger wäre
+        self.settings["countries"]["NO"].update(pay="auto", cards="")
+        self.settings["gift_markup_pct"] = -10
+        info = planner.pay_info(self.data, self.settings, now=NOW)["NO"]
+        self.assertEqual((info["via"], info["vs_mid"]), ("card", 1.8))
 
     def test_card_prices_take_turns(self):
         # Der Shop sperrt nach einigen Abrufen. Gelesen wird reihum, die ältesten zuerst,
@@ -956,19 +971,17 @@ class PlanTest(unittest.TestCase):
         br = info["BR"]                 # beste Karte: 50 BRL für 9,50 €
         self.assertEqual((br["via"], br["card"]["face"], br["card"]["cost"]), ("giftcard", 50.0, 9.5))
         self.assertAlmostEqual(br["vs_mid"], round(100 * (9.5 / (50 / 5.6086) - 1), 1))
-        # Japan ohne Kartenliste: voreingestellt Nennwert plus Kartengebühr,
-        # ohne eigenen Wert gilt der allgemeine Aufschlag
-        self.assertEqual((info["JP"]["card"], info["JP"]["vs_mid"]), (None, 1.8))
-        self.settings["countries"]["JP"]["markup_pct"] = ""
-        self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["JP"]["vs_mid"], 5.0)
-        self.settings["countries"]["JP"]["markup_pct"] = 1.75
+        # Japan ohne Kartenliste: Schätzung mit dem allgemeinen Aufschlag (seit 0.52.1 keiner je Land)
+        self.assertEqual((info["JP"]["card"], info["JP"]["vs_mid"]), (None, 5.0))
         jp = self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]
-        self.assertAlmostEqual(jp["cost"], round(1400 / 177.3267 * 1.0175, 2))
-        # Karten ohne Preis nutzen denselben Aufschlag: 1400 ¥ -> 2x 1000 ¥ zum Nennwert
+        self.assertAlmostEqual(jp["cost"], round(1400 / 177.3267 * 1.05, 2))
+        self.assertTrue(jp["estimated"])
+        # Werte ohne Link: Guthaben zum Kurs, 1400 ¥ -> 2x 1000 ¥ zum Nennwert, keine Schätzung
         self.settings["countries"]["JP"]["cards"] = "1000\n3000"
         jp = self.by(planner.plans(self.data, self.settings, now=NOW))["JP"]
-        self.assertAlmostEqual(jp["cost"], round(2000 / 177.3267 * 1.0175, 2))
+        self.assertAlmostEqual(jp["cost"], round(2000 / 177.3267 * 1.0175, 2))   # mit Kartengebühr
         self.assertEqual(jp["rest"], 600.0)
+        self.assertEqual(planner.pay_info(self.data, self.settings, now=NOW)["JP"]["vs_mid"], 1.8)
 
     def test_split_basket_over_card_countries(self):
         basket = ["hades", "spiritfarer", "nidhogg-2"]
@@ -1417,7 +1430,7 @@ class SafetyTest(unittest.TestCase):
         with open(os.path.join(store.DATA_DIR, "settings.json"), "w", encoding="utf-8") as f:
             json.dump({"settings_v": 1, "shop_fee_pct": 10.5}, f)
         s = store.load_settings()
-        self.assertEqual((s["shop_fee_pct"], s["shop_fee_eur"], s["settings_v"]), (7.75, 0.4, 4))
+        self.assertEqual((s["shop_fee_pct"], s["shop_fee_eur"], s["settings_v"]), (7.75, 0.4, 5))
         # Bis 0.9.2 standen deutsche Karten bei Deutschland: sie wandern zu „Deutschland mit Guthaben“
         with open(os.path.join(store.DATA_DIR, "settings.json"), "w", encoding="utf-8") as f:
             json.dump({"settings_v": 2, "countries": {"DE": {"cards": "20 | https://shop.example/de20"}}}, f)
@@ -2104,6 +2117,14 @@ class CollectionTabTest(unittest.TestCase):
         data["owned"].append("rl-b")
         g = planner.collection(data, settings, rows=[])["games"][0]
         self.assertEqual((g["have"], g["ignored"]), (2, 1))
+
+    def test_country_markup_removed(self):
+        # Bis 0.52.0 gab es einen Aufschlag je Land; seitdem nur den allgemeinen Schätzwert
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(store, "DATA_DIR", d):
+            s = store.load_settings()
+            s["countries"]["JP"]["markup_pct"], s["settings_v"] = 0, 4
+            store._save("settings.json", s)
+            self.assertNotIn("markup_pct", store.load_settings()["countries"]["JP"])
 
     def test_dlc_marks_are_saved(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(store, "DATA_DIR", d):

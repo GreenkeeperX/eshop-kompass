@@ -81,9 +81,6 @@ def default_country_settings():
             "balance": 0.0,
             "cards": "",
             "cards_checked": "",
-            # Aufschlag für Karten ohne Preis; leer = allgemeiner Wert.
-            # Japan: Guthaben gibt es zum Nennwert, es fällt nur die Kartengebühr an.
-            "markup_pct": 1.75 if code == "JP" else "",
         }
         for code, c in BY_CODE.items()
     }

@@ -343,6 +343,16 @@ def _plan_card_urls(data, settings, now=None):
             for x in planner.parse_card_list(settings["countries"][p["code"]].get("cards")) if x["url"]}
 
 
+def _card_miss(old, now, error):
+    """Abruf gescheitert: Fehler merken, den zuletzt gelesenen Preis behalten (0.52.1). Er gilt
+    noch bis planner.CARD_PRICE_MAX_AGE nach dem letzten Erfolg, mit seinem Datum."""
+    old = old or {}
+    keep = {k: old[k] for k in ("price", "currency") if old.get("price") is not None}
+    if keep:
+        keep["ok"] = old.get("ok", old.get("checked", now))
+    return dict(keep, checked=now, error=error)
+
+
 def sync_card_prices(data, settings, fetch, sleep, now=None):
     """Liest die Preise der Guthabenkarten, die einen Link haben, von der Shopseite.
 
@@ -379,13 +389,13 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
             if e.status in sources.BLOCKED:
                 _log(f"Kartenpreise: Shop lehnt Abrufe ab ({e}), Werte von Hand gelten weiter")
                 break
-            prices[url] = {"checked": now, "error": f"HTTP {e.status or 'Fehler'}"}
+            prices[url] = _card_miss(prices.get(url), now, f"HTTP {e.status or 'Fehler'}")
         else:
             if found:
-                prices[url] = {"checked": now, "price": found[0], "currency": found[1]}
+                prices[url] = {"checked": now, "ok": now, "price": found[0], "currency": found[1]}
                 got += 1
             else:
-                prices[url] = {"checked": now, "error": "Seite nennt keinen Preis"}
+                prices[url] = _card_miss(prices.get(url), now, "Seite nennt keinen Preis")
         status["done"] += 1
         sleep(CARD_PAUSE)
     _log(f"Kartenpreise: {got} von {len(todo)} gelesen" +
