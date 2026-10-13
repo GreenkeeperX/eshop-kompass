@@ -18,6 +18,9 @@ EXTRA_LOWS_PER_SYNC = 30              # Tiefstpreis-Seiten fehlender DLC je Abgl
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
 LOW_RECHECK_SECONDS = 30 * 24 * 3600  # Seiten ohne Tiefstpreis monatlich neu prüfen
 SALES_RECHECK_SECONDS = 30 * 24 * 3600  # Angebotsverlauf monatlich auffrischen
+PRUNE_DAYS = 180                      # Daten von Titeln, die so lange weg sind, entfernen (0.54.1)
+LOWS_PER_SYNC = 60                    # Tiefstpreis-Seiten der Wishlist je Abgleich, Angebote zuerst (0.54.1)
+IDS_PER_SYNC = 120                    # Titel und Region für die ID-Suche je Abgleich; reicht für eine neue Wishlist (0.54.1)
 SALES_PER_SYNC = 40                   # höchstens so viele Seiten nur für den Verlauf
 SALES_MONTHS = 24                     # typischer Angebotspreis aus diesem Zeitraum
 LOW_PAGE_V = 2                        # Seiten ohne Tiefstpreis: mit Verlauf-Ersatz gelesen
@@ -129,6 +132,9 @@ def sync_ids(data, settings, fetch, sleep, now=None):
             if now - it["ids_checked"].get(fam, 0) < ID_RECHECK_SECONDS:
                 continue
             todo.append((slug, fam))
+    # Obergrenze wie bei den anderen Seitenschritten; der Rest folgt im nächsten Abgleich (0.54.1)
+    later = max(0, len(todo) - IDS_PER_SYNC)
+    todo = todo[:IDS_PER_SYNC]
     if todo:
         _step("Titel-IDs suchen", len(todo))
     misses, pages, got, stop = 0, 0, 0, None
@@ -184,7 +190,8 @@ def sync_ids(data, settings, fetch, sleep, now=None):
     merge_aliases(data)
     if stop:
         _log(f"Titel-IDs: {stop}, {len(todo)} offen, nächster Versuch beim nächsten Abgleich")
-    _log(f"Titel-IDs: {pages} Seiten gelesen, {got} von {len(todo)} gefunden" if todo
+    _log(f"Titel-IDs: {pages} Seiten gelesen, {got} von {len(todo)} gefunden"
+         + (f", {later} folgen beim nächsten Abgleich" if later else "") if todo
          else "Titel-IDs: alle bekannt, nichts zu suchen")
     missing = [it["title"] for it in data["items"].values()
                if it.get("active") and not any(it["ids"].values())]
@@ -542,6 +549,40 @@ def self_check(data, settings, now=None):
     if not warnings:
         _log("Prüfung: alles glaubhaft")
     return data["checks"]
+
+
+def prune_old(data, now=None):
+    """Daten von Titeln, die PRUNE_DAYS lang weder auf der Wishlist noch in der Sammlung
+    standen, aus items, lows, rel und lchk entfernen; sie lassen sich jederzeit neu holen.
+    Die eigene Preisaufzeichnung (history.json) bleibt, sie ist unersetzlich (0.54.1).
+    Für Titel, die schon vorher weg waren, beginnt die Frist mit diesem Lauf."""
+    now = now or time.time()
+    items, owned = data["items"], set(data.get("owned") or [])
+    gone = 0
+    for slug, it in list(items.items()):
+        if it.get("active") or slug in owned:
+            it.pop("gone_at", None)
+            continue
+        it.setdefault("gone_at", now)
+        if now - it["gone_at"] > PRUNE_DAYS * 86400:
+            del items[slug]
+            gone += 1
+    links = data.get("links") or {}
+    keep = set(items) | owned | set(data.get("extra") or {}) | set(data.get("glangs") or {}) \
+        | set(links) | {p for parts in links.values() for p in parts}
+    lows = sum(len([s for s in t if s not in keep]) for t in (data.get("lows") or {}).values())
+    for table in (data.get("lows") or {}).values():
+        for slug in [s for s in table if s not in keep]:
+            del table[slug]
+    pages = 0
+    for key in ("rel", "lchk"):
+        table = data.get(key) or {}
+        for slug in [s for s in table if s not in keep]:
+            del table[slug]
+            pages += key == "rel"
+    _log(f"Aufräumen: {gone} Titel, {lows} Tiefstpreis-Einträge und {pages} DLC-Seiten entfernt "
+         f"(seit {PRUNE_DAYS} Tagen weder auf der Wishlist noch in der Sammlung)" if gone or lows or pages
+         else "Aufräumen: nichts zu entfernen")
 
 
 def prune_langs(data, settings):
@@ -997,7 +1038,8 @@ def sync_lows(data, settings, fetch, sleep, now=None):
     todo.sort()
     refresh.sort()
     xtodo.sort()
-    todo += refresh[:SALES_PER_SYNC] + xtodo[:EXTRA_LOWS_PER_SYNC]
+    later = max(0, len(todo) - LOWS_PER_SYNC)
+    todo = todo[:LOWS_PER_SYNC] + refresh[:SALES_PER_SYNC] + xtodo[:EXTRA_LOWS_PER_SYNC]
     if not todo:
         _log(_lows_summary(data, settings, "nichts fällig"))
         return
@@ -1037,7 +1079,8 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             store.save_data(data)
         sleep(LOW_PAUSE)
     store.save_data(data)
-    _log(_lows_summary(data, settings, f"{read} von {len(todo)} Seiten gelesen"))
+    _log(_lows_summary(data, settings, f"{read} von {len(todo)} Seiten gelesen"
+                       + (f", {later} folgen beim nächsten Abgleich" if later else "")))
 
 
 def _lows_summary(data, settings, head):
@@ -1423,6 +1466,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         return False
     status.update(running=True, ok=None, log=[], finished=None,
                   started=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    sources.item_cache = {}       # eine DekuDeals-Seite je Abgleich nur einmal holen (0.54.1)
     try:
         settings = store.load_settings()
         data = store.load_data()
@@ -1436,6 +1480,8 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_wishlist(data, settings, fetch, sleep)
         sync_collection(data, settings, fetch, sleep)
         remember_eshop(data)
+        if "owned" in data:            # ohne gelesene Sammlung nichts aufräumen
+            prune_old(data)
         store.save_data(data)
         sync_ids(data, settings, fetch, sleep)
         sync_fx(data, fetch)
@@ -1473,6 +1519,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         _log(f"Abbruch: {e}")
         traceback.print_exc()
     finally:
+        sources.item_cache = None
         status.update(running=False,
                       finished=datetime.now(timezone.utc).isoformat(timespec="seconds"))
         _lock.release()
@@ -1592,6 +1639,13 @@ def diagnose(sleep=time.sleep):
     else:
         lines.append("Guthabenkarte: keine Karte mit Link eingetragen, Eneba nicht geprüft")
     probe("Wechselkurse", sources.FX_URL, None, lambda t: t[:80])
+    probe("Wechselkurse, Ersatzquelle", sources.FX_FALLBACK_URL, None, lambda t: t[:80])
+    # titledb nur mit Kopfdaten: Die Datei hat rund 25 MB (0.54.1)
+    url = sources.TITLEDB_URL.format("JP.ja")
+    h = sources.head(url)
+    lines.append(f"titledb (JP.ja): keine Verbindung ({h['error']})" if h["error"] else
+                 f"titledb (JP.ja): HTTP {h['status']}, Größe {int(h['size']) // 1_000_000 if (h['size'] or '').isdigit() else '?'} MB, "
+                 f"Stand {h['modified'] or '?'}")
     lines.extend(membership_probe(probe, sleep))
     return lines
 

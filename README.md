@@ -472,7 +472,9 @@ auch wenn nichts fällig ist ("nichts fällig", "alle aktuell"), damit sich Abgl
 vergleichen lassen. "Verbindung testen" schreibt in eine eigene Box darüber. Die
 Wechselkurse erneuert die Quelle einmal am Tag; das Tool holt sie nur dann, wenn es
 Neues gibt. Was das Tool woher, wann und wie oft holt und wo es die Daten ablegt, steht in
-`docs/abrufe.md`.
+`docs/abrufe.md`. Seit 0.54.1 kommt jede DekuDeals-Seite je Abgleich höchstens einmal, und
+Titel, die 180 Tage weder auf der Wishlist noch in der Sammlung stehen, verschwinden aus den
+Abgleichsdaten (die eigene Preisaufzeichnung bleibt).
 
 ## Tiefstpreise und Verlauf
 

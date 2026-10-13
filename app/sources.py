@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.54.0"
+VERSION = "0.54.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -72,6 +72,21 @@ def request(url, ua=None, timeout=25, encoding="gzip, deflate"):
     except Exception as e:                # Zeitüberschreitung, DNS, TLS
         out["error"] = str(e)[:160]
     return out
+
+
+def head(url, timeout=20):
+    """Nur die Kopfdaten (HEAD), für Proben großer Dateien: Status, Größe, Stand."""
+    req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+    try:
+        try:
+            resp = _opener.open(req, timeout=timeout)
+        except urllib.error.HTTPError as e:
+            resp = e
+        with resp:
+            return {"status": getattr(resp, "status", None) or resp.getcode(), "error": "",
+                    "size": resp.headers.get("Content-Length"), "modified": resp.headers.get("Last-Modified")}
+    except Exception as e:
+        return {"status": 0, "error": str(e)[:160], "size": None, "modified": None}
 
 
 def fetch(url, timeout=25, ua=None):
@@ -410,9 +425,20 @@ def parse_item_page(page_html):
             "history": parse_history(page_html), "related": parse_related(page_html)}
 
 
+# Während eines Abgleichs ein Dict: Jede Artikelseite kommt höchstens einmal, auch wenn
+# mehrere Schritte sie brauchen (IDs, Tiefstpreis, DLC und Pakete). Sonst None (0.54.1)
+item_cache = None
+
+
 def fetch_item(slug, country, fetch=fetch):
+    key = (slug, country)
+    if item_cache is not None and key in item_cache:
+        return item_cache[key]
     url = f"https://www.dekudeals.com/items/{slug}?country={country}"
-    return parse_item_page(deku_get(url, lambda t: "deku deals" in page_title(t).lower(), fetch))
+    info = parse_item_page(deku_get(url, lambda t: "deku deals" in page_title(t).lower(), fetch))
+    if item_cache is not None:
+        item_cache[key] = info
+    return info
 
 
 # ----------------------------------------------------------------- Nintendo

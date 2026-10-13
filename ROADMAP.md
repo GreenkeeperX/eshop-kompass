@@ -196,9 +196,9 @@ Reihenfolge und Begründung:
   Karten; Tiefstpreis-Zeile zählt nur die Wishlist; Wechselkurse nur bei neuem Stand der
   Quelle; Sperre bei der ID-Suche beendet nur diesen Schritt; store-jp nach Warteraum eine
   Woche, titledb nach Fehlschlag einen Tag Ruhe.
-- [ ] Abrufe, Schritt 2: eine DekuDeals-Seite in allen Schritten auswerten, Obergrenzen für
-  ID-Suche und Tiefstpreise der Wishlist, Verbindungstest für titledb und Ersatzkurse.
-- [ ] Abrufe, Schritt 3: Daten von Titeln, die 180 Tage weder auf Wishlist noch in der
+- [x] Abrufe, Schritt 2 (0.54.1): jede DekuDeals-Seite je Abgleich nur einmal, Obergrenzen für
+  ID-Suche (120) und Tiefstpreise der Wishlist (60), Verbindungstest für titledb und Ersatzkurse.
+- [x] Abrufe, Schritt 3 (0.54.1): Daten von Titeln, die 180 Tage weder auf Wishlist noch in der
   Sammlung stehen, entfernen (eigene Preisaufzeichnung bleibt).
 - [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen

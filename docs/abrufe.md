@@ -2,7 +2,7 @@
 
 Verbindliche Übersicht, was das Tool woher holt, wann, wie oft und wohin es das Ergebnis
 legt. Wer einen Abruf, eine Grenze oder eine Ablage ändert, passt diese Datei im selben
-Commit an. Stand: 0.54.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
+Commit an. Stand: 0.54.1. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
 
 ## Grundregeln
 
@@ -11,7 +11,8 @@ Commit an. Stand: 0.54.0. Maßgeblich bleibt der Code; Konstanten stehen in `app
 - **Sperren:** HTTP 403 und 429 beenden den betroffenen Schritt sofort, nie den ganzen
   Abgleich. Warteräume und Bot-Schutz werden nicht umgangen.
 - **Schonend:** Pausen zwischen Seiten und Obergrenzen je Abgleich. Was nicht fällig ist,
-  wird nicht geholt.
+  wird nicht geholt. Jede DekuDeals-Artikelseite kommt je Abgleich höchstens einmal
+  (`sources.item_cache`), auch wenn IDs, Tiefstpreis und DLC sie alle brauchen.
 - **Protokoll:** Jeder Schritt schreibt mindestens eine Zeile, auch wenn nichts fällig
   ist. So lassen sich Abgleiche vergleichen. Das Protokoll liegt nur im Speicher (200
   Zeilen) und ist nach einem Neustart leer.
@@ -34,14 +35,15 @@ Die Nummern entsprechen der Reihenfolge in `run_sync`.
 |---|---|---|---|---|---|
 | 1 | Wishlist | DekuDeals, Wishlist-Seiten | jeder Abgleich, bis 30 Seiten, 1 s Pause; Fehler auf Seite 1 bricht ab | `data.items` (Titel bleiben, `active` wechselt) | `Wishlist: n Titel` |
 | 2 | Sammlung | DekuDeals, Sammlungsseiten | jeder Abgleich, bis 30 Seiten | `data.owned`, überschrieben | `Sammlung: n Titel` |
-| 3 | Fehlende eShop-IDs | DekuDeals-Artikelseite je Region | neu, nach 14 Tagen (`ID_RECHECK_SECONDS`) oder bei Verdacht; Sperre beendet nur diesen Schritt | `items.ids`, dazu Tiefstpreis je Land | `Titel-IDs: n Seiten gelesen, x von y gefunden` / `alle bekannt` |
+| – | Aufräumen | kein Abruf | jeder Abgleich mit gelesener Sammlung: Titel, die 180 Tage (`PRUNE_DAYS`) weder auf der Wishlist noch in der Sammlung stehen, fallen aus `items`; Einträge in `lows`, `rel`, `lchk` ohne Bezug ebenso | – | `Aufräumen: …` / `nichts zu entfernen` |
+| 3 | Fehlende eShop-IDs | DekuDeals-Artikelseite je Region | neu, nach 14 Tagen (`ID_RECHECK_SECONDS`) oder bei Verdacht; höchstens 120 Titel-Regionen (`IDS_PER_SYNC`); Sperre beendet nur diesen Schritt | `items.ids`, dazu Tiefstpreis je Land | `Titel-IDs: n Seiten gelesen, x von y gefunden` / `alle bekannt` |
 | 4 | Wechselkurse | open.er-api, Ersatz frankfurter (EZB) | nur, wenn der Stand der Quelle älter als 24 h ist (`FX_SOURCE_DAY`) und der letzte eigene Abruf über 20 h (`FX_RECHECK`) zurückliegt | `data.fx` {rates, updated, fetched, src}; fehlende Währungen behalten den alten Kurs | `Wechselkurse vom …, (Quelle)` |
 | 5 | Preise | Nintendo-Preisschnittstelle, 50 IDs je Anfrage | jeder Abgleich, alle Länder (auch abgeschaltete, fürs Preisniveau); abgeschaltete ohne Antwort ruhen 7 Tage | `data.prices`, `data.xprices` überschrieben; Änderungen in `history.json` | `XX: n von m Titeln kaufbar` je aktivem Land |
 | 6 | Guthabenkartenpreise | Shop-Links aus den Einstellungen (JSON-LD) | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), Plan-Länder zuerst, 3 s Pause | `data.card_prices`; gelesener Preis gilt bis 14 Tage; Faktor-Verlauf `card_hist` 90 Tage | `Kartenpreise: g von n gelesen, k weitere aktuell; ohne Preis: …` / `alle n aktuell` |
 | 7 | Sprachen Europa | Nintendo-Europa-Suche, 40 IDs je Anfrage | ohne Angabe: 3 Versuche im Tagesabstand, dann monatlich | `.langs.EU` | `Sprachen Europa: x von n` / `nichts fällig` |
 | 7 | Sprachen Amerika | nintendo.com-Titelseite | höchstens 40 Seiten je Abgleich, 3 Versuche, dann monatlich | `.langs.AM` | `Sprachen Amerika: …` / `nichts fällig` |
 | 7 | Sprachen Japan | store-jp-Titelseite | wie Amerika; nach einem Warteraum 7 Tage Ruhe (`JP_WAIT_SECONDS`) | `.langs.JP`, `data.lang_wait` | `Sprachen Japan: …`, Warteraum mit nächstem Versuch |
-| 8 | Tiefstpreise, Angebotsverläufe | DekuDeals-Artikelseite je aktivem Land | nur Titel im Angebot; Seiten ohne Tiefstpreis monatlich; Verläufe höchstens 40 (`SALES_PER_SYNC`), fehlende DLC 30 (`EXTRA_LOWS_PER_SYNC`); 2,5 s Pause | `data.lows` | `Tiefstpreise: … ; Wishlist x von n Titeln mit Tiefstpreis, k mit Angebotsverlauf` |
+| 8 | Tiefstpreise, Angebotsverläufe | DekuDeals-Artikelseite je aktivem Land | nur Titel im Angebot; Seiten ohne Tiefstpreis monatlich; Wishlist höchstens 60 (`LOWS_PER_SYNC`), Verläufe höchstens 40 (`SALES_PER_SYNC`), fehlende DLC 30 (`EXTRA_LOWS_PER_SYNC`); 2,5 s Pause | `data.lows` | `Tiefstpreise: … ; Wishlist x von n Titeln mit Tiefstpreis, k mit Angebotsverlauf` |
 | 9 | DLC, Pakete, Inhalte | DekuDeals-Artikelseite | höchstens 40 Seiten (`REL_PER_SYNC`), monatlich erneut, Paketverbindungen fehlender DLC alle 90 Tage | `data.rel`, `data.links`, `data.lchk` | `DLC und Pakete: …` / `nichts fällig` |
 | 10 | IDs fehlender DLC | DekuDeals-Artikelseite | höchstens 40 Seiten (`EXTRA_PER_SYNC`), 14 oder 90 Tage | `data.extra`, `data.glangs` | `Fehlende DLC der Sammlung: …` |
 | 11 | Sprachen und IDs Japan/Amerika | titledb (GitHub, Dateien zu rund 25 MB, gestreamt) | nur bei Bedarf, höchstens wöchentlich, bei neuen IDs nach 1 h; nach Fehlschlag 1 Tag Ruhe (`TITLEDB_FAIL_WAIT`) | nur Treffer | `titledb: …` |
@@ -68,7 +70,8 @@ Je eine Probe, nichts wird gespeichert:
 - Sammlung
 - DLC-Abschnitte
 - erste Guthabenkarte mit Link
-- Wechselkurse
+- Wechselkurse und ihre Ersatzquelle
+- titledb, nur Kopfdaten (Größe, Stand), ohne die Datei zu laden
 - Online-Mitgliedschaft: DekuDeals für DE und BR, damit die Nintendo-Preise der dort genannten eShop-IDs
 
 ## Dateien
@@ -76,18 +79,11 @@ Je eine Probe, nichts wird gespeichert:
 | Datei | Inhalt | Lebensdauer |
 |---|---|---|
 | `settings.json` | nur Eingaben | dauerhaft |
-| `data.json` | Abgleichsdaten | `prices`, `fx`, `owned`, `card_prices`, `checks` werden überschrieben; `items`, `lows` und `rel` wachsen (Aufräumen geplant); `extra`, `glangs`, `links` und `card_hist` räumen sich selbst auf |
+| `data.json` | Abgleichsdaten | `prices`, `fx`, `owned`, `card_prices`, `checks` werden überschrieben; `items`, `lows` und `rel` verlieren Titel nach 180 Tagen ohne Wishlist und Sammlung; `extra`, `glangs`, `links` und `card_hist` räumen sich selbst auf |
 | `history.json` | eigene Preisaufzeichnung | wächst, wird nie gekürzt, weil sie unersetzlich ist |
 | `eshop_history.json` | Kaufverlauf | bis 3000 Einträge |
 | `purchases.json`, `ui.json` | Kaufprotokoll, Ansicht | dauerhaft |
 
 ## Offene Punkte
 
-Aus dem Konzept vom 13.10.2026, Reihenfolge wie dort:
-
-- Eine gelesene DekuDeals-Seite in allen Schritten auswerten (IDs, Tiefstpreis, DLC),
-  statt sie im selben Abgleich zweimal zu holen.
-- Obergrenze auch für Titel-IDs und Tiefstpreise der Wishlist.
-- Daten von Titeln, die 180 Tage weder auf der Wishlist noch in der Sammlung stehen,
-  aus `items`, `lows` und `rel` entfernen.
-- Verbindungstest auch für titledb und die Ersatzquelle der Kurse.
+Keine. Neue Ideen zu Abrufen kommen in die ROADMAP.md.

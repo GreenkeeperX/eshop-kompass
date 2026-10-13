@@ -37,6 +37,18 @@ ITEM_BR = '''<title>x | Deku Deals</title><table><tr><td><strong>All time low</s
 ITEM_JP = '<title>Hades | Deku Deals</title><a href="https://ec.nintendo.com/JP/ja/titles/70010000033130">x</a>'
 
 
+_head_patch = mock.patch.object(sources, "head", lambda url, timeout=20: {
+    "status": 200, "error": "", "size": "25000000", "modified": "Mon, 12 Oct 2026 08:00:00 GMT"})
+
+
+def setUpModule():
+    _head_patch.start()          # Kopfdaten-Proben (titledb) ohne Netz
+
+
+def tearDownModule():
+    _head_patch.stop()
+
+
 class SourcesTest(unittest.TestCase):
     def test_item_pages(self):
         us = sources.parse_item_page(ITEM_US)
@@ -1626,6 +1638,9 @@ class SafetyTest(unittest.TestCase):
         self.assertTrue(any("country=DE" in u and "ids=70080000000189" in u for u in urls))
         self.assertTrue(any("country=BR" in u and "ids=70080000000186" in u for u in urls))
         self.assertIn("Mitgliedschaft Nintendo-Preise (BR): HTTP 200", text)
+        # 0.54.1: auch Ersatzquelle der Kurse und titledb (nur Kopfdaten)
+        self.assertIn("Wechselkurse, Ersatzquelle: HTTP 200", text)
+        self.assertIn("titledb (JP.ja): HTTP 200, Größe 25 MB", text)
 
     def test_diagnose_with_dlc_sections(self):
         # 0.50 bis 0.53.2: Die Liste der gefundenen Abschnitte (Texte) brach den Test ab,
@@ -1821,6 +1836,46 @@ class SyncLogTest(unittest.TestCase):
         self.assertIn("aktuell, nicht abgerufen", sync.status["log"][-1])
         sync.sync_fx(data, fake, now=t + 21 * 3600)                   # nächster Tag: wieder fragen
         self.assertEqual(len(calls), 2)
+
+    def test_item_page_once_per_sync(self):
+        # 0.54.1: Während eines Abgleichs kommt jede Artikelseite höchstens einmal
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            return "<title>X | Deku Deals</title>"
+        try:
+            sources.item_cache = {}
+            sources.fetch_item("x", "de", fetch=fake)
+            sources.fetch_item("x", "de", fetch=fake)
+            sources.fetch_item("x", "pl", fetch=fake)
+        finally:
+            sources.item_cache = None
+        self.assertEqual(len(calls), 2)
+        sources.fetch_item("x", "de", fetch=fake)                       # außerhalb wieder frisch
+        self.assertEqual(len(calls), 3)
+
+    def test_old_titles_pruned_after_180_days(self):
+        # 0.54.1: weg von Wishlist und Sammlung -> nach 180 Tagen raus aus items, lows, rel
+        t0 = 1_800_000_000
+        data = {"items": {"a": {"active": True}, "old": {"active": False}, "mine": {"active": False}},
+                "owned": ["mine"], "extra": {"dlc": {}},
+                "lows": {"DE": {"a": {"low": 1}, "old": {"low": 2}, "dlc": {"low": 3}}},
+                "rel": {"old": {}, "mine": {}}, "lchk": {"old": 1}}
+        sync.prune_old(data, now=t0)
+        self.assertEqual(data["items"]["old"]["gone_at"], t0)              # Frist beginnt
+        sync.prune_old(data, now=t0 + 179 * 86400)
+        self.assertIn("old", data["items"])
+        data["items"]["old"]["active"] = True                              # zurück auf der Wishlist
+        sync.prune_old(data, now=t0 + 179 * 86400)
+        self.assertNotIn("gone_at", data["items"]["old"])
+        data["items"]["old"]["active"] = False
+        sync.prune_old(data, now=t0 + 200 * 86400)
+        sync.prune_old(data, now=t0 + 381 * 86400)
+        self.assertEqual(sorted(data["items"]), ["a", "mine"])
+        self.assertEqual(sorted(data["lows"]["DE"]), ["a", "dlc"])
+        self.assertEqual((sorted(data["rel"]), data["lchk"]), (["mine"], {}))
+        self.assertIn("Aufräumen: 1 Titel, 1 Tiefstpreis-Einträge und 1 DLC-Seiten entfernt", sync.status["log"][-1])
 
     def test_lows_line_counts_the_wishlist_only(self):
         settings = store.load_settings()
