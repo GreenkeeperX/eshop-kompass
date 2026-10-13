@@ -71,6 +71,7 @@ th small.bc{display:block;font-weight:400;color:var(--muted)}
 .over,.over a{color:var(--stop)}
 .dlc.has{border-color:var(--accent);color:var(--accent)}
 .dlc.own{border-color:var(--warn);color:var(--warn)}
+.dlc.need{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
 .dlc{font-size:9px;border:1px solid var(--line);border-radius:3px;padding:0 3px;margin-right:4px;color:var(--muted);vertical-align:1px}
 a.pl{color:inherit;text-decoration:none}
 a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
@@ -1155,6 +1156,8 @@ function restLine(p, last){
   return `<span class="${blocked ? "bad" : rv >= 5 ? "warnc" : ""}">${money(p.rest, p.currency)}${rv > 0.005 ? ` (${eur(rv)})` : p.balance_value ? " aus deinem Guthaben" : ""}</span>` +
     (fits.length ? ` · passt hinein: ${fits.map(f => esc(f.shorts[0])).join(", ")}` : "");
 }
+/* DLC, deren Hauptspiel nicht im Korb liegt und aus dieser Region kommen muss (Europa passt zum deutschen Konto) */
+function needTag(p){ return !p.is_ref && p.family !== "Europa"; }
 /* Hürden: was den Kauf hier erschwert, rot heißt nein, bernstein heißt prüfen */
 function hurdles(p, last){
   const out = [];
@@ -1164,7 +1167,8 @@ function hurdles(p, last){
     else if(w.startsWith("Rest blockiert")) out.push(`<span class="bad" title="${esc(w)}, bis das Guthaben 0 ist">Rest blockiert Wechsel</span>`);
     else if(w.startsWith("Keine Guthabenkarten")) out.push(`<span class="warnc" title="${esc(w)}">Karten fehlen, geschätzt</span>`);
     // In Europa passt das Hauptspiel ohnehin (deutsches Konto, dieselbe Region): kein Hinweis
-    else if(w.startsWith("DLC braucht")){ if(!p.is_ref && p.family !== "Europa") out.push(`<span class="warnc" title="${esc(w)}">DLC braucht Region ${esc(p.family)}</span>`); }
+    else if(w.startsWith("DLC braucht")){ if(needTag(p)){ const n = p.items.filter(i => i.needs_parent).length || 1;
+      out.push(`<span class="warnc" title="${esc(w.replace(/ \(\d+ DLC\)$/, ""))}. Betroffen: ${esc(p.items.filter(i => i.needs_parent).map(i => i.short).join(", "))}"><span class="dlc need">DLC</span>${n === 1 ? "braucht" : `${n}× brauchen`} Region ${esc(p.family)}</span>`); } }
     else if(/ohne deutschen Vergleichspreis/.test(w)) out.push(`<span class="mut" title="${esc(w)}">${parseInt(w)} ohne DE-Preis</span>`);
     else if(/ungeprüfter Sprache/.test(w)) out.push(`<span class="warnc" title="Für diese Region liegt noch keine Sprachangabe vor">${parseInt(w)}× Sprache ungeprüft</span>`);
     else if(/ohne deutsche Fassung/.test(w)) out.push(`<span class="bad">${esc(w)}</span>`);
@@ -1207,7 +1211,8 @@ function planCard(p, step){
       sortRows(T, p.items, {title: i => i.short, local: i => i.local, end: i => i.sale && i.end ? +new Date(i.end) : null, eur: i => i.eur,
         over: i => i.champ === null || i.champ === undefined ? null : i.eur - i.champ, alt: i => i.alt}).map(i => {
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
-        const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${i.parent_owned ? "has" : ""}">DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
+        const need = i.needs_parent && needTag(p);
+        const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${need ? "need" : i.parent_owned ? "has" : ""}"${need ? ` title="Braucht in der Regel das Hauptspiel aus Region ${esc(p.family)}"` : ""}>DLC</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
         const filled = step && (p.fill_slugs || []).includes(i.slug)
           ? ` <button class="link" data-act="planunfill" data-c="${p.code}" data-s="${esc(i.slug)}" title="Von dir als Füllartikel übernommen. Klick nimmt ihn wieder heraus.">Füller ×</button>` : "";
         const first = step ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;

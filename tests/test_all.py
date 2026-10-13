@@ -994,6 +994,13 @@ class PlanTest(unittest.TestCase):
         self.assertEqual((rows["vs-foscari"]["owned"], rows["vs-foscari"]["parent_owned"]), (False, True))
         self.assertIsNone(rows["hades"]["parent_owned"])        # kein DLC
 
+    def test_dlc_needing_parent_marked(self):
+        br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        rows = {i["slug"]: i for i in br["items"]}
+        self.assertTrue(rows["vs-foscari"]["needs_parent"])     # Hauptspiel nicht im Korb
+        self.assertFalse(rows["hades"]["needs_parent"])         # kein DLC
+        self.assertIn("DLC braucht in der Regel das Hauptspiel aus Amerika (1 DLC)", br["warnings"])
+
     def test_matrix(self):
         m = planner.matrix(self.data, self.settings, now=NOW)
         row = {r["slug"]: r for r in m["rows"]}

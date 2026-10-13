@@ -765,6 +765,8 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
         out["items"].append({
             "slug": slug, "title": it["title"], "short": ctx.short(slug),
             "ref": _r(r), "dlc_of": ctx.parent_title(slug), "forced": slug in must,
+            # DLC ohne Hauptspiel im selben Korb: braucht es meist aus dieser Region
+            "needs_parent": bool(it.get("parent") and it["parent"] not in chosen),
             "alt": _r(alt.get(slug)), "alt_code": alt_code.get(slug),
             **ctx.owned_flags(slug),
             "over": bool(slug in alt and ctx.est(c, o["local"]) > alt[slug] + 0.005),
@@ -847,8 +849,10 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
         out["warnings"].append("Rest blockiert den Länderwechsel")
     elif chosen and out["rest_value"] >= HIGH_REST_EUR:
         out["warnings"].append(f"hoher Rest: {_eur(out['rest_value'])} bleiben auf dem Konto")
-    if any(ctx.items[s].get("parent") and ctx.items[s]["parent"] not in chosen for s in chosen):
-        out["warnings"].append(f"DLC braucht in der Regel das Hauptspiel aus {out['family']}")
+    need = sum(1 for i in out["items"] if i["needs_parent"])
+    if need:
+        out["warnings"].append(f"DLC braucht in der Regel das Hauptspiel aus {out['family']}"
+                               f" ({need} DLC)")
     unknown = sum(1 for s in chosen if offers[s].get("lang") == "unknown")
     if unknown:
         out["warnings"].append(f"{unknown} Titel mit ungeprüfter Sprache")

@@ -143,6 +143,8 @@ Reihenfolge und Begründung:
   kostenlose DLC als "kostenlos" (Entscheidung 13.10.2026). Offen: Pakete mit "Teil schon da"
   (Bestpreis wirkt wie der Restpreis für Besitzer), wartet auf eine Rückmeldung.
   0.48.1: Der Stand der ID-Suche steht im Protokoll erst nach titledb, mit dessen IDs.
+  0.48.2: Der Hinweis "DLC braucht Region" nennt die Zahl, die betroffenen DLC sind in der
+  Tabelle gleich markiert.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

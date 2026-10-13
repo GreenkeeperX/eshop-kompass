@@ -202,7 +202,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   "sonst" und der Schwelle der Stufe); "Rest" nennt, was als Guthaben bleibt
   und was hineinpasst. Bezahlst du ganz oder teils aus vorhandenem Guthaben,
   steht das unter der Kopfzahl. Hürden (Rest blockiert, Karten fehlen, DLC
-  braucht eine andere Region als Europa) stehen darunter. Die Tabelle zeigt je Titel Einkaufspreis,
+  braucht eine andere Region als Europa) stehen darunter. Die betroffenen DLC sind in der
+  Tabelle wie der Hinweis bernsteinfarben markiert. Die Tabelle zeigt je Titel Einkaufspreis,
   Abstand zum Bestpreis und den Preis ohne diesen Wechsel ("sonst").
   Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen unter der Tabelle,
   die ganze Rechnung unter "Rechnung". Ein Rest ist kein Verlust: Gewinn und
