@@ -78,7 +78,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Teile, wenn Teile davon auf der Wishlist stehen, er selbst aber nicht (auf die Wishlist
   gesetzt, plant der Kaufplan ihn statt der Teile); und eine Erinnerung an „Käufe lesen“,
   wenn der letzte Lauf älter als 30 Tage ist und du seitdem gekauft hast (vermerkter Kauf
-  oder größere DekuDeals-Sammlung).
+  oder größere DekuDeals-Sammlung); 30 Tage vor Ablauf die Verlängerung der
+  Online-Mitgliedschaft mit dem günstigsten Land.
   Dann der Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem
   Land kaufst. Kandidaten sind die Titel mit dem Urteil "kaufen", per Schalter
   auch "gut". Jeder Titel geht ins Land, wo er am wenigsten kostet. Ein Land
@@ -88,6 +89,11 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Stufe, oder das Land, in dem dein Konto steht), minus was sie hier kosten.
   Das gilt auch für den Weg zurück nach Deutschland, wenn dein Konto woanders
   steht. Ohne eingetragenes Kontoland gilt Deutschland als Konto.
+  Unter dem Kaufplan, zugeklappt: Online-Mitgliedschaft (12 Monate, einzeln). Je aktivem
+  Land der Einkaufspreis mit deinem Zahlweg wie bei Spielen, je Monat, der Shop-Preis,
+  Angebote und ob das Land dein Konto ist oder im Kaufplan steht. Das Ablaufdatum trägst du
+  dort ein; 30 Tage vorher klappt der Kasten auf. Die eShop-IDs der Mitgliedschaft je Land
+  liest der Abgleich monatlich von DekuDeals, die Preise kommen mit dem normalen Preisabruf.
   Schafft ein Land das nicht, wandern seine Titel ins nächstbeste Land; sind
   sie dort kein Kauf mehr, stehen sie unter "Nicht im Plan" (zugeklappt), mit
   Grund, jeder Titel nur einmal. Reihenfolge: zuerst das Land, in dem dein Konto steht (ohne Angabe Deutschland), dann leicht,
@@ -556,7 +562,8 @@ auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Seit 
 prüft er auch, woher Preise der Online-Mitgliedschaft kommen könnten: die
 12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland und Brasilien und
 mit den eShop-IDs, die DekuDeals im Link der Preistabelle nennt, die Preise bei Nintendo
-(seit 0.53.6). Gespeichert wird nichts. Protokoll und Testergebnis lassen sich kopieren.
+(seit 0.53.6) und welche weiteren Varianten (3 Monate, Familie, Erweiterungspaket) die
+Seite verlinkt. Gespeichert wird nichts. Protokoll und Testergebnis lassen sich kopieren.
 
 Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so
 keine Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen

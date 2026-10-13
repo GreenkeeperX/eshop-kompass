@@ -2352,3 +2352,51 @@ def case_export(data, settings, history, slug, now=None):
         "history": {s: (history.get(s) or {}).get(slug) for s in shops if (history.get(s) or {}).get(slug)},
         "fx": data.get("fx"), "card_prices": data.get("card_prices"), "settings": keep, "radar": row,
     }
+
+
+NSO_TITLE = "Online-Mitgliedschaft, 12 Monate, einzeln"
+NSO_REMIND_DAYS = 30      # so lange vor Ablauf erscheint die Verlängerung unter „Zu erledigen“
+
+
+def membership(data, settings, now=None):
+    """Online-Mitgliedschaft (12 Monate, einzeln, ohne Erweiterungspaket): Einkaufspreis je
+    aktivem Land mit demselben Zahlweg wie bei Spielen (Kreditkarte oder Guthabenkarten).
+    Die Sprachregel gilt hier nicht. Sortiert nach Euro, dazu das Ablaufdatum aus den
+    Einstellungen und ob die Verlängerung ansteht."""
+    now = now or datetime.now(timezone.utc)
+    until = settings.get("nso_until") or ""
+    days = None
+    if until:
+        try:
+            days = (datetime.strptime(until, "%Y-%m-%d").date() - now.date()).days
+        except ValueError:
+            days = None
+    out = {"title": NSO_TITLE, "until": until, "days_left": days, "rows": [],
+           "due": days is not None and days <= NSO_REMIND_DAYS,
+           "ids_known": bool(((data.get("nso") or {}).get("ids") or {}))}
+    prices = data.get("nso_prices") or {}
+    if not any(prices.values()):
+        return out
+    # Ein Kunstgriff: Die Mitgliedschaft ist ein Titel mit Deutsch in jeder Region, damit die
+    # Sprachregel sie nicht ausschließt
+    items = {"nso": {"title": NSO_TITLE, "active": True, "order": 0, "ids": {},
+                     "langs": {f: "german" for f in countries.FAMILIES}}}
+    ctx = Context(dict(data, items=items, prices=prices, lows={}), settings, now)
+    lows = (data.get("nso") or {}).get("lows") or {}
+    current = settings.get("current_country") or ""
+    for code, c in ctx.countries.items():
+        o = c["offers"].get("nso")
+        if not o or c["unit"] is None:
+            continue
+        eur = ctx.est(c, o["local"])
+        if eur is None:
+            continue
+        out["rows"].append({
+            "code": code, "name": c["meta"]["name"], "tier": c["tier"], "eur": _r(eur),
+            "month": _r(eur / 12), "local": o["local"] / 100, "currency": o.get("currency") or c["currency"],
+            "sale": o["sale"], "pct": round(100 * (1 - o["local"] / o["regular"])) if o["sale"] and o["regular"] else None,
+            "end": o.get("end") if o["sale"] else None, "est": c["estimated"], "counts": ctx.decides(o),
+            "current": code == current or (not current and code == countries.REFERENCE),
+            "low": lows.get(c["meta"]["shop"])})
+    out["rows"].sort(key=lambda r: (not r["counts"], r["eur"]))
+    return out

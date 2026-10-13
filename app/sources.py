@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.55.1"
+VERSION = "0.56.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -420,8 +420,15 @@ def parse_item_page(page_html):
             if n not in nsuids:
                 nsuids.append(n)
     low = parse_low(page_html)
+    # eShop-ID je Land aus den Links der Preistabelle („eshop_de:7008…“), auch dort, wo die
+    # Shop-Adresse keine ID trägt (Online-Mitgliedschaft, 0.53.6)
+    eshop_ids = {}
+    for cc, n in re.findall(r"eshop_([a-z]{2}):(70\d{12})", page_html):
+        eshop_ids.setdefault(cc.upper(), [])
+        if n not in eshop_ids[cc.upper()]:
+            eshop_ids[cc.upper()].append(n)
     return {"title": title, "parent": parent, "parent_title": parent_title,
-            "nsuids": nsuids, "low": low, "lows": parse_lows(page_html),
+            "nsuids": nsuids, "eshop_ids": eshop_ids, "low": low, "lows": parse_lows(page_html),
             "history": parse_history(page_html), "related": parse_related(page_html)}
 
 

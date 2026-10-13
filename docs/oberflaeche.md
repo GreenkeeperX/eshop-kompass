@@ -21,6 +21,13 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 - Die dunklen Tokens stehen zweimal (Gerät dunkel, Wahl dunkel) und müssen gleich bleiben;
   ein Test prüft das.
 
+## Online-Mitgliedschaft
+
+Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
+Ablauf offen und eine Zeile unter „Zu erledigen“). Das günstigste zählende Land fett, die
+anderen mit grauem Abstand `+x €` (kein Rot: das ist kein Urteil), Rabatt blau, Chips „Konto“
+und „im Plan“ neutral. Länder ohne Guthabenkarte blass mit bernsteinfarbenem Grund.
+
 ## Kopfleiste
 
 Kopf und Reiter kommen beim Scrollen mit. Nach 120 px weiter nach unten blenden sie sich aus,

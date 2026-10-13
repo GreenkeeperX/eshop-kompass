@@ -1634,7 +1634,8 @@ class SafetyTest(unittest.TestCase):
         with mock.patch.object(sources, "request", request):
             text = "\n".join(sync.diagnose(sleep=lambda s: None))
         self.assertIn("Mitgliedschaft DekuDeals (DE): HTTP 200", text)
-        self.assertIn("eShop-IDs ['70080000000189'], Verlauf: 2 Tage, zuletzt [('2026-10-12', 109.9), ('2026-10-13', 109.9)]", text)
+        self.assertIn("eShop-IDs ['70080000000189'], alle Länder ['DE'], Verlauf: 2 Tage, zuletzt [('2026-10-12', 109.9), ('2026-10-13', 109.9)]", text)
+        self.assertIn("weitere Varianten: keine verlinkt", text)
         self.assertTrue(any("country=DE" in u and "ids=70080000000189" in u for u in urls))
         self.assertTrue(any("country=BR" in u and "ids=70080000000186" in u for u in urls))
         self.assertIn("Mitgliedschaft Nintendo-Preise (BR): HTTP 200", text)
@@ -1729,7 +1730,7 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(data["lows"]["DE"]["vs-foscari"]["low"], 1.49)
         self.assertEqual(data["lows"]["BR"]["vs-foscari"], dict(
             data["lows"]["BR"]["vs-foscari"], low=3.5, src="deku"))
-        self.assertEqual(sum("country=br" in u for u in calls), 1)
+        self.assertEqual(sum("country=br" in u and sync.MEMBERSHIP_SLUG not in u for u in calls), 1)
         hist = store.load_history()
         self.assertEqual(hist["BR"]["vs-foscari"][0][1], 4.0)
         self.assertEqual(len(hist["DE"]["vs-foscari"]), 1)
@@ -3215,6 +3216,73 @@ class ReplayTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("hat kein gültiges Format", out3)
         self.assertNotIn("Traceback", out3)
+
+
+class MembershipTest(unittest.TestCase):
+    """Online-Mitgliedschaft, 12 Monate, einzeln (0.56): IDs je Land aus der DekuDeals-Seite,
+    Preise über den normalen Preisabruf, Einkaufspreis je Land wie bei Spielen."""
+    PAGE = ("<title>Nintendo Switch Online 12 Month Membership | Deku Deals</title>"
+            "<a data-out-analytics-id='eshop_{cc}:{n}' href='https://ec.nintendo.com/X/x/membership'>eShop</a>")
+
+    def setUp(self):
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc", "nso_until": "",
+                             "countries": {c: {"enabled": c in ("DE", "BR")} for c in countries.ORDER}})
+
+    def test_ids_prices_and_view(self):
+        settings = store.load_settings()
+        data = store.load_data()
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            if "country=de" in url:
+                return self.PAGE.format(cc="de", n="70080000000189")
+            if "country=br" in url:
+                return self.PAGE.format(cc="br", n="70080000000186")
+            raise AssertionError(url)
+        sync.sync_nso(data, settings, fake, lambda s: None, now=1e9)
+        self.assertEqual(data["nso"]["ids"], {"DE": ["70080000000189"], "BR": ["70080000000186"]})
+        self.assertEqual(len(calls), 2)
+        # monatlich: im nächsten Abgleich nichts fällig
+        sync.sync_nso(data, settings, fake, lambda s: None, now=1e9 + 3600)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(sync.nso_ids_for(data, "MX"), ["70080000000186"])   # Region Amerika als Ersatz
+
+        def prices(url, ua=None):
+            self.assertIn("api.ec.nintendo.com", url)
+            if "country=DE" in url:
+                self.assertIn("70080000000189", url)
+                return '{"prices":[{"title_id":70080000000189,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"19.99"}}]}'
+            if "country=BR" in url:
+                self.assertIn("70080000000186", url)
+                return '{"prices":[{"title_id":70080000000186,"sales_status":"onsale","regular_price":{"currency":"BRL","raw_value":"109.9"}}]}'
+            return '{"prices":[]}'
+        data["items"] = {"t": {"title": "T", "active": True, "ids": {"EU": ["70010000000001"], "AM": ["70010000000002"]}}}
+        data["fx"] = {"rates": {"EUR": 1.0, "BRL": 5.5}, "updated": ""}
+        sync.sync_prices(data, settings, prices, lambda s: None)
+        self.assertEqual(data["nso_prices"]["DE"]["nso"]["regular"], 19.99)
+        self.assertEqual(data["nso_prices"]["BR"]["nso"]["regular"], 109.9)
+        self.assertNotIn("nso", data["prices"]["DE"])          # nicht in der Wishlist
+        settings["current_country"] = "BR"
+        settings["nso_until"] = "2026-11-01"
+        m = planner.membership(data, settings, now=datetime(2026, 10, 13, tzinfo=timezone.utc))
+        self.assertEqual(m["days_left"], 19)
+        self.assertTrue(m["due"])
+        codes = [r["code"] for r in m["rows"]]
+        self.assertEqual(set(codes), {"DE", "BR"})
+        de = next(r for r in m["rows"] if r["code"] == "DE")
+        self.assertEqual(de["eur"], 19.99)
+        self.assertEqual(de["month"], 1.67)
+        self.assertTrue(next(r for r in m["rows"] if r["code"] == "BR")["current"])
+        self.assertEqual(m["rows"], sorted(m["rows"], key=lambda r: (not r["counts"], r["eur"])))
+
+    def test_until_setting(self):
+        self.assertEqual(store.save_settings({"nso_until": "2027-02-03"})["nso_until"], "2027-02-03")
+        self.assertEqual(store.save_settings({"nso_until": "morgen"})["nso_until"], "2027-02-03")
+        self.assertEqual(store.save_settings({"nso_until": ""})["nso_until"], "")
+        m = planner.membership(store.load_data(), store.load_settings())
+        self.assertEqual(m["rows"], [])
+        self.assertFalse(m["due"])
 
 
 class UiThemeTest(unittest.TestCase):

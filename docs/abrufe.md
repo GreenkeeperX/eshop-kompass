@@ -2,7 +2,7 @@
 
 Verbindliche Übersicht, was das Tool woher holt, wann, wie oft und wohin es das Ergebnis
 legt. Wer einen Abruf, eine Grenze oder eine Ablage ändert, passt diese Datei im selben
-Commit an. Stand: 0.55.1. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
+Commit an. Stand: 0.56.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
 
 ## Grundregeln
 
@@ -37,8 +37,9 @@ Die Nummern entsprechen der Reihenfolge in `run_sync`.
 | 2 | Sammlung | DekuDeals, Sammlungsseiten | jeder Abgleich, bis 30 Seiten | `data.owned`, überschrieben | `Sammlung: n Titel` |
 | – | Aufräumen | kein Abruf | jeder Abgleich mit gelesener Sammlung: Titel, die 180 Tage (`PRUNE_DAYS`) weder auf der Wishlist noch in der Sammlung stehen, fallen aus `items`; Einträge in `lows`, `rel`, `lchk` ohne Bezug ebenso | – | `Aufräumen: …` / `nichts zu entfernen` |
 | 3 | Fehlende eShop-IDs | DekuDeals-Artikelseite je Region | neu, nach 14 Tagen (`ID_RECHECK_SECONDS`) oder bei Verdacht; höchstens 120 Titel-Regionen (`IDS_PER_SYNC`); Sperre beendet nur diesen Schritt | `items.ids`, dazu Tiefstpreis je Land | `Titel-IDs: n Seiten gelesen, x von y gefunden` / `alle bekannt` |
+| 3b | eShop-IDs der Online-Mitgliedschaft (12 Monate, einzeln) | DekuDeals-Artikelseite je aktivem Land (`eshop_xx:7008…` in der Preistabelle) | monatlich (`NSO_RECHECK`), Land ohne ID wöchentlich (`NSO_RETRY`); 2,5 s Pause; Sperre beendet den Schritt | `data.nso` {ids, checked, lows} | `Mitgliedschaft: n Seiten gelesen, eShop-IDs für x von y Ländern` / `… nichts fällig` |
 | 4 | Wechselkurse | open.er-api, Ersatz frankfurter (EZB) | nur, wenn der Stand der Quelle älter als 24 h ist (`FX_SOURCE_DAY`) und der letzte eigene Abruf über 20 h (`FX_RECHECK`) zurückliegt | `data.fx` {rates, updated, fetched, src}; fehlende Währungen behalten den alten Kurs | `Wechselkurse vom …, (Quelle)` |
-| 5 | Preise | Nintendo-Preisschnittstelle, 50 IDs je Anfrage | jeder Abgleich, alle Länder (auch abgeschaltete, fürs Preisniveau); abgeschaltete ohne Antwort ruhen 7 Tage | `data.prices`, `data.xprices` überschrieben; Änderungen in `history.json` | `XX: n von m Titeln kaufbar` je aktivem Land |
+| 5 | Preise | Nintendo-Preisschnittstelle, 50 IDs je Anfrage | jeder Abgleich, alle Länder (auch abgeschaltete, fürs Preisniveau); abgeschaltete ohne Antwort ruhen 7 Tage | `data.prices`, `data.xprices`, `data.nso_prices` (Mitgliedschaft, nur aktive Länder) überschrieben; Änderungen in `history.json` | `XX: n von m Titeln kaufbar` je aktivem Land |
 | 6 | Guthabenkartenpreise | Shop-Links aus den Einstellungen (JSON-LD) | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), Plan-Länder zuerst, 3 s Pause | `data.card_prices`; gelesener Preis gilt bis 14 Tage; Faktor-Verlauf `card_hist` 90 Tage | `Kartenpreise: g von n gelesen, k weitere aktuell; ohne Preis: …` / `alle n aktuell` |
 | 7 | Sprachen Europa | Nintendo-Europa-Suche, 40 IDs je Anfrage | ohne Angabe: 3 Versuche im Tagesabstand, dann monatlich | `.langs.EU` | `Sprachen Europa: x von n` / `nichts fällig` |
 | 7 | Sprachen Amerika | nintendo.com-Titelseite | höchstens 40 Seiten je Abgleich, 3 Versuche, dann monatlich | `.langs.AM` | `Sprachen Amerika: …` / `nichts fällig` |
@@ -75,7 +76,7 @@ Je eine Probe, nichts wird gespeichert:
 - erste Guthabenkarte mit Link
 - Wechselkurse und ihre Ersatzquelle
 - titledb, nur Kopfdaten (Größe, Stand), ohne die Datei zu laden
-- Online-Mitgliedschaft: DekuDeals für DE und BR, damit die Nintendo-Preise der dort genannten eShop-IDs
+- Online-Mitgliedschaft: DekuDeals für DE und BR (mit allen dort genannten Ländern und verlinkten Varianten), damit die Nintendo-Preise der dort genannten eShop-IDs
 
 ## Dateien
 

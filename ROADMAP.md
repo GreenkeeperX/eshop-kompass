@@ -204,6 +204,11 @@ Reihenfolge und Begründung:
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
   Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen. Erster Schritt (0.53.2): Probe im Verbindungstest, woher Preise je Land kommen (DekuDeals
   führt die Mitgliedschaft mit eShop-Preis je Land, Nintendo Europa vielleicht mit ID).
+  0.53.6: Die Preis-Schnittstelle kennt die eShop-IDs aus der DekuDeals-Preistabelle (geprüft
+  für DE und BR). 0.56: 12 Monate einzeln im Reiter Jetzt, Einkaufspreis je aktivem Land mit
+  deinem Zahlweg, Ablaufdatum und Erinnerung 30 Tage vorher; IDs monatlich von DekuDeals.
+  Offen: weitere Varianten (der Verbindungstest nennt ihre Adressen), Händler-Links, Füllartikel,
+  Bewertung gegen den eigenen Bestwert.
 - [ ] Viele Kleinteile eines Spiels zusammenfassen (etwa Kostüme), erst nach Erfahrung mit den
   gruppierten Pässen.
 - [ ] Abgleich Kaufverlauf mit der ganzen DekuDeals-Sammlung (Slug-Stufe, „Bei DekuDeals

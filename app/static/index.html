@@ -1476,6 +1476,12 @@ function todos(){
      ((S.state.eshop_owned_n !== null && S.state.eshop_owned_n !== undefined && S.state.owned_count > S.state.eshop_owned_n) ||
       (k && (k.bought || []).some(b => new Date(b.at) / 1000 > at))))
     out.push([`Käufe aus dem eShop zuletzt am ${esc(dmy(new Date(at * 1000).toISOString()))} gelesen, seitdem hast du gekauft`, `<button class="link" data-act="gokaeufe">Käufe lesen</button>`]);
+  // Online-Mitgliedschaft: 30 Tage vor Ablauf (0.56)
+  const nso = S.state.nso;
+  if(nso && nso.due){
+    const b = (nso.rows || []).find(r => r.counts);
+    out.push([`Online-Mitgliedschaft ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}${b ? `: am günstigsten in ${esc(b.name)} für ${eur(b.eur)}` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
+  }
   for(const [code, c] of Object.entries(s.countries)){
     if(c.enabled && c.cards && c.cards_checked && Date.now() - new Date(c.cards_checked) > 30 * 86400000)
       out.push([`${esc(country(code).name)}: Kartenpreise älter als 30 Tage`, `<button class="link" data-act="gocards" data-c="${code}">prüfen</button>`]);
@@ -1484,7 +1490,30 @@ function todos(){
   return `<div class="todo"><b>Zu erledigen</b>` + out.map(([t, a]) => `<div><span>${t}</span>${a}</div>`).join("") + `</div>`;
 }
 function viewJetzt(){
-  return accountLine() + todos() + viewKauf();
+  return accountLine() + todos() + viewKauf() + nsoBox();
+}
+/* Online-Mitgliedschaft, 12 Monate, einzeln (0.56): Einkaufspreis je aktivem Land mit deinem
+   Zahlweg, klein und zugeklappt, solange die Verlängerung nicht ansteht. */
+function nsoBox(){
+  const m = S.state.nso;
+  if(!m) return "";
+  const rows = m.rows || [], best = rows.find(r => r.counts);
+  const planned = new Set(((S.kauf || {}).steps || []).map(p => p.code));
+  const until = m.until ? `läuft bis ${esc(dmy(m.until))}${m.days_left !== null && m.days_left >= 0 ? ` (noch ${m.days_left} ${m.days_left === 1 ? "Tag" : "Tage"})` : m.days_left < 0 ? " (abgelaufen)" : ""}` : "Ablaufdatum offen";
+  const head = best ? `am günstigsten ${esc(best.name)} ${best.est ? "ca. " : ""}<b>${eur(best.eur)}</b> (${eur(best.month)} je Monat)`
+    : m.ids_known ? "Preise kommen mit dem nächsten Abgleich" : "die eShop-IDs sucht der nächste Abgleich";
+  let h = `<details class="box" id="nsobox" data-k="nso" ${S.folds.nso || m.due ? "open" : ""}><summary><b>Online-Mitgliedschaft</b> <span class="mut">12 Monate, einzeln · ${head} · ${until}</span></summary>
+    <p class="hint">Läuft bis <input type="date" data-act="nsountil" value="${esc(m.until)}"> · 30 Tage vorher erscheint die Verlängerung unter „Zu erledigen“. Bezahlt wie bei Spielen: Kreditkarte oder deine Guthabenkarten. Kaufen kannst du nur im Land, in dem dein Konto gerade steht.</p>`;
+  if(rows.length){
+    const low = best ? best.eur : null;
+    h += `<table class="mini-t"><tr><th class="l">Land</th><th>Einkaufspreis</th><th>je Monat</th><th>im Shop</th><th class="l"></th></tr>` + rows.map(r => {
+      const chips = [r.current ? `<span class="chip">Konto</span>` : "", planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land">im Plan</span>` : "",
+        r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
+        !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : low !== null && r !== best ? `<span class="mut">+${eur(r.eur - low)}</span>` : ""].filter(Boolean).join(" ");
+      return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tierTag(r.tier)}</td><td>${r.est ? `<span class="approx">≈</span>` : ""}${eur(r.eur)}</td><td class="mut">${eur(r.month)}</td><td class="mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
+    }).join("") + `</table>`;
+  }
+  return h + `</details>`;
 }
 
 /* ---------- Legende: eine für alle Ansichten ---------- */
@@ -2128,6 +2157,7 @@ document.addEventListener("click", async e => {
     }
     else if(a === "verlauf"){ await openVerlauf(d.s); }
     else if(a === "gotab"){ go(d.v); }
+    else if(a === "gonso"){ S.folds.nso = 1; saveView(); go("jetzt", false); const t = $("nsobox"); if(t){ t.open = true; t.scrollIntoView(); } }
     else if(a === "gokaeufe"){ S.folds.eshophist = 1; go("sammlung", false); const t = $("eshophist"); if(t){ t.open = true; t.scrollIntoView(); } }
     else if(a === "gosprachen"){ go("settings", false); const t = $("sprachen"); if(t) t.scrollIntoView(); }
     else if(a === "dlcmark"){
@@ -2247,6 +2277,10 @@ document.addEventListener("change", async e => {
     else if(a === "tsortsel"){ if(el.value){ const [k, dir] = el.value.split(":"); S.sorts[el.dataset.t] = {k, dir: +dir}; } else delete S.sorts[el.dataset.t]; saveView(); render(); }
     else if(a === "colorder"){ S.colOrder = el.value; saveView(); render(); }
     else if(a === "onlysale"){ S.onlySale = el.checked; render(); }
+    else if(a === "nsountil"){
+      await api("/api/settings", {nso_until: el.value || ""}); await refresh();
+      toast(el.value ? `Mitgliedschaft läuft bis ${dmy(el.value)}` : "Ablaufdatum entfernt");
+    }
     else if(a === "acct" || a === "bal"){
       const s = S.state.settings, cur = s.current_country;
       const body = a === "acct" ? {current_country: el.value}

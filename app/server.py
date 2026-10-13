@@ -29,6 +29,7 @@ def state():
         "ui": ui,
         "radar": radar,
         "collection": planner.collection(data, settings, rows=radar),
+        "nso": planner.membership(data, settings),
         "s2": planner.switch2_paths(data, radar, settings),
         "bundles": planner.bundles(data, radar, settings),
         "levels": planner.price_levels(data, settings),

@@ -49,6 +49,8 @@ LINK_MISSES = 2                       # so oft muss eine Verbindung fehlen, bis 
 LINKS_RECHECK_SECONDS = 90 * 24 * 3600  # Pakete fehlender DLC vierteljährlich nachsehen
 REL_V = 1                             # erhöht sich, wenn alle Seiten neu zu lesen sind
 EXTRA_PER_SYNC = 40                   # Artikelseiten je Abgleich für IDs fehlender DLC der Sammlung
+NSO_RECHECK = 30 * 24 * 3600          # eShop-IDs der Online-Mitgliedschaft: monatlich prüfen
+NSO_RETRY = 7 * 24 * 3600             # Land ohne ID auf der Seite: wöchentlich erneut
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None, "boot_sync": None}
@@ -281,6 +283,62 @@ def _track(data, history, code, table, stamp):
             e.update(own_low=cur, own_since=stamp)
 
 
+def nso_ids_for(data, code):
+    """eShop-IDs der Mitgliedschaft für ein Land: die eigenen, sonst die der Länder derselben
+    Region (Spiele teilen ihre IDs je Region, bei der Mitgliedschaft ist das ungewiss)."""
+    ids = ((data.get("nso") or {}).get("ids") or {})
+    if ids.get(code):
+        return ids[code]
+    fam = countries.BY_CODE[code]["family"]
+    out = []
+    for other, lst in ids.items():
+        if other in countries.BY_CODE and countries.BY_CODE[other]["family"] == fam:
+            out += [n for n in lst if n not in out]
+    return out[:3]
+
+
+def sync_nso(data, settings, fetch, sleep, now=None):
+    """Online-Mitgliedschaft, 12 Monate, einzeln (Entscheidung 13.10.2026): Ihre eShop-ID je
+    Land steht in der Preistabelle der DekuDeals-Seite. Eine Seite je aktivem Land, monatlich;
+    ohne ID wöchentlich. Die Preise holt danach der normale Preisabruf."""
+    now = now or time.time()
+    nso = data.setdefault("nso", {})
+    ids, checked, lows = (nso.setdefault(k, {}) for k in ("ids", "checked", "lows"))
+    shops = [c for c in countries.ORDER if countries.BY_CODE[c]["shop"] == c and settings["countries"][c]["enabled"]]
+    due = [c for c in shops if now - checked.get(c, 0) > (NSO_RECHECK if ids.get(c) else NSO_RETRY)]
+    if not due:
+        _log(f"Mitgliedschaft: IDs für {sum(1 for c in shops if ids.get(c))} von {len(shops)} Ländern bekannt, nichts fällig")
+        return
+    _step("Mitgliedschaft lesen", len(due))
+    read = 0
+    for i, code in enumerate(due):
+        if i and checked.get(code) == now:   # schon über die Seite eines anderen Landes gefunden
+            status["done"] += 1
+            continue
+        if read:
+            sleep(LOW_PAUSE)
+        try:
+            info = sources.fetch_item(MEMBERSHIP_SLUG, code.lower(), fetch=fetch)
+        except sources.FetchError as e:
+            if e.status in sources.BLOCKED:
+                _log(f"Mitgliedschaft: DekuDeals sperrt ({e.status}), weiter beim nächsten Abgleich")
+                break
+            checked[code] = now
+            status["done"] += 1
+            continue
+        read += 1
+        for cc, lst in (info.get("eshop_ids") or {}).items():
+            if cc in shops and cc not in ids or cc == code:
+                ids[cc] = lst[:3]
+                checked[cc] = now
+        if info.get("low") is not None:
+            lows[code] = info["low"]
+        checked[code] = now
+        status["done"] += 1
+    _log(f"Mitgliedschaft: {read} Seiten gelesen, eShop-IDs für {sum(1 for c in shops if ids.get(c))} von {len(shops)} Ländern"
+         + (f"; ohne eigene ID: {', '.join(c for c in shops if not ids.get(c))}" if any(not ids.get(c) for c in shops) else ""))
+
+
 def sync_prices(data, settings, fetch, sleep, history=None):
     # Abgeschaltete Länder laufen mit, solange die IDs ihrer Region bekannt sind:
     # ein Abruf je Land, dafür zeigt die Länderliste ihr Preisniveau.
@@ -295,6 +353,7 @@ def sync_prices(data, settings, fetch, sleep, history=None):
             continue
         fam = countries.BY_CODE[code]["family"]
         by_nsuid, extra_ids = {}, {}
+        nso_ids = {n: "nso" for n in nso_ids_for(data, code)} if settings["countries"][code]["enabled"] else {}
         for slug, it in data["items"].items():
             if it.get("active"):
                 for n in it["ids"].get(fam, []):
@@ -310,7 +369,7 @@ def sync_prices(data, settings, fetch, sleep, history=None):
             status["done"] += 1
             continue
         def prices():
-            return sources.fetch_prices(code, list(by_nsuid) + list(extra_ids), fetch=fetch,
+            return sources.fetch_prices(code, list(by_nsuid) + list(extra_ids) + list(nso_ids), fetch=fetch,
                                         lang=countries.BY_CODE[code]["lang"],
                                         pause=lambda: sleep(NINTENDO_PAUSE))
         try:
@@ -333,9 +392,10 @@ def sync_prices(data, settings, fetch, sleep, history=None):
                 failed[code] = time.time()    # abgeschaltetes Land: eine Woche Ruhe
             status["done"] += 1
             continue
-        table, xtable = {}, {}
+        table, xtable, ntable = {}, {}, {}
         for nsuid, p in res.items():
-            slug, t = (by_nsuid[nsuid], table) if nsuid in by_nsuid else (extra_ids.get(nsuid), xtable)
+            slug, t = (by_nsuid[nsuid], table) if nsuid in by_nsuid else \
+                (extra_ids[nsuid], xtable) if nsuid in extra_ids else (nso_ids.get(nsuid), ntable)
             if not slug:
                 continue
             p = dict(p, nsuid=nsuid, fetched=stamp)
@@ -344,6 +404,8 @@ def sync_prices(data, settings, fetch, sleep, history=None):
                 t[slug] = p
         data["prices"][code] = table
         data.setdefault("xprices", {})[code] = xtable     # fehlende DLC der Sammlung
+        if nso_ids:
+            data.setdefault("nso_prices", {})[code] = ntable  # Online-Mitgliedschaft
         _track(data, history, code, table, stamp)
         buyable = sum(1 for p in table.values() if p["status"] == "onsale")
         if settings["countries"][code]["enabled"]:
@@ -1484,6 +1546,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             prune_old(data)
         store.save_data(data)
         sync_ids(data, settings, fetch, sleep)
+        sync_nso(data, settings, fetch, sleep)
         sync_fx(data, fetch)
         history = store.load_history()
         sync_prices(data, settings, fetch, sleep, history)
@@ -1668,9 +1731,11 @@ def membership_probe(probe, sleep=time.sleep):
                 ids.setdefault(cc.upper(), [])
                 if nsuid not in ids[cc.upper()]:
                     ids[cc.upper()].append(nsuid)
+            # Andere Varianten (3 Monate, Familie, Erweiterungspaket): ihre Adressen bei DekuDeals
+            variants = sorted(set(sources.re.findall(r"/items/(nintendo-switch-online[a-z0-9-]*)", t)) - {MEMBERSHIP_SLUG})
             return (f"Titel „{(sources.page_title(t) or '')[:60]}“, Tiefstpreis {info['low']}, "
-                    f"eShop-IDs {ids.get(country.upper(), [])}, Verlauf: {len(hist)} Tage"
-                    f"{', zuletzt ' + str(hist[-2:]) if hist else ''}")
+                    f"eShop-IDs {ids.get(country.upper(), [])}, alle Länder {sorted(info.get('eshop_ids') or {})}, Verlauf: {len(hist)} Tage"
+                    f"{', zuletzt ' + str(hist[-2:]) if hist else ''}, weitere Varianten: {', '.join(variants) or 'keine verlinkt'}")
         return info_of
     for country in ("de", "br"):
         probe(f"Mitgliedschaft DekuDeals ({country.upper()})",
