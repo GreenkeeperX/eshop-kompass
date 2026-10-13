@@ -9,13 +9,13 @@
   --bg:#f4f2ec; --card:#fffdf8; --ink:#1d2320; --muted:#667069; --line:#dcd8cc;
   --accent:#2f3b35; --warn:#8a5a00; --warn-bg:#fbefd2;
   --sale:#b3261e; --best:#ebe8de; --chip:#ece9df; --gold:#c28800; --gold-ink:#2b2000;
-  --go:#0d6b4f; --go-bg:#dcefe4; --stop:#b3261e; --stop-bg:#f8dfdc;
+  --go:#0d6b4f; --go-bg:#dcefe4; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690;
 }
 @media (prefers-color-scheme: dark){:root{
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#f0c36a; --warn-bg:#3a2e12;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
-  --go:#5fd0a5; --go-bg:#183328; --stop:#ff8a80; --stop-bg:#3b1c19;
+  --go:#5fd0a5; --go-bg:#183328; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8;
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -49,7 +49,9 @@ th.sth{cursor:pointer;user-select:none}
 th.sth:hover{color:var(--ink)}
 th.sth .sa{font-size:9px;margin-left:2px}
 th small.bc{display:block;font-weight:400;color:var(--muted)}
-.pct{color:var(--muted);font-size:11px;margin-left:3px}
+.pct{color:var(--deal);font-size:11px;margin-left:3px}
+.pct.np{color:var(--muted)}
+.abv{color:var(--stop)}
 .pct.m-low{background:var(--accent);color:var(--card);border-radius:4px;padding:0 2px;font-weight:600}
 .pct.m-best{background:var(--gold);color:var(--gold-ink);border-radius:4px;padding:0 2px;font-weight:700}
 .pct.m-best_easy{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--ink);border-radius:4px;padding:0 2px;font-weight:600}
@@ -749,12 +751,12 @@ const TIER = {1:"leicht", 2:"mittel", 3:"schwer"};
 const tierTag = t => t && TIER[t] ? `<span class="tier" title="Wechselstufe">${TIER[t]}</span>` : "";
 const pill = v => v === "none" || !v ? `<span class="mut">kein Urteil</span>` : `<span class="vd ${v}">${VERDICT[v]}</span>`;
 const star = x => x && x.mark === "best" ? `<span class="star" title="Einkaufspreis erreicht den Bestpreis">★</span>` : "";
-/* Abstand zum Bestpreis als Text: am Bestpreis, +x €, mit Farbe der Preisgüte */
+/* Abstand zum Bestpreis als Text: am Bestpreis in der Farbe des Urteils, +x € rot (teurer) */
 function overBest(eurNow, champ, grade){
   if(eurNow === null || eurNow === undefined || !champ) return `<span class="mut">–</span>`;
   const d = eurNow - champ;
   const cls = grade ? "g-" + grade : "";
-  return d < 0.005 ? `<span class="${cls}">am Bestpreis</span>` : `<span class="${cls}">+${eur(d)}</span>`;
+  return d < 0.005 ? `<span class="${cls}">am Bestpreis</span>` : `<span class="abv">+${eur(d)}</span>`;
 }
 /* Wo ein Titel im Kaufplan steht: im Plan, Wechsel lohnt nicht, besser warten */
 function planState(slug){
@@ -865,11 +867,11 @@ function titleRow(r){
   const hit = r.target !== null && cheapest && cheapest.eur <= r.target + 0.005;
   const ps = r.verdict === "buy" || r.verdict === "good" ? planState(r.slug) : "";
   const why = r.verdict === "none" ? esc(r.reason) : "";
-  const price = off ? `${star(off)}${ax(off)}<b>${buyLink(off.code, off, eur(off.eur))}</b> ${off.sale ? `<span class="pct" title="${esc(markTip(off, off.currency))}">−${off.pct} %</span>` : `<span class="pct">Normalpreis</span>`}
+  const price = off ? `${star(off)}${ax(off)}<b>${buyLink(off.code, off, eur(off.eur))}</b> ${off.sale ? `<span class="pct" title="${esc(markTip(off, off.currency))}">−${off.pct} %</span>` : `<span class="pct np">Normalpreis</span>`}
       <small>${esc(off.name)} ${tierTag(off.tier)}${off.currency === "EUR" ? "" : " · " + priceLink(r.slug, off.code, money(off.local, off.currency), off, off.currency)}${off.sale && off.end ? " · " + endCell(off.end, "bis ") : ""}</small>` : `<span class="mut">–</span>`;
   const over = off && ce ? `${overBest(off.eur, ce.eur, r.verdict === "none" ? null : r.verdict)}<small>${r.gap ? r.gap + " % · " : ""}Bestpreis ${ce.est ? APPROX : ""}${eur(ce.eur)} ${esc(ce.code)}</small>` : `<span class="mut">–</span>`;
   let alt = "";
-  if(x && x.tier >= 3 && r.easy) alt = `${eur(r.easy.eur)} ${esc(r.easy.name)}<small>${TIER[r.easy.tier]}${ce ? ` · +${eur(Math.max(0, r.easy.eur - ce.eur))}` : ""}</small>`;
+  if(x && x.tier >= 3 && r.easy) alt = `${eur(r.easy.eur)} ${esc(r.easy.name)}<small>${TIER[r.easy.tier]}${ce ? ` · <span class="abv">+${eur(Math.max(0, r.easy.eur - ce.eur))}</span>` : ""}</small>`;
   const marks = (r.cashback ? ` <span class="ok" title="Mit ${String(r.cashback.pct).replace(".", ",")} % Cashback des Kartenshops wären es in ${esc(country(r.cashback.code).name)} etwa ${eur(r.cashback.eur)}, also Bestpreis. Cashback gibt es nicht immer, bitte beim Kauf prüfen.">✱</span>` : "") +
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
@@ -986,7 +988,7 @@ function viewKauf(){
   if(!k) return `<p class="hint">Kaufplan wird berechnet …</p>`;
   const sums = planSums(k.steps);
   const head = k.count
-    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${sums.gap < 0.005 ? `<span class="g-buy">am Bestpreis</span>` : `+${eur(sums.gap)} über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)} Rest verfällt beim Wechsel</span>` : ""}</span>`
+    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${sums.gap < 0.005 ? `<span class="g-buy">am Bestpreis</span>` : `<span class="abv">+${eur(sums.gap)}</span> über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)} Rest verfällt beim Wechsel</span>` : ""}</span>`
     : `<span>Gerade steht kein Titel auf „kaufen“${!S.ui.plan_good && k.good_left ? `, aber ${k.good_left} auf „gut“: rechts „auch gute Angebote“ anhaken` : ""}.</span>`;
   let h = `<div class="bar on"><b>Jetzt kaufen</b>${head}<span class="sp"></span>
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
@@ -1096,9 +1098,9 @@ function priceLine(p){
     .map(([g, n]) => `${n}× ${VERDICT[g]}`).join(", ");
   const spiele = p.rest_value >= 0.5 || p.balance_value ? `Spiele ${eur(games)} · ` : "";
   const tip = `Bestpreis-Summe ${eur(p.optimum)}: was diese ${p.items.length} Titel zum jeweiligen Bestpreis gekostet hätten. Die Spiele kosten hier ${eur(games)}` +
-    (p.rest_value >= 0.5 ? ` (von ${eur(p.cost)} für die Karten bleiben ${eur(p.rest_value)} als Rest)` : "") + `. Farbe wie das Urteil: grün, wenn jeder Titel „kaufen“ ist, hellgrün, wenn jeder mindestens „gut“ ist.`;
+    (p.rest_value >= 0.5 ? ` (von ${eur(p.cost)} für die Karten bleiben ${eur(p.rest_value)} als Rest)` : "") + `. Rot ist der Betrag über der Bestpreis-Summe, die Urteile stehen dahinter.`;
   const main = under ? `<span class="warnc" title="${esc(tip)} So billig nur mit Angeboten, die nicht zählen (Sprache ungeprüft oder ohne Guthabenkarte): erst prüfen."><span class="q">?</span> ${eur(p.optimum - games)} unter Bestpreis-Summe, zählt nicht</span>`
-    : `<span class="g-${p.grade || "wait"}" title="${esc(tip)}">${p.opt_gap < 0.005 ? "am Bestpreis" : `+${eur(p.opt_gap)} über Bestpreis-Summe ${eur(p.optimum)}${p.opt_pct ? ` (${p.opt_pct} %)` : ""}`}</span>`;
+    : `<span title="${esc(tip)}">${p.opt_gap < 0.005 ? `<span class="g-${p.grade || "buy"}">am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span> über Bestpreis-Summe ${eur(p.optimum)}${p.opt_pct ? ` (${p.opt_pct} %)` : ""}`}</span>`;
   return `${spiele}${main}${counts ? ` <span class="mut">· ${counts}</span>` : ""}`;
 }
 /* Was beim Wechsel verfällt: Guthaben aus dem Kontoland, Rest dieses Schritts */
@@ -1190,7 +1192,7 @@ function planCard(p, step){
         const first = step ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
         return `<tr>${first}${wide ? `<td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
           <td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
-          <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : i.eur - i.champ < 0.005 ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">am Bestpreis</span>` : `<span class="g-${i.grade || "wait"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
+          <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : i.eur - i.champ < 0.005 ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">am Bestpreis</span>` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
           ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
       }).join("") + `</tbody></table></div>`;
   } else {
@@ -1286,9 +1288,9 @@ function openLegend(){
     <div><span class="star">★</span> am Bestpreis. In der Tabelle: <span class="sw c-buy">9,99</span> „kaufen“, <span class="sw c-good">9,99</span> „gut“, <span class="sw champ">9,99</span> hier gab es den Bestpreis.</div>
     <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b class="bad">lohnt nicht</b> ist rot.</div>
     <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> Guthabenkarten, ein Wechsel mit Guthaben geht nur über den Support.</div>
-    <div><span class="pct">−60 %</span> Rabatt im Shop. <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
+    <div><span class="pct">−60 %</span> Rabatt im Shop (blau). <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
     <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch.</div>
-    <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">bernstein</span> heißt prüfen, <span class="bad">rot</span> heißt nein. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
+    <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">bernstein</span> heißt prüfen, <span class="bad">rot</span> heißt nein oder teurer, etwa der Betrag über dem Bestpreis. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
   </div>`;
   if(!d.open) d.showModal();
 }
@@ -1346,7 +1348,7 @@ function viewCompare(){
   const row = (label, fn, extra) => `<tr class="${extra || ""}"><td>${label}</td>${cols.map(p => `<td class="${cls(p)}">${fn(p)}</td>`).join("")}</tr>`;
   h += `</tbody><tfoot>` +
     row("Einkaufspreis", p => `<span title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}</span>`, "pay sumtop") +
-    row("Preis", p => p.opt_gap === null || p.opt_gap === undefined ? "–" : `<span class="g-${p.grade || "wait"}">${p.opt_gap < 0.005 ? "am Bestpreis" : "+" + eur(p.opt_gap)}</span><small>Bestpreis-Summe ${eur(p.optimum)}</small>`) +
+    row("Preis", p => p.opt_gap === null || p.opt_gap === undefined ? "–" : `${p.opt_gap < 0.005 ? `<span class="g-${p.grade || "buy"}">am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span>`}<small>Bestpreis-Summe ${eur(p.optimum)}</small>`) +
     row("Wechsel", p => {
       if(p.is_ref) return `<span class="mut">Basis</span>`;
       if(p.gain === null || p.gain === undefined) return "–";

@@ -29,8 +29,9 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 Vier Reiter: Jetzt, Titel, Länder, Einstellungen. Das "?" oben rechts öffnet
 die Legende mit allen Farben, Marken und Begriffen. Die Farben haben je eine
 Bedeutung: Grün nur fürs Urteil, Gold (★, Umrandung) nur für den Bestpreis,
-Bernstein heißt prüfen, Rot heißt nein (Wechsel lohnt nicht, Rest blockiert,
-hier teurer als ohne den Wechsel). Rabatte stehen grau daneben.
+Bernstein heißt prüfen, Rot heißt nein oder teurer (Wechsel lohnt nicht, Rest
+blockiert, hier teurer als ohne den Wechsel, Betrag über dem Bestpreis). Rabatte
+stehen dezent blau daneben.
 
 Begriffe: Einkaufspreis ist, was du zahlst, mit Steuer, Kurs, Guthabenkarten
 und Gebühr. Bestpreis ist der niedrigste Einkaufspreis der letzten 24 Monate in
@@ -188,8 +189,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   sind, und dauerhaft günstige Normalpreise mit dem Urteil "kaufen", also
   dieselben Titel, mit denen auch der Kaufplan rechnet. Die
   Kopfzahl ist der Einkaufspreis des Pakets. Darunter drei Zeilen:
-  "Preis" nennt den Abstand der Spiele zur Summe ihrer Bestpreise (grün, wenn
-  jeder Titel "kaufen" ist) und zählt die Urteile; "Wechsel" sagt, ob sich der
+  "Preis" nennt den Abstand der Spiele zur Summe ihrer Bestpreise (rot, grün nur
+  "am Bestpreis") und zählt die Urteile; "Wechsel" sagt, ob sich der
   Weg hierher lohnt ("✓ lohnt" oder rot "lohnt nicht", mit Gewinn gegenüber
   "sonst" und der Schwelle der Stufe); "Rest" nennt, was als Guthaben bleibt
   und was hineinpasst. Bezahlst du ganz oder teils aus vorhandenem Guthaben,

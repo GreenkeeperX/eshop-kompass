@@ -133,6 +133,8 @@ Reihenfolge und Begründung:
   0.47: DLC, die weder titledb noch DekuDeals in Japan oder Amerika kennen, sieht titledb
   wöchentlich wieder nach, DekuDeals erst nach drei Monaten statt nach zwei Wochen
   (Entscheidung 13.10.2026).
+  0.47.1: Rabatte dezent blau, Beträge über dem Bestpreis rot statt in der Urteilsfarbe;
+  titledb-Wartezeit und Warteraum in Japan klarer im Protokoll, kein zweiter Versuch im selben Abgleich.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

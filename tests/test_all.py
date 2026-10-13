@@ -2127,6 +2127,20 @@ class ExtraDlcTest(unittest.TestCase):
             sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0 + 91 * 86400)
             self.assertEqual(got, ["jp"])
 
+    def test_titledb_wait_for_new_dlc_is_logged(self):
+        # Lud titledb vor weniger als einer Stunde, warten neue DLC aufs nächste Mal; das
+        # Protokoll sagt es, statt den Schritt still auszulassen
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP")
+        t0 = 1736467200
+        data = {"items": {}, "extra": {"x": {"title": "X", "parent": "g", "ids": {"EU": ["70050000000001"]},
+                                             "ids_checked": {"EU": t0}}}, "titledb_at": t0}
+        with mock.patch.object(sources, "fetch_titledb", lambda *a, **k: self.fail("titledb geladen")):
+            sync.sync_titledb(data, settings, None, now=t0 + 600)
+        self.assertIn("IDs fehlender DLC aus titledb: zuletzt um ", sync.status["log"][-1])
+        self.assertIn("wieder im nächsten Abgleich ab ", sync.status["log"][-1])
+
     def test_which_dlc_need_prices(self):
         data, settings = self.data(), {"dlc_marks": {"rl-c": "ignore"}}
         # rl-a hast du, rl-c ignoriert, rl-w steht auf der Wishlist, Abo-Inhalte zählen nicht
@@ -2455,6 +2469,14 @@ class ExtraDlcTest(unittest.TestCase):
             self.assertEqual(tdb, [["0", "1", "2"]])
             sync.sync_langs(data, settings, None, lambda s: None, now=t0)
         self.assertEqual(len(calls), 1)                                 # eine Probe, dann Schluss
+        # Zweiter Aufruf im selben Abgleich (Sprachen neuer DLC) klopft nicht noch einmal an
+        budget = {}
+        sync.status["log"].clear()
+        with mock.patch.object(sources, "fetch_langs_jp", jp):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 1, budget=budget)
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 2, budget=budget)
+        self.assertEqual(len(calls), 2)
+        self.assertFalse(any("Sprachen Japan: 0 von" in l for l in sync.status["log"]))
         items = data["items"]
         self.assertNotIn("langs_tries", items["t0"])                    # Warteraum zählt nicht
         self.assertEqual((items["t0"]["langs"]["JP"], items["t0"]["langs_src"]["JP"]),
@@ -2462,7 +2484,7 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertNotIn("langs", items["t2"])
         # Eine Woche später: nur t2 fehlt noch, aber erst nach einem Monat wieder nachsehen
         with mock.patch.object(sources, "fetch_titledb", titledb):
-            sync.sync_titledb(data, settings, None, now=t0 + 11 * 86400)   # Woche nach dem letzten Laden
+            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
             self.assertEqual(len(tdb), 1)
             sync.sync_titledb(data, settings, None, now=t0 + 31 * 86400)
             self.assertEqual(tdb[-1], ["2"])
@@ -2502,7 +2524,7 @@ class ExtraDlcTest(unittest.TestCase):
             items = data["items"]
             self.assertEqual({s: it.get("ids_suspect") for s, it in items.items()},
                              {"ok": None, "bad": {"JP": t0}, "new": None, "odd": None})
-            sync.sync_titledb(data, settings, None, now=t0 + 11 * 86400)   # Woche nach dem letzten Laden
+            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
             self.assertEqual(len(regions), 2)                   # jede ID nur einmal abgleichen
             # Neue ID, die titledb noch nie gesehen hat: gleich, nicht erst nach einer Woche
             items["fresh"] = {"title": "F", "active": True, "ids": {"EU": ["e1"], "JP": ["j1x"]}, "langs": dict(lang)}

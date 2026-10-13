@@ -602,7 +602,15 @@ def sync_titledb(data, settings, fetch, now=None):
     fresh = dlc_new or any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
         (r.get("ids_tdb") or {}).get("JP") is None for r, _ in verify.values())
     wait = TITLEDB_FRESH_SECONDS if fresh else TITLEDB_SECONDS
-    if not (todo or verify or dlc) or now - data.get("titledb_at", 0) < wait:
+    if not (todo or verify or dlc):
+        return
+    if now - data.get("titledb_at", 0) < wait:
+        if dlc_new:
+            # Sonst verschwindet der Schritt still, und die zurückgestellten DLC wirken vergessen
+            _log("IDs fehlender DLC aus titledb: zuletzt um "
+                 + datetime.fromtimestamp(data["titledb_at"]).strftime("%H:%M")
+                 + " geladen, wieder im nächsten Abgleich ab "
+                 + datetime.fromtimestamp(data["titledb_at"] + wait).strftime("%H:%M"))
         return
     _step("Sprachen Japan aus titledb" if todo or verify else "IDs fehlender DLC aus titledb")
     need = {fam for recs in dlc.values() for _, fam in recs}
@@ -793,6 +801,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
         if budget is not None:
             budget[fam] = n - len(todo)
         got = fails = suspects = 0
+        queue = False
         if todo:
             _step(f"Sprachen {name} abrufen", len(todo))
         for rec, nsuid in todo:
@@ -804,6 +813,9 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
                     langs, gone = None, True   # keine Seite: als geprüft vermerken
                 elif e.status == 503:
                     _log(f"Sprachen {name}: Der Store zeigt den Warteraum, nächster Versuch beim nächsten Abgleich")
+                    queue = True
+                    if budget is not None:
+                        budget[fam] = 0    # im selben Abgleich nicht noch einmal anklopfen
                     break                  # zählt nicht als Versuch, die anderen Seiten bleiben ungefragt
                 else:
                     fails += 1
@@ -824,7 +836,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
                 suspects += 1
             status["done"] += 1
             sleep(DEKU_PAUSE)
-        if todo:
+        if todo and not (queue and not got):
             _log(f"Sprachen {name}: {got} von {len(todo)} Titeln" + (f", {rest} folgen beim nächsten Abgleich" if rest else "")
                  + (f", bei {suspects} sucht der nächste Abgleich die ID neu" if suspects else ""))
     store.save_data(data)
