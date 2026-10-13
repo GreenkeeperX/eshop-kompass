@@ -47,6 +47,8 @@ def state():
         "lang_todo": planner.lang_todo(data, settings),
         "eshop": planner.eshop_matches(data)["rows"],
         "eshop_seit": (data.get("_eshop") or {}).get("seit") or 0,
+        "eshop_at": (data.get("_eshop") or {}).get("at") or 0,
+        "eshop_owned_n": (data.get("_eshop") or {}).get("owned_n"),
     }
 
 

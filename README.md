@@ -59,7 +59,12 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Guthaben, direkt änderbar. Darunter "Zu erledigen": ungeprüfte Sprachen, die
   etwas ändern würden (die Fassung wäre günstiger; alle offenen stehen unter
   Einstellungen, "Sprachen prüfen"), Länder ohne Guthabenkarte mit Preis und Kartenpreise,
-  die älter als 30 Tage sind, jeweils mit Sprung an die richtige Stelle.
+  die älter als 30 Tage sind, jeweils mit Sprung an die richtige Stelle. Dazu fehlende DLC
+  deiner Spiele, die gerade kostenlos sind; ein Pass, der günstiger ist als seine fehlenden
+  Teile, wenn Teile davon auf der Wishlist stehen, er selbst aber nicht (auf die Wishlist
+  gesetzt, plant der Kaufplan ihn statt der Teile); und eine Erinnerung an „Käufe lesen“,
+  wenn der letzte Lauf älter als 30 Tage ist und du seitdem gekauft hast (vermerkter Kauf
+  oder größere DekuDeals-Sammlung).
   Dann der Kaufplan: ein Gesamtvorschlag, welche Titel du jetzt in welchem
   Land kaufst. Kandidaten sind die Titel mit dem Urteil "kaufen", per Schalter
   auch "gut". Jeder Titel geht ins Land, wo er am wenigsten kostet. Ein Land

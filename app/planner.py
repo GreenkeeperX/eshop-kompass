@@ -1595,7 +1595,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
     items = data.get("items") or {}
     marks = settings.get("dlc_marks") or {}
     xctx = extra_context(data, settings, now)
-    games, unread, no_dlc, plain, waiting = [], 0, 0, [], []
+    games, unread, no_dlc, plain, waiting, hints = [], 0, 0, [], [], []
 
     def name(slug, e=None):
         return (e or {}).get("title") or (items.get(slug) or {}).get("title") or \
@@ -1663,6 +1663,14 @@ def collection(data, settings, targets=None, now=None, rows=None):
             todo = [d for d in g["parts"] if not d["have"] and not d["ignored"] and not d["gone"]]
             if not todo:
                 continue
+            wished = [d for d in todo if d["wish"]]
+            if wished and not head["wish"] and info["cheaper"] == "pass":
+                # Teile stehen auf der Wishlist, der Pass nicht, ist aber günstiger als alle
+                # fehlenden Teile einzeln: Hinweis, ihn auf die Wishlist zu setzen (0.52)
+                hints.append({"game": e.get("title") or slug, "slug": head["slug"], "title": head["title"],
+                              "eur": head["eur"], "est": head.get("est"), "single": info["single"],
+                              "open": len(todo), "saving": _r(info["single"] - head["eur"]),
+                              "wished": [{"slug": d["slug"], "title": d["title"], "eur": d.get("eur")} for d in wished]})
             if info["cheaper"] == "pass":
                 cost += head["eur"]
                 n_priced += len(todo)
@@ -1684,8 +1692,12 @@ def collection(data, settings, targets=None, now=None, rows=None):
     plain.sort(key=lambda g: g["title"].lower())
     waiting.sort(key=lambda g: g["title"].lower())
     priced = [g for g in games if g["missing_priced"]]
+    free = [{"slug": d["slug"], "title": d["title"], "game": g["title"], "end": d.get("end")}
+            for g in games for d in g["dlc"]
+            if d.get("eur") is not None and d["eur"] < 0.005 and not d["have"] and not d["ignored"]
+            and not d["gone"] and not d.get("pack")]
     return {"games": games, "owned": len(owned_list), "unread": unread, "no_dlc": no_dlc,
-            "plain": plain, "waiting": waiting,
+            "plain": plain, "waiting": waiting, "pass_hints": hints, "free": free,
             "missing_eur": _r(sum(g["missing_eur"] for g in priced)) if priced else None,
             "missing_priced": sum(g["missing_priced"] for g in priced),
             "missing_sale": sum(g["missing_sale"] for g in priced)}

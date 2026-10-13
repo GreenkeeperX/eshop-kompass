@@ -2036,6 +2036,30 @@ class PackLinksTest(unittest.TestCase):
         g = planner.collection(data, {}, rows=rows)["games"][0]
         self.assertEqual((g["dlc"][0]["pack"]["cheaper"], g["missing_eur"]), ("single", 13.0))
 
+    def test_pass_hint_and_free_dlc(self):
+        data = {"owned": ["game"], "items": {}, "rel": {
+            "game": {"title": "Spiel", "dlc": [["season-pass", "Season Pass"], ["dk", "DK"], ["ultra", "Ultra"], ["gift", "Geschenk"]]}},
+            "links": {"season-pass": {"dk": {}, "ultra": {}}}}
+        rows = [dict(self.price_row("dk", "DK", 5.0)), self.price_row("ultra", "Ultra", 6.0)]
+        # Pass nicht auf der Wishlist: Preis wie bei fehlenden DLC (hier von Hand gesetzt)
+        prices = {"season-pass": 9.99, "gift": 0.0}
+        with mock.patch.object(planner, "extra_context", lambda *a: object()), \
+                mock.patch.object(planner, "_extra_best", lambda x, s: {"eur": prices[s], "est": False, "code": "DE",
+                                                                        "name": "Deutschland", "end": None, "sale": False} if s in prices else None):
+            c = planner.collection(data, {}, rows=rows)
+        self.assertEqual([(h["title"], h["single"], h["eur"], h["saving"], [w["title"] for w in h["wished"]])
+                          for h in c["pass_hints"]], [("Season Pass", 11.0, 9.99, 1.01, ["DK", "Ultra"])])
+        self.assertEqual([f["slug"] for f in c["free"]], ["gift"])
+        # Steht der Pass selbst auf der Wishlist, plant ihn der Kaufplan schon: kein Hinweis
+        rows.append(self.price_row("season-pass", "Season Pass", 9.99))
+        with mock.patch.object(planner, "extra_context", lambda *a: None):
+            self.assertEqual(planner.collection(data, {}, rows=rows)["pass_hints"], [])
+
+    def test_eshop_history_keeps_collection_size(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(store, "DATA_DIR", d):
+            store.merge_eshop_history([{"key": "nin:1", "title": "A"}], 100, 0, 91)
+            self.assertEqual((store.load_eshop_history()["owned_n"], store.load_eshop_history()["at"]), (91, 100))
+
     def test_plan_buys_pass_not_its_parts(self):
         data, settings = sample()
         data["links"] = {"hades": {"vs-foscari": {}}}

@@ -1272,7 +1272,8 @@ def import_eshop_history(text, now=None):
                         "title": title, "date": date, "region": str(e.get("region") or region)[:4],
                         "type": str(e.get("type") or "")[:30], "item": str(e.get("item") or "")[:30],
                         "amount": str(e.get("amount") or "")[:30]})
-    new, total = store.merge_eshop_history(entries, now or time.time(), newest)
+    new, total = store.merge_eshop_history(entries, now or time.time(), newest,
+                                           len(store.load_data().get("owned") or []))
     data = store.load_data()
     remember_eshop(data)
     rows = planner.eshop_matches(data)["rows"]

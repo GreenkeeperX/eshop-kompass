@@ -1313,6 +1313,21 @@ function todos(){
     if(p.warnings.some(w => w.startsWith("Keine Guthabenkarten")))
       out.push([`${esc(p.name)}: keine Guthabenkarte mit Preis, Preise dort sind geschätzt`, `<button class="link" data-act="gocards" data-c="${p.code}">Karten eintragen</button>`]);
   }
+  const coll = S.state.collection || {};
+  // Kostenlose DLC deiner Spiele: holen kostet nichts (0.52)
+  const free = coll.free || [];
+  if(free.length) out.push([`${free.length === 1 ? "Ein fehlender DLC ist" : `${free.length} fehlende DLC sind`} gerade kostenlos: ${free.slice(0, 4).map(f =>
+    `<a class="tl" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="${f.end ? `kostenlos bis ${esc(dmy(f.end))}` : "bei DekuDeals ansehen"}">${esc(f.game)}: ${esc(f.title)}</a>`).join(", ")}${free.length > 4 ? ` und ${free.length - 4} weitere` : ""}`,
+    `<button class="link" data-act="gotab" data-v="sammlung">Sammlung</button>`]);
+  // Pass statt Teile: Teile stehen auf der Wishlist, der Pass ist günstiger als alle fehlenden Teile
+  for(const x of coll.pass_hints || [])
+    out.push([`${esc(x.game)}: ${x.wished.map(w => esc(w.title)).join(", ")} ${x.wished.length === 1 ? "steht" : "stehen"} auf der Wishlist. <a class="tl" href="${esc(deku(x.slug))}" target="_blank" rel="noopener">${esc(x.title)}</a> enthält ${x.open} fehlende DLC, einzeln ${eur(x.single)}, als Pass ${x.est ? "ca. " : ""}${eur(x.eur)} (spart ${eur(x.saving)}). Auf die Wishlist gesetzt, plant ihn der Kaufplan statt der Teile.`, ""]);
+  // Erinnerung an „Käufe lesen“: älter als 30 Tage und seitdem gekauft
+  const at = S.state.eshop_at || 0, k = S.kauf;
+  if(at && Date.now() / 1000 - at > 30 * 86400 &&
+     ((S.state.eshop_owned_n !== null && S.state.eshop_owned_n !== undefined && S.state.owned_count > S.state.eshop_owned_n) ||
+      (k && (k.bought || []).some(b => new Date(b.at) / 1000 > at))))
+    out.push([`Käufe aus dem eShop zuletzt am ${esc(dmy(new Date(at * 1000).toISOString()))} gelesen, seitdem hast du gekauft`, `<button class="link" data-act="gokaeufe">Käufe lesen</button>`]);
   for(const [code, c] of Object.entries(s.countries)){
     if(c.enabled && c.cards && c.cards_checked && Date.now() - new Date(c.cards_checked) > 30 * 86400000)
       out.push([`${esc(country(code).name)}: Kartenpreise älter als 30 Tage`, `<button class="link" data-act="gocards" data-c="${code}">prüfen</button>`]);
@@ -1751,7 +1766,7 @@ function eshopBox(){
   // Neuester bekannter Vorgang: Der Link zur Kaufhistorie gibt ihn mit, das Lesezeichen hört dort auf
   const seit = S.state.eshop_seit || 0;
   const line = (r, extra) => `<tr><td class="l">${esc(r.title)} ${when(r)}</td><td class="l">${extra}</td></tr>`;
-  let h = `<details class="box" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Einträge gelesen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch nicht gelesen"}</span></summary>
+  let h = `<details class="box" id="eshophist" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Einträge gelesen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch nicht gelesen"}</span></summary>
     <p class="hint">Was du bei Nintendo gekauft hast, fällt aus dem Kaufplan, auch ohne Eintrag bei DekuDeals. Der Kaufverlauf reicht laut Nintendo zwei Jahre zurück.</p>
     <ol class="hint">
       <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(eshopHelper(location.origin))}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>Käufe lesen</b></a></li>
@@ -1903,6 +1918,8 @@ document.addEventListener("click", async e => {
       if(t){ t.scrollIntoView({block:"center"}); t.focus(); }
     }
     else if(a === "verlauf"){ await openVerlauf(d.s); }
+    else if(a === "gotab"){ go(d.v); }
+    else if(a === "gokaeufe"){ S.folds.eshophist = 1; go("sammlung", false); const t = $("eshophist"); if(t){ t.open = true; t.scrollIntoView(); } }
     else if(a === "gosprachen"){ go("settings", false); const t = $("sprachen"); if(t) t.scrollIntoView(); }
     else if(a === "dlcmark"){
       await api("/api/settings", {dlc_marks: {[d.s]: d.v || null}});

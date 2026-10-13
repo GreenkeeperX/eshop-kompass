@@ -276,7 +276,7 @@ def load_eshop_history():
         return h
 
 
-def merge_eshop_history(entries, now, newest=0):
+def merge_eshop_history(entries, now, newest=0, owned_n=None):
     """Neue Einträge anhängen, bekannte (gleicher Schlüssel) überspringen. newest: neuester
     Vorgang eines lückenlosen Laufs, ab dem das Lesezeichen künftig liest. Gibt (neu, gesamt)."""
     with lock:
@@ -292,6 +292,8 @@ def merge_eshop_history(entries, now, newest=0):
         h["at"] = now
         if newest and newest > (h.get("seit") or 0):
             h["seit"] = newest
+        if owned_n is not None:
+            h["owned_n"] = owned_n        # Größe der DekuDeals-Sammlung beim Lesen (Erinnerung, 0.52)
         _save("eshop_history.json", h)
         return new, len(h["entries"])
 
