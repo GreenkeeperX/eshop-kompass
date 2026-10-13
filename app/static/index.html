@@ -283,6 +283,7 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:12px;font-size:13px}
 .fold>summary{cursor:pointer;font-weight:600}
 .mini-t{margin-top:4px}
+.box h4{margin:10px 0 2px;font-size:13px}
 .mini-t td{white-space:normal;vertical-align:top;padding:4px 6px}
 .mini-t td.l,.mini-t td:nth-child(2){text-align:left}
 .big{font-size:20px;font-variant-numeric:tabular-nums}
@@ -843,6 +844,7 @@ function viewCollection(){
   let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
     <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden DLC</label>
     <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "erst mit fehlenden DLC, dann nach Name")}${co("title", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
+  h += eshopBox();
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   const total = c.missing_eur !== null && c.missing_eur !== undefined
     ? ` ${c.missing_priced < missing ? `Für ${c.missing_priced} davon ist ein Preis bekannt: zusammen` : "Zusammen"} jetzt ${eur(c.missing_eur)}${c.missing_sale ? `, ${c.missing_sale} im Angebot` : ""}, jeweils im günstigsten zählenden Land.` : "";
@@ -1672,6 +1674,63 @@ function langSection(){
   }
   return h;
 }
+/* Browser-Helfer „Käufe lesen“: liest in deinem Browser, angemeldet bei Nintendo, den
+   Kaufverlauf so, wie ihn die Seite ec.nintendo.com/my/transactions selbst lädt, und gibt ihn an
+   eShop-Kompass weiter (Knopf öffnet das Tool, die Daten stehen nur im Adressteil hinter #). */
+function eshopHelper(tool){ return `(async()=>{
+if(location.hostname!=="ec.nintendo.com"){alert("Bitte zuerst angemeldet die Kaufhistorie öffnen: ec.nintendo.com/my/transactions/1, dann das Lesezeichen anklicken.");return}
+const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";box.textContent="eShop-Kompass: lese Kaufverlauf …";document.body.appendChild(box);
+const fail=t=>{box.textContent="eShop-Kompass: "+t;const b=document.createElement("button");b.textContent="Schließen";b.style.marginLeft="8px";b.onclick=()=>box.remove();box.append(b)};
+try{
+const s=await(await fetch("/api/auth/session",{credentials:"include"})).json();
+if(!s.idToken)return fail("Nicht angemeldet. Bitte anmelden und die Kaufhistorie neu laden.");
+const pe=performance.getEntriesByType("resource").map(e=>e.name).filter(u=>u.includes("operationName=TransactionsClientRootClient")).pop();
+let ep="https://wb.lp1.savanna.srv.nintendo.net/graphql",v={country:s.country,language:"en",shopId:3},ext={persistedQuery:{sha256Hash:"aa2c23b02481e2c5caba64f6a52e81b2ddcbc311c299ee111dd28c41f245e1e6",version:1}};
+if(pe){const u=new URL(pe);ep=u.origin+u.pathname;v=JSON.parse(u.searchParams.get("variables"));ext=JSON.parse(u.searchParams.get("extensions"))}
+const H={"accept":"application/json","content-type":"application/json","x-nintendo-savanna-client-id":"042e4bd1f0eec144167dbc0c63f1d17876e7b9ec322713b613614214e3675df9"};
+const get=async(off,lim)=>{const r=await fetch(ep+"?operationName=TransactionsClientRootClient&variables="+encodeURIComponent(JSON.stringify(Object.assign({},v,{idToken:s.idToken,limit:lim,offset:off})))+"&extensions="+encodeURIComponent(JSON.stringify(ext)),{headers:H});if(r.status===403||r.status===429)throw"gesperrt ("+r.status+")";const j=await r.json();if(!r.ok||j.errors)throw"Nintendo meldet "+r.status;return j.data.account.transactionHistories};
+const wait=()=>new Promise(r=>setTimeout(r,1200));
+let lim=100,page;try{page=await get(0,lim)}catch(e){if(String(e).startsWith("gesperrt"))throw e;lim=10;await wait();page=await get(0,lim)}
+const all=[...page.transactionHistories],total=page.offsetInfo.total;
+while(all.length<total){box.textContent="eShop-Kompass: lese "+all.length+" von "+total+" …";await wait();const p=await get(all.length,lim);if(!p.transactionHistories.length)break;all.push(...p.transactionHistories)}
+const out=[];for(const t of all){const d=String(t.datetime||"").slice(0,10);
+if(t.grantedItems)t.grantedItems.forEach((g,i)=>out.push({k:t.transactionId+"-"+i,title:g.title,date:d,type:"EXTERNAL",item:g.itemType,plat:g.labelPlatform}));
+else if(t.title)out.push({k:String(t.transactionId),title:t.title,date:d,type:t.transactionType,item:t.itemType,plat:t.labelPlatform,amount:t.amount&&t.amount.formattedValue})}
+const txt=JSON.stringify({region:v.country||s.country,entries:out});
+box.textContent="";const p=document.createElement("p");p.textContent="Fertig: "+out.length+" Einträge aus "+all.length+" Vorgängen ("+(v.country||s.country)+").";
+const go=document.createElement("button");go.textContent="Im eShop-Kompass übernehmen";go.style.marginRight="8px";go.onclick=()=>window.open(${JSON.stringify(tool)}+"/#kaeufe="+encodeURIComponent(txt),"_blank");
+const ta=document.createElement("textarea");ta.value=txt;ta.readOnly=true;ta.style.cssText="width:100%;height:80px;margin:8px 0";
+const c=document.createElement("button");c.textContent="Kopieren";c.style.marginRight="8px";c.onclick=async()=>{ta.select();try{await navigator.clipboard.writeText(txt)}catch(e){document.execCommand("copy")}c.textContent="Kopiert ✓"};
+const b=document.createElement("button");b.textContent="Schließen";b.onclick=()=>box.remove();
+box.append(p,go,ta,c,b);
+}catch(e){fail("Abgebrochen: "+e+". Bitte die Seite neu laden und noch einmal versuchen.")}
+})();`; }
+/* Käufe aus dem eShop: drei Stufen. Sicher Zugeordnetes zählt als Besitz, Vorschläge erst
+   nach Bestätigung, der Rest (meist längst Besessenes) steht eingeklappt darunter. */
+function eshopBox(){
+  const rows = S.state.eshop || [];
+  const sure = rows.filter(r => r.slug), sug = rows.filter(r => !r.slug && r.how === null && r.suggest.length),
+        rest = rows.filter(r => !r.slug && !(r.how === null && r.suggest.length) && r.how !== "void"), voids = rows.filter(r => r.how === "void");
+  const when = r => r.date ? `<small class="mut">${esc(dmy(r.date))}</small>` : "";
+  const how = {id: "über die Nintendo-ID", title: "Titel passt genau", pick: "von dir zugeordnet"};
+  const line = (r, extra) => `<tr><td class="l">${esc(r.title)} ${when(r)}</td><td class="l">${extra}</td></tr>`;
+  let h = `<details class="box" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Einträge gelesen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch nicht gelesen"}</span></summary>
+    <p class="hint">Was du bei Nintendo gekauft hast, fällt aus dem Kaufplan, auch ohne Eintrag bei DekuDeals. Der Kaufverlauf reicht laut Nintendo zwei Jahre zurück.</p>
+    <ol class="hint">
+      <li>Zieh diesen Link einmal in deine Lesezeichenleiste: <a href="javascript:${encodeURIComponent(eshopHelper(location.origin))}" onclick="event.preventDefault();toast('Bitte in die Lesezeichenleiste ziehen, nicht anklicken')"><b>Käufe lesen</b></a></li>
+      <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a>, warte, bis die Liste da ist, und klick das Lesezeichen an.</li>
+      <li>Klick dort auf „Im eShop-Kompass übernehmen“. Geht das nicht, kopiere den Text und füge ihn hier ein: <textarea id="eshopimport" rows="2" style="width:100%"></textarea> <button data-act="eshopimport">Übernehmen</button></li>
+    </ol>`;
+  if(sug.length) h += `<h4>Vorschläge: Ist das derselbe Titel?</h4><table class="mini-t">${sug.map(r => line(r, r.suggest.map(x =>
+      `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}">ist ${esc(x.title)}</button>`).join(" · ") +
+      ` · <button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-">nein</button>`)).join("")}</table>`;
+  if(sure.length) h += `<h4>Zählen als Besitz</h4><table class="mini-t">${sure.map(r => line(r,
+      `${esc(r.name || r.slug)} <small class="mut">${how[r.how] || ""}</small> · <button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Falsch zugeordnet: zählt nicht">stimmt nicht</button>`)).join("")}</table>`;
+  if(rest.length) h += `<details class="fold" data-k="eshoprest" ${S.folds.eshoprest ? "open" : ""}><summary class="hint">${rest.length} weitere Käufe, kein Wishlist-Titel und kein fehlender DLC</summary><table class="mini-t">${rest.map(r => line(r,
+      r.how === "none" ? `<span class="mut">von dir: kein Wunschtitel</span> · <button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="">zurücknehmen</button>` : "")).join("")}</table></details>`;
+  if(voids.length) h += `<p class="hint">${voids.length === 1 ? "Ein erstatteter Kauf zählt" : `${voids.length} erstattete Käufe zählen`} nicht.</p>`;
+  return h + `</details>`;
+}
 /* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch
    den Warteraum von store-jp kommt, und gibt die Sprachen als Text zum Einfügen zurück. */
 const JP_HELPER = `(async()=>{
@@ -1818,6 +1877,12 @@ document.addEventListener("click", async e => {
       try{ await navigator.clipboard.writeText(ta.value); }catch(e){ document.execCommand("copy"); }
       toast("IDs kopiert");
     }
+    else if(a === "eshopimport"){ await eshopImport($("eshopimport").value); }
+    else if(a === "eshoppick"){
+      await api("/api/eshop_history/pick", {key: d.k, slug: d.v});
+      await refresh();
+      toast(d.v === "-" ? "Zählt nicht als Besitz" : d.v ? "Zugeordnet, zählt als Besitz" : "Zurückgenommen");
+    }
     else if(a === "jpimport"){
       const r = await api("/api/jp_langs", {text: $("jpimport").value});
       S.state.lang_todo = r.lang_todo; await refresh(); render();
@@ -1951,7 +2016,15 @@ document.addEventListener("toggle", e => {
 }, true);
 document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });
 
-refresh().catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });
+async function eshopImport(text){
+  const r = await api("/api/eshop_history", {text});
+  await refresh();
+  toast(`${r.read} Einträge gelesen, ${r.new} neu. ${r.matched} zählen als Besitz` + (r.open ? `, ${r.open} ohne Zuordnung` : ""));
+}
+// Vom Lesezeichen „Käufe lesen“: Daten im Adressteil hinter #, gehen nicht übers Netz
+const KAEUFE = location.hash.startsWith("#kaeufe=") ? decodeURIComponent(location.hash.slice(8)) : null;
+if(KAEUFE) history.replaceState(null, "", location.pathname + location.search);
+refresh().then(() => KAEUFE && (S.tab = "sammlung", saveView(), eshopImport(KAEUFE))).catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });
 </script>
 </body>
 </html>

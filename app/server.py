@@ -45,6 +45,7 @@ def state():
         "item_count": sum(1 for it in data["items"].values() if it.get("active")),
         "matrix": planner.matrix(data, settings),
         "lang_todo": planner.lang_todo(data, settings),
+        "eshop": planner.eshop_matches(data)["rows"],
     }
 
 
@@ -117,7 +118,8 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/export":
                 self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
                                  "settings": store.load_settings(), "ui": store.load_ui(),
-                                 "purchases": store.load_purchases(), "history": store.load_history()})
+                                 "purchases": store.load_purchases(), "history": store.load_history(),
+                                 "eshop_history": store.load_eshop_history()})
             else:
                 self._send(404, {"error": "nicht gefunden"})
         except Exception as e:
@@ -147,6 +149,11 @@ class Handler(BaseHTTPRequestHandler):
                     store.save_purchases([p for p in body["purchases"] if isinstance(p, dict)][-500:])
                 if isinstance(body.get("history"), dict):
                     store.merge_history(body["history"])
+                eh = body.get("eshop_history")
+                if isinstance(eh, dict) and isinstance(eh.get("entries"), list):
+                    store.merge_eshop_history([e for e in eh["entries"] if isinstance(e, dict) and e.get("key")], eh.get("at"))
+                    for k, v in (eh.get("picks") or {}).items():
+                        store.pick_eshop_history(str(k), str(v or ""))
                 self._send(200, {"ok": True})
             elif path == "/api/bought":
                 slugs = [str(x) for x in (body.get("slugs") or [])][:200]
@@ -166,6 +173,12 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(409, {"error": str(e)})
                     return
                 self._send(200, dict(res, lang_todo=planner.lang_todo(store.load_data(), store.load_settings())))
+            elif path == "/api/eshop_history":
+                res = sync.import_eshop_history(str(body.get("text") or ""))
+                self._send(200, dict(res, eshop=planner.eshop_matches(store.load_data())["rows"]))
+            elif path == "/api/eshop_history/pick":
+                store.pick_eshop_history(str(body.get("key") or ""), str(body.get("slug") or ""))
+                self._send(200, {"eshop": planner.eshop_matches(store.load_data())["rows"]})
             elif path == "/api/sync":
                 self._send(200, {"started": sync.start_sync()})
             else:

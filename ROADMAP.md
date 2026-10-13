@@ -145,6 +145,10 @@ Reihenfolge und Begründung:
   0.48.1: Der Stand der ID-Suche steht im Protokoll erst nach titledb, mit dessen IDs.
   0.48.2: Der Hinweis "DLC braucht Region" nennt die Zahl, die betroffenen DLC sind in der
   Tabelle gleich markiert.
+- [x] Käufe aus dem eShop (0.49): Lesezeichen „Käufe lesen“ liest den Kaufverlauf bei Nintendo im
+  eigenen Browser, das Tool gleicht ihn mit Wishlist und fehlenden DLC ab (genau passend zählt,
+  ähnlich nach Bestätigung, erstattet nie). Gekauftes fällt aus dem Kaufplan, auch ohne Eintrag bei
+  DekuDeals (Entscheidung 13.10.2026). Offen: Kaufverlauf reicht nur zwei Jahre zurück.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

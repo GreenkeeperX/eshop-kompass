@@ -243,12 +243,69 @@ def load_data():
         for k, v in EMPTY_DATA.items():
             d.setdefault(k, json.loads(json.dumps(v)))
         d.pop("card_market", None)    # gg.deals ist seit 0.20 ausgebaut
+        d["_eshop"] = load_eshop_history()
         return d
 
 
 def save_data(d):
     with lock:
-        _save("data.json", d)
+        # Mit "_" beginnende Felder kommen aus anderen Dateien und werden dort gespeichert
+        _save("data.json", {k: v for k, v in d.items() if not k.startswith("_")})
+
+
+def load_eshop_history():
+    """Kaufverlauf aus dem eShop, vom Browser-Helfer gelesen:
+    {"entries": [{key, id, title, date, region}], "picks": {key: Titel oder "-"}, "at": Zeit}."""
+    with lock:
+        h = _load("eshop_history.json", {})
+        h.setdefault("entries", [])
+        h.setdefault("picks", {})
+        return h
+
+
+def merge_eshop_history(entries, now):
+    """Neue Einträge anhängen, bekannte (gleicher Schlüssel) überspringen. Gibt (neu, gesamt)."""
+    with lock:
+        h = load_eshop_history()
+        known = {e["key"] for e in h["entries"]}
+        new = 0
+        for e in entries:
+            if e["key"] not in known:
+                known.add(e["key"])
+                h["entries"].append(e)
+                new += 1
+        h["entries"] = h["entries"][-3000:]
+        h["at"] = now
+        _save("eshop_history.json", h)
+        return new, len(h["entries"])
+
+
+def remember_eshop_matches(found):
+    """Gefundene Zuordnungen {Schlüssel: (Titel, Weg)} in die Einträge schreiben."""
+    with lock:
+        h = load_eshop_history()
+        changed = False
+        for e in h["entries"]:
+            hit = found.get(e["key"])
+            if hit and not e.get("slug"):
+                e["slug"], e["how"] = hit
+                changed = True
+        if changed:
+            _save("eshop_history.json", h)
+        return changed
+
+
+def pick_eshop_history(key, slug):
+    """Eintrag von Hand zuordnen (Titel), als „kein Wunschtitel“ markieren ("-") oder
+    die Zuordnung zurücknehmen (leer)."""
+    with lock:
+        h = load_eshop_history()
+        if slug:
+            h["picks"][key] = slug
+        else:
+            h["picks"].pop(key, None)
+        _save("eshop_history.json", h)
+        return h
 
 
 def load_ui():

@@ -119,6 +119,18 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Angebotspreis, Zielpreis (leer heißt: das Urteil misst am Bestpreis;
   "Bestpreis übernehmen" setzt ihn) und die Links zu DekuDeals, eShop-Prices
   und zum eigenen Verlauf.
+- Käufe aus dem eShop (oben im Reiter Sammlung): Das Lesezeichen „Käufe lesen“ liest in
+  deinem Browser, angemeldet bei Nintendo, deinen Kaufverlauf (ec.nintendo.com/my/transactions,
+  laut Nintendo zwei Jahre) auf dieselbe Weise wie die Seite selbst, mit kurzen Pausen.
+  „Im eShop-Kompass übernehmen“ öffnet das Tool und gibt die Liste im Adressteil hinter #
+  weiter (geht nicht übers Netz); ersatzweise Text kopieren und einfügen. Der Kaufverlauf
+  nennt keine Nintendo-ID, nur Titel, Datum, Art und Betrag. Abgeglichen wird deshalb in
+  Stufen: Passt der Titel genau auf einen Wishlist-Titel oder fehlenden DLC (bei DLC auch
+  als „Spiel: DLC“), zählt er als Besitz und fällt aus dem Kaufplan, auch ohne Eintrag bei
+  DekuDeals. Ist er nur ähnlich, schlägt das Tool bis zu drei Titel vor, die erst nach
+  deiner Bestätigung zählen. Der Rest, meist längst Besessenes, steht eingeklappt darunter.
+  Erstattete Käufe zählen nicht. Zuordnungen bleiben, beim nächsten Lesen kommen nur neue
+  Einträge dazu; sie stecken in der Sicherung.
 - Sammlung (eigener Reiter): alle Spiele deiner DekuDeals-Sammlung mit ihren
   Zusatzinhalten (Abschnitt "DLC" der DekuDeals-Artikelseite), je DLC "hast du"
   oder "fehlt". Ob du einen DLC hast, sagt deine Sammlung bei DekuDeals; was sie
@@ -472,6 +484,8 @@ freigeben solltest du das Tool deshalb nicht.
   ec.nintendo.com (Amerika), sonst deine Bestätigung
 - Japan- und Amerika-IDs fehlender DLC: titledb (Programm-ID), sonst DekuDeals
 - Wechselkurse: open.er-api.com, ersatzweise frankfurter.dev (EZB)
+- Eigene Käufe: Kaufverlauf bei Nintendo, gelesen nur in deinem Browser über das Lesezeichen
+  „Käufe lesen“; der Server meldet sich nie bei Nintendo an
 
 ## Tests
 

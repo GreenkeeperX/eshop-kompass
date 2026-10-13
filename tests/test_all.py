@@ -1692,6 +1692,77 @@ class SyncTest(unittest.TestCase):
             sources.fetch_item = orig
 
 
+class EshopHistoryTest(unittest.TestCase):
+    """Kaufverlauf aus dem eShop (Browser-Helfer „Käufe lesen“)."""
+    def setUp(self):
+        for name in ("data.json", "eshop_history.json"):
+            try:
+                os.remove(os.path.join(store.DATA_DIR, name))
+            except FileNotFoundError:
+                pass
+        data = store.load_data()
+        data["items"] = {
+            "hades": {"title": "Hades", "active": True, "ids": {"AM": ["70010000012345"]}},
+            "celeste": {"title": "Celeste™", "active": True, "ids": {}},
+            "spiritfarer": {"title": "Spiritfarer", "active": True, "ids": {}}}
+        data["extra"] = {"vs-foscari": {"title": "Tides of the Foscari", "parent": "vampire-survivors",
+                                        "ids": {"AM": ["70050000099999"]}}}
+        data["owned"] = ["vampire-survivors"]
+        store.save_data(data)
+
+    def imp(self, entries, region="BR"):
+        return sync.import_eshop_history(json.dumps({"region": region, "entries": entries}), now=1)
+
+    def test_matched_by_id_title_and_kept_after_dlc_leaves_list(self):
+        res = self.imp([{"id": "70010000012345", "title": "Hades (pt)", "date": "2026-10-01"},
+                        {"id": "", "title": "CELESTE", "date": "2026-09-01"},
+                        {"id": "70050000099999", "title": "Marés dos Foscari", "date": "2026-08-01"},
+                        {"id": "70010000000001", "title": "Outro jogo", "date": "2026-07-01"}])
+        self.assertEqual((res["read"], res["new"], res["matched"], res["open"]), (4, 4, 3, 1))
+        data = store.load_data()
+        self.assertEqual(planner.owned_set(data), {"vampire-survivors", "hades", "celeste", "vs-foscari"})
+        how = {r["title"]: r["how"] for r in planner.eshop_matches(data)["rows"]}
+        self.assertEqual(how["Hades (pt)"], "id")
+        self.assertEqual(how["CELESTE"], "title")
+        # Der gekaufte DLC fällt aus den fehlenden DLC, die Zuordnung bleibt trotzdem
+        del data["extra"]["vs-foscari"]
+        self.assertIn("vs-foscari", planner.owned_set(data))
+        self.assertNotIn("_eshop", json.load(open(os.path.join(store.DATA_DIR, "data.json"))))
+
+    def test_same_entries_not_added_twice_and_picks(self):
+        e = [{"id": "", "title": "Algo desconhecido", "date": "2026-10-01"}]
+        self.imp(e)
+        self.assertEqual(self.imp(e)["new"], 0)
+        key = planner.eshop_matches(store.load_data())["rows"][0]["key"]
+        store.pick_eshop_history(key, "spiritfarer")
+        self.assertIn("spiritfarer", planner.owned_set(store.load_data()))
+        store.pick_eshop_history(key, "-")
+        rows = planner.eshop_matches(store.load_data())["rows"]
+        self.assertEqual((rows[0]["how"], rows[0]["slug"]), ("none", None))
+        store.pick_eshop_history(key, "")
+        self.assertIsNone(planner.eshop_matches(store.load_data())["rows"][0]["how"])
+
+    def test_bought_title_leaves_plan(self):
+        self.imp([{"id": "70010000012345", "title": "Hades", "date": "2026-10-01"}])
+        ctx = planner.Context(store.load_data(), store.load_settings())
+        self.assertIn("hades", ctx.owned)
+
+    def test_dlc_with_game_name_refund_and_suggestion(self):
+        self.imp([{"k": "1", "title": "Vampire Survivors: Tides of the Foscari", "date": "2026-10-01", "type": "PURCHASE"},
+                  {"k": "2", "title": "Spiritfarer®", "date": "2026-10-01", "type": "REFUND"},
+                  {"k": "3", "title": "Hades Deluxe", "date": "2026-10-01", "type": "PURCHASE"}])
+        rows = {r["title"]: r for r in planner.eshop_matches(store.load_data())["rows"]}
+        self.assertEqual(rows["Vampire Survivors: Tides of the Foscari"]["slug"], "vs-foscari")
+        self.assertEqual(rows["Spiritfarer®"]["how"], "void")          # erstattet: zählt nicht
+        self.assertIsNone(rows["Hades Deluxe"]["slug"])                  # nur ähnlich: Vorschlag
+        self.assertEqual([x["slug"] for x in rows["Hades Deluxe"]["suggest"]], ["hades"])
+        self.assertEqual(rows["Hades Deluxe"]["key"], "nin:BR:3")
+
+    def test_wrong_text_rejected(self):
+        with self.assertRaises(ValueError):
+            sync.import_eshop_history("kein json")
+
+
 class PurchaseLogTest(unittest.TestCase):
     def setUp(self):
         for name in ("settings.json", "purchases.json"):

@@ -4,6 +4,7 @@ Beträge in Landeswährung werden intern als ganze Hundertstel gerechnet.
 """
 import math
 import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from itertools import combinations
 
@@ -29,6 +30,84 @@ BEST_MONTHS = 24
 # liegen bei rund 135 %, deutsche Karten unter Nennwert bei rund 90 %.
 CARD_PLAUSIBLE = (0.70, 1.60)
 
+
+
+def _tnorm(title):
+    """Titel zum Vergleichen: ohne ™ ®, Satzzeichen und Groß-/Kleinschreibung."""
+    t = re.sub(r"[™®©]", "", str(title or ""))           # vorher: NFKC macht aus ™ „TM“
+    t = unicodedata.normalize("NFKC", t).casefold()
+    return " ".join(re.sub(r"[^\w]+", " ", t).split())
+
+
+# Arten im Kaufverlauf, die keinen Besitz bedeuten (Rückerstattung, Storno)
+_ESHOP_VOID = re.compile(r"REFUND|CANCEL|REVOK|VOID|CHARGEBACK", re.I)
+
+
+def eshop_matches(data):
+    """Kaufverlauf aus dem eShop mit Wishlist und fehlenden DLC abgleichen. Zuerst über die
+    Nintendo-ID, sonst über den Titel, wenn genau ein Titel passt (bei DLC auch mit dem Namen
+    des Spiels davor); von Hand Zugeordnetes gilt immer. Passt nichts genau, schlägt das Tool
+    ähnliche Titel vor, die zählen erst nach deiner Bestätigung.
+    {"rows": [{key, title, date, type, slug, how, name, suggest}], "owned": {Titel}}.
+    how: "id", "title", "pick", "none" (kein Wunschtitel), "void" (erstattet) oder None (offen)."""
+    h = data.get("_eshop") or {}
+    entries, picks = h.get("entries") or [], h.get("picks") or {}
+    items = data.get("items") or {}
+    cands = {s: it for s, it in items.items() if it.get("active")}
+    for s, e in (data.get("extra") or {}).items():
+        cands.setdefault(s, e)
+    by_id, by_title, toks = {}, {}, {}
+    for s, it in cands.items():
+        for ids in (it.get("ids") or {}).values():
+            for i in ids or []:
+                by_id.setdefault(str(i), s)
+        names = {_tnorm(it.get("title"))}
+        parent = it.get("parent")
+        if parent:
+            p_title = it.get("parent_title") or (items.get(parent) or {}).get("title") or \
+                ((data.get("rel") or {}).get(parent) or {}).get("title") or parent.replace("-", " ")
+            names.add(_tnorm(f"{p_title} {it.get('title')}"))
+        for n in names:
+            if n:
+                by_title.setdefault(n, set()).add(s)
+        toks[s] = set(" ".join(names).split())
+    rows, owned = [], set()
+    for e in entries:
+        key, slug, how, suggest = e.get("key"), None, None, []
+        pick = picks.get(key)
+        norm = _tnorm(e.get("title"))
+        if pick == "-":
+            how = "none"
+        elif pick:
+            slug, how = pick, "pick"
+        elif _ESHOP_VOID.search(str(e.get("type") or "")):
+            how = "void"
+        elif e.get("slug"):
+            # Beim Einlesen gemerkt: Ein gekaufter DLC fällt danach aus den fehlenden DLC
+            slug, how = e["slug"], e.get("how") or "id"
+        elif str(e.get("id") or "") in by_id:
+            slug, how = by_id[str(e["id"])], "id"
+        elif len(by_title.get(norm, ())) == 1:
+            slug, how = next(iter(by_title[norm])), "title"
+        else:
+            words = set(norm.split())
+            scored = []
+            for s, t in toks.items():
+                common = len(words & t)
+                if common and common / len(words | t) >= 0.5:
+                    scored.append((-common / len(words | t), cands[s].get("title") or s, s))
+            suggest = [{"slug": s, "title": t} for _, t, s in sorted(scored)[:3]]
+        if slug:
+            owned.add(slug)
+        rows.append({"key": key, "title": e.get("title"), "date": e.get("date"),
+                     "type": e.get("type"), "slug": slug, "how": how, "suggest": suggest,
+                     "name": (cands.get(slug) or items.get(slug) or {}).get("title") if slug else None})
+    return {"rows": rows, "owned": owned}
+
+
+def owned_set(data):
+    """Was du hast: deine DekuDeals-Sammlung plus Käufe aus dem eShop-Kaufverlauf."""
+    return set(data.get("owned") or []) | eshop_matches(data)["owned"]
 
 def cents(value):
     return int(round(float(value) * 100))
@@ -187,7 +266,7 @@ class Context:
         self.items = {s: it for s, it in data["items"].items() if it.get("active")}
         self.order = sorted(self.items, key=lambda s: self.items[s].get("order", 0))
         self.lows = data.get("lows", {})
-        self.owned = set(data.get("owned") or [])
+        self.owned = owned_set(data)
         self.rel = data.get("rel") or {}
         rates = data["fx"]["rates"]
         self.rates = rates
@@ -1218,7 +1297,7 @@ def switch2_paths(data, rows):
     genügt das Paket; sonst steht der Weg Spiel plus Paket gegen die Edition, soweit
     die Preise bekannt sind (beides auf der Wishlist). {Kürzel der Edition: Angaben}"""
     rel = data.get("rel") or {}
-    owned = set(data.get("owned") or [])
+    owned = owned_set(data)
     by = {r["slug"]: r for r in rows}
     items = data.get("items") or {}
     out = {}
@@ -1303,7 +1382,7 @@ def bundles(data, rows):
     Teile in der Sammlung zählen nicht, du hättest sie doppelt.
     {"packs": {Paket: Angaben}, "in": {Titel: [{slug, title, wish}]}}"""
     rel = data.get("rel") or {}
-    owned = set(data.get("owned") or [])
+    owned = owned_set(data)
     by = {r["slug"]: r for r in rows}
     items = data.get("items") or {}
     parts, names = {}, {}
@@ -1347,7 +1426,7 @@ def _nso(slug, title):
 def extra_dlc(data, settings):
     """DLC deiner Spiele, die fehlen und nicht auf der Wishlist stehen: {DLC: (Titel, Spiel)}.
     Ohne Abo-Inhalte, ohne abgehakte und ignorierte."""
-    rel, owned = data.get("rel") or {}, set(data.get("owned") or [])
+    rel, owned = data.get("rel") or {}, owned_set(data)
     marks = settings.get("dlc_marks") or {}
     wished = {s for s, it in (data.get("items") or {}).items() if it.get("active")}
     out = {}
@@ -1405,7 +1484,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
     sonst kennt das Tool keinen Preis (keine Nintendo-ID)."""
     rel = data.get("rel") or {}
     owned_list = list(dict.fromkeys(data.get("owned") or []))
-    owned = set(owned_list)
+    owned = owned_set(data)
     by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
     items = data.get("items") or {}
     marks = settings.get("dlc_marks") or {}

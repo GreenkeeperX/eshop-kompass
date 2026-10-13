@@ -1124,6 +1124,50 @@ def clean_ids(data):
     return dropped
 
 
+def remember_eshop(data):
+    """Zuordnungen aus dem eShop-Kaufverlauf festhalten, solange Wishlist und fehlende DLC
+    sie noch kennen: Ein gekaufter DLC verschwindet danach aus den fehlenden DLC."""
+    found = {r["key"]: (r["slug"], r["how"]) for r in planner.eshop_matches(data)["rows"]
+             if r["how"] in ("id", "title")}
+    if found and store.remember_eshop_matches(found):
+        data["_eshop"] = store.load_eshop_history()
+
+
+def import_eshop_history(text, now=None):
+    """Ergebnis des Browser-Helfers „Käufe lesen“ einlesen:
+    {"region": "BR", "entries": [{"id", "title", "date"}]} oder nur die Liste."""
+    try:
+        found = json.loads(text or "")
+    except ValueError:
+        raise ValueError("Das ist nicht der Text des Browser-Helfers (JSON erwartet)")
+    region = ""
+    if isinstance(found, dict):
+        region = str(found.get("region") or "")[:4]
+        found = found.get("entries")
+    if not isinstance(found, list):
+        raise ValueError("Das ist nicht der Text des Browser-Helfers (Liste erwartet)")
+    entries = []
+    for e in found[:3000]:
+        if not isinstance(e, dict) or not str(e.get("title") or "").strip():
+            continue
+        nid = str(e.get("id") or "").strip()[:20]
+        title = " ".join(str(e["title"]).split())[:200]
+        date = str(e.get("date") or "")[:25]
+        # Schlüssel: die Vorgangsnummer von Nintendo, sonst ID oder Titel mit Datum
+        k = str(e.get("k") or "").strip()[:40]
+        entries.append({"key": f"nin:{region}:{k}" if k else f"{nid or title}|{date}", "id": nid,
+                        "title": title, "date": date, "region": str(e.get("region") or region)[:4],
+                        "type": str(e.get("type") or "")[:30], "item": str(e.get("item") or "")[:30],
+                        "amount": str(e.get("amount") or "")[:30]})
+    new, total = store.merge_eshop_history(entries, now or time.time())
+    data = store.load_data()
+    remember_eshop(data)
+    rows = planner.eshop_matches(data)["rows"]
+    return {"read": len(entries), "new": new, "total": total,
+            "matched": sum(1 for r in rows if r["slug"]),
+            "open": sum(1 for r in rows if r["how"] is None)}
+
+
 def run_sync(fetch=sources.fetch, sleep=time.sleep):
     if not _lock.acquire(blocking=False):
         return False
@@ -1137,9 +1181,11 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         if not data.get("last_sync") and not data.get("lows"):
             data["lows_v"] = LOWS_VERSION      # frische Installation, nichts neu zu laden
         clean_ids(data)
+        remember_eshop(data)
         _step("Wishlist lesen")
         sync_wishlist(data, settings, fetch, sleep)
         sync_collection(data, settings, fetch, sleep)
+        remember_eshop(data)
         store.save_data(data)
         sync_ids(data, settings, fetch, sleep)
         _step("Wechselkurse abrufen")
