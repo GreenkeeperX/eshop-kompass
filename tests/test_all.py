@@ -2089,6 +2089,44 @@ class ExtraDlcTest(unittest.TestCase):
             sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0 + 60)
         self.assertIn(("rl-b", "jp"), got)
 
+    def test_dlc_without_id_rechecked_by_titledb_weekly_dekudeals_rarely(self):
+        # Kennen titledb und DekuDeals keine Japan-ID, gibt es den DLC dort meist nicht:
+        # titledb sieht wöchentlich nach, DekuDeals erst nach drei Monaten wieder
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP")
+        data = self.data()
+        t0 = 1736467200
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["70050000000001"], "JP": []},
+                                  "ids_checked": {"EU": t0, "JP": t0}, "tdb_ids": {"JP": t0}}}
+        data["glangs"] = {"rl": {"ids": {"JP": ["70010000000009"]}, "ids_checked": {"JP": t0}}}
+        data["titledb_at"] = t0
+        got, regions = [], []
+        jp = {}
+
+        def titledb(ids, fetch=None, region="JP.ja", apps=None):
+            regions.append(region)
+            if region == "DE.de":
+                return {"70050000000001": {"app": "0100AAAA0000B001"}}
+            return {}, dict(jp)
+        with mock.patch.object(sources, "fetch_item", lambda slug, c, fetch=None: got.append(c) or {"nsuids": []}), \
+                mock.patch.object(sources, "fetch_titledb", titledb), \
+                mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}):
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0 + 15 * 86400)
+            self.assertEqual(got, [])                               # nicht nach zwei Wochen
+            self.assertIn("Nächste Wiederholung ohne ID: ", sync.status["log"][-1])
+            sync.sync_titledb(data, settings, None, now=t0 + 3 * 86400)
+            self.assertNotIn("DE.de", regions)                      # DLC-IDs erst nach einer Woche
+            jp["0100AAAA0000B001"] = "70050000000777"
+            sync.sync_titledb(data, settings, None, now=t0 + 11 * 86400)   # Woche nach dem letzten Laden
+            self.assertIn("DE.de", regions)
+            self.assertEqual(data["extra"]["rl-b"]["ids"]["JP"], ["70050000000777"])
+            # Ohne Treffer: DekuDeals nach drei Monaten wieder
+            data["extra"]["rl-b"]["ids"]["JP"] = []
+            data["extra"]["rl-b"]["ids_checked"]["JP"] = t0
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0 + 91 * 86400)
+            self.assertEqual(got, ["jp"])
+
     def test_which_dlc_need_prices(self):
         data, settings = self.data(), {"dlc_marks": {"rl-c": "ignore"}}
         # rl-a hast du, rl-c ignoriert, rl-w steht auf der Wishlist, Abo-Inhalte zählen nicht
@@ -2424,7 +2462,7 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertNotIn("langs", items["t2"])
         # Eine Woche später: nur t2 fehlt noch, aber erst nach einem Monat wieder nachsehen
         with mock.patch.object(sources, "fetch_titledb", titledb):
-            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
+            sync.sync_titledb(data, settings, None, now=t0 + 11 * 86400)   # Woche nach dem letzten Laden
             self.assertEqual(len(tdb), 1)
             sync.sync_titledb(data, settings, None, now=t0 + 31 * 86400)
             self.assertEqual(tdb[-1], ["2"])
@@ -2464,7 +2502,7 @@ class ExtraDlcTest(unittest.TestCase):
             items = data["items"]
             self.assertEqual({s: it.get("ids_suspect") for s, it in items.items()},
                              {"ok": None, "bad": {"JP": t0}, "new": None, "odd": None})
-            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
+            sync.sync_titledb(data, settings, None, now=t0 + 11 * 86400)   # Woche nach dem letzten Laden
             self.assertEqual(len(regions), 2)                   # jede ID nur einmal abgleichen
             # Neue ID, die titledb noch nie gesehen hat: gleich, nicht erst nach einer Woche
             items["fresh"] = {"title": "F", "active": True, "ids": {"EU": ["e1"], "JP": ["j1x"]}, "langs": dict(lang)}

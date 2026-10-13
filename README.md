@@ -128,7 +128,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   den Stand je Region nennt das Protokoll). Die Japan- und Amerika-ID eines DLC holt es
   zuerst aus titledb: über die Programm-ID der Europa-ID, die in allen Regionen meist
   gleich ist (dafür einmal zusätzlich die US-Liste, rund 25 MB gepackt). Nur was titledb
-  nicht kennt, sucht es danach bei DekuDeals. Dann holt es die Preise mit der üblichen
+  nicht kennt, sucht es danach bei DekuDeals. Findet keine der beiden Quellen eine ID,
+  gibt es den DLC dort meist nicht: titledb sieht dann wöchentlich wieder nach,
+  DekuDeals erst nach drei Monaten. Dann holt es die Preise mit der üblichen
   Preisabfrage. Dann steht der günstigste Preis dabei, je Spiel und insgesamt die
   Summe der fehlenden DLC. Urteil und Bestpreis gibt es nur für die Wishlist.
   Steht

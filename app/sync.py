@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from . import countries, planner, sources, store
 
 ID_RECHECK_SECONDS = 14 * 24 * 3600   # fehlende IDs alle zwei Wochen neu suchen
+ID_RECHECK_LONG = 90 * 24 * 3600      # ... DLC, die auch titledb nicht kennt, nur alle drei Monate
 DEKU_PAUSE = 1.0                      # Sekunden zwischen DekuDeals-Abrufen
 NINTENDO_PAUSE = 0.3
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
@@ -561,7 +562,8 @@ def sync_titledb(data, settings, fetch, now=None):
     einmal die Woche (Japan rund 24 MB, für den ID-Abgleich zusätzlich Deutschland), für
     neue IDs gleich. Jede ID gilt danach als nachgesehen, auch wenn titledb sie nicht kennt.
     Dazu die Japan- und Amerika-IDs fehlender DLC über die Programm-ID ihrer Europa-ID
-    (Amerika aus der US-Liste); was titledb nicht kennt, sucht danach DekuDeals."""
+    (Amerika aus der US-Liste); was titledb nicht kennt, sucht danach DekuDeals, und titledb
+    sieht wöchentlich wieder nach."""
     now = now or time.time()
     if data.get("tdb_doubt_reset", 0) < 1:
         # Bis 0.44.4 galt eine abweichende Programm-ID auch ohne Kandidaten als Hinweis auf
@@ -585,15 +587,19 @@ def sync_titledb(data, settings, fetch, now=None):
                 if eu and (r.get("ids_tdb") or {}).get("JP") != n:
                     verify[n] = (r, str(eu))
     # Fehlende DLC mit Europa-ID, aber ohne Japan- oder Amerika-ID: über die Programm-ID
-    # (DLC haben in allen Regionen meist dieselbe). Je DLC und Region einmal.
-    dlc = {}
+    # (DLC haben in allen Regionen meist dieselbe). Ohne Treffer wöchentlich neu, titledb
+    # wächst laufend und kostet keine DekuDeals-Seite.
+    dlc, dlc_new = {}, False
     for e in (data.get("extra") or {}).values():
         eu = ((e.get("ids") or {}).get("EU") or [None])[0]
         for fam in TDB_DLC_REGIONS:
-            if eu and fam in fams and not (e.get("ids") or {}).get(fam) and fam not in (e.get("tdb_ids") or {}):
+            tried = (e.get("tdb_ids") or {}).get(fam)
+            if eu and fam in fams and not (e.get("ids") or {}).get(fam) \
+                    and (tried is None or now - tried >= TITLEDB_SECONDS):
                 dlc.setdefault(str(eu), []).append((e, fam))
+                dlc_new = dlc_new or tried is None
     # Neue IDs, die titledb noch nie gesehen hat: gleich, sonst wöchentlich
-    fresh = bool(dlc) or any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
+    fresh = dlc_new or any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
         (r.get("ids_tdb") or {}).get("JP") is None for r, _ in verify.values())
     wait = TITLEDB_FRESH_SECONDS if fresh else TITLEDB_SECONDS
     if not (todo or verify or dlc) or now - data.get("titledb_at", 0) < wait:
@@ -622,7 +628,7 @@ def sync_titledb(data, settings, fetch, now=None):
     for eu, recs in dlc.items():
         for e, fam in recs:
             n = (by_region.get(fam) or {}).get(app_of.get(eu)) if app_of.get(eu) else None
-            e.setdefault("tdb_ids", {})[fam] = now        # einmal; ohne Treffer sucht DekuDeals
+            e.setdefault("tdb_ids", {})[fam] = now        # ohne Treffer sucht auch DekuDeals
             hits[fam][1] += 1
             if n:
                 e["ids"][fam] = [str(n)]
@@ -956,7 +962,7 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
         e = extra.setdefault(slug, {"title": title, "parent": parent, "ids": {}, "ids_checked": {}})
         e.update(title=title, parent=parent)
         for fam in fams:
-            if not e["ids"].get(fam) and now - e["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS:
+            if not e["ids"].get(fam) and now - e["ids_checked"].get(fam, 0) >= _recheck(e, fam):
                 todo.append((bool(e["ids_checked"]), slug, fam, e))
     # Auch die IDs der Spiele selbst: Ihre Shopseite nennt die Sprachen, die eines DLC oft
     # nicht (Japan: DLC-Seiten gibt es dort unter dieser Adresse gar nicht). Europa liest
@@ -1027,9 +1033,16 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
     _log_extra_ids(extra, glangs, fams, now)
 
 
+def _recheck(e, fam):
+    """Abstand bis zur nächsten DekuDeals-Suche nach einer fehlenden ID. Kennt auch titledb
+    den DLC in dieser Region nicht, gibt es ihn dort meist nicht; titledb sieht weiter
+    wöchentlich nach, DekuDeals nur noch selten (0.47)."""
+    return ID_RECHECK_LONG if fam in (e.get("tdb_ids") or {}) else ID_RECHECK_SECONDS
+
+
 def _log_extra_ids(extra, glangs, fams, now):
     """Stand der ID-Suche fürs Protokoll: je Region gefunden, noch nie gesucht, ohne ID
-    (Wiederholung nach ID_RECHECK_SECONDS) und wann die nächste Wiederholung fällig ist."""
+    (Wiederholung nach ID_RECHECK_SECONDS, ID_RECHECK_LONG) und wann die nächste Wiederholung fällig ist."""
     recs = [(e, f) for e in extra.values() for f in fams] + \
         [(g, f) for g in glangs.values() if "ids_checked" in g for f in fams if f != "EU"]
     parts, nxt = [], None
@@ -1041,7 +1054,7 @@ def _log_extra_ids(extra, glangs, fams, now):
                      + (f", {len(mine) - found - never} ohne ID" if len(mine) - found - never else ""))
         for e in mine:
             if not (e.get("ids") or {}).get(fam) and fam in (e.get("ids_checked") or {}):
-                due = e["ids_checked"][fam] + ID_RECHECK_SECONDS
+                due = e["ids_checked"][fam] + _recheck(e, fam)
                 nxt = due if nxt is None else min(nxt, due)
     line = f"Fehlende DLC der Sammlung: {len(extra)} DLC, {sum(1 for g in glangs.values() if 'ids_checked' in g)} Spiele; " \
         + "; ".join(parts)
