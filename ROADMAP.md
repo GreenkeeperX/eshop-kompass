@@ -125,6 +125,9 @@ Reihenfolge und Begründung:
   0.45.1: gelesene Sprachen im Tooltip auf Deutsch, auch die japanischen (0.45.2: auch mit Zusätzen
   wie ブラジルポルトガル語). 0.45.3: aufgeklappte Listen unter Sprachen prüfen bleiben beim Sortieren offen.
   0.45.4: Felder unter Regeln eingeklappt („Grenzen anpassen“), der Satz nennt auch die Sprachregel.
+- [x] DLC-IDs über titledb (0.46): Japan- und Amerika-IDs fehlender DLC über die Programm-ID der
+  Europa-ID, DekuDeals nur für den Rest; schont DekuDeals und baut den Rückstand schneller ab
+  (Entscheidung 13.10.2026).
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

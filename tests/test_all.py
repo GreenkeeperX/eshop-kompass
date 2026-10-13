@@ -2038,6 +2038,57 @@ class ExtraDlcTest(unittest.TestCase):
                     ["rl-nso", "Nintendo Switch Online - Items"]]}},
                 "fx": {"rates": {"EUR": 1.0}}, "prices": {}}
 
+    def test_dlc_ids_for_japan_and_americas_from_titledb(self):
+        # Mit der Europa-ID eines DLC findet titledb die Japan- und Amerika-ID über die
+        # Programm-ID; DekuDeals sucht nur noch, was titledb nicht kennt
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP", "US")
+        data = self.data()
+        got = []
+
+        def item(slug, country, fetch=None):
+            got.append((slug, country))
+            return {"nsuids": {"de": ["70050000000001"], "us": ["70050000000002"]}.get(country, []) if slug == "rl-b" else []}
+        regions = []
+
+        def titledb(ids, fetch=None, region="JP.ja", apps=None):
+            regions.append(region)
+            if region == "DE.de":
+                return {"70050000000001": {"app": "0100AAAA0000B001"}}
+            if region == "JP.ja":
+                return {}, {"0100AAAA0000B001": "70050000000777"}
+            return {}, {}                                           # Amerika kennt titledb nicht
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_item", item), mock.patch.object(sources, "fetch_titledb", titledb):
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0)
+            rlb = data["extra"]["rl-b"]
+            self.assertEqual(rlb["ids"], {"EU": ["70050000000001"]})
+            self.assertNotIn(("rl-b", "jp"), got)
+            self.assertNotIn(("rl-b", "us"), got)
+            self.assertIn("für titledb zurückgestellt", sync.status["log"][-2])
+            sync.sync_titledb(data, settings, None, now=t0 + 10)
+            self.assertEqual(regions, ["DE.de", "JP.ja", "US.en"])
+            self.assertEqual(rlb["ids"]["JP"], ["70050000000777"])
+            self.assertNotIn("AM", rlb["ids"])
+            self.assertIn("IDs fehlender DLC aus titledb: Amerika 0 von 1, Japan 1 von 1", sync.status["log"][-1])
+            got.clear()
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0 + 20)
+            self.assertIn(("rl-b", "us"), got)                      # Rest über DekuDeals
+            self.assertNotIn(("rl-b", "jp"), got)
+            self.assertEqual(rlb["ids"]["AM"], ["70050000000002"])
+            # titledb einmal je DLC und Region: Der nächste Lauf holt nur noch die Sprache
+            # zur neuen Japan-ID, ohne Europa und Amerika
+            sync.sync_titledb(data, settings, None, now=t0 + 2 * 3600)
+            self.assertEqual(regions[3:], ["JP.ja"])
+        # Fällt titledb aus, sucht DekuDeals wieder alles selbst
+        data = self.data()
+        data["titledb_fail_at"] = t0
+        got.clear()
+        with mock.patch.object(sources, "fetch_item", item):
+            sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0 + 60)
+        self.assertIn(("rl-b", "jp"), got)
+
     def test_which_dlc_need_prices(self):
         data, settings = self.data(), {"dlc_marks": {"rl-c": "ignore"}}
         # rl-a hast du, rl-c ignoriert, rl-w steht auf der Wishlist, Abo-Inhalte zählen nicht
@@ -2062,7 +2113,8 @@ class ExtraDlcTest(unittest.TestCase):
             self.assertEqual(len(got), n)                       # gefunden: kein neuer Abruf
             # Das Protokoll zeigt den Stand je Region, auch wenn nichts zu suchen ist
             line = sync.status["log"][-1]
-            self.assertIn("Fehlende DLC der Sammlung: 2 DLC, 1 Spiele; EU 2 gefunden; JP 0 gefunden, 3 ohne ID", line)
+            # Japan und Amerika der DLC warten auf titledb, die Spiele selbst sucht DekuDeals
+            self.assertIn("Fehlende DLC der Sammlung: 2 DLC, 1 Spiele; EU 2 gefunden; JP 0 gefunden, 2 noch nie gesucht, 1 ohne ID", line)
             self.assertIn("Nächste Wiederholung ohne ID: 24.01.", line)
             sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 15 * 86400)
             self.assertIn("IDs fehlender DLC gesucht: ", sync.status["log"][-2])

@@ -125,7 +125,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Sicherung. Für fehlende DLC, die nicht auf der Wishlist stehen, sucht das Tool
   die Nintendo-IDs über die DekuDeals-Artikelseiten (höchstens 40 Seiten je
   Abgleich, Abbruch bei Sperren; gefundene IDs bleiben, ohne ID wieder nach 14 Tagen;
-  den Stand je Region nennt das Protokoll) und holt die Preise mit der üblichen
+  den Stand je Region nennt das Protokoll). Die Japan- und Amerika-ID eines DLC holt es
+  zuerst aus titledb: über die Programm-ID der Europa-ID, die in allen Regionen meist
+  gleich ist (dafür einmal zusätzlich die US-Liste, rund 25 MB gepackt). Nur was titledb
+  nicht kennt, sucht es danach bei DekuDeals. Dann holt es die Preise mit der üblichen
   Preisabfrage. Dann steht der günstigste Preis dabei, je Spiel und insgesamt die
   Summe der fehlenden DLC. Urteil und Bestpreis gibt es nur für die Wishlist.
   Steht
@@ -454,6 +457,7 @@ freigeben solltest du das Tool deshalb nicht.
 - Sprachen: search.nintendo-europe.com (Europa), store-jp.nintendo.com und titledb
   (raw.githubusercontent.com/blawar/titledb, Japan), nintendo.com-Produktseiten über
   ec.nintendo.com (Amerika), sonst deine Bestätigung
+- Japan- und Amerika-IDs fehlender DLC: titledb (Programm-ID), sonst DekuDeals
 - Wechselkurse: open.er-api.com, ersatzweise frankfurter.dev (EZB)
 
 ## Tests

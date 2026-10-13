@@ -28,6 +28,7 @@ LANG_PER_SYNC = 40                    # Seiten je Region und Abgleich, ungeprüf
 TITLEDB_SECONDS = 7 * 24 * 3600       # titledb höchstens wöchentlich laden ...
 TITLEDB_RECHECK_SECONDS = 30 * 24 * 3600  # ... und je Titel ohne Angabe monatlich nachsehen
 TITLEDB_FRESH_SECONDS = 3600          # noch nie nachgesehene IDs gleich im nächsten Abgleich
+TDB_DLC_REGIONS = {"JP": "JP.ja", "AM": "US.en"}   # DLC-IDs dieser Regionen zuerst aus titledb
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
 CARD_PAUSE = 3.0
@@ -548,7 +549,9 @@ def sync_titledb(data, settings, fetch, now=None):
     bei Japan und Europa ab, gehört die Japan-ID vermutlich zu einem anderen Titel: Der
     nächste Abgleich sucht sie einmal neu. Lädt nur, wenn etwas zu tun ist, und höchstens
     einmal die Woche (Japan rund 24 MB, für den ID-Abgleich zusätzlich Deutschland), für
-    neue IDs gleich. Jede ID gilt danach als nachgesehen, auch wenn titledb sie nicht kennt."""
+    neue IDs gleich. Jede ID gilt danach als nachgesehen, auch wenn titledb sie nicht kennt.
+    Dazu die Japan- und Amerika-IDs fehlender DLC über die Programm-ID ihrer Europa-ID
+    (Amerika aus der US-Liste); was titledb nicht kennt, sucht danach DekuDeals."""
     now = now or time.time()
     if data.get("tdb_doubt_reset", 0) < 1:
         # Bis 0.44.4 galt eine abweichende Programm-ID auch ohne Kandidaten als Hinweis auf
@@ -559,37 +562,66 @@ def sync_titledb(data, settings, fetch, now=None):
                 (rec.get("ids_suspect") or {}).pop("JP", None)
             (rec.get("ids_doubt") or {}).pop("JP", None)
         data["tdb_doubt_reset"] = 1
-    if not any(settings["countries"][code]["enabled"] for code in countries.ORDER
-               if countries.BY_CODE[code]["family"] == "JP"):
-        return
-    targets = jp_targets(data)
-    todo = {n: recs for n, recs in targets.items()
-            if any(not (r.get("langs") or {}).get("JP")
-                   and now - r.get("tdb_checked", 0) > TITLEDB_RECHECK_SECONDS for r in recs)}
-    verify = {}
-    for n, recs in targets.items():
-        for r in recs:
-            eu = ((r.get("ids") or {}).get("EU") or [None])[0]
-            if eu and (r.get("ids_tdb") or {}).get("JP") != n:
-                verify[n] = (r, str(eu))
+    fams = needed_families(settings)
+    todo, verify = {}, {}
+    if "JP" in fams:
+        targets = jp_targets(data)
+        todo = {n: recs for n, recs in targets.items()
+                if any(not (r.get("langs") or {}).get("JP")
+                       and now - r.get("tdb_checked", 0) > TITLEDB_RECHECK_SECONDS for r in recs)}
+        for n, recs in targets.items():
+            for r in recs:
+                eu = ((r.get("ids") or {}).get("EU") or [None])[0]
+                if eu and (r.get("ids_tdb") or {}).get("JP") != n:
+                    verify[n] = (r, str(eu))
+    # Fehlende DLC mit Europa-ID, aber ohne Japan- oder Amerika-ID: über die Programm-ID
+    # (DLC haben in allen Regionen meist dieselbe). Je DLC und Region einmal.
+    dlc = {}
+    for e in (data.get("extra") or {}).values():
+        eu = ((e.get("ids") or {}).get("EU") or [None])[0]
+        for fam in TDB_DLC_REGIONS:
+            if eu and fam in fams and not (e.get("ids") or {}).get(fam) and fam not in (e.get("tdb_ids") or {}):
+                dlc.setdefault(str(eu), []).append((e, fam))
     # Neue IDs, die titledb noch nie gesehen hat: gleich, sonst wöchentlich
-    fresh = any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
+    fresh = bool(dlc) or any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
         (r.get("ids_tdb") or {}).get("JP") is None for r, _ in verify.values())
     wait = TITLEDB_FRESH_SECONDS if fresh else TITLEDB_SECONDS
-    if not (todo or verify) or now - data.get("titledb_at", 0) < wait:
+    if not (todo or verify or dlc) or now - data.get("titledb_at", 0) < wait:
         return
-    _step("Sprachen Japan aus titledb")
+    _step("Sprachen Japan aus titledb" if todo or verify else "IDs fehlender DLC aus titledb")
+    need = {fam for recs in dlc.values() for _, fam in recs}
     try:
-        europe = sources.fetch_titledb([eu for _, eu in verify.values()], fetch=fetch,
-                                       region="DE.de") if verify else {}
+        eus = {eu for _, eu in verify.values()} | set(dlc)
+        europe = sources.fetch_titledb(sorted(eus), fetch=fetch, region="DE.de") if eus else {}
+        app_of = {eu: (europe.get(eu) or {}).get("app") for eu in dlc}
         apps = {e["app"] for e in europe.values() if e.get("app")}
         # Japan: Sprachen, Programm-IDs der eigenen IDs und die Japan-ID zu jeder
-        # Programm-ID aus Europa (Kandidat, falls die eigene nicht passt)
-        found, by_app = sources.fetch_titledb(list(set(todo) | set(verify)), fetch=fetch, apps=apps)
+        # Programm-ID aus Europa (Kandidat, falls die eigene nicht passt, und DLC-IDs)
+        found, by_app = sources.fetch_titledb(list(set(todo) | set(verify)), fetch=fetch, apps=apps) \
+            if todo or verify or "JP" in need else ({}, {})
+        by_region = {"JP": by_app}
+        if "AM" in need:
+            by_region["AM"] = sources.fetch_titledb([], fetch=fetch, region=TDB_DLC_REGIONS["AM"],
+                                                    apps={a for a in app_of.values() if a})[1]
     except Exception as e:
         _log(f"titledb nicht abrufbar ({e})")
+        data["titledb_fail_at"] = now
         return
     data["titledb_at"] = now
+    hits = {fam: [0, 0] for fam in need}
+    for eu, recs in dlc.items():
+        for e, fam in recs:
+            n = (by_region.get(fam) or {}).get(app_of.get(eu)) if app_of.get(eu) else None
+            e.setdefault("tdb_ids", {})[fam] = now        # einmal; ohne Treffer sucht DekuDeals
+            hits[fam][1] += 1
+            if n:
+                e["ids"][fam] = [str(n)]
+                e.setdefault("ids_checked", {})[fam] = now
+                hits[fam][0] += 1
+    if dlc:
+        _log("IDs fehlender DLC aus titledb: " + ", ".join(
+            f"{countries.FAMILIES[f]} {h[0]} von {h[1]}" for f, h in sorted(hits.items()))
+            + "; der Rest über DekuDeals")
     got = 0
     for nsuid, recs in todo.items():
         langs = (found.get(nsuid) or {}).get("langs")
@@ -931,13 +963,21 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
     if not todo:
         _log_extra_ids(extra, glangs, fams, now)
         return
-    todo.sort(key=lambda t: t[:3])
+    # Europa zuerst: Mit der Europa-ID eines DLC findet titledb die Japan- und Amerika-ID
+    # über die Programm-ID, ohne eine DekuDeals-Seite (0.46)
+    order = {f: i for i, f in enumerate(("EU", "JP", "AM", "AS"))}
+    todo.sort(key=lambda t: (t[0], t[1], order.get(t[2], 9)))
+    tdb_ok = now - data.get("titledb_fail_at", 0) > 86400
     _step("IDs fehlender DLC suchen", min(len(todo), EXTRA_PER_SYNC))
     pages, fails = 0, 0
-    kinds = {"neu": 0, "erneut": 0, "fraglich": 0}
+    kinds = {"neu": 0, "erneut": 0, "fraglich": 0, "für titledb zurückgestellt": 0}
     for _, slug, fam, e in todo:
         if pages >= EXTRA_PER_SYNC:
             break
+        if tdb_ok and slug in extra and fam in TDB_DLC_REGIONS and (e["ids"].get("EU") or [None])[0] \
+                and fam not in (e.get("tdb_ids") or {}):
+            kinds["für titledb zurückgestellt"] += 1    # titledb sucht gleich nach dem Abgleich der IDs
+            continue
         kinds["fraglich" if (e.get("ids_suspect") or {}).get(fam)
               else "erneut" if fam in e["ids_checked"] else "neu"] += 1
         found, reached = [], False
