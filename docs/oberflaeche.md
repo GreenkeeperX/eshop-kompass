@@ -39,10 +39,23 @@ wird aber nicht eigens optimiert.
 - Ersparnis wird gegen den nächstbesten zählenden Preis genannt, wie bei der
   Kaufentscheidung. Deutschland erscheint nur als Information ("in Deutschland jetzt").
 - Abstand zum Bestpreis: `+x €` rot, am Bestpreis ★. In der Liste aller Länder eines Titels
-  steht der Abstand grau („+x € über Bestpreis“), sonst wäre jede Zeile rot.
+  ist nur der Betrag rot, „über Bestpreis“ grau.
 - Landestief (Tiefstpreis eines Landes) ist nur Auskunft und immer grau; entschieden wird am
   Bestpreis aller zählenden Länder.
-- Faktor einer Guthabenkarte trägt die Farbe ihrer Bewertung.
+- Faktor einer Guthabenkarte trägt die Farbe ihrer Bewertung. Dieselben Regeln gelten für jedes
+  Land, auch neu hinzugefügte. Grau heißt: noch keine Bewertung möglich (etwa „Bewertung ab …“,
+  solange der eigene Verlauf einer Karte kürzer als 14 Tage ist, oder Guthaben zum Kurs).
+
+## Zahlen in Sätzen
+
+Nur die Zahl trägt die Farbe, Verbindungswörter bleiben grau. Sammlung: „5 von 5“ ganz grün,
+wenn alles da ist; sonst bei nichts Offenem nur die Zahl vorhandener grün, die Zahl ignorierter
+rot (Entscheidung 13.10.2026).
+
+## Flächen
+
+Kacheln und Kästen haben immer denselben Hintergrund (`--card`). Weniger Wichtiges wird über
+gedämpften Text gezeigt, nie über Transparenz der ganzen Kachel.
 
 ## Wortwahl
 

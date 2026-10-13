@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ["DATA_DIR"] = tempfile.mkdtemp()
@@ -809,7 +809,9 @@ class PlanTest(unittest.TestCase):
             when = datetime.fromtimestamp(t0 + day * 86400, timezone.utc)
             rating = planner.card_status(self.data, self.settings, now=when)["BR"][0]["rating"]
             if day < 14:
-                self.assertEqual(rating["text"], "noch kein Vergleich")
+                # 0.53.6: nennt den Tag, ab dem bewertet wird
+                start = datetime.fromtimestamp(t0, timezone.utc) + timedelta(days=14)
+                self.assertEqual(rating["text"], f"Bewertung ab {start:%d.%m.}")
         self.assertEqual(len(self.data["card_hist"][url]), 3)
         self.assertEqual(rating["level"], "ok")                  # 4 % über dem Bestwert 1,00
         info = planner.pay_info(self.data, self.settings, now=when)["BR"]
@@ -1596,48 +1598,29 @@ class SafetyTest(unittest.TestCase):
 
 
     def test_diagnose_probes_membership_prices(self):
-        # Vorarbeit Online-Mitgliedschaft: DekuDeals je Land, Suche bei Nintendo Europa,
-        # mit gefundenen IDs die Preis-Schnittstelle; nichts wird gespeichert
+        # Vorarbeit Online-Mitgliedschaft: DekuDeals je Land nennt die eShop-ID im Link der
+        # Preistabelle (0.53.6), damit fragt der Test die Preis-Schnittstelle; nichts wird gespeichert
         store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
         urls = []
-        ld = ('<title>NSO</title><script type="application/ld+json">{"@type":"Product","offers":'
-              '{"@type":"Offer","price":"19.99","priceCurrency":"EUR"}}</script>'
-              '<a href="https://ec.nintendo.com/DE/de/membership">eShop</a>')
-        solr = json.dumps({"response": {"docs": [{"title": "Nintendo Switch Online", "type": "GAME",
-                                                  "nsuid_txt": ["70070000000001"]}]}})
+        hist = json.dumps({"headers": ["Nintendo eShop"], "data": [["2026-10-12", None, 109.9], ["2026-10-13", None, 109.9]]})
+
+        def page(cc, nsuid):
+            return (f'<title>NSO</title><script id="price_history_data" type="application/json">{hist}</script>'
+                    '<script id="price_history_indices" type="application/json">{"all":[0,1,2],"physical":[0,1],"digital":[0,1,2]}</script>'
+                    f"<a data-out-analytics-id='eshop_{cc}:{nsuid}' href='https://ec.nintendo.com/X/x/membership'>eShop</a>")
 
         def request(url, ua=None, timeout=25):
             urls.append(url)
-            text = ld if sync.MEMBERSHIP_SLUG in url else solr if "Switch+Online" in url else ""
+            text = (page("de", "70080000000189") if "country=de" in url else page("br", "70080000000186")) \
+                if sync.MEMBERSHIP_SLUG in url else '{"prices":[]}' if "/v1/price" in url else ""
             return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
         with mock.patch.object(sources, "request", request):
             text = "\n".join(sync.diagnose(sleep=lambda s: None))
         self.assertIn("Mitgliedschaft DekuDeals (DE): HTTP 200", text)
-        self.assertIn("(19.99, 'EUR', 'price')", text)
-        self.assertIn("ec.nintendo.com/DE/de/membership", text)
-        self.assertIn("Mitgliedschaft Nintendo Europa (Suche): HTTP 200, Server t, Kodierung keine, 1 Treffer", text)
-        self.assertTrue(any("ids=70070000000001" in u for u in urls))
-
-    def test_diagnose_membership_history_and_title_search(self):
-        # 0.53.5: Der Verlauf je Land nennt den Preis jetzt; findet die Freitextsuche nichts,
-        # sucht der Test im Titelfeld
-        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
-        urls = []
-        hist = json.dumps({"headers": ["Nintendo eShop"], "data": [["2026-10-01", None, 109.9], ["2026-10-12", None, 74.25]]})
-        page = (f'<title>NSO</title><script id="price_history_data" type="application/json">{hist}</script>'
-                '<script id="price_history_indices" type="application/json">{"all":[0,1,2],"physical":[0,1],"digital":[0,1,2]}</script>'
-                '<div class="price">R$ 74,25</div><a href="https://ec.nintendo.com/BR/pt/membership">eShop</a>')
-        empty = json.dumps({"response": {"docs": []}})
-
-        def request(url, ua=None, timeout=25):
-            urls.append(url)
-            text = page if sync.MEMBERSHIP_SLUG in url else empty if "solr" in url or "select" in url else ""
-            return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
-        with mock.patch.object(sources, "request", request):
-            text = "\n".join(sync.diagnose(sleep=lambda s: None))
-        self.assertIn("Verlauf: 2 Tage, zuletzt [('2026-10-01', 109.9), ('2026-10-12', 74.25)]", text)
-        self.assertIn("R$ 74,25", text)
-        self.assertIn("Mitgliedschaft Nintendo Europa (Titelfeld)", text)
+        self.assertIn("eShop-IDs ['70080000000189'], Verlauf: 2 Tage, zuletzt [('2026-10-12', 109.9), ('2026-10-13', 109.9)]", text)
+        self.assertTrue(any("country=DE" in u and "ids=70080000000189" in u for u in urls))
+        self.assertTrue(any("country=BR" in u and "ids=70080000000186" in u for u in urls))
+        self.assertIn("Mitgliedschaft Nintendo-Preise (BR): HTTP 200", text)
 
     def test_diagnose_with_dlc_sections(self):
         # 0.50 bis 0.53.2: Die Liste der gefundenen Abschnitte (Texte) brach den Test ab,

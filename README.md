@@ -364,7 +364,7 @@ Sicherung und Protokoll.
   - Nur Guthaben (Amerika, Australien): gegen den besten Faktor derselben Karte in den
     letzten 90 Tagen. Am Bestwert Top, bis 2 % darüber gut, bis 5 % okay, darüber teuer.
     Das Tool merkt sich dafür je Karten-Link einen Faktor am Tag (der niedrigste). Bis der
-    Verlauf zwei Wochen umfasst, steht "noch kein Vergleich".
+    Verlauf zwei Wochen umfasst, steht grau "Bewertung ab" mit dem Tag, ab dem verglichen wird.
   - Euro-Guthaben ("Deutschland (Guthaben)"): feste Stufen wie bei Kenixa, Top bis 0,81,
     gut bis 0,83, okay bis 0,86, darüber teuer; einstellbar unter Gebühren, Erweitert.
   Im Kaufplan steht der Faktor hinter den Karten in der Rechnung. Liegt Guthaben in einem
@@ -535,10 +535,9 @@ oder einer Prüfseite auf, statt sich als Browser auszugeben. Der Rest folgt
 beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
 auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Seit 0.53.2
 prüft er auch, woher Preise der Online-Mitgliedschaft kommen könnten: die
-12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland und Brasilien, die Suche
-bei Nintendo Europa (frei und im Titelfeld) und, falls sie IDs nennt, deren Preise. Seit
-0.53.5 zeigt er auch den Preisverlauf der Seite je Land und einen Ausschnitt um den
-eShop-Link, um die Preisangabe zu finden. Gespeichert wird nichts.
+12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland und Brasilien und
+mit den eShop-IDs, die DekuDeals im Link der Preistabelle nennt, die Preise bei Nintendo
+(seit 0.53.6). Gespeichert wird nichts. Protokoll und Testergebnis lassen sich kopieren.
 
 Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so
 keine Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen

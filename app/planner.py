@@ -495,7 +495,10 @@ class Context:
                     else "dein eingetragener Preis", "best": None}
         hist = card_hist_window(self.card_hist.get(url) or {}, self.now)
         if not hist or (self.now - datetime.fromisoformat(min(hist)).replace(tzinfo=timezone.utc)).days < CARD_HIST_MIN_DAYS:
-            return {"level": None, "text": "noch kein Vergleich", "best": min(hist.values()) if hist else None}
+            # Wann der Vergleich beginnt, damit die graue Zeile nicht wie ein Fehler wirkt
+            start = datetime.fromisoformat(min(hist)).replace(tzinfo=timezone.utc) + timedelta(days=CARD_HIST_MIN_DAYS) if hist else None
+            return {"level": None, "text": f"Bewertung ab {start:%d.%m.}" if start else "noch kein Vergleich",
+                    "best": min(hist.values()) if hist else None}
         best = min(min(hist.values()), factor)
         for limit, level, text in CARD_STEPS:
             if factor <= best * limit + 1e-9:

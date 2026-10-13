@@ -322,7 +322,7 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 .pc .ln .k{display:inline-block;width:62px;text-indent:0;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
 .pc .ln small{color:var(--muted)}
 .pc .hurd{color:var(--warn);font-size:12px;margin:3px 0}
-.pc.dim{opacity:.8}
+.pc.dim h2{color:var(--muted)}
 .pc table.it{margin-top:6px;table-layout:auto}
 .pc table.it td.t{width:45%}
 .pc>header .sm{flex:none}
@@ -591,8 +591,8 @@ function cardSummary(code){
   const best = rows.reduce((a, r) => r.factor < a.factor ? r : a);
   const x = S.state.settings.countries[code] || {};
   const verdict = x.pay === "auto" || x.pay === "card" ? (best.rating && best.rating.level === "cheaper" ? "Guthaben günstiger" : "Kreditkarte günstiger")
-    : pi.rating && pi.rating.level ? pi.rating.text.split(",")[0] : "";
-  const vc = verdict === "Guthaben günstiger" ? "gn" : verdict === "Kreditkarte günstiger" ? "" : rateCls(pi.rating);
+    : pi.rating && pi.rating.text ? pi.rating.text.split(",")[0] : "";
+  const vc = verdict === "Guthaben günstiger" ? "gn" : verdict === "Kreditkarte günstiger" ? "" : pi.rating && pi.rating.level ? rateCls(pi.rating) : "mut";
   return ` · bester Faktor <span class="${rateCls(best.rating)}">${fac(best.factor)}</span>${verdict ? ` · <span class="${vc}">${esc(verdict)}</span>` : ""}`;
 }
 function cardTable(code, cur){
@@ -741,7 +741,7 @@ function showLog(lines){
   if(!l) return;
   const atEnd = l.scrollHeight - l.scrollTop - l.clientHeight < 30;
   const st = S.state.status || {};
-  const head = st.started ? `Abgleich vom ${new Date(st.started).toLocaleString("de-DE")}${st.running ? ", läuft" : st.ok === false ? ", fehlgeschlagen" : ""}\n` : "";
+  const head = st.started ? `Abgleich vom ${new Date(st.started).toLocaleString("de-DE")}, v${S.state.version}${st.running ? ", läuft" : st.ok === false ? ", fehlgeschlagen" : ""}\n` : "";
   l.textContent = (lines || []).length ? head + lines.map(localStamp).join("\n") : "Noch kein Protokoll seit dem letzten Neustart.";
   if(atEnd || !l.dataset.seen){ l.scrollTop = l.scrollHeight; l.dataset.seen = "1"; }
 }
@@ -885,8 +885,9 @@ function dlcPrice(d){
 function collGame(g){
   const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  // Alle da: grün; ignorierte Zahl rot (Entscheidung 13.10.2026)
-  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span>` : `${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored || g.gone ? "" : "alle da"), g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
+  // Alle da: „5 von 5“ grün; nichts mehr offen, aber ignorierte: nur die Zahl vorhandener grün, die ignorierte rot,
+  // der Rest grau (Entscheidung 13.10.2026)
+  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span>` : !g.missing ? `<span class="gn">${g.have}</span> von ${g.dlc.length}` : `${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored || g.gone ? "" : "alle da"), g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
     g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(", ");
   const key = "ign:" + g.slug;
   const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
@@ -1008,7 +1009,7 @@ function titleDetail(r){
       : langTag(c, true);
     return `<div class="${counts ? "" : "nc"}"><span>${star(c)}${counts ? "" : `<span class="q">?</span>`}</span><b>${ax(c)}${buyLink(code, c, eur(c.eur))}</b>
       <span>${esc(co.name)} ${tierTag((S.state.matrix.cols.find(k => k.code === code) || {}).tier)}</span>
-      <span class="mut">${counts && ce && !atBest(c.eur, ce.eur) ? `<span title="über dem Bestpreis ${eur(ce.eur)} (${esc(ce.name)})">+${eur(c.eur - ce.eur)} über Bestpreis</span> · ` : ""}${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${extra}</span></div>`;
+      <span class="mut">${counts && ce && !atBest(c.eur, ce.eur) ? `<span title="über dem Bestpreis ${eur(ce.eur)} (${esc(ce.name)})"><span class="abv">+${eur(c.eur - ce.eur)}</span> über Bestpreis</span> · ` : ""}${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${extra}</span></div>`;
   }).join("") + (na.length ? `<div class="mut nc"><span></span><span></span><span>${na.map(([code, c]) => esc(country(code).name) + (c.nolang ? " (ohne Deutsch)" : "")).join(", ")}</span><span>nicht kaufbar</span></div>` : "") + `</div>`;
   h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}` : ""}${nextBest(x, list)}</span>`;
   const rh = rhythmLines(r.rhythm || []);
@@ -1732,14 +1733,15 @@ function viewSettings(){
     <h3 class="sec" id="set-quellen">Quellen</h3>
     <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist, Preise und Wechselkurse neu geholt werden. Die Kursquellen aktualisieren sich einmal am Tag.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
     <p class="hint" style="margin-top:8px">Wechselkurse vom ${esc(fxStamp())}. Das Tool holt sie bei jedem Abgleich, die Quelle erneuert sie einmal am Tag ·
-      <button class="link" type="button" data-act="diag">Verbindung testen</button></p>
+      <button class="link" type="button" data-act="diag">Verbindung testen</button><span id="diagCopy" ${S.diagText ? "" : "hidden"}> · <button class="link" type="button" data-act="copy" data-t="diag">Ergebnis kopieren</button></span></p>
     <pre class="log" id="diag" ${S.diagText ? "" : "hidden"}>${esc(S.diagText || "")}</pre>
     <h3 class="sec" id="set-sicherung">Sicherung und Protokoll</h3>
     <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise, Körbe, Kaufprotokoll und die eigene Preisaufzeichnung. Beim Einlesen wird die Aufzeichnung ergänzt, nicht ersetzt. Preise, Sammlung und DekuDeals-Verläufe holt das Tool selbst neu.</p>
     <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
       <a class="btn" style="margin-left:8px" href="/api/abgleich" download="eshop-kompass-abgleich.json" title="Abgleichsdaten (IDs, Sprachen, Preise) und Protokoll zum Nachprüfen, ohne Einstellungen. Zum Einlesen nicht nötig.">Abgleichsdaten herunterladen</a>
       <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p>
-    <pre class="log" id="log" style="margin-top:8px"></pre>`;
+    <p class="hint" style="margin-top:8px">Protokoll des letzten Abgleichs · <button class="link" type="button" data-act="copy" data-t="log">kopieren</button></p>
+    <pre class="log" id="log" style="margin-top:4px"></pre>`;
   return h;
 }
 function settingsBody(form){
@@ -2103,6 +2105,15 @@ document.addEventListener("click", async e => {
       go("laender");
     }
     else if(a === "pickfile"){ $("impFile").click(); }
+    else if(a === "copy"){
+      // Ohne HTTPS (Heimnetz) gibt es keine Zwischenablage-Schnittstelle, dann über ein Textfeld
+      const txt = ($(el.dataset.t) || {}).textContent || "";
+      let ok = false;
+      try{ await navigator.clipboard.writeText(txt); ok = true; }catch(e){}
+      if(!ok){ const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select(); try{ ok = document.execCommand("copy"); }catch(e){} ta.remove(); }
+      toast(ok ? "Kopiert" : "Kopieren nicht möglich, bitte markieren");
+    }
     else if(a === "diag"){
       // Eigene Box: Das Protokoll des Abgleichs läuft daneben weiter
       const l = $("diag");
@@ -2112,6 +2123,7 @@ document.addEventListener("click", async e => {
       S.diagText = r.lines.join("\n");   // bleibt stehen, auch wenn die Seite neu zeichnet
       l.textContent = S.diagText;
       l.scrollTop = 0;
+      if($("diagCopy")) $("diagCopy").hidden = false;
     }
   }catch(err){ toast("Fehler: " + err.message); }
 });

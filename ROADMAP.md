@@ -187,6 +187,10 @@ Reihenfolge und Begründung:
   misst am Bestpreis, Landestief nur grau; Faktor der Guthabenkarten in der Farbe der Bewertung,
   Servicegebühr am Preis, Spalte und Text runden gleich; Verbindungstest zeigt bei der
   Mitgliedschaft Verlauf und Preisausschnitt und sucht bei Nintendo auch im Titelfeld.
+- [x] Rückmeldungen zu 0.53.5 (0.53.6): Abstand zum Bestpreis rot, Sammlungszahlen einzeln
+  gefärbt, Länderkacheln mit gleichem Hintergrund, „Bewertung ab …“ statt „noch kein Vergleich“,
+  Kopierknöpfe für Protokoll und Verbindungstest, Version im Protokoll; Verbindungstest fragt die
+  Preise der Mitgliedschaft mit den eShop-IDs aus DekuDeals ab.
 - [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
   Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen. Erster Schritt (0.53.2): Probe im Verbindungstest, woher Preise je Land kommen (DekuDeals

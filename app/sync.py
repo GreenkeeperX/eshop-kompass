@@ -1517,52 +1517,35 @@ MEMBERSHIP_SLUG = "nintendo-switch-online-12-month-membership"
 
 def membership_probe(probe, sleep=time.sleep):
     """Online-Mitgliedschaft (Vorarbeit, Entscheidung 13.10.2026): Woher kommen Preise je Land?
-    DekuDeals führt die Einzelmitgliedschaft mit eShop-Preis je Land; ob Nintendo Europa sie
-    mit einer ID führt, die die Preis-Schnittstelle kennt, zeigt die Suche. Nur Probe, nichts
-    wird gespeichert."""
-    lines = []
+    DekuDeals nennt im Preistabellen-Link die eShop-ID je Land (data-out-analytics-id
+    „eshop_de:7008…“, 0.53.5 im echten HTML gesehen); ob die Preis-Schnittstelle sie kennt,
+    zeigt die zweite Probe. Nur Probe, nichts wird gespeichert."""
+    lines, ids = [], {}
 
-    def deku_info(t):
-        info = sources.parse_item_page(t)
-        shops = sorted(set(sources.re.findall(r"https://ec\.nintendo\.com/[A-Z]{2}/[a-z]{2}/[a-z]+", t)))[:4]
-        hist = sources.parse_history(t)
-        # Wo steht der Preis jetzt? Ausschnitt um den eShop-Link, ohne Bilder und Skripte
-        i = t.find("ec.nintendo.com")
-        cut = sources.re.sub(r"\s+", " ", sources.re.sub(r"<(script|style|svg|picture)\b.*?</\1>", "", t[max(0, i - 900):i + 300], flags=sources.re.S))
-        return (f"Titel „{(sources.page_title(t) or '')[:60]}“, Preise in Produktdaten: "
-                f"{sorted(sources.ld_prices(t))[:8]}, Tiefstpreis {info['low']}, IDs {info['nsuids']}, "
-                f"eShop-Links: {' '.join(shops) or 'keine'}, Verlauf: {len(hist)} Tage"
-                f"{', zuletzt ' + str(hist[-3:]) if hist else ''}, Ausschnitt: {cut[:700] if i >= 0 else 'kein eShop-Link'}")
+    def deku_info(country):
+        def info_of(t):
+            info = sources.parse_item_page(t)
+            hist = sources.parse_history(t)
+            for cc, nsuid in sources.re.findall(r"eshop_([a-z]{2}):(7\d{13})", t):
+                ids.setdefault(cc.upper(), [])
+                if nsuid not in ids[cc.upper()]:
+                    ids[cc.upper()].append(nsuid)
+            return (f"Titel „{(sources.page_title(t) or '')[:60]}“, Tiefstpreis {info['low']}, "
+                    f"eShop-IDs {ids.get(country.upper(), [])}, Verlauf: {len(hist)} Tage"
+                    f"{', zuletzt ' + str(hist[-2:]) if hist else ''}")
+        return info_of
     for country in ("de", "br"):
         probe(f"Mitgliedschaft DekuDeals ({country.upper()})",
-              f"https://www.dekudeals.com/items/{MEMBERSHIP_SLUG}?country={country}", None, deku_info)
+              f"https://www.dekudeals.com/items/{MEMBERSHIP_SLUG}?country={country}", None, deku_info(country))
         sleep(LOW_PAUSE)
-    found = []
-
-    def solr_info(t):
-        try:
-            docs = json.loads(t)["response"]["docs"]
-        except (ValueError, KeyError, TypeError):
-            return f"keine lesbare Antwort, Anfang: {t[:160]}"
-        for d in docs:
-            found.extend(str(n) for n in d.get("nsuid_txt") or [])
-        return f"{len(docs)} Treffer: " + "; ".join(
-            f"{d.get('title')} ({d.get('type')}, IDs {d.get('nsuid_txt')})" for d in docs[:8])
-    q = urllib.parse.urlencode({"q": '"Nintendo Switch Online"', "fl": "title,type,nsuid_txt",
-                                "rows": 12, "wt": "json"})
-    probe("Mitgliedschaft Nintendo Europa (Suche)", f"{sources.SOLR_URL}?{q}", None, solr_info)
-    if not found:
-        # Freitext fand nichts; Suche im Titelfeld
-        sleep(LOW_PAUSE)
-        q = urllib.parse.urlencode({"q": "*", "fq": 'title:*Online*', "fl": "title,type,nsuid_txt",
-                                    "rows": 12, "wt": "json"})
-        probe("Mitgliedschaft Nintendo Europa (Titelfeld)", f"{sources.SOLR_URL}?{q}", None, solr_info)
-    if found:
-        ids = ",".join(dict.fromkeys(found[:10]))
-        probe("Mitgliedschaft Nintendo-Preise (DE)", sources.NINTENDO_PRICE_URL + f"?country=DE&lang=de&ids={ids}",
-              None, lambda t: t[:400])
-    else:
-        lines.append("Mitgliedschaft Nintendo-Preise: keine ID gefunden, nicht abgefragt")
+    for code, lang in (("DE", "de"), ("BR", "pt")):
+        if not ids.get(code):
+            lines.append(f"Mitgliedschaft Nintendo-Preise ({code}): keine eShop-ID bei DekuDeals, nicht abgefragt")
+            continue
+        probe(f"Mitgliedschaft Nintendo-Preise ({code})",
+              sources.NINTENDO_PRICE_URL + f"?country={code}&lang={lang}&ids={','.join(ids[code][:10])}",
+              None, lambda t: t[:500])
+        sleep(1)
     return lines
 
 
