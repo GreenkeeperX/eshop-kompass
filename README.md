@@ -458,3 +458,21 @@ freigeben solltest du das Tool deshalb nicht.
 ## Tests
 
     python3 -m unittest tests.test_all
+
+## Prüfumgebung
+
+`tools/replay.py` rechnet eine Momentaufnahme ohne Netz durch: Bewertung, Kaufplan,
+Sprachen prüfen und Sammlung, so wie die Oberfläche sie zeigt. Eingaben sind die Dateien
+aus "Abgleichsdaten herunterladen" und "Sicherung herunterladen". Sie enthalten deine
+Wishlist und gehören nicht ins Repository.
+
+    python3 -m tools.replay --abgleich abgleich.json --sicherung sicherung.json
+    python3 -m tools.replay ... --szenario konto=PL --szenario kurs=JPY*1.1
+    python3 -m tools.replay ... --vergleich main
+
+Es prüft Regeln, die nie verletzt sein dürfen (kein Titel doppelt im Plan oder trotz
+Sammlung, jede offene Sprachzeile mit Link, Pakete unter bundles, gültige IDs, kein Kauf
+ohne Preis), und endet mit Fehlercode 1, wenn eine verletzt ist. `--vergleich` rechnet
+dieselben Daten zum selben Zeitpunkt mit einem anderen Git-Stand und listet, was sich an
+Urteilen, Plan, offenen Sprachen und Sammlung ändert. Szenarien: `konto=`, `guthaben=BR:20`,
+`kurs=JPY*1.1`, `land-aus=`/`land-an=`, `ohne-preis=SLUG`, `angebot-endet=SLUG`.

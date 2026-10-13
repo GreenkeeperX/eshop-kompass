@@ -119,6 +119,9 @@ Reihenfolge und Begründung:
   0.44.3: Pakete in Amerika über die richtige Shopseite (bundles), Sprache und Link.
   0.44.4: Stand der ID-Suche fehlender DLC je Region im Protokoll.
   0.44.6: Abgleichsdaten mit Protokoll herunterladen, zum Nachprüfen.
+
+- [x] Prüfumgebung (0.45): `tools/replay.py` rechnet Momentaufnahmen ohne Netz durch, prüft
+  feste Regeln, spielt Szenarien und vergleicht zwei Versionen auf denselben Daten.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

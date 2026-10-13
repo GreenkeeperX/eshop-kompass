@@ -1,4 +1,6 @@
 data/
+*abgleich*.json
+*sicherung*.json
 __pycache__/
 *.pyc
 graphify-out/

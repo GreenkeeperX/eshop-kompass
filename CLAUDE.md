@@ -42,6 +42,9 @@ Zweck, Bedienung und Rechenregeln stehen in `README.md`, Geplantes in `ROADMAP.m
 
 Lokal starten: `python3 -m app.server` (Port 8787, Daten in `./data/`, ignoriert).
 Tests: `python3 -m unittest tests.test_all`. Ein Linter ist nicht eingerichtet.
+Bei Änderungen an Rechenlogik oder Datenfluss zusätzlich die neueste Momentaufnahme mit
+`python3 -m tools.replay ... --vergleich main` durchrechnen (siehe README, Prüfumgebung).
+Momentaufnahmen nie ins Repository legen.
 Alte Datendateien müssen nach einem Update weiter laden.
 
 ## Graphify (optional, nur lokal)

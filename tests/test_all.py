@@ -2481,5 +2481,52 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertIn("gone", settings["lang_confirm"])
 
 
+
+class ReplayTest(unittest.TestCase):
+    # Prüfumgebung: Momentaufnahme ohne Netz durchrechnen, Regeln prüfen, Versionen vergleichen
+    def snapshot(self, tmp):
+        data, settings = sample()
+        for i, it in enumerate(data["items"].values()):
+            it["ids"] = {"EU": [f"700100000000{i:02d}"]}
+        data["last_sync"] = NOW.isoformat()
+        a, b = os.path.join(tmp, "abgleich.json"), os.path.join(tmp, "sicherung.json")
+        with open(a, "w") as f:
+            json.dump({"data": data, "log": []}, f)
+        with open(b, "w") as f:
+            json.dump({"settings": settings}, f)
+        return a, b
+
+    def replay(self, *args):
+        import subprocess
+        root = os.path.join(os.path.dirname(__file__), "..")
+        r = subprocess.run([sys.executable, "-m", "tools.replay", *args], cwd=root,
+                           capture_output=True, text=True)
+        return r.returncode, r.stdout + r.stderr
+
+    def test_replay_rules_scenarios_and_compare(self):
+        tmp = tempfile.mkdtemp()
+        a, b = self.snapshot(tmp)
+        code, out = self.replay("--abgleich", a, "--sicherung", b, "--json")
+        self.assertEqual(code, 0, out)
+        res = json.loads(out)
+        self.assertEqual(res["problems"], [])
+        self.assertEqual(res["version"], sources.VERSION)
+        self.assertIn("hades", res["summary"]["radar"])
+        # Szenario: Norwegen aus, Hades landet woanders
+        code, out2 = self.replay("--abgleich", a, "--sicherung", b, "--json", "--szenario", "land-aus=NO")
+        self.assertEqual(code, 0, out2)
+        self.assertNotEqual(json.loads(out2)["summary"]["radar"]["hades"][1], "NO")
+        # Regelverstoß: ungültige ID
+        with open(a) as f:
+            snap = json.load(f)
+        snap["data"]["items"]["hades"]["ids"]["EU"] = ["1"]
+        with open(a, "w") as f:
+            json.dump(snap, f)
+        code, out3 = self.replay("--abgleich", a, "--sicherung", b)
+        self.assertEqual(code, 1)
+        self.assertIn("hat kein gültiges Format", out3)
+        self.assertNotIn("Traceback", out3)
+
+
 if __name__ == "__main__":
     unittest.main()
