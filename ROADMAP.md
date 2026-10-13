@@ -142,6 +142,7 @@ Reihenfolge und Begründung:
   zeigen den Korb des Plans; "am Bestpreis" bis 2 % wie im Urteil; "morgen" beim nächsten Abgleich;
   kostenlose DLC als "kostenlos" (Entscheidung 13.10.2026). Offen: Pakete mit "Teil schon da"
   (Bestpreis wirkt wie der Restpreis für Besitzer), wartet auf eine Rückmeldung.
+  0.48.1: Der Stand der ID-Suche steht im Protokoll erst nach titledb, mit dessen IDs.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

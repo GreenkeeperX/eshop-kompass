@@ -965,7 +965,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
          + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else ""))
 
 
-def sync_extra_ids(data, settings, fetch, sleep, now=None):
+def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
     """Nintendo-IDs der DLC, die deinen Spielen fehlen und nicht auf der Wishlist stehen,
     damit es für sie Preise gibt (Summe in der Sammlung, Vorschläge für den Rest).
     Schonend: höchstens EXTRA_PER_SYNC Artikelseiten je Abgleich, Abbruch bei Sperren."""
@@ -1002,7 +1002,8 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
                     not g["ids"].get(fam) and now - g["ids_checked"].get(fam, 0) >= ID_RECHECK_SECONDS)):
                 todo.append((bool(g["ids_checked"]), game, fam, g))
     if not todo:
-        _log_extra_ids(extra, glangs, fams, now)
+        if report:
+            _log_extra_ids(extra, glangs, fams, now)
         return
     # Europa zuerst: Mit der Europa-ID eines DLC findet titledb die Japan- und Amerika-ID
     # über die Programm-ID, ohne eine DekuDeals-Seite (0.46)
@@ -1033,7 +1034,8 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
                 if err.status in sources.BLOCKED or fails >= 4:
                     _log(f"IDs fehlender DLC unterbrochen ({err}), Rest beim nächsten Abgleich")
                     store.save_data(data)
-                    _log_extra_ids(extra, glangs, fams, now)
+                    if report:
+                        _log_extra_ids(extra, glangs, fams, now)
                     return
                 sleep(LOW_PAUSE)
                 continue
@@ -1059,7 +1061,8 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None):
         status["done"] += 1
     store.save_data(data)
     _log("IDs fehlender DLC gesucht: " + ", ".join(f"{n} {k}" for k, n in kinds.items() if n))
-    _log_extra_ids(extra, glangs, fams, now)
+    if report:
+        _log_extra_ids(extra, glangs, fams, now)
 
 
 def _recheck(e, fam):
@@ -1171,8 +1174,10 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             _log("Tiefstpreise werden neu geladen (Lesefehler bei Spielen für Switch und Switch 2 behoben)")
         sync_lows(data, settings, fetch, sleep)
         sync_related(data, settings, fetch, sleep)
-        sync_extra_ids(data, settings, fetch, sleep)
+        sync_extra_ids(data, settings, fetch, sleep, report=False)
         sync_titledb(data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
+        # Stand der ID-Suche erst jetzt, mit den IDs aus titledb (0.48.1)
+        _log_extra_ids(data.get("extra") or {}, data.get("glangs") or {}, needed_families(settings), time.time())
         sync_langs(data, settings, fetch, sleep, budget=langs_budget)    # Sprachen der neu gefundenen DLC
         status["ok"] = True
         _step("Fertig")

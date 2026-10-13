@@ -1616,6 +1616,10 @@ class SyncTest(unittest.TestCase):
         self.assertNotIn("card_market", data)                            # gg.deals ist ausgebaut
         self.assertNotIn("DG", data["prices"])                           # kein eigener eShop
         self.assertFalse(any("Preisabruf fehlgeschlagen" in l for l in sync.status["log"]))
+        # Stand der ID-Suche einmal, nach titledb, damit er dessen IDs schon enthält
+        state = [i for i, l in enumerate(sync.status["log"]) if "Fehlende DLC der Sammlung" in l]
+        self.assertEqual(len(state), 1)
+        self.assertFalse(any("titledb" in l for l in sync.status["log"][state[0]:]))
         n = len(calls)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
         # zweiter Lauf sucht weder IDs, Sprachen noch Tiefstpreise:
