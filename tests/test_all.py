@@ -2423,7 +2423,7 @@ class ExtraDlcTest(unittest.TestCase):
             # Das Protokoll zeigt den Stand je Region, auch wenn nichts zu suchen ist
             line = sync.status["log"][-1]
             # Japan und Amerika der DLC warten auf titledb, die Spiele selbst sucht DekuDeals
-            self.assertIn("Fehlende DLC der Sammlung: 2 DLC, 1 Spiele; EU 2 gefunden; JP 0 gefunden, 2 noch nie gesucht, 1 ohne ID", line)
+            self.assertIn("Fehlende DLC der Sammlung: 2 DLC, 1 Spiele; IDs EU 2 gefunden; JP 0 gefunden, 2 noch nie gesucht (Spiele 0 gefunden, 1 ohne ID)", line)
             self.assertIn("Nächste Wiederholung ohne ID: 24.01.", line)
             sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=1736467200 + 15 * 86400)
             self.assertIn("IDs fehlender DLC gesucht: ", sync.status["log"][-2])

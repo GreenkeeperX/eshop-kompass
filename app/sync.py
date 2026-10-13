@@ -1179,20 +1179,23 @@ def _recheck(e, fam):
 def _log_extra_ids(extra, glangs, fams, now):
     """Stand der ID-Suche fürs Protokoll: je Region gefunden, noch nie gesucht, ohne ID
     (Wiederholung nach ID_RECHECK_SECONDS, ID_RECHECK_LONG) und wann die nächste Wiederholung fällig ist."""
-    recs = [(e, f) for e in extra.values() for f in fams] + \
-        [(g, f) for g in glangs.values() if "ids_checked" in g for f in fams if f != "EU"]
+    games = [g for g in glangs.values() if "ids_checked" in g]
     parts, nxt = [], None
-    for fam in fams:
-        mine = [e for e, f in recs if f == fam]
+
+    def count(mine, fam):
         found = sum(1 for e in mine if (e.get("ids") or {}).get(fam))
         never = sum(1 for e in mine if fam not in (e.get("ids_checked") or {}))
-        parts.append(f"{fam} {found} gefunden" + (f", {never} noch nie gesucht" if never else "")
-                     + (f", {len(mine) - found - never} ohne ID" if len(mine) - found - never else ""))
-        for e in mine:
+        return f"{found} gefunden" + (f", {never} noch nie gesucht" if never else "") \
+            + (f", {len(mine) - found - never} ohne ID" if len(mine) - found - never else "")
+    for fam in fams:
+        # Spiele zählen getrennt: Ihre ID braucht es außerhalb Europas für die Sprache (0.51)
+        parts.append(f"{fam} {count(list(extra.values()), fam)}"
+                     + (f" (Spiele {count(games, fam)})" if fam != "EU" and games else ""))
+        for e in list(extra.values()) + (games if fam != "EU" else []):
             if not (e.get("ids") or {}).get(fam) and fam in (e.get("ids_checked") or {}):
                 due = e["ids_checked"][fam] + _recheck(e, fam)
                 nxt = due if nxt is None else min(nxt, due)
-    line = f"Fehlende DLC der Sammlung: {len(extra)} DLC, {sum(1 for g in glangs.values() if 'ids_checked' in g)} Spiele; " \
+    line = f"Fehlende DLC der Sammlung: {len(extra)} DLC, {len(games)} Spiele; IDs " \
         + "; ".join(parts)
     if nxt:
         line += ". Nächste Wiederholung ohne ID: " + ("jetzt fällig" if nxt <= now else

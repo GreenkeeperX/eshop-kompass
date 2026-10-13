@@ -32,7 +32,7 @@ def _load_app(code_dir, data_dir):
     sys.path.insert(0, code_dir)
     for name in [m for m in sys.modules if m == "app" or m.startswith("app.")]:
         del sys.modules[name]
-    mods = {n: importlib.import_module(f"app.{n}") for n in ("store", "planner", "sources")}
+    mods = {n: importlib.import_module(f"app.{n}") for n in ("store", "planner", "sources", "sync")}
     sys.path.remove(code_dir)
     return mods
 
@@ -91,6 +91,14 @@ def run(code_dir, abgleich, sicherung, scenarios, now):
                 store.save_purchases(sicherung["purchases"])
         settings = store.load_settings()
         apply_scenarios(data, settings, scenarios)
+        # Kaufverlauf (ab 0.49): steht in den Abgleichsdaten als "_eshop" und in der Sicherung;
+        # save_data legt "_"-Felder nicht in data.json ab, deshalb eigene Datei
+        hist = data.get("_eshop") or (sicherung or {}).get("eshop_history")
+        if isinstance(hist, dict) and hasattr(store, "load_eshop_history"):
+            store._save("eshop_history.json", hist)
+        # Verbindungen der Pakete (ab 0.50) baut sonst erst der nächste Abgleich aus älteren Daten
+        if hasattr(m["sync"], "migrate_links"):
+            m["sync"].migrate_links(data)
         store.save_data(data)
         data, ui, bought = store.load_data(), store.load_ui(), store.load_purchases()
         radar = planner.radar(data, settings, ui["targets"], now=now)
@@ -171,6 +179,8 @@ def stats(r):
     out = {"Titel aktiv": sum(1 for it in data["items"].values() if it.get("active")),
            "Sammlung": len(data.get("owned") or []),
            "fehlende DLC": len(data.get("extra") or {}),
+           "Pakete bekannt": len(data.get("links") or {}),
+           "Käufe aus dem eShop": len((data.get("_eshop") or {}).get("entries") or []),
            "Plan-Schritte": len(r["plan"]["steps"]), "Plan-Kosten": r["plan"]["cost"],
            "Ersparnis": r["plan"]["saving"]}
     verdicts = {}

@@ -160,6 +160,9 @@ Reihenfolge und Begründung:
 - [x] Pakete, Teil 2 (0.50.1): fehlende Pässe gruppiert mit Teilen („einzeln … · als Pass …“),
   „fehlen“ ohne Doppelzählung, „stimmt nicht“ gegen falsche Verbindungen, nicht mehr
   erhältliche DLC eingeklappt statt „fehlt“, Kaufplan nimmt Teile eines gewählten Passes heraus.
+- [x] Sprachspalte kompakt (0.51): Ergebnis farbig mit Zeichen, Quelle und Sprachen im Tooltip,
+  Korrektur als ✎ und ↺ (Entscheidung 13.10.2026). Protokoll trennt bei der ID-Suche DLC und
+  Spiele; die Prüfumgebung übernimmt Kaufverlauf und baut Verbindungen aus älteren Daten.
 - [ ] Abgleich Kaufverlauf mit der ganzen DekuDeals-Sammlung (Slug-Stufe, „Bei DekuDeals
   nachtragen“, eine Zeile in „Zu erledigen“ nur für neue Spiele).
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region

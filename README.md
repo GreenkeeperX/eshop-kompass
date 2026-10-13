@@ -409,8 +409,10 @@ Sicherung und Protokoll.
   Link in den Store und "Deutsch ja"/"nein" (was dort gerade nicht kaufbar ist, steht unten);
   wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:
-  von Nintendo gelesen (der Tooltip nennt die gelesenen Sprachen auf Deutsch; "stimmt nicht" überschreibt) und von Hand gesetzt
-  ("zurücksetzen" stellt die Angabe von Nintendo wieder her). Von Hand gilt
+  gruppiert nach Quelle (von Nintendo gelesen, laut titledb, von dir bestätigt). Die Spalte
+  zeigt „✓ Deutsch“ oder „– ohne Deutsch“, der Tooltip nennt Quelle und gelesene Sprachen auf
+  Deutsch, Angaben aus titledb sind gepunktet unterstrichen. ✎ überschreibt eine gelesene
+  Angabe, ↺ stellt sie wieder her. Von Hand gilt
   dauerhaft und geht der Angabe von Nintendo vor. Steht ein Titel weder auf der
   Wishlist noch in der Sammlung, löscht der Abgleich seine Angaben wieder. Ist
   für eine Region unbekannt, ob es Deutsch gibt, bleibt das Angebot in der
@@ -517,8 +519,9 @@ freigeben solltest du das Tool deshalb nicht.
 
 `tools/replay.py` rechnet eine Momentaufnahme ohne Netz durch: Bewertung, Kaufplan,
 Sprachen prüfen und Sammlung, so wie die Oberfläche sie zeigt. Eingaben sind die Dateien
-aus "Abgleichsdaten herunterladen" und "Sicherung herunterladen". Sie enthalten deine
-Wishlist und gehören nicht ins Repository.
+aus "Abgleichsdaten herunterladen" und "Sicherung herunterladen". Die Abgleichsdaten
+enthalten auch die Verbindungen der Pakete, die DLC-Seiten und den Kaufverlauf aus dem eShop.
+Sie enthalten deine Wishlist und gehören nicht ins Repository.
 
     python3 -m tools.replay --abgleich abgleich.json --sicherung sicherung.json
     python3 -m tools.replay ... --szenario konto=PL --szenario kurs=JPY*1.1

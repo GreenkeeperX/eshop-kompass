@@ -72,6 +72,11 @@ th small.bc{display:block;font-weight:400;color:var(--muted)}
 .dlc.has{border-color:var(--accent);color:var(--accent)}
 .dlc.own{border-color:var(--warn);color:var(--warn)}
 tr.part td:first-child{padding-left:16px}
+td.lc{white-space:nowrap;text-align:left}
+.lg{cursor:help}
+.lg.tdb{text-decoration:underline dotted;text-underline-offset:3px}
+button.ico{border:0;background:none;padding:0 2px 0 8px;color:var(--muted);cursor:pointer;font-size:13px}
+button.ico:hover{color:var(--ink)}
 .dlc.need{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
 .dlc{font-size:9px;border:1px solid var(--line);border-radius:3px;padding:0 3px;margin-right:4px;color:var(--muted);vertical-align:1px}
 a.pl{color:inherit;text-decoration:none}
@@ -1658,6 +1663,22 @@ function langDe(text){
     .map(w => LANG_DE[w] || LANG_DE[w.toLowerCase()] || (tail(w) ? LANG_DE[tail(w)] : w));
   return [...new Set(out)].join(", ");
 }
+/* Spalte „Deutsch?“: Ergebnis farbig mit Zeichen, Quelle und gelesene Sprachen im Tooltip,
+   Korrektur als kleines Symbol. Die Quelle nennt die Gruppe, titledb zusätzlich gepunktet */
+function langCell(t){
+  const act = (v, sym, tip) => `<button class="ico" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${v}" title="${tip}" aria-label="${tip}">${sym}</button>`;
+  const what = t.state ? "Deutsch" : "ohne Deutsch", sym = t.state ? "✓" : "–";
+  if(t.manual){
+    const nin = t.nintendo === null ? "Nintendo liefert keine Angabe" : `${t.src === "titledb" ? "titledb" : "Nintendo"} sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`;
+    return `<span class="lg hand ${t.state ? "ok" : "bad"}" title="Von dir festgelegt. ${nin}">${sym} ${what}</span>${act("", "↺", "Zurücksetzen: wieder die gelesene Angabe nehmen")}`;
+  }
+  if(t.state !== null){
+    const src = t.src === "titledb" ? "Laut titledb (offene Titelliste, nicht von Nintendo)" : "Von Nintendo gelesen";
+    return `<span class="lg ${t.state ? "ok" : "bad"}${t.src === "titledb" ? " tdb" : ""}" title="${src}: ${esc(langDe(t.text) || "–")}">${sym} ${what}</span>` +
+      act(t.state ? 0 : 1, "✎", `Stimmt nicht? Klick setzt „${t.state ? "ohne Deutsch" : "Deutsch"}“, gilt dauerhaft und geht der gelesenen Angabe vor`);
+  }
+  return `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`;
+}
 function langSection(){
   const todo = S.state.lang_todo || [];
   // „ID fraglich“ steht oben, auch wenn schon eine Sprache gelesen ist: Sie kann zu einem anderen Titel gehören
@@ -1673,12 +1694,10 @@ function langSection(){
   const row = t => `<tr><td>${esc(t.title)}${t.dlc ? ` <small>${t.dlc} fehlende DLC</small>` : ""}${t.doubt ? ` <span class="chip w" title="Die Programm-ID dieser ID passt laut titledb nicht zur europäischen Fassung, DekuDeals nennt aber diese ID. Bitte im Store nachsehen, ob die Seite zum Titel gehört.">ID fraglich</span>` : ""}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
     <td><small>${t.here ? `dort ${t.dlc ? "ab " : ""}${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
-    <td style="white-space:nowrap">${t.manual ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline" title="${t.nintendo === null ? "Nintendo liefert keine Angabe" : `${t.src === "titledb" ? "titledb" : "Nintendo"} sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`}">von Hand</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="">zurücksetzen</button>`
-      : t.state !== null ? `<span class="${t.state ? "ok" : "bad"}">${t.state ? "Deutsch ✓" : "ohne Deutsch"}</span> <small style="display:inline;text-decoration:underline dotted" title="Gelesen: ${esc(langDe(t.text) || "–")}">${t.src === "titledb" ? "laut titledb" : "von Nintendo gelesen"}</small> <button class="link" data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="${t.state ? 0 : 1}" title="Gelesene Angabe überschreiben">stimmt nicht</button>`
-      : `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`}</td></tr>`;
+    <td class="lc">${langCell(t)}</td></tr>`;
   const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
   const L = "sprachen", srt = arr => sortRows(L, arr, {title: t => t.title, region: t => t.family_name, price: t => t.here ? t.here.eur : null});
-  const head = `<thead><tr>${sth(L, "title", "Titel")}${sth(L, "region", "Region")}${sth(L, "price", "Preis", "Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder")}<th></th><th>Deutsch?</th></tr></thead>`;
+  const head = `<thead><tr>${sth(L, "title", "Titel")}${sth(L, "region", "Region")}${sth(L, "price", "Preis", "Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder")}<th></th><th style="text-align:left">Deutsch?</th></tr></thead>`;
   h += open.length ? `${now ? `<p class="hint">Bei ${now} davon wäre die Fassung gerade günstiger, sie stehen oben.</p>` : ""}<div class="scroll"><table>${head}<tbody>${srt(open).map(row).join("")}</tbody></table></div>`
     : `<p class="hint">Alles geprüft ✓</p>`;
   if(done.length || auto.length)
