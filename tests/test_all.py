@@ -2141,6 +2141,23 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertIn("IDs fehlender DLC aus titledb: zuletzt um ", sync.status["log"][-1])
         self.assertIn("wieder im nächsten Abgleich ab ", sync.status["log"][-1])
 
+    def test_europe_without_languages_asked_monthly_after_three_tries(self):
+        # Europa nennt für DLC meist keine Sprachen: nicht jeden Tag neu fragen
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code == "DE"
+        data = {"items": {"d": {"title": "D", "active": True, "ids": {"EU": ["70050000000001"]}}}, "prices": {},
+                "langs_jp_reset": 1, "langs_bundle_reset": 1}
+        asked = []
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: asked.append(1) or {}):
+            for day in range(5):
+                sync.sync_langs(data, settings, None, lambda s: None, now=t0 + day * 86400)
+            self.assertEqual(len(asked), 3)
+            self.assertEqual(data["items"]["d"]["langs_tries"]["EU"], 3)
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 33 * 86400)
+            self.assertEqual(len(asked), 4)                         # danach monatlich
+
     def test_which_dlc_need_prices(self):
         data, settings = self.data(), {"dlc_marks": {"rl-c": "ignore"}}
         # rl-a hast du, rl-c ignoriert, rl-w steht auf der Wishlist, Abo-Inhalte zählen nicht

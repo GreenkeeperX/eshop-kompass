@@ -135,6 +135,8 @@ Reihenfolge und Begründung:
   (Entscheidung 13.10.2026).
   0.47.1: Rabatte dezent blau, Beträge über dem Bestpreis rot statt in der Urteilsfarbe;
   titledb-Wartezeit und Warteraum in Japan klarer im Protokoll, kein zweiter Versuch im selben Abgleich.
+  0.47.2: Europa-Sprachen ohne Angabe (meist DLC) wie die anderen Regionen nach drei Versuchen nur
+  noch monatlich statt bei jedem Abgleich.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

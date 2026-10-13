@@ -777,6 +777,11 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None):
                     rec.setdefault("langs_checked", {})["EU"] = now
                     if nsuid in found:
                         rec.setdefault("langs", {})["EU"] = found[nsuid]
+                    else:
+                        # Ohne Angabe (DLC nennt Europa meist keine): wie bei den anderen
+                        # Regionen nach LANG_TRIES Versuchen nur noch monatlich (0.47.2)
+                        tries = rec.setdefault("langs_tries", {})
+                        tries["EU"] = tries.get("EU", 0) + 1
             _log(f"Sprachen Europa: {len(found)} von {len(eu)} Titeln")
 
     # Japan und Amerika: eine Seite je Titel, einmal verlässlich, danach nur, wo sie fehlt.

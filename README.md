@@ -336,7 +336,8 @@ Sicherung und Protokoll.
   nintendo.com über ec.nintendo.com, Pakete dort unter bundles), höchstens 40 Seiten je Region und
   Abgleich (beide Durchgänge eines Abgleichs zusammen), ungeprüfte zuerst. Sperren und Fehler zählen nicht als Versuch, der
   Titel kommt beim nächsten Abgleich wieder dran. Liefert eine gelesene Seite
-  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich. Amerika liefert Angaben.
+  keine Sprachen, fragt es an den nächsten Tagen noch zweimal, danach monatlich; ebenso Europa, wenn
+  die Antwort für einen Titel keine nennt (meist DLC, die die Sprache ihres Spiels übernehmen). Amerika liefert Angaben.
   Japan: store-jp steht hinter einem Warteraum (Queue-it) mit Bot-Schutz, durch kommt
   nur ein Browser mit JavaScript. Das Tool erkennt den Warteraum, fragt dann je
   Abgleich nur eine Seite und hört auf. Die Sprachen kommen stattdessen aus zwei Wegen:
