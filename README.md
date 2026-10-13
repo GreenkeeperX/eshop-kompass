@@ -26,12 +26,14 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 
 ## Ansichten
 
-Vier Reiter: Jetzt, Titel, Länder, Einstellungen. Das "?" oben rechts öffnet
+Fünf Reiter: Jetzt, Titel, Sammlung, Länder, Einstellungen. Das "?" oben rechts öffnet
 die Legende mit allen Farben, Marken und Begriffen. Die Farben haben je eine
-Bedeutung: Grün nur fürs Urteil, Gold (★, Umrandung) nur für den Bestpreis,
+Bedeutung: Grün fürs Urteil und für Positives (Ersparnis, vollständig), Gold
+(★, Umrandung) nur für den Bestpreis,
 Bernstein heißt prüfen, Rot heißt nein oder teurer (Wechsel lohnt nicht, Rest
 blockiert, hier teurer als ohne den Wechsel, Betrag über dem Bestpreis). Rabatte
-stehen dezent blau daneben.
+stehen dezent blau daneben. Die verbindlichen Regeln stehen in
+`docs/oberflaeche.md`.
 
 Begriffe: Einkaufspreis ist, was du zahlst, mit Steuer, Kurs, Guthabenkarten
 und Gebühr. Bestpreis ist der niedrigste Einkaufspreis der letzten 24 Monate in
@@ -121,7 +123,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   nach Urteil und Suche oben. Ein Klick auf den Titel klappt die Einzelheiten
   auf: die Rechnung, alle Länder mit Preis, Stufe, Rabatt, Angebotsende und
   Landestief (ungeprüfte Sprache direkt bestätigen), Bestpreis, typischer
-  Angebotspreis, Zielpreis (leer heißt: das Urteil misst am Bestpreis;
+  Angebotspreis, die Ersparnis gegenüber dem nächstbesten zählenden Land (Deutschland
+  steht nur zur Information daneben), Zielpreis (leer heißt: das Urteil misst am Bestpreis;
   "Bestpreis übernehmen" setzt ihn) und die Links zu DekuDeals, eShop-Prices
   und zum eigenen Verlauf.
 - Käufe aus dem eShop (oben im Reiter Sammlung): Das Lesezeichen „Käufe lesen“ liest in
@@ -441,8 +444,9 @@ Sicherung und Protokoll.
   titledb-Liste, rund 28 MB); bleibt DekuDeals bei der alten ID, gilt die aus titledb. Ohne
   solchen Titel hat das Spiel in Japan eine eigene Programm-ID (etwa Hyrule Warriors), die
   ID bleibt. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
-  offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
-  Link in den Store und "Deutsch ja"/"nein" (was dort gerade nicht kaufbar ist, steht unten);
+  offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel; der Preis nennt
+  dann den günstigsten fehlenden DLC, „fehlende DLC dort ab“, denn das Spiel selbst ist schon
+  gekauft), mit Link in den Store und "Deutsch ja"/"nein" (was dort gerade nicht kaufbar ist, steht unten);
   wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:
   gruppiert nach Quelle (von Nintendo gelesen, laut titledb, von dir bestätigt). Die Spalte

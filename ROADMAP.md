@@ -180,6 +180,9 @@ Reihenfolge und Begründung:
   Landestief mit Abstand und Ersparnis gegenüber Deutschland; Sammlung „Ohne offene DLC“ mit
   farbigen Zahlen; fehlende DLC mit Stern, Güte und Rabatt (Tiefstpreise schonend nachgeladen);
   Sprachprüfung ohne „ab 0,00 €“ durch kostenlose DLC.
+- [x] Kleinere Rückmeldungen (0.53.4): Ersparnis im aufgeklappten Titel gegen den
+  nächstbesten zählenden Preis statt gegen Deutschland; Sprachprüfung nennt bei Spielen
+  „fehlende DLC dort ab“; Farb- und Zeichenregeln in `docs/oberflaeche.md` festgehalten.
 - [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
   Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen. Erster Schritt (0.53.2): Probe im Verbindungstest, woher Preise je Land kommen (DekuDeals

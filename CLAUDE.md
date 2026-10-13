@@ -38,6 +38,8 @@ Zweck, Bedienung und Rechenregeln stehen in `README.md`, Geplantes in `ROADMAP.m
 - `app/sync.py`: Abgleich, Zeitplan, Verbindungstest
 - `app/server.py`: Webserver und JSON-Schnittstelle
 - `app/static/index.html`: gesamte Oberfläche, reines JavaScript ohne Build
+- `docs/oberflaeche.md`: Farben, Marken und Wortwahl der Oberfläche; bei jeder Änderung daran
+  im selben Commit mitpflegen
 - `tests/test_all.py`: alle Tests, `.github/workflows/image.yml`: Tests und Image bei Push auf `main`
 
 Lokal starten: `python3 -m app.server` (Port 8787, Daten in `./data/`, ignoriert).

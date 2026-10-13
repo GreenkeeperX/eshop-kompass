@@ -973,6 +973,18 @@ function titleRow(r){
   if(open) h += `<tr class="det"><td colspan="6">${titleDetail(r)}</td></tr>`;
   return h;
 }
+// Ersparnis gegen den nächstbesten zählenden Preis, wie bei der Kaufentscheidung; Deutschland mit und ohne Guthaben gilt als ein Land
+function nextBest(x, list){
+  if(!x) return "";
+  const de = k => k === "DE" || k === "DG";
+  const own = (list.find(e => e.code === x.code) || {}).c;
+  const base = own && own.eur !== null && own.eur !== undefined ? own.eur : x.eur;
+  const nb = list.find(e => e.code !== x.code && !(de(e.code) && de(x.code)) && e.c.lang !== "unknown" && !e.c.nocard && e.c.eur !== null && e.c.eur !== undefined);
+  if(!nb) return ` · <span class="mut">kein zweites zählendes Land</span>`;
+  const d = nb.c.eur - base;
+  return d >= 0.005 ? ` · <span class="gn">${esc(x.name)} spart ${eur(d)} gegenüber ${esc(country(nb.code).name)}</span>`
+    : ` · nächstbester Preis ${eur(nb.c.eur)} in ${esc(country(nb.code).name)}`;
+}
 function titleDetail(r){
   const mr = S.state.matrix.rows.find(x => x.slug === r.slug) || {cells:{}};
   const x = shownOffer(r) || [r.easy, r.hard].filter(Boolean).sort((a, b) => a.eur - b.eur)[0];
@@ -995,7 +1007,7 @@ function titleDetail(r){
       <span>${esc(co.name)} ${tierTag((S.state.matrix.cols.find(k => k.code === code) || {}).tier)}</span>
       <span class="mut">${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${extra}</span></div>`;
   }).join("") + (na.length ? `<div class="mut nc"><span></span><span></span><span>${na.map(([code, c]) => esc(country(code).name) + (c.nolang ? " (ohne Deutsch)" : "")).join(", ")}</span><span>nicht kaufbar</span></div>` : "") + `</div>`;
-  h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}${x && x.code !== "DE" && x.code !== "DG" && r.de - x.eur >= 0.005 ? ` <span class="gn">(${esc(x.name)} spart ${eur(r.de - x.eur)})</span>` : ""}` : ""}</span>`;
+  h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}` : ""}${nextBest(x, list)}</span>`;
   const rh = rhythmLines(r.rhythm || []);
   if(rh) h += `<span>Angebote</span><span>${rh}</span>`;
   const now = Math.min(...[r.easy, r.hard].filter(Boolean).map(b => b.eur));
@@ -1798,7 +1810,7 @@ function langSection(){
   if(!todo.length) return h + `<p class="hint">Keine Titel in Regionen außerhalb Europas.</p>`;
   h += jpHelper(todo);
   const row = t => `<tr><td>${esc(t.title)}${t.dlc ? ` <small>${t.dlc} fehlende DLC</small>` : ""}${t.doubt ? ` <span class="chip w" title="Die Programm-ID dieser ID passt laut titledb nicht zur europäischen Fassung, DekuDeals nennt aber diese ID. Bitte im Store nachsehen, ob die Seite zum Titel gehört.">ID fraglich</span>` : ""}</td><td>${esc(t.family_name)} <small>${t.codes.join(", ")}</small></td>
-    <td><small>${t.here ? `dort ${t.dlc ? "ab " : ""}${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
+    <td><small>${t.here ? `${t.dlc ? "fehlende DLC dort ab" : "dort"} ${eur(t.here.eur)} (${t.here.code})` : "dort gerade nicht kaufbar"}${t.champ ? ` · sonst ${eur(t.champ.eur)} (${t.champ.code})` : ""}</small>${t.matters && t.state === null && !t.manual ? ` <span class="chip w" title="Dort wäre es gerade günstiger als in den zählenden Ländern">günstiger</span>` : ""}</td>
     <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">im Store nachsehen</a>` : ""}</td>
     <td class="lc">${langCell(t)}</td></tr>`;
   const group = (arr, label) => arr.length ? `<tr><th colspan="5" class="grp">${label} <span class="mut">${arr.length}</span></th></tr>${arr.map(row).join("")}` : "";
