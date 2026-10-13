@@ -45,8 +45,10 @@ button.link{border:0;background:none;padding:0;color:var(--accent);text-decorati
 button:disabled{opacity:.5;cursor:default}
 nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
 /* Kopf und Reiter kommen beim Scrollen mit, verschwinden nach unten weiter, kommen beim Hochscrollen zurück */
-.stick{position:sticky;top:0;z-index:4;background:var(--bg);margin-bottom:10px;transition:transform .25s ease,opacity .25s ease}
-.stick.hid{transform:translateY(-100%);opacity:0;pointer-events:none}
+.stick{position:sticky;top:0;z-index:4;background:var(--bg);margin-bottom:10px;will-change:transform;
+  transition:transform .35s cubic-bezier(.22,.61,.36,1),opacity .35s cubic-bezier(.22,.61,.36,1)}
+.stick.hid{transform:translate3d(0,-100%,0);opacity:0;pointer-events:none}
+@media (prefers-reduced-motion: reduce){.stick{transition:none}}
 nav button{white-space:nowrap}
 a.btn{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--ink);text-decoration:none}
 a.btn:hover{border-color:var(--accent)}
@@ -371,6 +373,8 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 .dg>span:nth-child(odd){color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
 .al-list{display:grid;gap:2px}
 .cstat{display:flex;flex-wrap:wrap;gap:2px 18px;font-size:14px;margin:0 0 4px}
+.cstatb{padding:10px 14px}
+.cstatb details.fold{margin-top:2px}
 .cstat .mut{font-size:13px}
 .al-list>div{display:grid;grid-template-columns:76px 230px minmax(120px,1fr) auto;gap:8px;align-items:baseline}
 .al-list>div>b{text-align:right}
@@ -936,9 +940,10 @@ function dlcPrice(d){
 function collGame(g){
   const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 da · 7 ignoriert“. Alles da:
-  // „alle 5 da“ grün; nichts mehr offen: die Zahl vorhandener grün, ignorierte rot, Wörter grau (0.55.1)
-  const sum = [g.have === g.dlc.length ? `<span class="gn">alle ${g.have} da</span>` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> da` : `${g.have} da`) : "",
+  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 vorhanden · 7 ignoriert“.
+  // Alles da: „5 von 5 vorhanden“ grün; nichts mehr offen: die Zahl vorhandener grün, ignorierte rot,
+  // Wörter grau (0.55.1, Wortlaut 0.56.1)
+  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length} vorhanden</span>` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> vorhanden` : `${g.have} vorhanden`) : "",
     g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
     g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
   const sumTip = `${g.dlc.length} DLC insgesamt`;
@@ -970,10 +975,10 @@ function viewCollection(){
   // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)
   const nDone = c.games.filter(g => !g.missing).length;
   const priced = c.missing_eur !== null && c.missing_eur !== undefined;
-  h += `<div class="cstat"><span><b>${c.owned}</b> Spiele in der Sammlung</span><span><b>${c.games.length}</b> mit DLC <span class="mut">(${c.games.length - nDone} mit offenen, ${nDone} ohne)</span></span><span><b>${(c.plain || []).length}</b> ohne DLC</span></div>
+  h += `<div class="box cstatb"><div class="cstat"><span><b>${c.owned}</b> Spiele in der Sammlung</span><span><b>${c.games.length}</b> mit DLC <span class="mut">(${c.games.length - nDone} mit offenen, ${nDone} ohne)</span></span><span><b>${(c.plain || []).length}</b> ohne DLC</span></div>
     ${missing ? `<div class="cstat"><span><b>${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b>${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}
     <details class="fold" data-k="collhow" ${S.folds.collhow ? "open" : ""}><summary class="hint">So funktioniert die Sammlung</summary><p class="hint" style="margin:2px 0 8px">Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
-    „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details>`;
+    „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details></div>`;
   h += games.map(collGame).join("");
   // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
   const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
@@ -1494,23 +1499,29 @@ function viewJetzt(){
 }
 /* Online-Mitgliedschaft, 12 Monate, einzeln (0.56): Einkaufspreis je aktivem Land mit deinem
    Zahlweg, klein und zugeklappt, solange die Verlängerung nicht ansteht. */
+const NSO_SLUG = "nintendo-switch-online-12-month-membership";
 function nsoBox(){
   const m = S.state.nso;
   if(!m) return "";
   const rows = m.rows || [], best = rows.find(r => r.counts);
   const planned = new Set(((S.kauf || {}).steps || []).map(p => p.code));
   const until = m.until ? `läuft bis ${esc(dmy(m.until))}${m.days_left !== null && m.days_left >= 0 ? ` (noch ${m.days_left} ${m.days_left === 1 ? "Tag" : "Tage"})` : m.days_left < 0 ? " (abgelaufen)" : ""}` : "Ablaufdatum offen";
-  const head = best ? `am günstigsten ${esc(best.name)} ${best.est ? "ca. " : ""}<b>${eur(best.eur)}</b> (${eur(best.month)} je Monat)`
+  const head = best ? `am günstigsten ${esc(best.name)} ${best.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}${best.est ? "ca. " : ""}<b class="${best.grade === "buy" ? "g-buy" : best.grade === "good" ? "g-good" : ""}">${eur(best.eur)}</b> (${eur(best.month)} je Monat)${m.champ && !best.at_best ? ` · Bestpreis ${eur(m.champ)}` : ""}`
     : m.ids_known ? "Preise kommen mit dem nächsten Abgleich" : "die eShop-IDs sucht der nächste Abgleich";
   let h = `<details class="box" id="nsobox" data-k="nso" ${S.folds.nso || m.due ? "open" : ""}><summary><b>Online-Mitgliedschaft</b> <span class="mut">12 Monate, einzeln · ${head} · ${until}</span></summary>
     <p class="hint">Läuft bis <input type="date" data-act="nsountil" value="${esc(m.until)}"> · 30 Tage vorher erscheint die Verlängerung unter „Zu erledigen“. Bezahlt wie bei Spielen: Kreditkarte oder deine Guthabenkarten. Kaufen kannst du nur im Land, in dem dein Konto gerade steht.</p>`;
   if(rows.length){
-    const low = best ? best.eur : null;
+    // Farben wie bei Titeln: ★ gold am Bestpreis, grün fürs Urteil, rot der Betrag darüber; Preis führt in den eShop (0.56.1)
     h += `<table class="mini-t"><tr><th class="l">Land</th><th>Einkaufspreis</th><th>je Monat</th><th>im Shop</th><th class="l"></th></tr>` + rows.map(r => {
+      const cls = r.grade === "buy" ? "g-buy" : r.grade === "good" ? "g-good" : "";
+      const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}` : "kein Tiefstpreis bekannt"}${m.champ ? ` · Bestpreis aller Länder ${eur(m.champ)}` : ""}`;
+      let price = `<span class="${cls}" title="${esc(tip)}">${r.est ? "ca. " : ""}${eur(r.eur)}</span>`;
+      if(r.url) price = `<a class="pl" href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(tip)} · Klick öffnet den eShop ${esc(r.name)}">${price}</a>`;
       const chips = [r.current ? `<span class="chip">Konto</span>` : "", planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land">im Plan</span>` : "",
         r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
-        !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : low !== null && r !== best ? `<span class="mut">+${eur(r.eur - low)}</span>` : ""].filter(Boolean).join(" ");
-      return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tierTag(r.tier)}</td><td>${r.est ? `<span class="approx">≈</span>` : ""}${eur(r.eur)}</td><td class="mut">${eur(r.month)}</td><td class="mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
+        !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis aller Länder">+${eur(r.over)}</span>` : "",
+        `<a class="tl" href="${esc(deku(NSO_SLUG, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>`].filter(Boolean).join(" ");
+      return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tierTag(r.tier)}</td><td>${r.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}${price}</td><td class="mut">${eur(r.month)}</td><td class="mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
     }).join("") + `</table>`;
   }
   return h + `</details>`;
@@ -2321,8 +2332,8 @@ document.addEventListener("toggle", e => {
   if(e.target.open) S.folds[k] = 1; else delete S.folds[k];
   saveView();
 }, true);
-/* Kopfleiste beim Scrollen: nach unten erst 120 px mitkommen, dann ausblenden; ein Stück nach oben
-   zeigt sie wieder. --stick sagt Tabellenköpfen und Sprungleiste, wie viel Platz sie gerade belegt. */
+/* Kopfleiste beim Scrollen: nach unten erst 300 px mitkommen, dann ausblenden; 40 px nach oben
+   zeigen sie wieder. Kleine Gegenbewegungen (Touchpad) unter 8 px zählen nicht als Richtungswechsel. --stick sagt Tabellenköpfen und Sprungleiste, wie viel Platz sie gerade belegt. */
 (function(){
   let lastY = scrollY, turn = scrollY, dir = 0, hidden = false;
   const set = hid => {
@@ -2331,11 +2342,12 @@ document.addEventListener("toggle", e => {
     document.documentElement.style.setProperty("--stick", hid ? "0px" : el.offsetHeight + "px");
   };
   addEventListener("scroll", () => {
-    const y = scrollY, d = Math.sign(y - lastY);
-    if(!d) return;
+    const y = scrollY;
+    if(Math.abs(y - lastY) < 8 && y > 60) return;
+    const d = Math.sign(y - lastY);
     if(d !== dir){ dir = d; turn = lastY; }          // Richtung gewechselt: ab hier messen
-    if(dir > 0 && !hidden && y > 120 && y - turn > 120 && $("thmMenu").hidden) set(true);
-    else if(dir < 0 && hidden && (turn - y > 30 || y < 60)) set(false);
+    if(dir > 0 && !hidden && y > 300 && y - turn > 300 && $("thmMenu").hidden) requestAnimationFrame(() => set(true));
+    else if(dir < 0 && hidden && (turn - y > 40 || y < 60)) requestAnimationFrame(() => set(false));
     lastY = y;
   }, {passive: true});
   addEventListener("resize", () => set(hidden));

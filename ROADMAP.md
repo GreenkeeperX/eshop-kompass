@@ -1,276 +1,57 @@
 # Roadmap
 
 Woran am eShop-Kompass als Nächstes gearbeitet wird. Jeder Schritt wird eine kleine
-Version mit Tests, Prüfung der Oberfläche, Versionsnummer, README und Commit. Erledigte
-Schritte bekommen ein Häkchen und die Version.
+Version mit Tests, Prüfung der Oberfläche, Versionsnummer, README und Commit. Erledigtes
+fällt hier heraus (Entscheidung 13.10.2026); was das Tool kann, steht in der
+[README](README.md), wann es dazukam, in der Git-Geschichte.
 
 Diese Datei liegt in einem öffentlichen Repository. Sie enthält deshalb keine Namen,
 Wishlist-Links oder -Kennungen, Hostnamen, Adressen und keine Angaben aus dem eigenen
 Konto (siehe [CLAUDE.md](CLAUDE.md)).
 
-## Phase 1 und 2: Aufräumen und Kaufprotokoll (0.20)
+## Offen
 
-- [x] **Rückkehr nach Deutschland wie jedes leichte Land.** Steht das Konto in einem
-  anderen Land, muss der Weg nach Deutschland dieselbe Schwelle schaffen wie jedes
-  leichte Land, gemessen gegen die Alternative. Wechsel für ein paar Cent fallen weg. Ist
-  kein Kontoland eingetragen, gilt Deutschland als Konto und braucht keine Schwelle. Die
-  Anzeige „unter dem Normalpreis“ entfällt.
-- [x] **gg.deals ausbauen.** Seit 0.9 sperrt Cloudflare jeden Abruf (HTTP 403), und eine
-  Lösung ohne Tarnung gibt es nicht. Es kamen nie Daten. Kartenpreise kommen weiter
-  über Shop-Links (Eneba) oder von Hand.
-- [x] **„Deutschland mit Guthaben“ bleibt** und heißt künftig „Deutschland (Guthaben)“.
-  Deutschland zum Shop-Preis bleibt die Vergleichsbasis. Das Guthaben-Land zeigt, ob
-  deutsche Karten unter Nennwert sogar andere Länder schlagen.
-- [x] **Kartenpreise reihum lesen.** Der Shop sperrt nach etwa elf Abrufen. Bisher kamen
-  immer dieselben Links dran, künftig zuerst die am längsten nicht gelesenen.
-- [x] **Kleinigkeiten:** Der Tooltip „Rest blockiert“ folgt der Regel seit 0.12, der Rest
-  wird nur noch in einem Euro-Wert gezeigt, und „Nicht im Plan“ nennt jeden Titel nur
-  einmal.
-- [x] **Ersparnis im Kaufprotokoll ohne Rest.** Ein Rest bleibt als Guthaben und ist kein
-  Verlust. Die Ersparnis rechnet deshalb wie der Kaufplan mit dem, was die Spiele kosten.
-
-Gestrichen: Ein Feld für den tatsächlich bezahlten Betrag. Das Kaufprotokoll ist nur
-Merkhilfe.
-
-## Phase 3: Neue Funktionen
-
-Reihenfolge und Begründung:
-
-1. **Sammlung mit Zusatzinhalten** kommt zuerst. Sie beantwortet die wichtigste offene
-   Frage: Welche DLC gibt es zu Spielen, die ich habe, und welche habe ich schon? Sie
-   nutzt die Sammlung, die das Tool schon liest, und legt die Daten an, auf denen die
-   beiden anderen Schritte aufbauen. Das sind die Abschnitte „DLC“, „Included In“ und
-   „Contains“ der DekuDeals-Artikelseiten.
-2. **Switch-2-Upgrade-Pfade** folgen, weil die Upgrade-Pakete in DekuDeals als DLC des
-   Switch-1-Spiels geführt werden. Sie stecken also schon in den Daten aus Schritt 1.
-   Neu ist der Vergleich: Für ein Switch-1-Spiel in der Sammlung reicht das
-   Upgrade-Paket, statt die Switch-2-Edition zu kaufen.
-3. **Komplett-Editionen gegen Einzelkauf** kommen zuletzt. Sie brauchen am meisten
-   unsichere Daten: Was ein Paket enthält, nennt DekuDeals nur lückenhaft („Contains“
-   zeigt oft nur das Hauptspiel). Verglichen wird deshalb nur, wo Paket und Teile
-   bekannt sind und Preise haben, also auf der Wishlist stehen. Teile, die schon in der
-   Sammlung sind, zählen nicht mit.
-
-- [x] 3.1 Sammlung mit Zusatzinhalten (0.21): Artikelseiten der Sammlung schonend lesen
-  (höchstens 40 je Abgleich, monatlich auffrischen), Filter „Sammlung“ im Reiter Titel
-  mit „hast du / fehlt“ je DLC. Steht ein DLC auf der Wishlist, zeigt die Ansicht sein
-  Urteil und seinen Preis.
-- [x] 3.2 Switch-2-Upgrade-Pfade (0.22): Upgrade-Pakete als eigene Marke. Ein Hinweis erscheint,
-  wenn eine Switch-2-Edition auf der Wishlist steht und das Switch-1-Spiel in der
-  Sammlung ist. Mit Preisvergleich, wenn das Upgrade-Paket auf der Wishlist steht.
-- [x] 3.3 Komplett-Editionen (0.23): Hinweis „auch enthalten in …“ am Titel und Vergleich von
-  Paketpreis und Summe der fehlenden Teile, soweit beides bekannt ist.
-- [x] 3.4 Ein Weg zur Switch 2 im Kaufplan (0.24): Hast du das Spiel, fällt die Edition
-  weg und das Upgrade-Paket zählt. Ohne das Spiel bleibt der günstigere Weg, Edition oder
-  Spiel plus Paket, nie beides.
-- [x] Kartenpreise (0.25): zuerst die Karten der Länder im Kaufplan, mit den übrigen
-  Abrufen die am längsten nicht gelesenen.
-
-## Phase 4: Echte Daten, Rest nutzen, Sammlung vertiefen
-
-- [x] 4.0 Sicherung mit eigener Preisaufzeichnung (0.26): Sie ist das Einzige, was das Tool
-  nicht neu laden kann. Beim Einlesen wird sie ergänzt, nicht ersetzt. Weiter ein Knopf.
-- [x] Kleinigkeiten aus dem Betrieb (0.27): €-Zeichen an jedem Eurobetrag, Grund bei
-  „kein Urteil“ (nicht erschienen, nur im Abo, kostenlos), Sprachliste klarer gezählt und
-  mit der gelesenen Angabe, Abo-Inhalte von Nintendo Switch Online zählen nicht als fehlende DLC.
-- [x] Reiter „Sammlung“ (0.28): alle Spiele der Sammlung, oben die mit fehlenden DLC,
-  darunter die ohne Zusatzinhalte und die noch nicht gelesenen. Vorher ein Filter im
-  Reiter Titel, der schwer zu finden war.
-  Dazu: Die Sprachliste trennt geprüfte und ungeprüfte Titel sichtbar in Gruppen.
-- [x] Abgleich nach dem Start (0.29): fünf Minuten nach jedem Start, etwa nach einem
-  Update, außer der letzte liegt keine 30 Minuten zurück. Das Intervall bleibt.
-- [x] 4.1 Prüfung mit echten Daten (mit 0.26): Abgleich ohne Sperren, DLC-Abschnitte im
-  echten HTML wie gebaut, Japan-Store weiter nur JavaScript. Korrekturen in 0.27.
-- [x] 4.2 Füllartikel im Kaufplan, Stufe 1 (0.30): Unter jedem Schritt mit Rest stehen bis zu
-  drei Wishlist-Titel, deren Preis unter dem Rest und möglichst nahe daran liegt, auch ohne
-  Urteil „kaufen“. Ohne Titel aus der Sammlung, gekaufte und DLC ohne Hauptspiel. Erst ein
-  Klick nimmt den Titel in den Schritt, „Füller ×“ nimmt ihn wieder heraus.
-- [x] 4.3 Angebotsrhythmus (0.31): In den Einzelheiten eines Titels je Land die Zahl der Angebote in
-  24 Monaten, der übliche Abstand, das letzte Angebot und die Monate, in die sie meist
-  fielen. Aus den vorhandenen DekuDeals-Verläufen, ohne neue Abrufe. Ein Hinweis auf das
-  nächste übliche Angebot nur bei gleichmäßigen Abständen, als Schätzung gekennzeichnet.
-  Das Ende eines Angebots kennt das Tool erst, wenn es die Seite neu liest.
-- [x] Titel als Link zur Startseite (0.31): Ein Klick lädt die Seite neu.
-- [x] 4.4 DLC abhaken (0.32): In der Sammlung „habe ich“ je DLC für Inhalte, die die
-  DekuDeals-Sammlung nicht kennt (etwa aus einem Paket), dazu „ignorieren“ je DLC und
-  „alle DLC ignorieren“ je Spiel für Inhalte, die nicht interessieren (etwa kosmetische
-  Pakete). Ignorierte zählen nicht als fehlend und stehen eingeklappt. Eine Angabe der
-  Sammlung geht vor. Alles wird mitgesichert.
-- [x] 4.5 DLC-Preise (0.33): Für fehlende DLC der Sammlung (ohne abgehakte, ignorierte und
-  Wishlist-DLC) die Nintendo-IDs schonend über die Artikelseiten lesen, höchstens 40 Seiten
-  je Abgleich. Die Preise kommen mit derselben Preisabfrage. Daraus die Summe der fehlenden
-  DLC je Spiel und insgesamt in der Sammlung und Füllartikel Stufe 2: fehlende DLC deiner
-  Spiele als Vorschlag für den Rest. Übernehmen lassen sie sich erst von der Wishlist.
-- [x] 4.6 Sprache in Japan (0.39): store-jp steht hinter einem Warteraum (Queue-it) mit
-  Bot-Schutz, die volle Seite bekommt nur ein Browser. Verworfen: die Suche von nintendo.jp
-  (robots.txt), nintendo.co.jp (Titelliste kennt nur einen kleinen Teil), DekuDeals (nicht je
-  Region), eine Schätzung aus Amerika oder Europa, den Warteraum zu umgehen. Umgesetzt: titledb
-  als automatischer Grundstock (gekennzeichnet) und ein Browser-Helfer als Lesezeichen, der die
-  Seiten in deinem Browser liest; Nintendo geht titledb vor (Entscheidung 13.10.2026).
-  Fehlende DLC deiner Spiele (0.40): Sprache und Store-Link über die Seite des Spiels selbst.
-  Falsche IDs (0.41): keine Seite oder wiederholt keine Sprache -> ID einmal neu suchen.
-  Abgleich der Japan-IDs mit titledb (0.42): Programm-ID Japan gegen Europa. Ab 0.43 gilt bei
-  Abweichung der titledb-Kandidat, ohne Kandidaten „ID fraglich“ (Entscheidung 13.10.2026).
-  Ab 0.44.5 ohne Kandidaten keine Neusuche und kein „ID fraglich“ mehr: Manche Spiele haben in
-  Japan eine eigene Programm-ID (Entscheidung 13.10.2026).
-  Ab 0.44 lädt titledb für neu gefundene IDs schon am nächsten Tag und nach der ID-Suche;
-  offene Einträge, die dort gerade nicht kaufbar sind, stehen zugeklappt. Ab 0.44.1 lädt titledb
-  neue IDs gleich im nächsten Abgleich. Ab 0.44.2 steht nicht Kaufbares wieder in der Liste, unten.
-  0.44.3: Pakete in Amerika über die richtige Shopseite (bundles), Sprache und Link.
-  0.44.4: Stand der ID-Suche fehlender DLC je Region im Protokoll.
-  0.44.6: Abgleichsdaten mit Protokoll herunterladen, zum Nachprüfen.
-
-- [x] Prüfumgebung (0.45): `tools/replay.py` rechnet Momentaufnahmen ohne Netz durch, prüft
-  feste Regeln, spielt Szenarien und vergleicht zwei Versionen auf denselben Daten.
-  0.45.1: gelesene Sprachen im Tooltip auf Deutsch, auch die japanischen (0.45.2: auch mit Zusätzen
-  wie ブラジルポルトガル語). 0.45.3: aufgeklappte Listen unter Sprachen prüfen bleiben beim Sortieren offen.
-  0.45.4: Felder unter Regeln eingeklappt („Grenzen anpassen“), der Satz nennt auch die Sprachregel.
-- [x] DLC-IDs über titledb (0.46): Japan- und Amerika-IDs fehlender DLC über die Programm-ID der
-  Europa-ID, DekuDeals nur für den Rest; schont DekuDeals und baut den Rückstand schneller ab
-  (Entscheidung 13.10.2026).
-  0.46.1: Preisabruf nach kurzem Netzfehler einmal neu; als Nintendo-ID gilt nur noch eine Zahl
-  mit 700 am Anfang, falsch gelesene IDs entfernt der Abgleich und sucht die Region neu.
-  0.47: DLC, die weder titledb noch DekuDeals in Japan oder Amerika kennen, sieht titledb
-  wöchentlich wieder nach, DekuDeals erst nach drei Monaten statt nach zwei Wochen
-  (Entscheidung 13.10.2026).
-  0.47.1: Rabatte dezent blau, Beträge über dem Bestpreis rot statt in der Urteilsfarbe;
-  titledb-Wartezeit und Warteraum in Japan klarer im Protokoll, kein zweiter Versuch im selben Abgleich.
-  0.47.2: Europa-Sprachen ohne Angabe (meist DLC) wie die anderen Regionen nach drei Versuchen nur
-  noch monatlich statt bei jedem Abgleich.
-- [x] Review mit echten Daten (0.48): DLC, die DekuDeals zweimal nicht kennt, nur noch alle drei
-  Monate suchen; Titelliste zeigt den Preis im Land des Kaufplans; Länderkarten von Ländern im Plan
-  zeigen den Korb des Plans; "am Bestpreis" bis 2 % wie im Urteil; "morgen" beim nächsten Abgleich;
-  kostenlose DLC als "kostenlos" (Entscheidung 13.10.2026). Offen: Pakete mit "Teil schon da"
-  (Bestpreis wirkt wie der Restpreis für Besitzer), wartet auf eine Rückmeldung.
-  0.48.1: Der Stand der ID-Suche steht im Protokoll erst nach titledb, mit dessen IDs.
-  0.48.2: Der Hinweis "DLC braucht Region" nennt die Zahl, die betroffenen DLC sind in der
-  Tabelle gleich markiert.
-- [x] Käufe aus dem eShop (0.49): Lesezeichen „Käufe lesen“ liest den Kaufverlauf bei Nintendo im
-  eigenen Browser, das Tool gleicht ihn mit Wishlist und fehlenden DLC ab (genau passend zählt,
-  ähnlich nach Bestätigung, erstattet nie). Gekauftes fällt aus dem Kaufplan, auch ohne Eintrag bei
-  DekuDeals (Entscheidung 13.10.2026). Offen: Kaufverlauf reicht nur zwei Jahre zurück.
-  0.49.1: Das Lesezeichen liest nur bis zum Stand des letzten lückenlosen Laufs; 0.49.2: dazu
-  zur Sicherheit eine ganze Seite bereits bekannter Käufe. 0.49.3: Vorgangsnummer ohne Land als
-  Schlüssel, nach einem Länderwechsel kommt nichts doppelt.
-  Als Nächstes (Konzept liegt vor): Abgleich mit der ganzen DekuDeals-Sammlung, Hinweis auf
-  gekaufte Spiele, die dort fehlen.
-- [x] Pakete und Verbindungen, Teil 1 (0.50): Verbindungsnetz aus „Contains“ und „Included In“,
-  Besitz über Pakete abgeleitet (mehrstufig, nur abwärts), Verbindung fällt erst nach zweimaligem
-  Fehlen weg, Spiele aus Editionen in der Sammlung (Entscheidung 13.10.2026).
-- [x] Pakete, Teil 2 (0.50.1): fehlende Pässe gruppiert mit Teilen („einzeln … · als Pass …“),
-  „fehlen“ ohne Doppelzählung, „stimmt nicht“ gegen falsche Verbindungen, nicht mehr
-  erhältliche DLC eingeklappt statt „fehlt“, Kaufplan nimmt Teile eines gewählten Passes heraus.
-- [x] Sprachspalte kompakt (0.51): Ergebnis farbig mit Zeichen, Quelle und Sprachen im Tooltip,
-  Korrektur als ✎ und ↺ (Entscheidung 13.10.2026). Protokoll trennt bei der ID-Suche DLC und
-  Spiele; die Prüfumgebung übernimmt Kaufverlauf und baut Verbindungen aus älteren Daten.
-- [x] Hinweise unter „Zu erledigen“ (0.52, Entscheidung 13.10.2026): kostenlose fehlende DLC,
-  Pass statt Teile von der Wishlist, Erinnerung an „Käufe lesen“.
-- [x] Guthabenpreise in fester Reihenfolge (0.52.1): keine Spalte „Aufschlag“ je Land mehr,
-  Werte ohne Link rechnen zum Kurs, gelesener Preis gilt nach gescheitertem Abruf 14 Tage
-  weiter, Schätzwert zugeklappt und ohne Einfluss auf Entscheidungen.
-- [x] Faktor für Guthabenkarten (0.53, Entscheidung 13.10.2026): Preis ÷ Wert zum Mittelkurs,
-  bewertet gegen die Kreditkarte, den eigenen 90-Tage-Bestwert der Karte oder feste Stufen für
-  Euro-Guthaben; Kartentabelle je Land, Spalte „Dein Faktor“, Faktor im Plan und im Tooltip.
-  Dazu: Europa-Sprachen fehlender DLC über die Seite ihres Spiels, „kaufen“ in der Titeltabelle
-  dunkler, damit Stern und DE✓ lesbar bleiben.
-- [x] Sammlung übersichtlicher (0.53.1): vollständige Spiele und „Ohne Zusatzinhalte“
-  eingeklappt, A–Z spaltenweise, die Suche klappt Treffer auf.
-- [x] Rückmeldungen zu 0.53 (0.53.3): Verbindungstest brach bei Spielen mit DLC ab (behoben);
-  Rabatt in der Tabelle bleibt blau, DLC-Zeichen einheitlich grau; im aufgeklappten Titel
-  Landestief mit Abstand und Ersparnis gegenüber Deutschland; Sammlung „Ohne offene DLC“ mit
-  farbigen Zahlen; fehlende DLC mit Stern, Güte und Rabatt (Tiefstpreise schonend nachgeladen);
-  Sprachprüfung ohne „ab 0,00 €“ durch kostenlose DLC.
-- [x] Kleinere Rückmeldungen (0.53.4): Ersparnis im aufgeklappten Titel gegen den
-  nächstbesten zählenden Preis statt gegen Deutschland; Sprachprüfung nennt bei Spielen
-  „fehlende DLC dort ab“; Farb- und Zeichenregeln in `docs/oberflaeche.md` festgehalten.
-- [x] Rückmeldungen zu 0.53.4 (0.53.5): „eShop“ im Namen in Nintendo-Rot; Länderliste im Titel
-  misst am Bestpreis, Landestief nur grau; Faktor der Guthabenkarten in der Farbe der Bewertung,
-  Servicegebühr am Preis, Spalte und Text runden gleich; Verbindungstest zeigt bei der
-  Mitgliedschaft Verlauf und Preisausschnitt und sucht bei Nintendo auch im Titelfeld.
-- [x] Rückmeldungen zu 0.53.5 (0.53.6): Abstand zum Bestpreis rot, Sammlungszahlen einzeln
-  gefärbt, Länderkacheln mit gleichem Hintergrund, „Bewertung ab …“ statt „noch kein Vergleich“,
-  Kopierknöpfe für Protokoll und Verbindungstest, Version im Protokoll; Verbindungstest fragt die
-  Preise der Mitgliedschaft mit den eShop-IDs aus DekuDeals ab.
-- [x] Abrufe, Schritt 1 (0.54.0): `docs/abrufe.md` als gepflegte Übersicht aller Abrufe;
-  jeder Schritt schreibt eine Zeile, auch ohne Arbeit; Kartenpreise nennen fehlgeschlagene
-  Karten; Tiefstpreis-Zeile zählt nur die Wishlist; Wechselkurse nur bei neuem Stand der
-  Quelle; Sperre bei der ID-Suche beendet nur diesen Schritt; store-jp nach Warteraum eine
-  Woche, titledb nach Fehlschlag einen Tag Ruhe.
-- [x] Abrufe, Schritt 2 (0.54.1): jede DekuDeals-Seite je Abgleich nur einmal, Obergrenzen für
-  ID-Suche (120) und Tiefstpreise der Wishlist (60), Verbindungstest für titledb und Ersatzkurse.
-- [x] Abrufe, Schritt 3 (0.54.1): Daten von Titeln, die 180 Tage weder auf Wishlist noch in der
-  Sammlung stehen, entfernen (eigene Preisaufzeichnung bleibt).
-- [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
-  Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
-  Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen. Erster Schritt (0.53.2): Probe im Verbindungstest, woher Preise je Land kommen (DekuDeals
-  führt die Mitgliedschaft mit eShop-Preis je Land, Nintendo Europa vielleicht mit ID).
-  0.53.6: Die Preis-Schnittstelle kennt die eShop-IDs aus der DekuDeals-Preistabelle (geprüft
-  für DE und BR). 0.56: 12 Monate einzeln im Reiter Jetzt, Einkaufspreis je aktivem Land mit
-  deinem Zahlweg, Ablaufdatum und Erinnerung 30 Tage vorher; IDs monatlich von DekuDeals.
-  Offen: weitere Varianten (der Verbindungstest nennt ihre Adressen), Händler-Links, Füllartikel,
-  Bewertung gegen den eigenen Bestwert.
-- [ ] Viele Kleinteile eines Spiels zusammenfassen (etwa Kostüme), erst nach Erfahrung mit den
-  gruppierten Pässen.
-- [ ] Abgleich Kaufverlauf mit der ganzen DekuDeals-Sammlung (Slug-Stufe, „Bei DekuDeals
-  nachtragen“, eine Zeile in „Zu erledigen“ nur für neue Spiele).
-- [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
-  geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
-  Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle
-  offenen Titel, nicht nur die gerade günstigeren; die Gruppe „ungeprüft, aber egal“ entfällt.
-  Angaben zu Titeln, die weder auf der Wishlist noch in der Sammlung stehen, räumt der
-  Abgleich ab. Schonend (0.35.1): höchstens 40 Seiten je Region und Abgleich, Sperren zählen
-  nicht als Versuch, Seiten ohne Sprachen werden noch zweimal am Folgetag gefragt.
-
-Zurückgestellt: Füllartikel Stufe 3 (gute Spiele abseits der Wishlist). Es braucht dafür
-eine Quelle für „gut“, und ein Vorschlag für ein Spiel, das niemand wollte, hilft wenig.
-
-Gestrichen: Benachrichtigung, Wishlist aufräumen (geschieht in DekuDeals), Budget,
-Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
-
-## Phase 5: Rückmeldungen nach dem ersten echten Abgleich
-
-- [x] 5.1 Nach Review 0.35 und echtem Abgleich (0.36): Titel aus der Sammlung fallen aus dem
-  Kaufplan. Ein Rest blockiert ab Werk nirgends mehr den Wechsel (Entscheidung 12.10.2026:
-  Wechsel mit Guthaben geht über den Support), die Einstellung bleibt je Land. Japan-Titel
-  mit drei leeren Seiten werden einmal neu gefragt; höchstens 40 Sprachseiten je Region im
-  ganzen Abgleich. Verlauf zählt Angebote laut DekuDeals (24 Monate). eShop-Prices-Suche ohne
-  Sonderzeichen. Planschritte und Raster laufen nicht mehr über den Rand, die gelesenen
-  Sprachen stehen im Tooltip. Raster: Kontoland vorn, „alle zurücksetzen“.
-- [x] 5.2 Sortieren (0.37): Klick auf einen Spaltenkopf sortiert aufsteigend, der zweite
-  absteigend, der dritte stellt die gewohnte Reihenfolge wieder her; leere Werte stehen am
-  Ende. Gilt für Titel-Liste, Titel-Tabelle (auch je Land), Warenkörbe in Kaufplan und Ländern,
-  Verlauf, Länder-Einstellungen und Sprachliste; die Sammlung bekommt eine Auswahl. Die
-  Länderspalten der Titel-Tabelle stehen ab Werk nach Stufe und darin nach Zahl der
-  Bestpreise, wahlweise nur nach Bestpreisen oder nur nach Stufe; Deutschland bleibt vorn.
-  Die Wahl merkt sich der Browser.
-- [x] 5.3 Reste aus Review 0.35 (0.38): Ohne Kontoland kommt Deutschland im Kaufplan zuerst,
-  wie mit Konto in Deutschland. Bezahlung aus vorhandenem Guthaben steht unter der Kopfzahl,
-  ein Rest daraus ohne „(0,00 €)“. „Passt dazu“ nur, wo ein Rest bleibt. „Zu erledigen“ nennt
-  nur offene Sprachen, die gerade Geld kosten. Kein DLC-Regionshinweis in Europa.
-  Verbindungstest: robots.txt je Kennung gelesen, Preisverlauf wieder aus der Artikelseite.
-
-## Phase 6: Bedienung
-
-- [x] 6.1 Hell, dunkel, System (0.55): runder Knopf oben rechts, zeigt nur die aktuelle Wahl,
-  ein Klick öffnet die drei Stufen, Vorgabe „System“ (Entscheidung 13.10.2026).
-- [x] 6.2 Lesezeichen leichter anlegen (0.55): Knopf zum Ziehen und „Code kopieren“ (Webseiten
-  dürfen selbst keine Lesezeichen anlegen), Textfelder eingeklappt, veraltete Lesezeichen melden
-  sich, „JP-Sprachen lesen“ gibt sein Ergebnis direkt ans Tool. 0.55.1: IDs auch über den
-  Adressteil und die Zwischenablage.
-- [x] Rückmeldungen zu 0.55 (0.55.1): Knöpfe oben getauscht, Kopfleiste blendet sich beim
-  Scrollen aus und beim Hochscrollen ein, Sammlung mit kurzem Zahlenkopf, „10 da · 7 ignoriert“
-  statt „10 von 17“, ★ in der Länderliste direkt vor den Angaben.
-
-Gestrichen (Entscheidung 13.10.2026): Sprache der Oberfläche, Heimatland, neuer Name,
-öffentliches Angebot mit Werbung. Das Tool bleibt ein privates Werkzeug auf dem eigenen Server.
+- [ ] **Online-Mitgliedschaft ausbauen.** Da ist bisher: 12 Monate einzeln je aktivem Land mit
+  Einkaufspreis, Bestpreis, Links und Erinnerung vor Ablauf. Fehlt noch:
+  - die weiteren Varianten (kürzer, Familie, Erweiterungspaket),
+  - Japan, wo die eShop-ID noch fehlt,
+  - Händler-Links,
+  - die Mitgliedschaft als Füllartikel und wählbar im Warenkorb.
+- [ ] **Kleinteile zusammenfassen.** Viele Kleinteile eines Spiels (etwa Kostüme) zusammenfassen,
+  aber erst nach Erfahrung mit den gruppierten Pässen.
+- [ ] **Kaufverlauf und Sammlung abgleichen.** Den Kaufverlauf mit der ganzen DekuDeals-Sammlung
+  abgleichen:
+  - Slug-Stufe,
+  - „Bei DekuDeals nachtragen“,
+  - eine Zeile in „Zu erledigen“, nur für neue Spiele.
 
 ## Ohne Arbeit für uns
 
-- **Sprache in Japan:** Titel, die titledb nicht kennt, liest der Browser-Helfer (siehe 4.6).
-  Ob der Bot-Schutz seine Abrufe dauerhaft durchlässt, zeigt erst der Gebrauch.
+- **Sprache in Japan:** Titel, die titledb nicht kennt, liest der Browser-Helfer
+  „JP-Sprachen lesen“. Ob der Bot-Schutz seine Abrufe dauerhaft durchlässt, zeigt erst der
+  Gebrauch.
 - **Südafrika:** Ob Kartenzahlung dort geht, ist ungetestet. Bis dahin gilt „leicht, Karte“.
-- **Tests der Oberfläche:** Es gibt keine automatischen Tests. Prüfung per Screenshots
+- **Kaufverlauf:** Nintendo zeigt nur die letzten zwei Jahre.
+- **Tests der Oberfläche:** Es gibt keine automatischen Tests. Geprüft wird per Screenshots
   mit Testdaten, weil das Tool ohne Zusatzpakete auskommen soll.
+
+## Zurückgestellt und gestrichen
+
+- **Zurückgestellt: Füllartikel Stufe 3** (gute Spiele abseits der Wishlist). Es fehlt eine
+  Quelle für „gut“, und ein Vorschlag für ein Spiel, das niemand wollte, hilft wenig.
+- **Gestrichen:**
+  - Benachrichtigung,
+  - Wishlist aufräumen (geschieht in DekuDeals),
+  - Budget,
+  - Vorhersage des nächsten Angebots (nicht verlässlich),
+  - ein Feld für den tatsächlich bezahlten Betrag,
+  - gg.deals (Cloudflare sperrt jeden Abruf).
+- **Gestrichen (Entscheidung 13.10.2026):** Das Tool bleibt ein privates Werkzeug auf dem
+  eigenen Server. Damit entfallen:
+  - die Sprache der Oberfläche,
+  - das Heimatland,
+  - ein neuer Name,
+  - ein öffentliches Angebot mit Werbung.
 
 ## Eingang
 

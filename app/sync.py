@@ -303,7 +303,7 @@ def sync_nso(data, settings, fetch, sleep, now=None):
     ohne ID wöchentlich. Die Preise holt danach der normale Preisabruf."""
     now = now or time.time()
     nso = data.setdefault("nso", {})
-    ids, checked, lows = (nso.setdefault(k, {}) for k in ("ids", "checked", "lows"))
+    ids, checked, lows, urls = (nso.setdefault(k, {}) for k in ("ids", "checked", "lows", "urls"))
     shops = [c for c in countries.ORDER if countries.BY_CODE[c]["shop"] == c and settings["countries"][c]["enabled"]]
     due = [c for c in shops if now - checked.get(c, 0) > (NSO_RECHECK if ids.get(c) else NSO_RETRY)]
     if not due:
@@ -331,8 +331,14 @@ def sync_nso(data, settings, fetch, sleep, now=None):
             if cc in shops and cc not in ids or cc == code:
                 ids[cc] = lst[:3]
                 checked[cc] = now
-        if info.get("low") is not None:
-            lows[code] = info["low"]
+        for cc, u in (info.get("eshop_urls") or {}).items():
+            if cc in shops:
+                urls[cc] = u
+        # Bestpreis wie bei Titeln: tiefster Preis der letzten 24 Monate laut Verlauf, sonst Allzeittief
+        since = datetime.fromtimestamp(now - 730 * 86400, timezone.utc).strftime("%Y-%m-%d")
+        recent = [v for d, v in info.get("history") or [] if d >= since and v]
+        if recent or info.get("low") is not None:
+            lows[code] = min(recent) if recent else info["low"]
         checked[code] = now
         status["done"] += 1
     _log(f"Mitgliedschaft: {read} Seiten gelesen, eShop-IDs für {sum(1 for c in shops if ids.get(c))} von {len(shops)} Ländern"
@@ -633,6 +639,7 @@ def prune_old(data, now=None):
     keep = set(items) | owned | set(data.get("extra") or {}) | set(data.get("glangs") or {}) \
         | set(links) | {p for parts in links.values() for p in parts}
     lows = sum(len([s for s in t if s not in keep]) for t in (data.get("lows") or {}).values())
+    low_slugs = {s for t in (data.get("lows") or {}).values() for s in t if s not in keep}
     for table in (data.get("lows") or {}).values():
         for slug in [s for s in table if s not in keep]:
             del table[slug]
@@ -642,9 +649,13 @@ def prune_old(data, now=None):
         for slug in [s for s in table if s not in keep]:
             del table[slug]
             pages += key == "rel"
-    _log(f"Aufräumen: {gone} Titel, {lows} Tiefstpreis-Einträge und {pages} DLC-Seiten entfernt "
-         f"(seit {PRUNE_DAYS} Tagen weder auf der Wishlist noch in der Sammlung)" if gone or lows or pages
-         else "Aufräumen: nichts zu entfernen")
+    # Getrennt benannt (0.56.1): Titel erst nach PRUNE_DAYS, Tiefstpreise und DLC-Seiten sofort, sobald
+    # nichts mehr auf sie verweist, etwa ein DLC, den du abgehakt oder ignoriert hast
+    parts = ([f"{gone} Titel (seit {PRUNE_DAYS} Tagen weder auf der Wishlist noch in der Sammlung)"] if gone else []) + \
+        ([f"{lows} Tiefstpreis-Einträge von {len(low_slugs)} Titeln ohne Bezug ({', '.join(sorted(low_slugs)[:3])}"
+          f"{' …' if len(low_slugs) > 3 else ''})"] if lows else []) + ([f"{pages} DLC-Seiten ohne Bezug"] if pages else [])
+    _log("Aufräumen: " + ("; ".join(parts) + " entfernt" if parts else "nichts zu entfernen")
+         + (". Ohne Bezug heißt: weder Wishlist noch Sammlung noch fehlender DLC, etwa abgehakte oder ignorierte DLC" if lows or pages else ""))
 
 
 def prune_langs(data, settings):
@@ -1529,6 +1540,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
     status.update(running=True, ok=None, log=[], finished=None,
                   started=datetime.now(timezone.utc).isoformat(timespec="seconds"))
     sources.item_cache = {}       # eine DekuDeals-Seite je Abgleich nur einmal holen (0.54.1)
+    sources.deku_blocked = 0      # eine Sperre von DekuDeals beendet alle DekuDeals-Schritte (0.56.1)
     try:
         settings = store.load_settings()
         data = store.load_data()
@@ -1583,6 +1595,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         traceback.print_exc()
     finally:
         sources.item_cache = None
+        sources.deku_blocked = None
         status.update(running=False,
                       finished=datetime.now(timezone.utc).isoformat(timespec="seconds"))
         _lock.release()
@@ -1737,11 +1750,12 @@ def membership_probe(probe, sleep=time.sleep):
                     f"eShop-IDs {ids.get(country.upper(), [])}, alle Länder {sorted(info.get('eshop_ids') or {})}, Verlauf: {len(hist)} Tage"
                     f"{', zuletzt ' + str(hist[-2:]) if hist else ''}, weitere Varianten: {', '.join(variants) or 'keine verlinkt'}")
         return info_of
-    for country in ("de", "br"):
+    # JP und US seit 0.56.1: In Japan fehlte der Preis, die Probe zeigt, ob DekuDeals dort eine eShop-ID nennt
+    for country in ("de", "br", "jp", "us"):
         probe(f"Mitgliedschaft DekuDeals ({country.upper()})",
               f"https://www.dekudeals.com/items/{MEMBERSHIP_SLUG}?country={country}", None, deku_info(country))
         sleep(LOW_PAUSE)
-    for code, lang in (("DE", "de"), ("BR", "pt")):
+    for code, lang in (("DE", "de"), ("BR", "pt"), ("JP", "ja")):
         if not ids.get(code):
             lines.append(f"Mitgliedschaft Nintendo-Preise ({code}): keine eShop-ID bei DekuDeals, nicht abgefragt")
             continue

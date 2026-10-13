@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.56.0"
+VERSION = "0.56.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -147,13 +147,24 @@ def visible_text(page_html):
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
+# Während eines Abgleichs 0, nach der ersten Sperre (403/429) von DekuDeals deren Status:
+# Danach fragt kein Schritt DekuDeals mehr an, bis zum nächsten Abgleich (0.56.1).
+# Außerhalb eines Abgleichs (Verbindungstest) None.
+deku_blocked = None
+
+
 def deku_get(url, ok, fetch=fetch):
     """Holt eine DekuDeals-Seite und prüft mit `ok`, ob sie brauchbar ist."""
+    global deku_blocked
     del attempts[:]
+    if deku_blocked:
+        raise FetchError(url, deku_blocked, "(DekuDeals hat in diesem Abgleich schon gesperrt, nicht angefragt)")
     try:
         text = fetch(url)
     except FetchError as e:
         attempts.append(f"Fehler {e.status or ''} {str(e)[-120:] if not e.status else ''}".strip())
+        if e.status in BLOCKED and deku_blocked is not None:
+            deku_blocked = e.status
         raise
     if not ok(text):
         attempts.append(describe(text))
@@ -422,13 +433,19 @@ def parse_item_page(page_html):
     low = parse_low(page_html)
     # eShop-ID je Land aus den Links der Preistabelle („eshop_de:7008…“), auch dort, wo die
     # Shop-Adresse keine ID trägt (Online-Mitgliedschaft, 0.53.6)
-    eshop_ids = {}
+    eshop_ids, eshop_urls = {}, {}
     for cc, n in re.findall(r"eshop_([a-z]{2}):(70\d{12})", page_html):
         eshop_ids.setdefault(cc.upper(), [])
         if n not in eshop_ids[cc.upper()]:
             eshop_ids[cc.upper()].append(n)
+    # Shop-Link dieser Zeile, nur Nintendo-Adressen (für die Mitgliedschaft, 0.56.1)
+    for tag in re.findall(r"<a\b[^>]*eshop_[a-z]{2}:70\d{12}[^>]*>", page_html):
+        cc = re.search(r"eshop_([a-z]{2}):", tag).group(1).upper()
+        m = re.search(r"href=['\"](https://[a-z.-]*nintendo\.[a-z.]+/[^'\"]*)['\"]", tag)
+        if m and cc not in eshop_urls:
+            eshop_urls[cc] = html.unescape(m.group(1))
     return {"title": title, "parent": parent, "parent_title": parent_title,
-            "nsuids": nsuids, "eshop_ids": eshop_ids, "low": low, "lows": parse_lows(page_html),
+            "nsuids": nsuids, "eshop_ids": eshop_ids, "eshop_urls": eshop_urls, "low": low, "lows": parse_lows(page_html),
             "history": parse_history(page_html), "related": parse_related(page_html)}
 
 

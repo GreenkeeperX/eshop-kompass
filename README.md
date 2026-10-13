@@ -94,6 +94,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Angebote und ob das Land dein Konto ist oder im Kaufplan steht. Das Ablaufdatum trägst du
   dort ein; 30 Tage vorher klappt der Kasten auf. Die eShop-IDs der Mitgliedschaft je Land
   liest der Abgleich monatlich von DekuDeals, die Preise kommen mit dem normalen Preisabruf.
+  Seit 0.56.1 wie bei Titeln: ★ am Bestpreis der letzten 24 Monate über alle zählenden
+  Länder, Preis grün nach Urteil, Abstand zum Bestpreis rot; der Preis führt in den eShop
+  des Landes, „DekuDeals“ zum Preisverlauf.
   Schafft ein Land das nicht, wandern seine Titel ins nächstbeste Land; sind
   sie dort kein Kauf mehr, stehen sie unter "Nicht im Plan" (zugeklappt), mit
   Grund, jeder Titel nur einmal. Reihenfolge: zuerst das Land, in dem dein Konto steht (ohne Angabe Deutschland), dann leicht,
@@ -493,7 +496,10 @@ Wechselkurse erneuert die Quelle einmal am Tag; das Tool holt sie nur dann, wenn
 Neues gibt. Was das Tool woher, wann und wie oft holt und wo es die Daten ablegt, steht in
 `docs/abrufe.md`. Seit 0.54.1 kommt jede DekuDeals-Seite je Abgleich höchstens einmal, und
 Titel, die 180 Tage weder auf der Wishlist noch in der Sammlung stehen, verschwinden aus den
-Abgleichsdaten (die eigene Preisaufzeichnung bleibt).
+Abgleichsdaten (die eigene Preisaufzeichnung bleibt). Tiefstpreise und DLC-Seiten von Titeln
+ohne Bezug, etwa eines DLC nach „habe ich“ oder „ignorieren“, fallen sofort weg; das Protokoll
+nennt sie. Sperrt DekuDeals (403 oder 429), fragt seit 0.56.1 kein späterer Schritt desselben
+Abgleichs DekuDeals noch einmal.
 
 ## Tiefstpreise und Verlauf
 
@@ -560,7 +566,7 @@ oder einer Prüfseite auf, statt sich als Browser auszugeben. Der Rest folgt
 beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
 auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Seit 0.53.2
 prüft er auch, woher Preise der Online-Mitgliedschaft kommen könnten: die
-12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland und Brasilien und
+12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland, Brasilien, Japan und die USA und
 mit den eShop-IDs, die DekuDeals im Link der Preistabelle nennt, die Preise bei Nintendo
 (seit 0.53.6) und welche weiteren Varianten (3 Monate, Familie, Erweiterungspaket) die
 Seite verlinkt. Gespeichert wird nichts. Protokoll und Testergebnis lassen sich kopieren.

@@ -2383,6 +2383,7 @@ def membership(data, settings, now=None):
                      "langs": {f: "german" for f in countries.FAMILIES}}}
     ctx = Context(dict(data, items=items, prices=prices, lows={}), settings, now)
     lows = (data.get("nso") or {}).get("lows") or {}
+    urls = (data.get("nso") or {}).get("urls") or {}
     current = settings.get("current_country") or ""
     for code, c in ctx.countries.items():
         o = c["offers"].get("nso")
@@ -2397,6 +2398,20 @@ def membership(data, settings, now=None):
             "sale": o["sale"], "pct": round(100 * (1 - o["local"] / o["regular"])) if o["sale"] and o["regular"] else None,
             "end": o.get("end") if o["sale"] else None, "est": c["estimated"], "counts": ctx.decides(o),
             "current": code == current or (not current and code == countries.REFERENCE),
-            "low": lows.get(c["meta"]["shop"])})
+            "url": urls.get(c["meta"]["shop"]), "low_eur": None})
+        # Tiefstpreis dieses Landes (24 Monate, DekuDeals) mit deinem heutigen Zahlweg, wie bei Titeln
+        low = lows.get(c["meta"]["shop"])
+        if low:
+            le = ctx.est(c, cents(low * (1 + c["tax"] / 100)))
+            out["rows"][-1]["low_eur"] = _r(min(le, eur)) if le is not None else None
+    # Bestpreis über alle zählenden Länder, Güte und ★ wie bei Titeln (0.56.1)
+    champ = min((r["low_eur"] if r["low_eur"] is not None else r["eur"] for r in out["rows"] if r["counts"]), default=None)
+    if champ:
+        ctx.champ_all["nso"] = (champ, None)
+        out["champ"] = champ
+        for r in out["rows"]:
+            r["grade"] = ctx.grade(r["eur"], "nso") if r["counts"] else None
+            r["at_best"] = r["counts"] and r["eur"] <= champ * (1 + BEST_TOLERANCE) + 0.005
+            r["over"] = _r(r["eur"] - champ)
     out["rows"].sort(key=lambda r: (not r["counts"], r["eur"]))
     return out

@@ -1876,7 +1876,8 @@ class SyncLogTest(unittest.TestCase):
         self.assertEqual(sorted(data["items"]), ["a", "mine"])
         self.assertEqual(sorted(data["lows"]["DE"]), ["a", "dlc"])
         self.assertEqual((sorted(data["rel"]), data["lchk"]), (["mine"], {}))
-        self.assertIn("Aufräumen: 1 Titel, 1 Tiefstpreis-Einträge und 1 DLC-Seiten entfernt", sync.status["log"][-1])
+        self.assertIn("Aufräumen: 1 Titel (seit 180 Tagen weder auf der Wishlist noch in der Sammlung); "
+                      "1 Tiefstpreis-Einträge von 1 Titeln ohne Bezug (old); 1 DLC-Seiten ohne Bezug entfernt", sync.status["log"][-1])
 
     def test_lows_line_counts_the_wishlist_only(self):
         settings = store.load_settings()
@@ -3275,6 +3276,14 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(de["month"], 1.67)
         self.assertTrue(next(r for r in m["rows"] if r["code"] == "BR")["current"])
         self.assertEqual(m["rows"], sorted(m["rows"], key=lambda r: (not r["counts"], r["eur"])))
+        # 0.56.1: Link in den eShop aus der DekuDeals-Seite, Bestpreis, ★ und Abstand wie bei Titeln
+        self.assertEqual(de["url"], "https://ec.nintendo.com/X/x/membership")
+        self.assertIsNotNone(m["champ"])
+        for r in m["rows"]:
+            if r["counts"]:
+                self.assertEqual(r["at_best"], r["eur"] <= m["champ"] * 1.02 + 0.005)
+                self.assertAlmostEqual(r["over"], r["eur"] - m["champ"], places=2)
+        self.assertTrue(any(r["at_best"] for r in m["rows"] if r["counts"]) or all(r["low_eur"] is not None for r in m["rows"] if r["counts"]))
 
     def test_until_setting(self):
         self.assertEqual(store.save_settings({"nso_until": "2027-02-03"})["nso_until"], "2027-02-03")
@@ -3283,6 +3292,40 @@ class MembershipTest(unittest.TestCase):
         m = planner.membership(store.load_data(), store.load_settings())
         self.assertEqual(m["rows"], [])
         self.assertFalse(m["due"])
+
+
+class FetchRulesTest(unittest.TestCase):
+    def test_deku_block_stops_all_later_deku_steps(self):
+        # 0.56.1: Nach einer Sperre fragt in diesem Abgleich kein Schritt DekuDeals mehr an
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            raise sources.FetchError(url, 429)
+        sources.deku_blocked = 0
+        try:
+            with self.assertRaises(sources.FetchError):
+                sources.fetch_item("a", "de", fetch=fake)
+            with self.assertRaises(sources.FetchError) as cm:
+                sources.fetch_item("b", "de", fetch=fake)
+            self.assertEqual(cm.exception.status, 429)
+            self.assertEqual(len(calls), 1)
+        finally:
+            sources.deku_blocked = None
+        sources.item_cache = None
+        with self.assertRaises(sources.FetchError):     # außerhalb eines Abgleichs: jede Anfrage geht raus
+            sources.fetch_item("c", "de", fetch=fake)
+        self.assertEqual(len(calls), 2)
+
+    def test_constants_in_docs_exist(self):
+        # docs/abrufe.md nennt Konstanten in `…`: Jede muss es im Code geben (Inventur, Abschnitt 2)
+        import re
+        path = os.path.join(os.path.dirname(__file__), "..", "docs", "abrufe.md")
+        with open(path, encoding="utf-8") as f:
+            names = set(re.findall(r"`([A-Z][A-Z0-9_]{3,})`", f.read()))
+        self.assertGreater(len(names), 10)
+        missing = [n for n in names if not hasattr(sync, n) and not hasattr(sources, n)]
+        self.assertEqual(missing, [])
 
 
 class UiThemeTest(unittest.TestCase):
