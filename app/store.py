@@ -149,7 +149,7 @@ def save_settings(new):
         for slug, value in marks.items() if isinstance(marks, dict) else []:
             if not isinstance(slug, str) or len(slug) > 200:
                 continue
-            if value in ("have", "ignore", "ignore_all"):
+            if value in ("have", "ignore", "ignore_all", "missing"):
                 s["dlc_marks"][slug] = value
             elif value is None:
                 s["dlc_marks"].pop(slug, None)

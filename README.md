@@ -143,7 +143,16 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   DLC liest das Tool für die ID-Suche ohnehin und merkt sich ihre Pakete dabei, sonst
   vierteljährlich im Rahmen der 40 Seiten je Abgleich. Spiele, die du nur über eine Edition
   hast, stehen in der Sammlung mit „über …“, ihre neueren DLC als fehlend, enthaltene als
-  „hast du, im Paket …“.
+  „hast du, im Paket …“. Liegt DekuDeals bei einem Teil falsch, schaltet „stimmt nicht“ ihn
+  wieder auf „fehlt“ (gilt auch für alles, was darin steckt). Ein fehlender Pass steht mit
+  seinen Teilen eingerückt darunter („enthält 3 DLC, 1 schon da“) und vergleicht „einzeln …
+  · als Pass …“ für die noch fehlenden Teile. „fehlen“ zählt Inhalte, nicht Kaufwege, der
+  Pass zählt nicht zusätzlich; in die Summe geht der günstigere Weg. Stehen ein Pass und
+  seine Teile zum Kauf an, kauft der Kaufplan den Pass, die Teile stehen unter „Nicht im
+  Plan“ („steckt in …“).
+- Nicht mehr erhältliche DLC: Findet die ID-Suche einen fehlenden DLC in keiner gesuchten
+  Region, jeweils zweimal, gibt es ihn meist nur im Spiel oder nicht mehr im eShop. Er
+  zählt nicht als fehlend und steht eingeklappt unter „nicht mehr erhältlich“.
 - Sammlung (eigener Reiter): alle Spiele deiner DekuDeals-Sammlung mit ihren
   Zusatzinhalten (Abschnitt "DLC" der DekuDeals-Artikelseite), je DLC "hast du"
   oder "fehlt". Ob du einen DLC hast, sagt deine Sammlung bei DekuDeals; was sie

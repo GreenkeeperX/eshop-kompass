@@ -105,14 +105,15 @@ def eshop_matches(data):
     return {"rows": rows, "owned": owned}
 
 
-def pack_parts(data, base):
+def pack_parts(data, base, block=()):
     """Alles, was in base steckt, auch über mehrere Stufen (Edition → Pass → DLC):
     {Teil: Paket, über das er kommt}. Die Verbindungen stammen aus den Abschnitten
     „Contains“ und „Included In“ bei DekuDeals (sync.update_links). Nur in eine Richtung:
-    Wer das Paket hat, hat die Teile, nicht umgekehrt."""
+    Wer das Paket hat, hat die Teile, nicht umgekehrt. Was in block steht („stimmt
+    nicht“), zählt nicht als enthalten, auch nicht, was darin steckt."""
     links = data.get("links") or {}
     via, stack = {}, [s for s in base if s in links]
-    seen = set(base)
+    seen = set(base) | set(block)
     while stack:
         c = stack.pop()
         for p in links.get(c) or {}:
@@ -123,21 +124,27 @@ def pack_parts(data, base):
     return via
 
 
-def owned_set(data):
+def pack_block(settings):
+    """Teile, bei denen du „stimmt nicht“ gewählt hast: DekuDeals nennt sie in einem
+    Paket, du hast sie aber nicht (dlc_marks "missing")."""
+    return {s for s, m in ((settings or {}).get("dlc_marks") or {}).items() if m == "missing"}
+
+
+def owned_set(data, settings=None):
     """Was du hast: deine DekuDeals-Sammlung plus Käufe aus dem eShop-Kaufverlauf, dazu
     alles, was in diesen Paketen steckt. Abgeleitet bei jedem Aufruf, nie gespeichert:
     Ändert sich eine Verbindung, stimmt das Ergebnis von selbst."""
     base = set(data.get("owned") or []) | eshop_matches(data)["owned"]
-    return base | set(pack_parts(data, base))
+    return base | set(pack_parts(data, base, pack_block(settings)))
 
 
-def owned_games(data):
+def owned_games(data, settings=None):
     """Spiele, deren DLC die Sammlung zeigt: die der DekuDeals-Sammlung und Spiele, die du
     nur über ein Paket hast (etwa eine Deluxe Edition), sobald ihre Seite gelesen ist."""
     rel = data.get("rel") or {}
     games = list(dict.fromkeys(data.get("owned") or []))
     known = set(games)
-    for slug in sorted(pack_parts(data, set(games) | eshop_matches(data)["owned"])):
+    for slug in sorted(pack_parts(data, set(games) | eshop_matches(data)["owned"], pack_block(settings))):
         e = rel.get(slug)
         if slug not in known and e and not e.get("parent"):
             games.append(slug)
@@ -300,7 +307,7 @@ class Context:
         self.items = {s: it for s, it in data["items"].items() if it.get("active")}
         self.order = sorted(self.items, key=lambda s: self.items[s].get("order", 0))
         self.lows = data.get("lows", {})
-        self.owned = owned_set(data)
+        self.owned = owned_set(data, settings)
         self.rel = data.get("rel") or {}
         rates = data["fx"]["rates"]
         self.rates = rates
@@ -1323,7 +1330,7 @@ def _now_eur(r):
     return (best.get("eur"), shown.get("name"), bool(best.get("est"))) if best else (None, None, False)
 
 
-def switch2_paths(data, rows):
+def switch2_paths(data, rows, settings=None):
     """Switch-2-Edition auf der Wishlist: Reicht das Upgrade-Paket?
 
     Die Edition heißt bei DekuDeals wie das Switch-1-Spiel plus "Nintendo Switch 2
@@ -1331,7 +1338,7 @@ def switch2_paths(data, rows):
     genügt das Paket; sonst steht der Weg Spiel plus Paket gegen die Edition, soweit
     die Preise bekannt sind (beides auf der Wishlist). {Kürzel der Edition: Angaben}"""
     rel = data.get("rel") or {}
-    owned = owned_set(data)
+    owned = owned_set(data, settings)
     by = {r["slug"]: r for r in rows}
     items = data.get("items") or {}
     out = {}
@@ -1366,7 +1373,7 @@ def switch2_paths(data, rows):
     return out
 
 
-def _switch2_choice(data, rows, wanted):
+def _switch2_choice(data, rows, wanted, settings=None):
     """Switch 2 im Kaufplan: Du kaufst die Edition oder das Switch-1-Spiel plus
     Upgrade-Paket, nie beides; das Paket auch später (Entscheidung 12.10.2026).
 
@@ -1383,7 +1390,7 @@ def _switch2_choice(data, rows, wanted):
             wanted.remove(slug)
             skip.append({"slug": slug, "reason": reason})
 
-    for ed, p in switch2_paths(data, rows).items():
+    for ed, p in switch2_paths(data, rows, settings).items():
         base, up = p["base"], p["upgrade"]
         if p["base_owned"]:
             why = "Switch-1-Fassung in der Sammlung, das Upgrade-Paket genügt"
@@ -1406,7 +1413,7 @@ def _switch2_choice(data, rows, wanted):
     return wanted, skip
 
 
-def bundles(data, rows):
+def bundles(data, rows, settings=None):
     """Komplett-Editionen und Pakete gegen Einzelkauf.
 
     Was ein Paket enthält, nennt DekuDeals lückenhaft: der Abschnitt "Contains" der
@@ -1416,7 +1423,7 @@ def bundles(data, rows):
     Teile in der Sammlung zählen nicht, du hättest sie doppelt.
     {"packs": {Paket: Angaben}, "in": {Titel: [{slug, title, wish}]}}"""
     rel = data.get("rel") or {}
-    owned = owned_set(data)
+    owned = owned_set(data, settings)
     by = {r["slug"]: r for r in rows}
     items = data.get("items") or {}
     parts, names = {}, {}
@@ -1460,16 +1467,17 @@ def _nso(slug, title):
 def extra_dlc(data, settings):
     """DLC deiner Spiele, die fehlen und nicht auf der Wishlist stehen: {DLC: (Titel, Spiel)}.
     Ohne Abo-Inhalte, ohne abgehakte und ignorierte."""
-    rel, owned = data.get("rel") or {}, owned_set(data)
+    rel, owned = data.get("rel") or {}, owned_set(data, settings)
     marks = settings.get("dlc_marks") or {}
     wished = {s for s, it in (data.get("items") or {}).items() if it.get("active")}
     out = {}
-    for game in owned_games(data):
+    for game in owned_games(data, settings):
         e = rel.get(game)
         if not e or e.get("parent") or marks.get(game) == "ignore_all":
             continue
         for d_slug, d_title in e.get("dlc") or []:
-            if d_slug in owned or d_slug in wished or marks.get(d_slug) or _nso(d_slug, d_title):
+            if d_slug in owned or d_slug in wished or marks.get(d_slug) in ("have", "ignore") \
+                    or _nso(d_slug, d_title):
                 continue
             out.setdefault(d_slug, (d_title, game))
     return out
@@ -1507,6 +1515,67 @@ def _extra_best(xctx, slug):
     return best
 
 
+GONE_MISSES = 2       # wie sync.ID_MISSES: so oft ohne eShop-Eintrag, dann nicht mehr erhältlich
+
+
+def _gone(data, slug):
+    """Fehlender DLC, den es nicht mehr zu kaufen gibt: Die ID-Suche (sync_extra_ids) fand
+    ihn in keiner gesuchten Region, jeweils mindestens GONE_MISSES Mal. Meist Inhalte, die
+    es nur im Spiel gibt oder die aus dem eShop verschwunden sind."""
+    e = (data.get("extra") or {}).get(slug)
+    if not e or any((e.get("ids") or {}).values()):
+        return False
+    checked = e.get("ids_checked") or {}
+    misses = e.get("ids_misses") or {}
+    return bool(checked) and all(misses.get(f, 0) >= GONE_MISSES for f in checked)
+
+
+def _group_packs(data, dlc, links):
+    """Fehlende Pässe mit ihren Teilen zusammenfassen: Der Pass bekommt „pack“ (Teile,
+    schon da, einzeln, als Pass, günstiger), die Teile „in_pack“ und stehen direkt
+    darunter. Ein Teil gehört zum größten Paket, das ihn enthält. Liefert die neu
+    geordnete Liste und die Gruppen."""
+    rows = {d["slug"]: d for d in dlc}
+    heads = []
+    for d in dlc:
+        if d["slug"] in links and not d["have"] and not d["ignored"]:
+            parts = [p for p in pack_parts(data, {d["slug"]}) if p in rows]
+            if parts:
+                heads.append((d, parts))
+    heads.sort(key=lambda h: -len(h[1]))
+    taken, groups = set(), []
+    for head, parts in heads:
+        if head["slug"] in taken:
+            continue                       # steckt selbst in einem größeren Paket
+        mine = [rows[p] for p in parts if p not in taken and rows[p] is not head]
+        if not mine:
+            continue
+        taken.update(p["slug"] for p in mine)
+        mine.sort(key=lambda p: [x["slug"] for x in dlc].index(p["slug"]))
+        todo = [p for p in mine if not p["have"] and not p["ignored"] and not p["gone"]]
+        single = _r(sum(p["eur"] for p in todo)) if todo and all(
+            p.get("eur") is not None for p in todo) else None
+        cheaper = None
+        if todo and head.get("eur") is not None and (single is None or head["eur"] < single - 0.005):
+            cheaper = "pass"
+        elif single is not None:
+            cheaper = "single"
+        head["pack"] = {"n": len(mine), "have": sum(1 for p in mine if p["have"]),
+                        "open": len(todo), "single": single, "cheaper": cheaper}
+        for p in mine:
+            p["in_pack"] = head["title"]
+        groups.append({"row": head, "parts": mine, "pack": head["pack"]})
+    out = []
+    for d in dlc:
+        if d["slug"] in taken:
+            continue
+        out.append(d)
+        g = next((g for g in groups if g["row"] is d), None)
+        if g:
+            out.extend(g["parts"])
+    return out, groups
+
+
 def collection(data, settings, targets=None, now=None, rows=None):
     """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
 
@@ -1518,9 +1587,10 @@ def collection(data, settings, targets=None, now=None, rows=None):
     sonst kennt das Tool keinen Preis (keine Nintendo-ID)."""
     rel = data.get("rel") or {}
     owned_list = list(dict.fromkeys(data.get("owned") or []))
-    owned = owned_set(data)
+    owned = owned_set(data, settings)
     direct = set(owned_list) | eshop_matches(data)["owned"]
-    via = pack_parts(data, direct)          # nur über ein Paket vorhanden: {Teil: Paket}
+    via = pack_parts(data, direct, pack_block(settings))   # nur über ein Paket vorhanden: {Teil: Paket}
+    links = data.get("links") or {}
     by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
     items = data.get("items") or {}
     marks = settings.get("dlc_marks") or {}
@@ -1533,7 +1603,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
     def pack_name(slug):
         c = via.get(slug)
         return name(c, rel.get(c)) if c else None
-    for slug in owned_games(data):
+    for slug in owned_games(data, settings):
         e = rel.get(slug)
         if not e:
             unread += 1
@@ -1551,9 +1621,12 @@ def collection(data, settings, targets=None, now=None, rows=None):
                    "wish": r is not None, "upgrade": is_upgrade(d_slug, d_title)}
             if row["owned"] and d_slug in via and d_slug not in direct:
                 row["via"] = pack_name(d_slug)       # „im Paket …“
+            # „stimmt nicht“: DekuDeals nennt ihn in einem Paket, das du hast, er fehlt aber
+            row["not_in_pack"] = mark == "missing" and d_slug not in direct
             row["have"] = row["owned"] or mark == "have"
             row["by_hand"] = not row["owned"] and mark == "have"
             row["ignored"] = not row["have"] and (mark == "ignore" or marks.get(slug) == "ignore_all")
+            row["gone"] = not row["have"] and not row["ignored"] and r is None and _gone(data, d_slug)
             row["mark"] = mark
             if r:
                 shown = r.get("shown") or {}
@@ -1563,7 +1636,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
                            eur=best.get("eur") if best else None, est=bool(best and best.get("est")),
                            code=shown.get("code"), name=shown.get("name"),
                            end=best.get("end") if best and best.get("sale") else None)
-            elif xctx and not row["have"] and not row["ignored"]:
+            elif xctx and not row["have"] and not row["ignored"] and not row["gone"]:
                 best = _extra_best(xctx, d_slug)
                 if best:
                     row.update(eur=best["eur"], est=best["est"], code=best["code"],
@@ -1574,17 +1647,39 @@ def collection(data, settings, targets=None, now=None, rows=None):
             plain.append({"slug": slug, "title": name(slug, e),
                           "via": pack_name(slug) if slug not in direct else None})
             continue
+        dlc, groups = _group_packs(data, dlc, links)
         have = sum(1 for d in dlc if d["have"])
         ignored = sum(1 for d in dlc if d["ignored"])
-        open_ = [d for d in dlc if not d["have"] and not d["ignored"]]
-        priced = [d for d in open_ if d.get("eur") is not None]
+        gone = sum(1 for d in dlc if d["gone"])
+        # „fehlen“ zählt Inhalte, nicht Kaufwege: Ein Pass mit bekannten Teilen zählt nicht
+        # zusätzlich, für die Summe zählt der günstigere Weg (einzeln oder als Pass)
+        open_ = [d for d in dlc if not d["have"] and not d["ignored"] and not d["gone"]
+                 and not d.get("pack")]
+        priced = [d for d in open_ if d.get("eur") is not None and not d.get("in_pack")]
+        cost = sum(d["eur"] for d in priced)
+        n_priced, n_sale = len(priced), sum(1 for d in priced if d.get("sale") or d.get("end"))
+        for g in groups:
+            info, head = g["pack"], g["row"]
+            todo = [d for d in g["parts"] if not d["have"] and not d["ignored"] and not d["gone"]]
+            if not todo:
+                continue
+            if info["cheaper"] == "pass":
+                cost += head["eur"]
+                n_priced += len(todo)
+                n_sale += len(todo) if head.get("sale") or head.get("end") else 0
+            else:
+                part_p = [d for d in todo if d.get("eur") is not None]
+                cost += sum(d["eur"] for d in part_p)
+                n_priced += len(part_p)
+                n_sale += sum(1 for d in part_p if d.get("sale") or d.get("end"))
         games.append({"slug": slug, "title": e.get("title") or slug, "dlc": dlc,
                       "via": pack_name(slug) if slug not in direct else None,
-                      "have": have, "ignored": ignored, "ignore_all": marks.get(slug) == "ignore_all",
-                      "missing": len(dlc) - have - ignored,
-                      "missing_eur": _r(sum(d["eur"] for d in priced)) if priced else None,
-                      "missing_priced": len(priced),
-                      "missing_sale": sum(1 for d in priced if d.get("sale") or d.get("end"))})
+                      "have": have, "ignored": ignored, "gone": gone,
+                      "ignore_all": marks.get(slug) == "ignore_all",
+                      "missing": len(open_),
+                      "missing_eur": _r(cost) if n_priced else None,
+                      "missing_priced": n_priced,
+                      "missing_sale": n_sale})
     games.sort(key=lambda g: (g["missing"] == 0, g["title"].lower()))
     plain.sort(key=lambda g: g["title"].lower())
     waiting.sort(key=lambda g: g["title"].lower())
@@ -1782,7 +1877,19 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     wanted = [r["slug"] for r in rows if r["verdict"] in ok_grades and r["slug"] not in done]
     reasons = {r["slug"]: r["reason"] for r in rows}
     target = {r["slug"]: r["target"] for r in rows}
-    wanted, s2_skip = _switch2_choice(data, rows, wanted)
+    wanted, s2_skip = _switch2_choice(data, rows, wanted, settings)
+    # Stehen ein Pass und seine Teile zum Kauf an, kauft der Plan den Pass: Die Teile
+    # kämen sonst doppelt (0.50.1)
+    block = pack_block(settings)
+    holds = {s: set(pack_parts(data, {s}, block)) for s in wanted}
+    in_pack = {}
+    for s in sorted(wanted, key=lambda s: -len(holds[s])):    # das größte Paket zuerst
+        for p in holds[s]:
+            if p in holds and p not in in_pack and s not in in_pack and s not in holds[p]:
+                in_pack[p] = s
+    packed = [{"slug": s, "title": ctx.title(s), "pack": ctx.title(in_pack[s])}
+              for s in wanted if s in in_pack]
+    wanted = [s for s in wanted if s not in in_pack]
     current = settings.get("current_country") or ""
     allowed = [code for code, c in ctx.countries.items() if c["unit"] is not None]
     dropped = []
@@ -1948,7 +2055,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         lock = {"code": cur_code, "name": countries.BY_CODE[cur_code]["name"],
                 "currency": (cur_c or {}).get("currency"), "balance": cur_balance / 100,
                 "left": left, "fits": fit[:5]}
-    skip = done | {x["slug"] for x in s2_skip}
+    skip = done | {x["slug"] for x in s2_skip} | {x["slug"] for x in packed}
     xctx = extra_context(data, settings, now)
     for p in steps:
         c = ctx.countries[p["code"]]
@@ -1969,6 +2076,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                                    for s in held],
             "later": [{"slug": s, "title": ctx.title(s), "reason": reasons.get(s, "")} for s in later],
             "s2_skip": [dict(x, title=ctx.title(x["slug"])) for x in s2_skip],
+            "packed": packed,
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
             "ref_total": _r(ref_total), "saving": _r(ref_total - games),
             "rest_value": _r(total - games),

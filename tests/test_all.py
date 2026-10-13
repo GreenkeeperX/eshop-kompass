@@ -1814,7 +1814,7 @@ class PurchaseLogTest(unittest.TestCase):
         plan = planner.purchase_plan(data, settings, now=NOW)
         planned = [i["slug"] for p in plan["steps"] for i in p["items"]]
         self.assertIn("hades", planned)
-        def skip_hades(data, rows, wanted):
+        def skip_hades(data, rows, wanted, settings=None):
             return [s for s in wanted if s != "hades"], [{"slug": "hades", "reason": "Grund"}]
         with mock.patch.object(planner, "_switch2_choice", skip_hades):
             plan = planner.purchase_plan(data, settings, now=NOW)
@@ -1984,6 +1984,66 @@ class PackLinksTest(unittest.TestCase):
         self.assertEqual((g["have"], g["missing"]), (2, 1))           # das neuere Pack fehlt
         self.assertEqual(set(planner.extra_dlc(data, {})), {"sr-new"})
         self.assertEqual(c["owned"], 2)                                # Zahl der DekuDeals-Sammlung
+
+    def test_not_in_pack_mark_and_saved(self):
+        # „stimmt nicht“: DekuDeals nennt den DLC im Paket, du hast ihn nicht
+        data = {"owned": ["gold", "game"], "items": {}, "rel": {
+            "game": {"title": "Spiel", "dlc": [["season-pass", "Season Pass"], ["pixel", "Pixel"], ["dk", "DK"]]}},
+            "links": {"gold": {"season-pass": {}}, "season-pass": {"pixel": {}, "dk": {}}}}
+        settings = {"dlc_marks": {"pixel": "missing"}}
+        self.assertNotIn("pixel", planner.owned_set(data, settings))
+        self.assertIn("dk", planner.owned_set(data, settings))
+        self.assertEqual(set(planner.extra_dlc(data, settings)), {"pixel"})
+        rows = {d["slug"]: d for d in planner.collection(data, settings, rows=[])["games"][0]["dlc"]}
+        self.assertTrue(rows["pixel"]["not_in_pack"] and not rows["pixel"]["have"])
+        # Auf einem Pass gilt es auch für alles darin
+        self.assertFalse({"season-pass", "pixel", "dk"} & planner.owned_set(data, {"dlc_marks": {"season-pass": "missing"}}))
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(store, "DATA_DIR", d):
+            store.save_settings({"dlc_marks": {"pixel": "missing"}})
+            self.assertEqual(store.load_settings()["dlc_marks"], {"pixel": "missing"})
+
+    def test_dlc_no_longer_available_not_missing(self):
+        data = {"owned": ["rl"], "items": {}, "rel": {
+            "rl": {"title": "Rocket League", "dlc": [["rl-a", "Car A"], ["rl-b", "Car B"], ["rl-c", "Car C"]]}},
+            "extra": {"rl-a": {"title": "Car A", "parent": "rl", "ids": {"EU": []}, "ids_checked": {"EU": 1, "AM": 1}, "ids_misses": {"EU": 2, "AM": 3}},
+                      "rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": []}, "ids_checked": {"EU": 1}, "ids_misses": {"EU": 1}},
+                      "rl-c": {"title": "Car C", "parent": "rl", "ids": {"EU": ["70010000000001"]}, "ids_checked": {"EU": 1}, "ids_misses": {"EU": 0}}}}
+        with mock.patch.object(planner, "extra_context", lambda *a: None):
+            g = planner.collection(data, {}, rows=[])["games"][0]
+        self.assertEqual([d["slug"] for d in g["dlc"] if d["gone"]], ["rl-a"])
+        self.assertEqual((g["missing"], g["gone"]), (2, 1))
+
+    @staticmethod
+    def price_row(slug, title, eur):
+        return {"slug": slug, "title": title, "verdict": "buy", "reason": "", "shown": {"code": "DE", "name": "Deutschland"},
+                "easy": {"code": "DE", "eur": eur}, "hard": None}
+
+    def test_missing_pass_grouped_with_parts(self):
+        data = {"owned": ["game", "pixel"], "items": {}, "rel": {
+            "game": {"title": "Spiel", "dlc": [["pixel", "Pixel"], ["dk", "DK"], ["season-pass", "Season Pass"], ["ultra", "Ultra"], ["other", "Anderes"]]}},
+            "links": {"season-pass": {"pixel": {}, "dk": {}, "ultra": {}}}}
+        rows = [self.price_row("season-pass", "Season Pass", 9.99), self.price_row("dk", "DK", 5.0),
+                self.price_row("ultra", "Ultra", 6.0), self.price_row("other", "Anderes", 2.0)]
+        g = planner.collection(data, {}, rows=rows)["games"][0]
+        self.assertEqual([d["slug"] for d in g["dlc"]], ["season-pass", "pixel", "dk", "ultra", "other"])
+        sp = g["dlc"][0]
+        self.assertEqual(sp["pack"], {"n": 3, "have": 1, "open": 2, "single": 11.0, "cheaper": "pass"})
+        self.assertEqual(g["dlc"][2]["in_pack"], "Season Pass")
+        # Fehlen: DK, Ultra, Anderes; der Pass zählt nicht extra. Summe: Pass statt einzeln
+        self.assertEqual((g["missing"], g["missing_eur"], g["missing_priced"]), (3, 11.99, 3))
+        # Einzeln günstiger: dann zählen die Teile
+        rows[0] = self.price_row("season-pass", "Season Pass", 12.0)
+        g = planner.collection(data, {}, rows=rows)["games"][0]
+        self.assertEqual((g["dlc"][0]["pack"]["cheaper"], g["missing_eur"]), ("single", 13.0))
+
+    def test_plan_buys_pass_not_its_parts(self):
+        data, settings = sample()
+        data["links"] = {"hades": {"vs-foscari": {}}}
+        plan = planner.purchase_plan(data, settings, now=NOW)
+        planned = [i["slug"] for p in plan["steps"] for i in p["items"]]
+        self.assertIn("hades", planned)
+        self.assertNotIn("vs-foscari", planned)
+        self.assertEqual([(x["slug"], x["pack"]) for x in plan["packed"]], [("vs-foscari", "Hades")])
 
     def test_migration_from_rel(self):
         data = {"rel": {"pass": {"checked": 5, "has": [["d1", "DLC 1"]], "in": []},

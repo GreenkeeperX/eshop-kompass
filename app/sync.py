@@ -1000,7 +1000,8 @@ def sync_related(data, settings, fetch, sleep, now=None):
     # aus einer Deluxe Edition), deren DLC die Sammlung zeigen soll (0.50)
     known_dlc = {d for e in rel.values() for d, _ in e.get("dlc") or []}
     deku = list(owned)
-    owned += [s for s in sorted(planner.pack_parts(data, set(owned) | planner.eshop_matches(data)["owned"]))
+    owned += [s for s in sorted(planner.pack_parts(data, set(owned) | planner.eshop_matches(data)["owned"],
+                                                     planner.pack_block(settings)))
               if s not in known_dlc]
     todo = []
     for pos, slug in enumerate(dict.fromkeys(owned + wished)):

@@ -71,6 +71,7 @@ th small.bc{display:block;font-weight:400;color:var(--muted)}
 .over,.over a{color:var(--stop)}
 .dlc.has{border-color:var(--accent);color:var(--accent)}
 .dlc.own{border-color:var(--warn);color:var(--warn)}
+tr.part td:first-child{padding-left:16px}
 .dlc.need{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
 .dlc{font-size:9px;border:1px solid var(--line);border-radius:3px;padding:0 3px;margin-right:4px;color:var(--muted);vertical-align:1px}
 a.pl{color:inherit;text-decoration:none}
@@ -782,6 +783,8 @@ function planState(slug){
   if((k.held || []).some(h => h.slug === slug) && k.lock) return `nicht im Plan: Konto in ${esc(k.lock.name)} gesperrt, bis das Guthaben aufgebraucht ist`;
   const s2 = (k.s2_skip || []).find(x => x.slug === slug);
   if(s2) return `nicht im Plan: nur ein Weg zur Switch 2: ${esc(s2.reason)}`;
+  const pk = (k.packed || []).find(x => x.slug === slug);
+  if(pk) return `nicht einzeln im Plan: steckt in ${esc(pk.pack)}`;
   if((k.bought_slugs || []).includes(slug)) return (S.state.radar.find(r => r.slug === slug) || {}).owned ? "nicht im Plan: steht schon in deiner Sammlung" : "nicht im Plan: schon gekauft, steht noch auf der Wishlist";
   return "";
 }
@@ -811,25 +814,35 @@ function collDlc(d){
   const tag = d.upgrade ? ` <span class="chip" title="Upgrade-Paket: macht die Switch-1-Fassung zur Nintendo Switch 2 Edition">Switch-2-Upgrade</span>` : "";
   const mk = (v, label, tip) => `<button class="link" data-act="dlcmark" data-s="${esc(d.slug)}" data-v="${v}" title="${tip}">${label}</button>`;
   let state;
-  if(d.owned) state = `<span class="mut">✓ hast du${d.via ? `, im Paket ${esc(d.via)}` : ""}</span>`;
+  if(d.owned) state = `<span class="mut">✓ hast du${d.via ? `, im Paket ${esc(d.via)}` : ""}</span>` +
+    (d.via ? ` · ${mk("missing", "stimmt nicht", "DekuDeals nennt diesen DLC im Paket, du hast ihn aber nicht: zählt wieder als fehlend")}` : "");
   else if(d.by_hand) state = `<span class="mut">✓ hast du (von dir abgehakt)</span> · ${mk("", "zurücksetzen", "Haken entfernen")}`;
   else if(d.ignored) state = `<span class="mut">ignoriert</span>${d.mark === "ignore" ? " · " + mk("", "zurücksetzen", "Wieder als fehlend zählen") : ""}`;
+  else if(d.gone) state = `<span class="mut" title="Die ID-Suche fand ihn in keiner Region, mehrmals: meist nur im Spiel erhältlich oder aus dem eShop verschwunden">nicht mehr erhältlich</span> · ${mk("have", "habe ich", "Hast du schon")}`;
   else {
     if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
     else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.eur < 0.005 ? "kostenlos" : `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}`}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""} · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool auch Urteil und Bestpreis">bei DekuDeals ansehen</a>`;
+    const p = d.pack;
+    if(p && p.open && p.single !== null && d.eur !== null && d.eur !== undefined){
+      const b = (on, t) => on ? `<b>${t}</b>` : t;
+      state += ` · <span title="Was die ${p.open} fehlenden Teile einzeln kosten, gegen den Pass. In die Summe geht der günstigere Weg.">${b(p.cheaper === "single", `einzeln ${eur(p.single)}`)} · ${b(p.cheaper === "pass", `als Pass ${eur(d.eur)}`)}</span>`;
+    }
+    if(d.not_in_pack) state += ` · <span class="mut">laut dir nicht im Paket</span> ${mk("", "zurücksetzen", "Wieder als im Paket enthalten zählen")}`;
     state += ` · ${mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht")} · ${mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend")}`;
   }
-  return `<tr class="${d.ignored ? "ign" : ""}"><td class="l">${esc(d.title)}${tag}</td><td class="l">${state}</td></tr>`;
+  const inner = d.pack ? ` <small class="mut" style="display:inline">enthält ${d.pack.n} DLC${d.pack.have ? `, ${d.pack.have} schon da` : ""}</small>` : "";
+  return `<tr class="${d.ignored ? "ign" : ""}${d.in_pack ? " part" : ""}"><td class="l"${d.in_pack ? ` title="steckt in ${esc(d.in_pack)}"` : ""}>${d.in_pack ? "↳ " : ""}${esc(d.title)}${tag}${inner}</td><td class="l">${state}</td></tr>`;
 }
 function collGame(g){
-  const shown = g.dlc.filter(d => !d.ignored), ign = g.dlc.filter(d => d.ignored);
+  const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : "",
+  const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored || g.gone ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
     g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(", ");
   const key = "ign:" + g.slug;
   return `<section class="box cg"><h3>${esc(g.title)}${g.via ? ` <small class="mut">über ${esc(g.via)}</small>` : ""} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>` +
     (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
-    (ign.length ? `<details class="fold" data-k="${esc(key)}" ${S.folds[key] ? "open" : ""}><summary class="hint">${ign.length} ignoriert</summary><table class="mini-t">${ign.map(collDlc).join("")}</table></details>` : "") + `</section>`;
+    (ign.length ? `<details class="fold" data-k="${esc(key)}" ${S.folds[key] ? "open" : ""}><summary class="hint">${ign.length} ignoriert</summary><table class="mini-t">${ign.map(collDlc).join("")}</table></details>` : "") +
+    (gone.length ? `<details class="fold" data-k="${esc("gone:" + g.slug)}" ${S.folds["gone:" + g.slug] ? "open" : ""}><summary class="hint">${gone.length} nicht mehr erhältlich</summary><table class="mini-t">${gone.map(collDlc).join("")}</table></details>` : "") + `</section>`;
 }
 function viewCollection(){
   const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
@@ -1052,6 +1065,7 @@ function notPlanned(k){
   for(const d of open.filter(d => !d.blocked_by))
     rows.push(`<tr><td>${d.open_titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">Wechsel lohnt nicht</span>: ${d.gain >= 0 ? `spart ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`} gegenüber ${esc(altNames(d.alt_codes))}, lohnt ab ${eur(d.threshold)}</td></tr>`);
   for(const x of k.s2_skip || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">nur ein Weg zur Switch 2: ${esc(x.reason)}</td></tr>`);
+  for(const x of k.packed || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">steckt in <b>${esc(x.pack)}</b>, das ebenfalls zum Kauf ansteht: nicht doppelt kaufen</td></tr>`);
   for(const l of k.later) rows.push(`<tr><td>${esc(l.title)}</td><td class="l">lieber warten: ${esc(l.reason)}; in den Ländern, deren Wechsel sich rechnet, kein Kauf</td></tr>`);
   if(k.nowhere.length) rows.push(`<tr><td>${k.nowhere.map(esc).join(", ")}</td><td class="l">nirgends kaufbar, wo es zählt</td></tr>`);
   if(k.bought_waiting.length) rows.push(`<tr><td>${k.bought_waiting.map(esc).join(", ")}</td><td class="l">schon gekauft oder in deiner Sammlung, steht noch auf der Wishlist</td></tr>`);
@@ -1874,7 +1888,7 @@ document.addEventListener("click", async e => {
     else if(a === "dlcmark"){
       await api("/api/settings", {dlc_marks: {[d.s]: d.v || null}});
       S.state = await api("/api/state"); S.ui = S.state.ui; render();
-      toast({have: "Als vorhanden abgehakt", ignore: "DLC ignoriert", ignore_all: "Alle DLC des Spiels ignoriert"}[d.v] || "Zurückgesetzt");
+      toast({have: "Als vorhanden abgehakt", ignore: "DLC ignoriert", ignore_all: "Alle DLC des Spiels ignoriert", missing: "Zählt wieder als fehlend"}[d.v] || "Zurückgesetzt");
     }
     else if(a === "jpcopy"){
       const ta = $("jpids"); ta.select();
