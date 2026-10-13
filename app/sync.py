@@ -1387,7 +1387,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
     return True
 
 
-def diagnose():
+def diagnose(sleep=time.sleep):
     """Prüft alle Datenquellen einzeln und beschreibt, was zurückkommt."""
     settings = store.load_settings()
     data = store.load_data()
@@ -1496,6 +1496,50 @@ def diagnose():
     else:
         lines.append("Guthabenkarte: keine Karte mit Link eingetragen, Eneba nicht geprüft")
     probe("Wechselkurse", sources.FX_URL, None, lambda t: t[:80])
+    lines.extend(membership_probe(probe, sleep))
+    return lines
+
+
+MEMBERSHIP_SLUG = "nintendo-switch-online-12-month-membership"
+
+
+def membership_probe(probe, sleep=time.sleep):
+    """Online-Mitgliedschaft (Vorarbeit, Entscheidung 13.10.2026): Woher kommen Preise je Land?
+    DekuDeals führt die Einzelmitgliedschaft mit eShop-Preis je Land; ob Nintendo Europa sie
+    mit einer ID führt, die die Preis-Schnittstelle kennt, zeigt die Suche. Nur Probe, nichts
+    wird gespeichert."""
+    lines = []
+
+    def deku_info(t):
+        info = sources.parse_item_page(t)
+        shops = sorted(set(sources.re.findall(r"https://ec\.nintendo\.com/[A-Z]{2}/[a-z]{2}/[a-z]+", t)))[:4]
+        return (f"Titel „{(sources.page_title(t) or '')[:60]}“, Preise in Produktdaten: "
+                f"{sorted(sources.ld_prices(t))[:8]}, Tiefstpreis {info['low']}, IDs {info['nsuids']}, "
+                f"eShop-Links: {' '.join(shops) or 'keine'}")
+    for country in ("de", "br"):
+        probe(f"Mitgliedschaft DekuDeals ({country.upper()})",
+              f"https://www.dekudeals.com/items/{MEMBERSHIP_SLUG}?country={country}", None, deku_info)
+        sleep(LOW_PAUSE)
+    found = []
+
+    def solr_info(t):
+        try:
+            docs = json.loads(t)["response"]["docs"]
+        except (ValueError, KeyError, TypeError):
+            return f"keine lesbare Antwort, Anfang: {t[:160]}"
+        for d in docs:
+            found.extend(str(n) for n in d.get("nsuid_txt") or [])
+        return f"{len(docs)} Treffer: " + "; ".join(
+            f"{d.get('title')} ({d.get('type')}, IDs {d.get('nsuid_txt')})" for d in docs[:8])
+    q = urllib.parse.urlencode({"q": '"Nintendo Switch Online"', "fl": "title,type,nsuid_txt",
+                                "rows": 12, "wt": "json"})
+    probe("Mitgliedschaft Nintendo Europa (Suche)", f"{sources.SOLR_URL}?{q}", None, solr_info)
+    if found:
+        ids = ",".join(dict.fromkeys(found[:10]))
+        probe("Mitgliedschaft Nintendo-Preise (DE)", sources.NINTENDO_PRICE_URL + f"?country=DE&lang=de&ids={ids}",
+              None, lambda t: t[:400])
+    else:
+        lines.append("Mitgliedschaft Nintendo-Preise: keine ID gefunden, nicht abgefragt")
     return lines
 
 

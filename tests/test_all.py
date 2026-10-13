@@ -1579,7 +1579,7 @@ class SafetyTest(unittest.TestCase):
         old = sources.request
         sources.request = fake_request
         try:
-            lines = sync.diagnose()
+            lines = sync.diagnose(sleep=lambda s: None)
         finally:
             sources.request = old
             store.save_settings({"countries": {"US": {"cards": ""}}})
@@ -1591,6 +1591,29 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(set(seen), {None})                # immer die eigene Kennung
 
 
+    def test_diagnose_probes_membership_prices(self):
+        # Vorarbeit Online-Mitgliedschaft: DekuDeals je Land, Suche bei Nintendo Europa,
+        # mit gefundenen IDs die Preis-Schnittstelle; nichts wird gespeichert
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
+        urls = []
+        ld = ('<title>NSO</title><script type="application/ld+json">{"@type":"Product","offers":'
+              '{"@type":"Offer","price":"19.99","priceCurrency":"EUR"}}</script>'
+              '<a href="https://ec.nintendo.com/DE/de/membership">eShop</a>')
+        solr = json.dumps({"response": {"docs": [{"title": "Nintendo Switch Online", "type": "GAME",
+                                                  "nsuid_txt": ["70070000000001"]}]}})
+
+        def request(url, ua=None, timeout=25):
+            urls.append(url)
+            text = ld if sync.MEMBERSHIP_SLUG in url else solr if "Switch+Online" in url else ""
+            return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
+        with mock.patch.object(sources, "request", request):
+            text = "\n".join(sync.diagnose(sleep=lambda s: None))
+        self.assertIn("Mitgliedschaft DekuDeals (DE): HTTP 200", text)
+        self.assertIn("(19.99, 'EUR', 'price')", text)
+        self.assertIn("ec.nintendo.com/DE/de/membership", text)
+        self.assertIn("Mitgliedschaft Nintendo Europa (Suche): HTTP 200, Server t, Kodierung keine, 1 Treffer", text)
+        self.assertTrue(any("ids=70070000000001" in u for u in urls))
+
     def test_diagnose_skips_nintendo_co_jp(self):
         # 4.6 entschieden (13.10.2026): nintendo.co.jp kennt kaum Titel, der Test fragt es nicht mehr
         store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
@@ -1600,7 +1623,7 @@ class SafetyTest(unittest.TestCase):
             urls.append(url)
             return {"url": url, "status": 200, "text": "", "enc": "", "server": "t", "error": ""}
         with mock.patch.object(sources, "request", request):
-            sync.diagnose()
+            sync.diagnose(sleep=lambda s: None)
         self.assertFalse(any("nintendo.co.jp" in u for u in urls))
 
     def test_diagnose_reads_history_from_item_page(self):
@@ -1612,7 +1635,7 @@ class SafetyTest(unittest.TestCase):
                     if "/items/" in url else "")
             return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
         with mock.patch.object(sources, "request", request):
-            text = "\n".join(sync.diagnose())
+            text = "\n".join(sync.diagnose(sleep=lambda s: None))
         self.assertIn("Verlauf, price_history_data: 3 Zeichen", text)
 
 class SyncTest(unittest.TestCase):
