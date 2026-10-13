@@ -2151,6 +2151,51 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertEqual(asked, [("DE", ["1", "2"])])           # ein Abruf für beide
         self.assertEqual((list(data["prices"]["DE"]), list(data["xprices"]["DE"])), (["a"], ["x"]))
 
+    def test_price_fetch_retried_once_after_network_error(self):
+        settings = store.load_settings()
+        data = {"items": {"a": {"active": True, "ids": {"EU": ["70010000000001"]}}}, "prices": {}}
+        calls, pauses = [], []
+
+        def prices(code, ids, fetch=None, lang=None, pause=None):
+            calls.append(code)
+            if len(calls) == 1:
+                raise sources.FetchError("u", 0, "Temporary failure in name resolution")
+            return {n: {"status": "onsale", "currency": "EUR", "regular": 5.0} for n in ids}
+        with mock.patch.object(sources, "fetch_prices", prices), \
+                mock.patch.object(countries, "ORDER", ["DE"]):
+            sync.sync_prices(data, settings, None, pauses.append, {})
+        self.assertEqual(calls, ["DE", "DE"])
+        self.assertIn(sync.NET_RETRY_PAUSE, pauses)
+        self.assertEqual(list(data["prices"]["DE"]), ["a"])
+        # Antwortet der Server mit einem Status, gibt es keinen zweiten Versuch
+        calls.clear()
+
+        def refuse(code, ids, fetch=None, lang=None, pause=None):
+            calls.append(code)
+            raise sources.FetchError("u", 500)
+        with mock.patch.object(sources, "fetch_prices", refuse), \
+                mock.patch.object(countries, "ORDER", ["DE"]):
+            sync.sync_prices(data, settings, None, lambda s: None, {})
+        self.assertEqual(calls, ["DE"])
+
+    def test_only_nintendo_ids_from_links(self):
+        page = ('<title>X | Deku Deals</title>'
+                '<a href="https://www.nintendo.com/x?id=76971254689271">a</a>'
+                '<a href="https://ec.nintendo.com/DE/de/titles/70050000012345">b</a>')
+        self.assertEqual(sources.parse_item_page(page)["nsuids"], ["70050000012345"])
+
+    def test_invalid_ids_removed_and_searched_again(self):
+        data = {"extra": {"x": {"ids": {"EU": ["70050000012345"], "AM": ["76971254689271"]},
+                                "ids_checked": {"EU": 1, "AM": 1}}},
+                "items": {"a": {"ids": {"EU": ["70010000000001", "76971254689271"]},
+                                "ids_checked": {"EU": 1}}}}
+        self.assertEqual(sync.clean_ids(data), 2)
+        self.assertEqual(data["extra"]["x"]["ids"], {"EU": ["70050000012345"], "AM": []})
+        self.assertEqual(data["extra"]["x"]["ids_checked"], {"EU": 1})     # AM neu suchen
+        self.assertEqual(data["items"]["a"]["ids"]["EU"], ["70010000000001"])
+        self.assertEqual(data["items"]["a"]["ids_checked"], {"EU": 1})
+        self.assertEqual(sync.clean_ids(data), 0)
+
     def test_languages_of_missing_dlc_once_per_game(self):
         settings = store.load_settings()
         for code in settings["countries"]:

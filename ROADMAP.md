@@ -128,6 +128,8 @@ Reihenfolge und Begründung:
 - [x] DLC-IDs über titledb (0.46): Japan- und Amerika-IDs fehlender DLC über die Programm-ID der
   Europa-ID, DekuDeals nur für den Rest; schont DekuDeals und baut den Rückstand schneller ab
   (Entscheidung 13.10.2026).
+  0.46.1: Preisabruf nach kurzem Netzfehler einmal neu; als Nintendo-ID gilt nur noch eine Zahl
+  mit 700 am Anfang, falsch gelesene IDs entfernt der Abgleich und sucht die Region neu.
 - [x] 4.7 Sprache einmal je Titel und Region (0.35): Jeder Titel wird einmal je Region
   geprüft und dauerhaft gespeichert, unabhängig vom Preis, auch die fehlenden DLC deiner
   Spiele (eine Seite je Spiel, DLC übernimmt die Sprache des Spiels). Die Liste zeigt alle

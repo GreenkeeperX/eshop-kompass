@@ -29,6 +29,7 @@ TITLEDB_SECONDS = 7 * 24 * 3600       # titledb höchstens wöchentlich laden ..
 TITLEDB_RECHECK_SECONDS = 30 * 24 * 3600  # ... und je Titel ohne Angabe monatlich nachsehen
 TITLEDB_FRESH_SECONDS = 3600          # noch nie nachgesehene IDs gleich im nächsten Abgleich
 TDB_DLC_REGIONS = {"JP": "JP.ja", "AM": "US.en"}   # DLC-IDs dieser Regionen zuerst aus titledb
+NET_RETRY_PAUSE = 5.0                 # nach einem kurzen Netzfehler einmal neu versuchen
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
 CARD_PAUSE = 3.0
@@ -281,10 +282,19 @@ def sync_prices(data, settings, fetch, sleep, history=None):
         if not by_nsuid or (not active and time.time() - failed.get(code, 0) < PRICE_FAIL_PAUSE):
             status["done"] += 1
             continue
+        def prices():
+            return sources.fetch_prices(code, list(by_nsuid) + list(extra_ids), fetch=fetch,
+                                        lang=countries.BY_CODE[code]["lang"],
+                                        pause=lambda: sleep(NINTENDO_PAUSE))
         try:
-            res = sources.fetch_prices(code, list(by_nsuid) + list(extra_ids), fetch=fetch,
-                                       lang=countries.BY_CODE[code]["lang"],
-                                       pause=lambda: sleep(NINTENDO_PAUSE))
+            try:
+                res = prices()
+            except sources.FetchError as e:
+                # Kurzer Netzfehler (etwa Namensauflösung, Status 0): einmal nach einer Pause neu
+                if e.status:
+                    raise
+                sleep(NET_RETRY_PAUSE)
+                res = prices()
         except Exception as e:  # ein Land darf ausfallen, alte Preise bleiben
             if getattr(e, "status", None) in sources.BLOCKED:
                 _log(f"Nintendo lehnt Preisabrufe ab ({e}), übrige Länder beim nächsten Abgleich")
@@ -1049,6 +1059,24 @@ def _better(new, cur):
         cur.get("discount", cur.get("regular", 9e18))
 
 
+def clean_ids(data):
+    """Bis 0.46.0 konnte eine andere 14-stellige Zahl aus einem Nintendo-Link als ID gelten.
+    Solche IDs entfernen; bleibt keine, sucht der Abgleich die Region neu."""
+    dropped = 0
+    for coll in ("items", "extra", "glangs"):
+        for rec in (data.get(coll) or {}).values():
+            for fam, ids in list(((rec or {}).get("ids") or {}).items()):
+                good = [n for n in ids or [] if sources.NSUID_OK.match(str(n))]
+                if len(good) != len(ids or []):
+                    dropped += len(ids) - len(good)
+                    rec["ids"][fam] = good
+                    if not good:
+                        (rec.get("ids_checked") or {}).pop(fam, None)
+    if dropped:
+        _log(f"{dropped} ungültige Nintendo-IDs entfernt")
+    return dropped
+
+
 def run_sync(fetch=sources.fetch, sleep=time.sleep):
     if not _lock.acquire(blocking=False):
         return False
@@ -1061,6 +1089,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             raise RuntimeError("Kein Wishlist-Link in den Einstellungen")
         if not data.get("last_sync") and not data.get("lows"):
             data["lows_v"] = LOWS_VERSION      # frische Installation, nichts neu zu laden
+        clean_ids(data)
         _step("Wishlist lesen")
         sync_wishlist(data, settings, fetch, sleep)
         sync_collection(data, settings, fetch, sleep)

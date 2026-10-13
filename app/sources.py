@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.46.0"
+VERSION = "0.46.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -99,7 +99,10 @@ _ITEM_LINK_RE = re.compile(
 _ITEM_LOOSE_RE = re.compile(
     r"""(?:(?<=["'=(\s>])|(?<=dekudeals\.com))/items/([A-Za-z0-9][A-Za-z0-9_\-]*)(?=["'?#\s>)]|$)""")
 _URL_RE = re.compile(r"""https?://[^\s"'<>]+""")
-_NSUID_RE = re.compile(r"(?<!\d)(7\d{13})(?!\d)")
+# Nintendo-IDs beginnen mit 700 (7001 Spiel, 7005 DLC, 7007 Paket); andere 14-stellige
+# Zahlen in Links (Kennungen, Zeitstempel) sind keine
+_NSUID_RE = re.compile(r"(?<!\d)(700\d{11})(?!\d)")
+NSUID_OK = re.compile(r"^700\d{11}$")
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 _PARENT_RE = re.compile(
     r"""DLC for[^<]*(?:<(?!a\b)[^>]*>[^<]*)*<a\b[^>]*href=["']?[^"'>\s]*?/items/([A-Za-z0-9_\-]+)"""

@@ -453,7 +453,8 @@ freigeben solltest du das Tool deshalb nicht.
 ## Datenquellen
 
 - Wishlist, Sammlung und Titel-IDs: dekudeals.com (öffentliche Wishlist, IDs werden dauerhaft gespeichert)
-- Preise und Verfügbarkeit: api.ec.nintendo.com/v1/price (inoffiziell)
+- Preise und Verfügbarkeit: api.ec.nintendo.com/v1/price (inoffiziell; nach einem kurzen Netzfehler
+  ein zweiter Versuch, sonst bleiben die alten Preise des Landes)
 - Sprachen: search.nintendo-europe.com (Europa), store-jp.nintendo.com und titledb
   (raw.githubusercontent.com/blawar/titledb, Japan), nintendo.com-Produktseiten über
   ec.nintendo.com (Amerika), sonst deine Bestätigung
