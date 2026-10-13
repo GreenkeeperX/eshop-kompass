@@ -333,7 +333,8 @@ Sicherung und Protokoll.
   nur ein Browser mit JavaScript. Das Tool erkennt den Warteraum, fragt dann je
   Abgleich nur eine Seite und hört auf. Die Sprachen kommen stattdessen aus zwei Wegen:
   titledb, eine offene Titelliste auf GitHub (nicht von Nintendo, in der Oberfläche
-  „laut titledb“), für Titel ohne Angabe höchstens wöchentlich geladen (rund 24 MB,
+  „laut titledb“), für Titel ohne Angabe höchstens wöchentlich geladen, für neu gefundene
+  IDs schon am nächsten Tag (rund 24 MB,
   Stück für Stück gelesen, nur die eigenen IDs behalten); und der Browser-Helfer unter
   „Sprachen prüfen“: ein Lesezeichen, das in deinem Browser die Shopseiten der
   offenen Titel liest (eine alle 2,5 Sekunden) und das Ergebnis als Text mit
@@ -354,7 +355,8 @@ Sicherung und Protokoll.
   es keine, bleibt die ID, steht aber unter „Sprachen prüfen“ als „ID fraglich“ oben, und
   ihre gelesene Sprache zählt erst nach deiner Angabe. Unter Einstellungen, "Sprachen prüfen", stehen oben alle
   offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel), mit
-  Link in den Store und "Deutsch ja"/"nein"; wo die Fassung gerade günstiger
+  Link in den Store und "Deutsch ja"/"nein" (Einträge, die dort gerade nicht kaufbar sind,
+  stehen zugeklappt darunter); wo die Fassung gerade günstiger
   wäre, steht „günstiger“ und der Titel oben. Aufgeklappt folgen die geprüften:
   von Nintendo gelesen ("stimmt nicht" überschreibt) und von Hand gesetzt
   ("zurücksetzen" stellt die Angabe von Nintendo wieder her). Von Hand gilt

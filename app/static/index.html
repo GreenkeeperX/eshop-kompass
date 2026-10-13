@@ -1257,7 +1257,7 @@ function todos(){
   const out = [], s = S.state.settings;
   // Nur was gerade Geld kostet: offene Sprachen, wo die Fassung günstiger wäre. Die übrigen
   // offenen Titel stehen unter Einstellungen, Sprachen prüfen.
-  const open = (S.state.lang_todo || []).filter(t => !t.manual && t.state === null), need = open.filter(t => t.matters);
+  const open = (S.state.lang_todo || []).filter(t => !t.manual && t.state === null && t.here), need = open.filter(t => t.matters);
   if(need.length) out.push([`${need.length} Titel wären in ${[...new Set(need.map(t => t.family_name))].join(", ")} günstiger, die Sprache dort ist aber offen (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})${open.length > need.length ? `; insgesamt ${open.length} offen` : ""}`, `<button class="link" data-act="gosprachen">prüfen</button>`]);
   for(const p of S.plans){
     if(p.is_ref || p.code === "DG" || !(s.countries[p.code] || {}).enabled) continue;
@@ -1589,7 +1589,11 @@ function settingsBody(form){
 function langSection(){
   const todo = S.state.lang_todo || [];
   // „ID fraglich“ steht oben, auch wenn schon eine Sprache gelesen ist: Sie kann zu einem anderen Titel gehören
-  const open = todo.filter(t => !t.manual && (t.state === null || t.doubt)).sort((a, b) => b.matters - a.matters);
+  // Offen heißt: dort kaufbar. Wo es gerade nichts zu kaufen gibt, ändert die Antwort nichts; solche
+  // Einträge stehen zugeklappt darunter und kommen nach oben, sobald es dort einen Preis gibt.
+  const pending = todo.filter(t => !t.manual && (t.state === null || t.doubt));
+  const open = pending.filter(t => t.here || t.doubt).sort((a, b) => b.matters - a.matters);
+  const idle = pending.filter(t => !t.here && !t.doubt);
   const done = todo.filter(t => t.manual), auto = todo.filter(t => !t.manual && t.state !== null && !t.doubt);
   const now = open.filter(t => t.matters).length;
   let h = `<h3 class="sec" id="sprachen">Sprachen prüfen${open.length ? ` <span class="chip w">${open.length} offen</span>` : ""}</h3>
@@ -1606,7 +1610,9 @@ function langSection(){
   const L = "sprachen", srt = arr => sortRows(L, arr, {title: t => t.title, region: t => t.family_name, price: t => t.here ? t.here.eur : null});
   const head = `<thead><tr>${sth(L, "title", "Titel")}${sth(L, "region", "Region")}${sth(L, "price", "Preis", "Günstigster Preis jetzt oder je in dieser Region, daneben der Bestpreis der zählenden Länder")}<th></th><th>Deutsch?</th></tr></thead>`;
   h += open.length ? `${now ? `<p class="hint">Bei ${now} davon wäre die Fassung gerade günstiger, sie stehen oben.</p>` : ""}<div class="scroll"><table>${head}<tbody>${srt(open).map(row).join("")}</tbody></table></div>`
-    : `<p class="hint">Alles geprüft ✓</p>`;
+    : `<p class="hint">${idle.length ? "Alles Kaufbare geprüft ✓" : "Alles geprüft ✓"}</p>`;
+  if(idle.length)
+    h += `<details><summary class="hint">${idle.length} offen, dort aber gerade nicht kaufbar</summary><div class="scroll"><table>${head}<tbody>${srt(idle).map(row).join("")}</tbody></table></div></details>`;
   if(done.length || auto.length)
   {
     const tdb = auto.filter(t => t.src === "titledb"), nin = auto.filter(t => t.src !== "titledb");

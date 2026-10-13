@@ -2336,6 +2336,15 @@ class ExtraDlcTest(unittest.TestCase):
                              {"ok": None, "bad": {"JP": t0}, "new": None, "odd": {"JP": t0}})
             sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
             self.assertEqual(len(regions), 2)                   # jede ID nur einmal abgleichen
+            # Neue ID, die titledb noch nie gesehen hat: schon am nächsten Tag, nicht erst nach einer Woche
+            items["fresh"] = {"title": "F", "active": True, "ids": {"EU": ["e1"], "JP": ["j1x"]}, "langs": dict(lang)}
+            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400 + 3600)
+            self.assertEqual(len(regions), 4)
+            items["fresh2"] = {"title": "G", "active": True, "ids": {"EU": ["e1"], "JP": ["j1y"]}, "langs": dict(lang)}
+            sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400 + 7200)
+            self.assertEqual(len(regions), 4)                   # höchstens einmal am Tag
+            sync.sync_titledb(data, settings, None, now=t0 + 9 * 86400 + 3600)
+            self.assertEqual(len(regions), 6)
         # Neusuche bei DekuDeals bleibt bei der alten ID: der titledb-Kandidat gilt,
         # ohne Kandidaten bleibt die ID, aber als fraglich markiert
         sync.settle_ids(items["bad"], "JP", ["j2"], t0 + 60, "Bad")

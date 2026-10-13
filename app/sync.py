@@ -27,6 +27,7 @@ LANG_TRIES = 3                        # so viele Versuche, bevor nur noch monatl
 LANG_PER_SYNC = 40                    # Seiten je Region und Abgleich, ungeprüfte zuerst
 TITLEDB_SECONDS = 7 * 24 * 3600       # titledb höchstens wöchentlich laden ...
 TITLEDB_RECHECK_SECONDS = 30 * 24 * 3600  # ... und je Titel ohne Angabe monatlich nachsehen
+TITLEDB_FRESH_SECONDS = 20 * 3600      # für noch nie nachgesehene IDs schon am nächsten Tag
 PRICE_FAIL_PAUSE = 7 * 24 * 3600      # abgeschaltete Länder ohne Preisantwort ruhen lassen
 CARD_RECHECK_SECONDS = 20 * 3600      # Kartenpreise höchstens einmal am Tag lesen
 CARD_PAUSE = 3.0
@@ -560,7 +561,11 @@ def sync_titledb(data, settings, fetch, now=None):
             eu = ((r.get("ids") or {}).get("EU") or [None])[0]
             if eu and (r.get("ids_tdb") or {}).get("JP") != n:
                 verify[n] = (r, str(eu))
-    if not (todo or verify) or now - data.get("titledb_at", 0) < TITLEDB_SECONDS:
+    # Neue IDs, die titledb noch nie gesehen hat: schon nach einem Tag, sonst wöchentlich
+    fresh = any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
+        (r.get("ids_tdb") or {}).get("JP") is None for r, _ in verify.values())
+    wait = TITLEDB_FRESH_SECONDS if fresh else TITLEDB_SECONDS
+    if not (todo or verify) or now - data.get("titledb_at", 0) < wait:
         return
     _step("Sprachen Japan aus titledb")
     try:
@@ -986,7 +991,6 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
         langs_budget = {}         # höchstens LANG_PER_SYNC Seiten je Region im ganzen Abgleich
-        sync_titledb(data, settings, fetch)
         sync_langs(data, settings, fetch, sleep, budget=langs_budget)
         if data.get("lows_v") != LOWS_VERSION:
             # Frühere Versionen lasen teils den Händler- statt den digitalen
@@ -1001,6 +1005,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_lows(data, settings, fetch, sleep)
         sync_related(data, settings, fetch, sleep)
         sync_extra_ids(data, settings, fetch, sleep)
+        sync_titledb(data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
         sync_langs(data, settings, fetch, sleep, budget=langs_budget)    # Sprachen der neu gefundenen DLC
         status["ok"] = True
         _step("Fertig")
