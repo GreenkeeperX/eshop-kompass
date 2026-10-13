@@ -173,8 +173,8 @@ Reihenfolge und Begründung:
   Euro-Guthaben; Kartentabelle je Land, Spalte „Dein Faktor“, Faktor im Plan und im Tooltip.
   Dazu: Europa-Sprachen fehlender DLC über die Seite ihres Spiels, „kaufen“ in der Titeltabelle
   dunkler, damit Stern und DE✓ lesbar bleiben.
-- [ ] Sammlung übersichtlicher: vollständige Spiele und „Ohne Zusatzinhalte“ eingeklappt,
-  A–Z spaltenweise (Konzept liegt vor, wartet auf Freigabe).
+- [x] Sammlung übersichtlicher (0.53.1): vollständige Spiele und „Ohne Zusatzinhalte“
+  eingeklappt, A–Z spaltenweise, die Suche klappt Treffer auf.
 - [ ] Online-Mitgliedschaft: Preise je Land und Bezugsweg, Erinnerung vor Ablauf, als
   Füllartikel im Kaufplan. Zuerst Einzelmitgliedschaft ohne Erweiterungspaket, die anderen
   Varianten danach; kein Kauf für eine Familiengruppe, Händler-Links folgen.

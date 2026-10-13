@@ -242,7 +242,14 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .cg tr.ign td{color:var(--muted)}
 .cg h3 .sp{flex:1}
 .cg details.fold{margin-top:4px}
-.cg .cl{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;font-size:13px}
+/* A–Z spaltenweise: erst die erste Spalte von oben nach unten (0.53.1) */
+.cg .cl{columns:220px;column-gap:16px;font-size:13px}
+.cg .cl a{display:block;break-inside:avoid;padding:2px 0}
+details.cg > summary{cursor:pointer;font-size:14px}
+.cgl{margin-top:6px}
+.cgd{border-top:1px solid var(--line);padding:4px 0}
+.cgd > summary{cursor:pointer;font-size:13.5px}
+.cgd .cga{font-size:12.5px;margin:4px 0}
 .cg h3 .mut{font-weight:400;font-size:12.5px}
 .cg table{width:100%}
 .cg td{vertical-align:top;padding:4px 6px 4px 0;border-top:1px solid var(--line)}
@@ -870,35 +877,43 @@ function collGame(g){
   const sum = [`${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored || g.gone ? "" : "alle da"), g.ignored ? `${g.ignored} ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
     g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(", ");
   const key = "ign:" + g.slug;
-  return `<section class="box cg"><h3>${esc(g.title)}${g.via ? ` <small class="mut">über ${esc(g.via)}</small>` : ""} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>` +
-    (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
+  const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
     (ign.length ? `<details class="fold" data-k="${esc(key)}" ${S.folds[key] ? "open" : ""}><summary class="hint">${ign.length} ignoriert</summary><table class="mini-t">${ign.map(collDlc).join("")}</table></details>` : "") +
-    (gone.length ? `<details class="fold" data-k="${esc("gone:" + g.slug)}" ${S.folds["gone:" + g.slug] ? "open" : ""}><summary class="hint">${gone.length} nicht mehr erhältlich</summary><table class="mini-t">${gone.map(collDlc).join("")}</table></details>` : "") + `</section>`;
+    (gone.length ? `<details class="fold" data-k="${esc("gone:" + g.slug)}" ${S.folds["gone:" + g.slug] ? "open" : ""}><summary class="hint">${gone.length} nicht mehr erhältlich</summary><table class="mini-t">${gone.map(collDlc).join("")}</table></details>` : "");
+  const via = g.via ? ` <small class="mut">über ${esc(g.via)}</small>` : "";
+  // Vollständig (nichts mehr offen): eine Zeile, die DLC aufklappbar wie bei „alle ignoriert“ (0.53.1)
+  if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary><span class="ok">✓</span> ${esc(g.title)}${via} <span class="mut">${sum}</span></summary>${all ? `<div class="cga">${all}</div>` : ""}<table class="mini-t">${g.dlc.map(collDlc).join("")}</table></details>`;
+  return `<section class="box cg"><h3>${esc(g.title)}${via} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>${body}</section>`;
 }
 function viewCollection(){
   const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
   const hit = t => !q || t.toLowerCase().includes(q);
-  const games = sortRows("sammlung", c.games.filter(g => (hit(g.title) || g.dlc.some(d => hit(d.title))) && (!S.collMissing || g.missing)),
+  const found = c.games.filter(g => hit(g.title) || g.dlc.some(d => hit(d.title)));
+  const done = found.filter(g => !g.missing).sort((a, b) => a.title.localeCompare(b.title, "de"));
+  const games = sortRows("sammlung", found.filter(g => g.missing),
     {title: g => g.title, missing: g => -g.missing, eur: g => g.missing_eur, sale: g => -g.missing_sale});
   const cs = S.sorts.sammlung, cv = cs ? cs.k : "";
   const co = (v, l) => `<option value="${v ? v + ":1" : ""}" ${cv === v ? "selected" : ""}>${l}</option>`;
-  const plain = S.collMissing ? [] : (c.plain || []).filter(g => hit(g.title));
-  const waiting = S.collMissing ? [] : (c.waiting || []).filter(g => hit(g.title));
+  const plain = (c.plain || []).filter(g => hit(g.title)).sort((a, b) => a.title.localeCompare(b.title, "de"));
+  const waiting = (c.waiting || []).filter(g => hit(g.title));
   const missing = c.games.reduce((n, g) => n + g.missing, 0);
   let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
-    <label class="hint"><input type="checkbox" data-act="collmissing" ${S.collMissing ? "checked" : ""}> nur Spiele mit fehlenden DLC</label>
-    <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "erst mit fehlenden DLC, dann nach Name")}${co("title", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
+    <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
   h += eshopBox();
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   const total = c.missing_eur !== null && c.missing_eur !== undefined
     ? ` ${c.missing_priced < missing ? `Für ${c.missing_priced} davon ist ein Preis bekannt: zusammen` : "Zusammen"} jetzt ${eur(c.missing_eur)}${c.missing_sale ? `, ${c.missing_sale} im Angebot` : ""}, jeweils im günstigsten zählenden Land.` : "";
-  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung${missing ? `, ${missing} DLC fehlen` : ""}.${total} Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
+  const nDone = c.games.filter(g => !g.missing).length;
+  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung: ${c.games.length} mit Zusatzinhalten (${c.games.length - nDone} mit fehlenden, ${nDone} vollständig), ${(c.plain || []).length} ohne${missing ? `. ${missing} DLC fehlen` : ""}.${total} Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
   h += games.map(collGame).join("");
+  // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
+  const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
+  h += fold("colldone", done, "Vollständig", "Nichts mehr offen: alle DLC da, ignoriert oder nicht mehr erhältlich. Klick auf ein Spiel zeigt seine DLC.", `<div class="cgl">${done.map(collGame).join("")}</div>`);
+  h += fold("collplain", plain, "Ohne Zusatzinhalte", "", `<div class="cl">${plain.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener"${g.via ? ` title="über ${esc(g.via)}"` : ""}>${esc(g.title)}</a>`).join("")}</div>`);
   const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener"${g.via ? ` title="über ${esc(g.via)}"` : ""}>${esc(g.title)}</a>`).join("")}</div></section>` : "";
-  h += list(plain, "Ohne Zusatzinhalte", "");
   h += list(waiting, "Noch nicht gelesen", "Das Tool liest je Abgleich höchstens 40 Artikelseiten, diese folgen bei den nächsten Abgleichen.");
-  if(!games.length && !plain.length && !waiting.length) h += `<p class="mut">${q || S.collMissing ? "Kein Spiel passt zum Filter." : "Noch keine Spiele bekannt."}</p>`;
+  if(!games.length && !done.length && !plain.length && !waiting.length) h += `<p class="mut">${q ? "Kein Spiel passt zum Filter." : "Noch keine Spiele bekannt."}</p>`;
   return h;
 }
 function viewTitles(){
@@ -2071,7 +2086,6 @@ document.addEventListener("click", async e => {
 document.addEventListener("change", async e => {
   const el = e.target, a = el.dataset.act;
   try{
-    if(a === "collmissing"){ S.collMissing = el.checked; render(); return; }
     if(el.id === "impFile" && el.files[0]){
       const data = JSON.parse(await el.files[0].text());
       await api("/api/import", data);

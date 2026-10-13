@@ -181,8 +181,10 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   ein fehlender DLC auf deiner Wishlist, stehen Urteil, Einkaufspreis und Land
   dabei, sonst ein Link zu DekuDeals, um ihn auf die Wishlist zu setzen.
   Upgrade-Pakete für die Switch 2 sind markiert. Spiele mit fehlenden DLC
-  stehen oben, darunter kompakt die Spiele ohne Zusatzinhalte und die noch nicht
-  gelesenen. "nur Spiele mit fehlenden DLC" blendet die übrigen aus. Das Tool
+  stehen oben, je eines in einem Kasten. Darunter zugeklappt (0.53.1): "Vollständig",
+  Spiele ohne offene DLC (alle da, ignoriert oder nicht mehr erhältlich), je eine Zeile,
+  die seine DLC aufklappt; dann "Ohne Zusatzinhalte", A–Z spaltenweise. Die Suche klappt
+  Abschnitte mit Treffern auf. Die noch nicht gelesenen Spiele stehen offen am Ende. Das Tool
   liest dafür die Artikelseiten von Sammlung und Wishlist, höchstens 40 je
   Abgleich und jede einmal im Monat; nach dem Update dauert es also einige
   Abgleiche, bis alle gelesen sind.
