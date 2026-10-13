@@ -272,7 +272,8 @@ Sicherung und Protokoll.
   Länder", mit Schalter. Die Spalte Preisniveau zeigt für jedes Land, wie es
   zu deiner Wishlist steht, auch wenn es abgeschaltet ist.
 - Regeln: Urteilsgrenzen, Wechselschwellen je Stufe und die Sprachregel. Ein
-  Satz darüber fasst die aktuellen Werte zusammen.
+  Satz fasst die aktuellen Werte zusammen, die Felder stehen eingeklappt unter
+  „Grenzen anpassen“.
 - Wechsel: leicht (Karte, kein Rest), mittel (Guthabenkarten, ein Rest
   verfällt beim Wechsel), schwer (Amerika: Guthaben muss vor dem Wechsel 0
   sein). Je Stufe gilt ein eigener Mindestgewinn gegenüber dem, was die Titel
