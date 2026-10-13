@@ -244,89 +244,20 @@ Vorhersage des nächsten Angebots (nicht verlässlich, siehe 4.3).
   nur offene Sprachen, die gerade Geld kosten. Kein DLC-Regionshinweis in Europa.
   Verbindungstest: robots.txt je Kennung gelesen, Preisverlauf wieder aus der Artikelseite.
 
-## Phase 6: Zukunftspläne (Machbarkeit geprüft 13.10.2026)
+## Phase 6: Bedienung
 
-Noch nichts davon ist begonnen. Reihenfolge nach Aufwand und Nutzen: zuerst, was dem heutigen
-Betrieb hilft, zuletzt das öffentliche Angebot, weil es von den Schritten davor abhängt.
+- [x] 6.1 Hell, dunkel, System (0.55): runder Knopf oben rechts, zeigt nur die aktuelle Wahl,
+  ein Klick öffnet die drei Stufen, Vorgabe „System“ (Entscheidung 13.10.2026).
+- [x] 6.2 Lesezeichen leichter anlegen (0.55): Knopf zum Ziehen und „Code kopieren“ (Webseiten
+  dürfen selbst keine Lesezeichen anlegen), Textfelder eingeklappt, veraltete Lesezeichen melden
+  sich, „JP-Sprachen lesen“ gibt sein Ergebnis direkt ans Tool. 0.55.1: IDs auch über den
+  Adressteil und die Zwischenablage.
+- [x] Rückmeldungen zu 0.55 (0.55.1): Knöpfe oben getauscht, Kopfleiste blendet sich beim
+  Scrollen aus und beim Hochscrollen ein, Sammlung mit kurzem Zahlenkopf, „10 da · 7 ignoriert“
+  statt „10 von 17“, ★ in der Länderliste direkt vor den Angaben.
 
-- [x] 6.1 **Hell, dunkel, System** (0.55): runder Knopf neben dem „?“, der nur die aktuelle Wahl
-  zeigt; ein Klick öffnet die drei Stufen, Vorgabe „System“ (Entscheidung 13.10.2026). Die Wahl
-  setzt `data-theme` am `html`-Element und bleibt im Browser. Der helle Modus wird seitdem bei
-  jeder Farbänderung mitgeprüft.
-- [x] 6.2 **Lesezeichen leichter anlegen** (0.55): Ein Knopf, der selbst ein Lesezeichen anlegt,
-  geht nicht; Browser erlauben Webseiten das nicht (Firefox hat die letzte Schnittstelle dafür
-  entfernt, Chrome hatte nie eine). Umgesetzt: gestrichelter Knopf zum Ziehen, „Code kopieren“
-  für ein von Hand angelegtes Lesezeichen (auch am Handy), kurze Anleitung eingeklappt,
-  Textfelder unter „Geht das nicht?“. Jedes Lesezeichen gibt seinen Stand mit, ein veraltetes
-  meldet sich. „JP-Sprachen lesen“ gibt sein Ergebnis jetzt direkt ans Tool und bekommt die IDs
-  über den Link zu store-jp; ob der Link den Warteraum übersteht, zeigt der Gebrauch, sonst fragt
-  es wie bisher.
-  Verworfen: ein Lesezeichen, das seinen Code jedes Mal vom Tool nachlädt. Das holte fremden
-  Code in eine angemeldete Nintendo-Seite und scheitert oft an deren Sicherheitsregeln.
-  Später möglich: eine Browser-Erweiterung statt Lesezeichen. Sie wäre einmal installiert und
-  schickte die Daten direkt, braucht aber Veröffentlichung im Store je Browser und eigene
-  Pflege; sinnvoll erst mit einem öffentlichen Angebot (6.6).
-- [ ] 6.3 **Sprache der Oberfläche** (groß): Deutsch und Englisch, weitere nur mit Muttersprachlern.
-  Alle Texte stehen heute direkt im Code, rund 350 Zeilen der Oberfläche und viele Sätze in
-  Python (Protokoll, Gründe beim Urteil, Hinweise). Weg: erst alle Texte der Oberfläche in eine
-  Wörterliste mit `t("…")`, dann geben `planner.py` und `sync.py` Kennungen mit Werten statt
-  fertiger Sätze zurück. Zahlen, Daten und Beträge über `Intl` nach Sprache formatiert. README
-  zusätzlich auf Englisch. Ohne neue Abhängigkeiten machbar, aber eine Version je Reiter.
-- [ ] 6.4 **Heimatland wählbar** (mittel bis groß): Ein Heimatland bestimmt Zielsprache,
-  Vergleichsland und Rechenwährung zugleich (Entscheidung 13.10.2026). Heute fragt die
-  Sprachregel fest nach Deutsch (`planner.german`), Deutschland ist Vergleichsbasis, gerechnet
-  wird in Euro, die Euroländer fehlen bewusst, Kartenstufen und Gebühren stehen in Euro. Die
-  Quellen liefern schon alle Sprachen. Machbar: `german` wird `has_lang(Zielsprache)`, dazu je
-  Sprache die Namen bei Nintendo Japan (wie ドイツ語); `REFERENCE` und Euro werden zur Einstellung.
-  Bei einem Wechsel fragt das Tool, ob die Vorgaben mitwechseln sollen: welche Länder sichtbar
-  sind, welche zählen, welche Region „ohne Wechsel“ ist. Danach mit der Prüfumgebung
-  (`tools/replay.py`) Szenarien je Heimatland durchrechnen, etwa USA (Englisch, fast jede Region
-  zählt) und Japan (oft nur Japan und Asien). Lohnt erst mit einem öffentlichen Angebot.
-- [ ] 6.5 **Neuer Name** (klein, aber erst klären): Ein Name mit „eShop“ benutzt eine Marke
-  von Nintendo. Privat stört das kaum, mit eigener Domain und Werbung ist es ein Risiko,
-  ebenso das Nintendo-Rot im Logo. Vor dem Umbenennen einen Namen ohne „eShop“ und ohne
-  „Nintendo“ erwägen, Hinweis „kein Angebot von Nintendo“ einbauen und Marke und Domain prüfen.
-  Umbenennen selbst ist leicht (Titel, Kennung beim Abruf, Image, README), alte Daten laden weiter.
-- [ ] 6.6 **Öffentliches Angebot** (sehr groß, mit offenen Rechtsfragen). Was dafür nötig wäre:
-  - *Daten je Nutzer:* Heute gehört der Server einer Person (`settings.json`, `data.json`,
-    Kaufverlauf). Einstellungen passen in den Browser (localStorage, für Cookies sind sie zu
-    groß), Sicherung als Datei gibt es schon. Wishlist, Sammlung, Kaufverlauf und abgehakte DLC
-    müssten ebenfalls im Browser liegen; der Server hält nur, was alle teilen: Preise je
-    Nintendo-ID, Kurse, Artikelseiten, Sprachen. Das ist ein Umbau von `sync.py` und `server.py`.
-  - *Last bei den Quellen:* Geteilte Daten wachsen mit der Zahl der Titel, nicht der Nutzer, und
-    bleiben schonend (Preise in Gruppen zu 50 IDs). Je Nutzer kommen aber Wishlist- und
-    Sammlungsseiten bei DekuDeals dazu; bei 100 Nutzern und 6 Stunden sind das Hunderte Abrufe
-    am Tag. Nötig wären Abruf nur bei Besuch, längere Abstände und eine Obergrenze je Nutzer.
-  - *Nutzungsbedingungen:* DekuDeals hat keine öffentliche Schnittstelle und finanziert sich
-    selbst über Werbung; ein Angebot mit Werbung auf ihren Daten braucht vorher deren
-    Zustimmung. Die Preisschnittstelle von Nintendo ist nicht offiziell freigegeben, Eneba-Links
-    sind eigene Einträge. Ohne Zustimmung von DekuDeals kein öffentliches Angebot.
-  - *Recht in Deutschland:* Impressum mit ladungsfähiger Anschrift (Werbung macht das Angebot
-    geschäftsmäßig), Datenschutzerklärung, Vertrag mit dem Hoster. Werbenetzwerke setzen Cookies
-    und brauchen ein Einwilligungsbanner; Einstellungen im Browser brauchen keins, solange sie
-    nur dem Tool dienen.
-  - *Sicherheit:* Der Server ruft heute Adressen aus den Einstellungen ab (Wishlist, Kartenlinks).
-    Öffentlich nur mit fester Liste erlaubter Seiten, sonst lässt er sich auf fremde Ziele
-    lenken. Dazu Begrenzung der Anfragen je Adresse und HTTPS. Die Härtung des Containers bleibt.
-  - *Lesezeichen „Käufe lesen“:* Fremde müssten einem Skript in ihrer angemeldeten
-    Nintendo-Seite vertrauen. Geht nur, wenn die Daten im Browser bleiben und der Code offen liegt.
-  - *Kosten und Nutzen:* Ein kleiner Server kostet wenige Euro im Monat; Werbung bringt bei
-    einem Nischenwerkzeug wenig. Zuerst günstiger testen, ob es jemanden interessiert (6.7).
-- [ ] 6.7 **Interesse testen, bevor es einen Server gibt** (klein): Das Image ist schon
-  öffentlich. Eine englische Kurzanleitung zum Selbstbetrieb (ein `docker run`, Wishlist-Link
-  eintragen), Screenshots mit Testdaten und ein Beitrag in einer Switch-Community zeigen, ob
-  jemand es nutzt (Sterne, Fragen, Pull-Downloads). Jeder betreibt dann seinen eigenen Server mit
-  eigener Kennung, die Last bei den Quellen verteilt sich, und es gibt keine Rechtsfragen zu
-  Werbung und fremden Daten. Setzt 6.3 (Englisch) und 6.5 (Name) voraus.
-
-Weitere Ideen aus der Prüfung:
-- **Einrichtung beim ersten Start:** ein kurzer Ablauf (Wishlist-Link, Heimatland, Zielsprache,
-  Karten), statt alles in den Einstellungen zu suchen. Wird mit 6.4 und 6.7 wichtig.
-- **Beispieldaten zum Ausprobieren:** eine Ansicht mit erfundener Wishlist, damit Fremde das
-  Tool sehen, ohne etwas einzutragen. Hilft auch bei Screenshots für README und Tests.
-- **Mehrere Personen auf einem Server ohne Hosting:** etwa ein Haushalt; braucht dieselbe
-  Trennung der Daten wie 6.6, aber keine Werbung und kein Impressum. Ein Zwischenschritt, falls
-  6.7 Interesse zeigt.
+Gestrichen (Entscheidung 13.10.2026): Sprache der Oberfläche, Heimatland, neuer Name,
+öffentliches Angebot mit Werbung. Das Tool bleibt ein privates Werkzeug auf dem eigenen Server.
 
 ## Ohne Arbeit für uns
 

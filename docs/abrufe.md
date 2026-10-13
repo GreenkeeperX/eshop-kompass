@@ -2,7 +2,7 @@
 
 Verbindliche Übersicht, was das Tool woher holt, wann, wie oft und wohin es das Ergebnis
 legt. Wer einen Abruf, eine Grenze oder eine Ablage ändert, passt diese Datei im selben
-Commit an. Stand: 0.55.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
+Commit an. Stand: 0.55.1. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
 
 ## Grundregeln
 
@@ -57,7 +57,7 @@ schreibt `Prüfung: …`.
 | Helfer | Holt | Rückweg | Ablage |
 |---|---|---|---|
 | „Käufe lesen“ auf ec.nintendo.com | Kaufverlauf über die Schnittstelle der Seite, 1,2 s je Seite, bis zum Stand des letzten vollständigen Laufs | Adresse mit `#kaeufe=` oder Einfügen | `eshop_history.json`, bis 3000 Einträge |
-| „JP-Sprachen lesen“ auf store-jp | Titelseiten der IDs aus dem Link (`#ek-ids=`), sonst eingefügt, 2,5 s Pause | Adresse mit `#jpsprachen=` oder Einfügen | `.langs.JP` |
+| „JP-Sprachen lesen“ auf store-jp | Titelseiten der IDs aus dem Link (`?ek-ids=` oder `#ek-ids=`; der Link legt sie auch in die Zwischenablage), sonst eingefügt, 2,5 s Pause | Adresse mit `#jpsprachen=` oder Einfügen | `.langs.JP` |
 
 Beide Lesezeichen geben ihren Stand mit (`hv`). Ist er älter als nötig, meldet das Tool das
 (gemerkt im Browser unter `ek.helpers`).

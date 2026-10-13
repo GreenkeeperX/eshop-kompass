@@ -35,9 +35,10 @@ blockiert, hier teurer als ohne den Wechsel, Betrag über dem Bestpreis). Rabatt
 stehen dezent blau daneben. Die verbindlichen Regeln stehen in
 `docs/oberflaeche.md`.
 
-Hell oder dunkel: Der runde Knopf neben dem "?" zeigt die aktuelle Ansicht (System, Hell
+Hell oder dunkel: Der runde Knopf rechts vom "?" zeigt die aktuelle Ansicht (System, Hell
 oder Dunkel); ein Klick öffnet die Auswahl. Vorgabe ist System, also wie das Gerät. Die
-Wahl merkt sich der Browser.
+Wahl merkt sich der Browser. Kopf und Reiter blenden sich beim Scrollen nach unten aus und
+beim Hochscrollen wieder ein.
 
 Lesezeichen (Käufe lesen, JP-Sprachen lesen): Webseiten dürfen selbst keine Lesezeichen
 anlegen. Den gestrichelten Knopf zieht man deshalb in die Lesezeichenleiste; „Code kopieren“
@@ -441,7 +442,7 @@ Sicherung und Protokoll.
   Stück für Stück gelesen, nur die eigenen IDs behalten); und der Browser-Helfer unter
   „Sprachen prüfen“: ein Lesezeichen, das in deinem Browser die Shopseiten der
   offenen Titel liest (eine alle 2,5 Sekunden; die IDs bekommt es über den Link zu
-  store-jp im Tool, sonst fragt es danach) und das Ergebnis mit „Im eShop-Kompass
+  store-jp im Tool, der sie zugleich in die Zwischenablage legt; sonst fragt es danach) und das Ergebnis mit „Im eShop-Kompass
   übernehmen“ ans Tool gibt, ersatzweise als Text mit Kopieren-Knopf. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des
   Spiels, auf die sie verweist. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je

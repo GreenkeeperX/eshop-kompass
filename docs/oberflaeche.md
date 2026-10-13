@@ -12,7 +12,7 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 
 ## Hell, dunkel, System
 
-- Umschalter oben rechts neben dem "?": rund, zeigt nur das Zeichen der aktuellen Wahl
+- Umschalter oben rechts, rechts vom "?": rund, zeigt nur das Zeichen der aktuellen Wahl
   (halber Kreis System, Sonne Hell, Mond Dunkel); ein Klick öffnet die drei Stufen, ein Klick
   daneben oder Esc schließt sie. Vorgabe ist System.
 - Technik: `data-theme="light|dark"` am `html`-Element, ohne Angabe gilt
@@ -21,10 +21,18 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 - Die dunklen Tokens stehen zweimal (Gerät dunkel, Wahl dunkel) und müssen gleich bleiben;
   ein Test prüft das.
 
+## Kopfleiste
+
+Kopf und Reiter kommen beim Scrollen mit. Nach 120 px weiter nach unten blenden sie sich aus,
+ein Stück nach oben (30 px) zeigt sie wieder. Tabellenköpfe und die Sprungleiste halten über
+`--stick` Abstand, solange die Leiste zu sehen ist.
+
 ## Lesezeichen
 
-- Ein Lesezeichen erscheint als gestrichelter Knopf zum Ziehen (⠿ Name) mit „Code kopieren“
+- Ein Lesezeichen erscheint als Knopf zum Ziehen mit durchgezogenem Rahmen (⠿ Name) mit „Code kopieren“
   daneben und „So legst du es an“ eingeklappt darunter.
+- Länderliste im aufgeklappten Titel: ★ steht direkt vor den Angaben des Landes, ? vor dem Grund,
+  warum ein Land nicht zählt; keine eigene Spalte dafür.
 - Hauptweg zurück ist „Im eShop-Kompass übernehmen“; Textfelder zum Kopieren und Einfügen
   stehen eingeklappt unter „Geht das nicht?“.
 - Namen der Lesezeichen bleiben stabil, ohne Versionsnummer. Ein veraltetes Lesezeichen meldet
@@ -67,13 +75,17 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 
 ## Zahlen in Sätzen
 
-Nur die Zahl trägt die Farbe, Verbindungswörter bleiben grau. Sammlung: „5 von 5“ ganz grün,
-wenn alles da ist; sonst bei nichts Offenem nur die Zahl vorhandener grün, die Zahl ignorierter
-rot (Entscheidung 13.10.2026).
+Nur die Zahl trägt die Farbe, Verbindungswörter bleiben grau. Sammlung je Spiel: eine Zahl je
+Art, mit „·“ getrennt und ohne Gesamtzahl („10 da · 7 ignoriert“, die Gesamtzahl steht im
+Tooltip), damit nichts wie „17,7“ liest. „alle 5 da“ ganz grün, wenn alles da ist; sonst bei
+nichts Offenem nur die Zahl vorhandener grün, die Zahl ignorierter rot (Entscheidung 13.10.2026,
+Form ab 0.55.1). Der Kopf der Sammlung zeigt Zahlen fett in zwei kurzen Zeilen, die Erklärung
+steht eingeklappt darunter.
 
 ## Flächen
 
-Kacheln und Kästen haben immer denselben Hintergrund (`--card`). Weniger Wichtiges wird über
+Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länderkarten im
+Reiter Länder (seit 0.53.6); Grün steht dort nur für „am Bestpreis“ in der Zeile Preis. Weniger Wichtiges wird über
 gedämpften Text gezeigt, nie über Transparenz der ganzen Kachel.
 
 ## Wortwahl

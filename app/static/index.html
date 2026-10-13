@@ -43,7 +43,10 @@ button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
 button.link{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline}
 button:disabled{opacity:.5;cursor:default}
-nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px;overflow-x:auto}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+/* Kopf und Reiter kommen beim Scrollen mit, verschwinden nach unten weiter, kommen beim Hochscrollen zurück */
+.stick{position:sticky;top:0;z-index:4;background:var(--bg);margin-bottom:10px;transition:transform .25s ease,opacity .25s ease}
+.stick.hid{transform:translateY(-100%);opacity:0;pointer-events:none}
 nav button{white-space:nowrap}
 a.btn{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;color:var(--ink);text-decoration:none}
 a.btn:hover{border-color:var(--accent)}
@@ -237,7 +240,7 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 /* Radar */
 .radar{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
 .radar th,.radar td{padding:4px 9px;vertical-align:top}
-.radar thead th{position:sticky;top:0;background:var(--card);z-index:1}
+.radar thead th{position:sticky;top:var(--stick,0px);background:var(--card);z-index:1}
 .radar td:first-child{white-space:normal;min-width:200px;max-width:300px}
 .radar td small{display:block;color:var(--muted);font-size:11px}
 .radar td.na{color:var(--muted)}
@@ -278,7 +281,7 @@ a.mini{color:var(--muted);font-size:10px;margin-left:5px;text-decoration:none;bo
 .cardsbox small{color:var(--muted)}
 .saved{color:var(--accent);font-size:13px;margin-left:8px}
 h3.sec{margin:22px 0 8px;font-size:14px;scroll-margin-top:52px}
-.jump{position:sticky;top:0;z-index:4;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.jump{position:sticky;top:var(--stick,0px);z-index:4;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
 .jump a{color:var(--ink);text-decoration:none}
 .jump a:hover{text-decoration:underline}
 .set tr.cardrow td{border-top:0;padding:0 8px 6px;white-space:normal}
@@ -316,8 +319,8 @@ button.help{width:30px;height:30px;padding:0;border-radius:50%;font-weight:700}
 .thm-m button:hover{background:var(--chip)}
 .thm-m button.on{font-weight:600}
 .thm-m .ic{display:inline-block;width:22px;vertical-align:-3px}
-/* Lesezeichen: Link zum Ziehen sieht aus wie ein Knopf */
-a.bm{display:inline-block;border:1px dashed var(--accent);border-radius:8px;padding:4px 10px;color:var(--ink);text-decoration:none;cursor:grab;background:var(--card)}
+/* Lesezeichen: Link zum Ziehen sieht aus wie ein Knopf, ⠿ als Griff */
+a.bm{display:inline-block;border:1px solid var(--accent);border-radius:8px;padding:4px 10px;color:var(--ink);text-decoration:none;cursor:grab;background:var(--card)}
 a.bm:active{cursor:grabbing}
 .bm-w{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0}
 button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
@@ -367,7 +370,9 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 .dg{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;font-size:13px}
 .dg>span:nth-child(odd){color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
 .al-list{display:grid;gap:2px}
-.al-list>div{display:grid;grid-template-columns:28px 76px 230px minmax(120px,1fr) auto;gap:8px;align-items:baseline}
+.cstat{display:flex;flex-wrap:wrap;gap:2px 18px;font-size:14px;margin:0 0 4px}
+.cstat .mut{font-size:13px}
+.al-list>div{display:grid;grid-template-columns:76px 230px minmax(120px,1fr) auto;gap:8px;align-items:baseline}
 .al-list>div>b{text-align:right}
 .al-list .nc{opacity:.75}
 .matrix .tbtn,.cmp .tbtn{border:0;background:none;padding:0;text-align:left;color:var(--ink)}
@@ -398,9 +403,9 @@ dialog#legend{width:min(760px,calc(100vw - 32px))}
   .radar tr.det td{padding:0}
   .dg{grid-template-columns:1fr}
   .dg>span:nth-child(odd){padding-top:6px}
-  .al-list>div{grid-template-columns:22px 70px 1fr;row-gap:0;padding:3px 0;border-top:1px solid var(--line)}
-  .al-list>div>span:nth-child(5):empty{display:none}
-  .al-list>div>span:nth-child(4),.al-list>div>span:nth-child(5){grid-column:3}
+  .al-list>div{grid-template-columns:70px 1fr;row-gap:0;padding:3px 0;border-top:1px solid var(--line)}
+  .al-list>div>span:nth-child(4):empty{display:none}
+  .al-list>div>span:nth-child(3),.al-list>div>span:nth-child(4){grid-column:2}
   .acct{font-size:12.5px}
   .todo>div{flex-direction:column;gap:0}
   .bar{font-size:12.5px}
@@ -428,14 +433,16 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 </head>
 <body>
 <div class="wrap">
+  <div class="stick" id="stick">
   <header class="top">
     <h1><a class="home" href="/" title="Startseite, lädt die Seite neu"><span class="brand">eShop</span>Kompass</a></h1>
     <div class="meta" id="meta"></div>
-    <div class="thm"><button id="thmBtn" data-act="thm" aria-haspopup="true" aria-expanded="false"></button><div class="thm-m" id="thmMenu" role="menu" hidden></div></div>
     <button class="help" data-act="legend" title="Legende: Urteil, Farben, Begriffe">?</button>
+    <div class="thm"><button id="thmBtn" data-act="thm" aria-haspopup="true" aria-expanded="false"></button><div class="thm-m" id="thmMenu" role="menu" hidden></div></div>
     <button class="primary" id="syncBtn" data-act="sync">Aktualisieren</button>
   </header>
   <nav id="nav"></nav>
+  </div>
   <main id="main"></main>
 </div>
 <dialog class="vl" id="verlauf"></dialog>
@@ -929,18 +936,20 @@ function dlcPrice(d){
 function collGame(g){
   const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  // Alle da: „5 von 5“ grün; nichts mehr offen, aber ignorierte: nur die Zahl vorhandener grün, die ignorierte rot,
-  // der Rest grau (Entscheidung 13.10.2026)
-  const sum = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span>` : !g.missing ? `<span class="gn">${g.have}</span> von ${g.dlc.length}` : `${g.have} von ${g.dlc.length}`, g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : (g.ignored || g.gone ? "" : "alle da"), g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
-    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(", ");
+  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 da · 7 ignoriert“. Alles da:
+  // „alle 5 da“ grün; nichts mehr offen: die Zahl vorhandener grün, ignorierte rot, Wörter grau (0.55.1)
+  const sum = [g.have === g.dlc.length ? `<span class="gn">alle ${g.have} da</span>` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> da` : `${g.have} da`) : "",
+    g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : "",
+    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
+  const sumTip = `${g.dlc.length} DLC insgesamt`;
   const key = "ign:" + g.slug;
   const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
     (ign.length ? `<details class="fold" data-k="${esc(key)}" ${S.folds[key] ? "open" : ""}><summary class="hint">${ign.length} ignoriert</summary><table class="mini-t">${ign.map(collDlc).join("")}</table></details>` : "") +
     (gone.length ? `<details class="fold" data-k="${esc("gone:" + g.slug)}" ${S.folds["gone:" + g.slug] ? "open" : ""}><summary class="hint">${gone.length} nicht mehr erhältlich</summary><table class="mini-t">${gone.map(collDlc).join("")}</table></details>` : "");
   const via = g.via ? ` <small class="mut">über ${esc(g.via)}</small>` : "";
   // Vollständig (nichts mehr offen): eine Zeile, die DLC aufklappbar wie bei „alle ignoriert“ (0.53.1)
-  if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary>${esc(g.title)}${via} <span class="mut">${sum}</span></summary>${all ? `<div class="cga">${all}</div>` : ""}<table class="mini-t">${g.dlc.map(collDlc).join("")}</table></details>`;
-  return `<section class="box cg"><h3>${esc(g.title)}${via} <span class="mut">${sum}</span><span class="sp"></span>${all}</h3>${body}</section>`;
+  if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary>${esc(g.title)}${via} <span class="mut" title="${sumTip}">${sum}</span></summary>${all ? `<div class="cga">${all}</div>` : ""}<table class="mini-t">${g.dlc.map(collDlc).join("")}</table></details>`;
+  return `<section class="box cg"><h3>${esc(g.title)}${via} <span class="mut" title="${sumTip}">${sum}</span><span class="sp"></span>${all}</h3>${body}</section>`;
 }
 function viewCollection(){
   const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
@@ -958,11 +967,13 @@ function viewCollection(){
     <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
   h += eshopBox();
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
-  const total = c.missing_eur !== null && c.missing_eur !== undefined
-    ? ` ${c.missing_priced < missing ? `Für ${c.missing_priced} davon ist ein Preis bekannt: zusammen` : "Zusammen"} jetzt ${eur(c.missing_eur)}${c.missing_sale ? `, ${c.missing_sale} im Angebot` : ""}, jeweils im günstigsten zählenden Land.` : "";
+  // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)
   const nDone = c.games.filter(g => !g.missing).length;
-  h += `<p class="hint" style="margin:0 0 8px">${c.owned} Titel in deiner DekuDeals-Sammlung: ${c.games.length} mit Zusatzinhalten (${c.games.length - nDone} mit fehlenden, ${nDone} ohne offene), ${(c.plain || []).length} ohne${missing ? `. ${missing} DLC fehlen` : ""}.${total} Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
-    „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preis und Urteil gibt es für DLC auf deiner Wishlist.</p>`;
+  const priced = c.missing_eur !== null && c.missing_eur !== undefined;
+  h += `<div class="cstat"><span><b>${c.owned}</b> Spiele in der Sammlung</span><span><b>${c.games.length}</b> mit DLC <span class="mut">(${c.games.length - nDone} mit offenen, ${nDone} ohne)</span></span><span><b>${(c.plain || []).length}</b> ohne DLC</span></div>
+    ${missing ? `<div class="cstat"><span><b>${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b>${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}
+    <details class="fold" data-k="collhow" ${S.folds.collhow ? "open" : ""}><summary class="hint">So funktioniert die Sammlung</summary><p class="hint" style="margin:2px 0 8px">Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
+    „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details>`;
   h += games.map(collGame).join("");
   // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
   const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
@@ -1051,10 +1062,11 @@ function titleDetail(r){
     const extra = c.nocard ? `<span class="warnc">ohne Karte, zählt nicht</span>`
       : c.lang === "unknown" ? `<span class="warnc">Sprache ungeprüft</span>${t ? ` <button class="sm" data-act="lang" data-s="${esc(r.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button class="sm" data-act="lang" data-s="${esc(r.slug)}" data-f="${t.family}" data-v="0">nein</button>` : ""}`
       : langTag(c, true);
-    return `<div class="${counts ? "" : "nc"}"><span>${star(c)}${counts ? "" : `<span class="q">?</span>`}</span><b>${ax(c)}${buyLink(code, c, eur(c.eur))}</b>
+    // ★ steht direkt vor den Angaben, ? vor dem Grund, warum ein Land nicht zählt (0.55.1)
+    return `<div class="${counts ? "" : "nc"}"><b>${ax(c)}${buyLink(code, c, eur(c.eur))}</b>
       <span>${esc(co.name)} ${tierTag((S.state.matrix.cols.find(k => k.code === code) || {}).tier)}</span>
-      <span class="mut">${counts && ce && !atBest(c.eur, ce.eur) ? `<span title="über dem Bestpreis ${eur(ce.eur)} (${esc(ce.name)})"><span class="abv">+${eur(c.eur - ce.eur)}</span> über Bestpreis</span> · ` : ""}${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${extra}</span></div>`;
-  }).join("") + (na.length ? `<div class="mut nc"><span></span><span></span><span>${na.map(([code, c]) => esc(country(code).name) + (c.nolang ? " (ohne Deutsch)" : "")).join(", ")}</span><span>nicht kaufbar</span></div>` : "") + `</div>`;
+      <span class="mut">${star(c) ? star(c) + " " : ""}${counts && ce && !atBest(c.eur, ce.eur) ? `<span title="über dem Bestpreis ${eur(ce.eur)} (${esc(ce.name)})"><span class="abv">+${eur(c.eur - ce.eur)}</span> über Bestpreis</span> · ` : ""}${c.sale ? `<span class="pct" style="margin:0">−${c.pct} %</span>${c.end ? " · " + endCell(c.end, "bis ") : ""}` : "normal"}${lowTxt(c)}</span><span>${counts ? "" : `<span class="q">?</span> `}${extra}</span></div>`;
+  }).join("") + (na.length ? `<div class="mut nc"><span></span><span>${na.map(([code, c]) => esc(country(code).name) + (c.nolang ? " (ohne Deutsch)" : "")).join(", ")}</span><span>nicht kaufbar</span></div>` : "") + `</div>`;
   h += `<span>Werte</span><span>${ce ? `Bestpreis ${eur(ce.eur)} in ${esc(ce.name)} (24 Monate)` : "Bestpreis noch nicht bekannt"}${r.typical ? ` · typischer Angebotspreis ${eur(r.typical.eur)} in ${esc(r.typical.name)}` : ""}${r.de !== null ? ` · in Deutschland jetzt ${eur(r.de)}` : ""}${nextBest(x, list)}</span>`;
   const rh = rhythmLines(r.rhythm || []);
   if(rh) h += `<span>Angebote</span><span>${rh}</span>`;
@@ -1912,7 +1924,7 @@ box.append(p,go,ta,c,b);
    ein Link zum Ziehen und „Code kopieren“ für ein von Hand angelegtes Lesezeichen (auch am Handy).
    v: Stand des Codes, need: ab welchem Stand ein altes Lesezeichen noch genügt. Ältere melden
    sich beim Übernehmen, damit niemand unbemerkt mit einem alten Lesezeichen weiterarbeitet. */
-const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 2, need: 2, label: "JP-Sprachen lesen"}};
+const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 3, need: 3, label: "JP-Sprachen lesen"}};
 const BM_CODE = {};
 function helpersOld(){ try{ return JSON.parse(localStorage.getItem("ek.helpers") || "{}") || {}; }catch(e){ return {}; } }
 function helperSeen(k, hv){
@@ -1952,7 +1964,7 @@ function eshopBox(){
   // Neuester bekannter Vorgang: Der Link zur Kaufhistorie gibt ihn mit, das Lesezeichen hört dort auf
   const seit = S.state.eshop_seit || 0;
   const line = (r, extra) => `<tr><td class="l">${esc(r.title)} ${when(r)}</td><td class="l">${extra}</td></tr>`;
-  let h = `<details class="box" id="eshophist" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Einträge gelesen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch nicht gelesen"}</span></summary>
+  let h = `<details class="box" id="eshophist" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Käufe übernommen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch keine Käufe übernommen"}</span></summary>
     <p class="hint">Was du bei Nintendo gekauft hast, fällt aus dem Kaufplan, auch ohne Eintrag bei DekuDeals. Der Kaufverlauf reicht laut Nintendo zwei Jahre zurück.</p>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("eshop", eshopHelper(location.origin))}</li>
@@ -1976,7 +1988,7 @@ function eshopBox(){
    den Warteraum von store-jp kommt, und gibt die Sprachen als Text zum Einfügen zurück. */
 function jpHelperCode(tool){ return `(async()=>{
 if(location.hostname!=="store-jp.nintendo.com"){alert("Bitte zuerst eine Seite von store-jp.nintendo.com öffnen und dann das Lesezeichen anklicken.");return}
-const fromLink=decodeURIComponent((location.hash.match(/ek-ids=([^&]*)/)||[])[1]||"");
+const fromLink=decodeURIComponent(((location.search+location.hash).match(/ek-ids=([^&#]*)/)||[])[1]||"");
 const ids=[...new Set((fromLink.match(/\\d{14}/g)?fromLink:(prompt("Japan-IDs aus eShop-Kompass einfügen")||"")).match(/\\d{14}/g)||[])];
 if(!ids.length)return;
 const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";document.body.appendChild(box);
@@ -2010,7 +2022,7 @@ function jpHelper(todo){
   return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>
-      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Fragt es nach IDs, ist der Link unterwegs verloren gegangen: dann die IDs unten kopieren und einfügen." : ""}</li>
+      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit und legt sie zugleich in die Zwischenablage: Fragt das Lesezeichen doch danach, einfach einfügen (Strg+V)." : ""}</li>
       <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
     </ol>
     <details class="fold" data-k="jpfb" ${S.folds.jpfb ? "open" : ""}><summary class="hint">Geht das nicht? IDs und Ergebnis von Hand</summary>
@@ -2123,6 +2135,7 @@ document.addEventListener("click", async e => {
       S.state = await api("/api/state"); S.ui = S.state.ui; render();
       toast({have: "Als vorhanden abgehakt", ignore: "DLC ignoriert", ignore_all: "Alle DLC des Spiels ignoriert", missing: "Zählt wieder als fehlend"}[d.v] || "Zurückgesetzt");
     }
+    else if(a === "jpopen"){ const ta = $("jpids"); if(ta && ta.value) try{ await navigator.clipboard.writeText(ta.value); }catch(e){} }
     else if(a === "jpcopy"){
       const ta = $("jpids"); ta.select();
       try{ await navigator.clipboard.writeText(ta.value); }catch(e){ document.execCommand("copy"); }
@@ -2274,6 +2287,26 @@ document.addEventListener("toggle", e => {
   if(e.target.open) S.folds[k] = 1; else delete S.folds[k];
   saveView();
 }, true);
+/* Kopfleiste beim Scrollen: nach unten erst 120 px mitkommen, dann ausblenden; ein Stück nach oben
+   zeigt sie wieder. --stick sagt Tabellenköpfen und Sprungleiste, wie viel Platz sie gerade belegt. */
+(function(){
+  let lastY = scrollY, turn = scrollY, dir = 0, hidden = false;
+  const set = hid => {
+    hidden = hid; const el = $("stick");
+    el.classList.toggle("hid", hid);
+    document.documentElement.style.setProperty("--stick", hid ? "0px" : el.offsetHeight + "px");
+  };
+  addEventListener("scroll", () => {
+    const y = scrollY, d = Math.sign(y - lastY);
+    if(!d) return;
+    if(d !== dir){ dir = d; turn = lastY; }          // Richtung gewechselt: ab hier messen
+    if(dir > 0 && !hidden && y > 120 && y - turn > 120 && $("thmMenu").hidden) set(true);
+    else if(dir < 0 && hidden && (turn - y > 30 || y < 60)) set(false);
+    lastY = y;
+  }, {passive: true});
+  addEventListener("resize", () => set(hidden));
+  set(false);
+})();
 document.addEventListener("keydown", e => { if(e.key === "Escape") themeMenu(false); });
 document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });
 
