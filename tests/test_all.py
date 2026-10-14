@@ -2702,7 +2702,7 @@ class ExtraDlcTest(unittest.TestCase):
                 "langs_jp_reset": 1, "langs_bundle_reset": 1}
         asked = []
         t0 = 1736467200
-        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: asked.append(1) or {}):
+        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None, **kw: asked.append(1) or {}):
             for day in range(5):
                 sync.sync_langs(data, settings, None, lambda s: None, now=t0 + day * 86400)
             self.assertEqual(len(asked), 3)
@@ -2882,7 +2882,7 @@ class ExtraDlcTest(unittest.TestCase):
         data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["2"], "AM": ["12"], "JP": ["22"]}},
                          "rl-c": {"title": "Car C", "parent": "rl", "ids": {"EU": ["3"], "AM": ["13"]}}}
         am, jp = [], []
-        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: {"2": "english, german"}), \
+        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None, **kw: {"2": "english, german"}), \
                 mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: am.append(n) or "english, german"), \
                 mock.patch.object(sources, "fetch_langs_jp", lambda n, fetch=None: jp.append(n)):
             sync.sync_langs(data, settings, None, lambda s: None, now=1736467200)
@@ -2934,7 +2934,7 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertEqual(sync.jp_targets(data)["121"], [g])
         jp, am, eu = [], [], []
         with mock.patch.object(sources, "fetch_langs_eu",
-                               lambda ids, fetch=None: eu.append(sorted(ids)) or {"101": "english, german"}), \
+                               lambda ids, fetch=None, **kw: eu.append(sorted(ids)) or {"101": "english, german"}), \
                 mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: am.append(n) or "english, german"), \
                 mock.patch.object(sources, "fetch_langs_jp", lambda n, fetch=None: jp.append(n) or "日本語, ドイツ語"):
             sync.sync_langs(data, settings, None, lambda s: None, now=1736467200 + 60)
@@ -2942,7 +2942,7 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertEqual(g["langs"]["EU"], "english, german")
         self.assertEqual(data["extra"]["rl-b"]["langs_tries"]["EU"], 1)
         # Kennt das Spiel die Sprache, fragt Europa den DLC nicht mehr eigens
-        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None: self.fail(ids)):
+        with mock.patch.object(sources, "fetch_langs_eu", lambda ids, fetch=None, **kw: self.fail(ids)):
             sync.sync_langs(data, settings, None, lambda s: None, now=1736467200 + 2 * 86400)
         self.assertIs(planner.extra_context(data, settings).german(
             planner.extra_context(data, settings).items["rl-b"], "EU", "rl-b"), True)
@@ -3606,6 +3606,58 @@ class FetchRulesTest(unittest.TestCase):
         with self.assertRaises(sources.FetchError):     # außerhalb eines Abgleichs: jede Anfrage geht raus
             sources.fetch_item("c", "de", fetch=fake)
         self.assertEqual(len(calls), 2)
+
+    def test_wishlist_errors_never_shorten_or_stop(self):
+        # 0.64: Eine Folgeseite mit Serverfehler oder Sperre heißt „nicht lesbar“, nicht „Ende der Liste“
+        page1 = '<a href="/items/a-game">A</a><a href="/items/b-game">B</a>'
+
+        def fake(status):
+            def f(url, ua=None):
+                if url.endswith("page=1"):
+                    return page1
+                raise sources.FetchError(url, status)
+            return f
+        self.assertEqual(sources.fetch_wishlist("https://www.dekudeals.com/wishlist/abc123xyz", fetch=fake(404)), ["a-game", "b-game"])
+        for status in (500, 429, 0):
+            with self.assertRaises(sources.FetchError):
+                sources.fetch_wishlist("https://www.dekudeals.com/wishlist/abc123xyz", fetch=fake(status))
+        # Ist die Wishlist nicht lesbar, gilt die zuletzt gelesene; der Abgleich läuft weiter
+        data = {"items": {"a-game": {"title": "A", "active": True, "ids": {}}}}
+        settings = {"wishlist_url": "https://www.dekudeals.com/wishlist/abc123xyz"}
+        blocked = lambda url, ua=None: (_ for _ in ()).throw(sources.FetchError(url, 403))
+        self.assertIsNone(sync.sync_wishlist(data, settings, blocked, lambda s: None))
+        self.assertTrue(data["items"]["a-game"]["active"])
+        self.assertIn("zuletzt gelesene", sync.status["log"][-1])
+        with self.assertRaises(RuntimeError):            # ohne bekannte Liste geht es nicht
+            sync.sync_wishlist({"items": {}}, settings, blocked, lambda s: None)
+
+    def test_missing_low_section_keeps_known_low(self):
+        settings = store.load_settings()
+        data = {"items": {"a": {"active": True}}, "prices": {"DE": {"a": {"status": "onsale", "regular": 44.99}}},
+                "lows": {"DE": {"a": {"low": 19.99, "src": "deku", "checked": 0, "lv": sync.LOW_PAGE_V, "hist_v": sync.HIST_V}}}}
+        orig = sources.fetch_item
+        sources.fetch_item = lambda slug, country, fetch=None: {"low": None, "lows": [], "history": [], "low_found": False}
+        try:
+            data["lows"]["DE"]["a"].pop("low")             # fällig machen, Wert aber im Verlauf bekannt
+            data["lows"]["DE"]["a"]["hist"] = [["2026-01", 19.99]]
+            sync.sync_lows(data, settings, fetch=None, sleep=lambda s: None, now=1736467200)
+            self.assertEqual(data["lows"]["DE"]["a"]["hist"], [["2026-01", 19.99]])
+            self.assertIn("Warnung", sync.status["log"][-1])
+        finally:
+            sources.fetch_item = orig
+
+    def test_amazon_503_stops_offer_step(self):
+        settings = {"own_offers": [{"slug": "a", "code": "JP", "price": 100, "src": "Amazon", "url": f"https://www.amazon.co.jp/dp/{i}"}
+                                   for i in range(3)]}
+        calls = []
+
+        def fetch(url):
+            calls.append(url)
+            raise sources.FetchError(url, 503)
+        data = {}
+        sync.sync_offer_prices(data, settings, fetch, lambda s: None, now=1e9)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("HTTP 503", sync.status["log"][-1])
 
     def test_constants_in_docs_exist(self):
         # docs/abrufe.md nennt Konstanten in `…`: Jede muss es im Code geben (Inventur, Abschnitt 2)

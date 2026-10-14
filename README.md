@@ -493,8 +493,8 @@ Sicherung und Protokoll.
   Für fehlende DLC fragt Europa deshalb seit 0.53 auch das Spiel selbst (eine ID-Suche je Spiel,
   einmalig); kennt das Spiel die Sprache, braucht sein DLC keine eigene Angabe. Amerika liefert Angaben.
   Japan: store-jp steht hinter einem Warteraum (Queue-it) mit Bot-Schutz, durch kommt
-  nur ein Browser mit JavaScript. Das Tool erkennt den Warteraum, fragt dann je
-  Abgleich nur eine Seite und hört auf. Die Sprachen kommen stattdessen aus zwei Wegen:
+  nur ein Browser mit JavaScript. Das Tool erkennt den Warteraum, hört auf und fragt die
+  nächsten sieben Tage nicht mehr an. Die Sprachen kommen stattdessen aus zwei Wegen:
   titledb, eine offene Titelliste auf GitHub (nicht von Nintendo, in der Oberfläche
   „laut titledb“), für Titel ohne Angabe höchstens wöchentlich geladen, für neu gefundene
   IDs gleich im nächsten Abgleich (rund 24 MB,
@@ -614,7 +614,11 @@ Auffälligkeiten stehen im Protokoll und als Hinweis über den Ansichten.
 Das Tool fragt immer mit seiner eigenen Kennung an (`eshop-kompass/<Version>`),
 macht Pausen zwischen den Abrufen und hört bei einer Sperre (HTTP 403 oder 429)
 oder einer Prüfseite auf, statt sich als Browser auszugeben. Der Rest folgt
-beim nächsten Abgleich. "Verbindung testen" zeigt je Quelle, was zurückkommt,
+beim nächsten Abgleich; nach einer Sperre von DekuDeals ruht DekuDeals 24 Stunden. Eine Quelle
+bricht nie den ganzen Abgleich ab: Ist die Wishlist nicht lesbar, rechnet das Tool mit der
+zuletzt gelesenen weiter. Und es löscht nichts still: Liefert eine Seite plötzlich keine
+Tiefstpreise oder DLC mehr, obwohl welche bekannt sind, bleiben die alten, und das Protokoll
+warnt. "Verbindung testen" zeigt je Quelle, was zurückkommt,
 auch für die erste Guthabenkarte mit Link (liest die Seite einen Preis?). Seit 0.53.2
 prüft er auch, woher Preise der Online-Mitgliedschaft kommen könnten: die
 12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland, Brasilien, Japan und die USA und

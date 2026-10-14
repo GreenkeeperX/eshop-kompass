@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.63.0"
+VERSION = "0.64.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -164,7 +164,7 @@ def deku_get(url, ok, fetch=fetch):
     global deku_blocked
     del attempts[:]
     if deku_blocked:
-        raise FetchError(url, deku_blocked, "(DekuDeals hat in diesem Abgleich schon gesperrt, nicht angefragt)")
+        raise FetchError(url, deku_blocked, "(DekuDeals hat gesperrt, nicht angefragt)")
     try:
         text = fetch(url)
     except FetchError as e:
@@ -347,8 +347,10 @@ def fetch_wishlist(url_or_id, fetch=fetch, max_pages=30, pause=None, kind="wishl
         try:
             page_html = deku_get(url, ok, fetch)
         except FetchError as e:
-            # DekuDeals verlinkt eine Folgeseite, auch wenn es keine gibt
-            if page > 1 and e.status >= 400:
+            # DekuDeals verlinkt eine Folgeseite, auch wenn es keine gibt: Die meldet „nicht
+            # gefunden“ (4xx). Eine Sperre, ein Serverfehler oder eine Zeitüberschreitung heißt
+            # dagegen „nicht lesbar“, sonst gälte eine gekürzte Liste als vollständig (0.64)
+            if page > 1 and 400 <= e.status < 500 and e.status not in BLOCKED:
                 break
             raise
         new = [s for s in parse_wishlist_page(page_html) if s not in seen]
@@ -452,7 +454,10 @@ def parse_item_page(page_html):
             eshop_urls[cc] = html.unescape(m.group(1))
     return {"title": title, "parent": parent, "parent_title": parent_title,
             "nsuids": nsuids, "eshop_ids": eshop_ids, "eshop_urls": eshop_urls, "low": low, "lows": parse_lows(page_html),
-            "history": parse_history(page_html), "related": parse_related(page_html)}
+            "history": parse_history(page_html), "related": parse_related(page_html),
+            # Hat die Seite den Abschnitt der Tiefstpreise überhaupt? Ohne ihn bleibt der alte
+            # Wert stehen, statt still zu verschwinden (0.64: ein geänderter Seitenaufbau löscht nichts)
+            "low_found": bool(_LOW_RE.search(page_html))}
 
 
 # Während eines Abgleichs ein Dict: Jede Artikelseite kommt höchstens einmal, auch wenn
@@ -584,17 +589,20 @@ def parse_langs_eu(payload):
     return out
 
 
-def fetch_langs_eu(nsuids, fetch=fetch, pause=None):
-    """Sprachen der europäischen Fassungen, 40 Titel je Abruf."""
-    out = {}
+def fetch_langs_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
+    """Sprachen der europäischen Fassungen, 40 Titel je Abruf. `out` und `done` (Liste der
+    abgefragten IDs) behalten, was vor einem Fehler schon gelesen war (0.64)."""
+    out = {} if out is None else out
     nsuids = list(dict.fromkeys(nsuids))
     for i in range(0, len(nsuids), 40):
+        if i and pause:
+            pause()
         q = urllib.parse.urlencode({
             "q": "*", "fq": "nsuid_txt:(" + " OR ".join(nsuids[i:i + 40]) + ")",
             "fl": "nsuid_txt,language_availability", "rows": 200, "wt": "json"})
         out.update(parse_langs_eu(json.loads(fetch(f"{SOLR_URL}?{q}"))))
-        if pause:
-            pause()
+        if done is not None:
+            done.extend(nsuids[i:i + 40])
     return out
 
 

@@ -13,6 +13,7 @@ ID_RECHECK_SECONDS = 14 * 24 * 3600   # fehlende IDs alle zwei Wochen neu suchen
 ID_RECHECK_LONG = 90 * 24 * 3600      # ... DLC, die auch titledb nicht kennt, nur alle drei Monate
 ID_MISSES = 2                         # ... ebenso nach so vielen erfolglosen DekuDeals-Suchen
 DEKU_PAUSE = 1.0                      # Sekunden zwischen DekuDeals-Abrufen
+DEKU_REST_SECONDS = 24 * 3600        # nach einer Sperre fragt so lange kein Abgleich bei DekuDeals an (0.64)
 NINTENDO_PAUSE = 0.3
 EXTRA_LOWS_PER_SYNC = 30              # Tiefstpreis-Seiten fehlender DLC je Abgleich (0.53.3)
 LOW_PAUSE = 2.5                       # Tiefstpreise gemächlich nachladen
@@ -85,10 +86,16 @@ def sync_wishlist(data, settings, fetch, sleep):
     try:
         slugs = sources.fetch_wishlist(settings["wishlist_url"], fetch=fetch,
                                        pause=lambda: sleep(DEKU_PAUSE))
-    except sources.FetchError:
+    except sources.FetchError as e:
         for line in sources.attempts:      # was DekuDeals je Kennung geantwortet hat
             _log("  " + line)
-        raise RuntimeError("Wishlist nicht lesbar, Einzelheiten stehen darüber")
+        known = sum(1 for it in data["items"].values() if it.get("active"))
+        if not known:
+            raise RuntimeError("Wishlist nicht lesbar, Einzelheiten stehen darüber")
+        # Eine Quelle bricht nie den ganzen Abgleich ab (0.64): Preise und Kurse kommen
+        # trotzdem, mit der zuletzt gelesenen Liste
+        _log(f"Wishlist nicht lesbar (HTTP {e.status or 'Fehler'}), es gilt die zuletzt gelesene mit {known} Titeln")
+        return None
     if not slugs:
         raise RuntimeError("Wishlist ist leer")
     items = data["items"]
@@ -173,8 +180,9 @@ def sync_ids(data, settings, fetch, sleep, now=None):
                 it["parent"] = info["parent"]
                 if info["parent_title"]:
                     it["parent_title"] = info["parent_title"]
-            _store_low(data, settings, lookup.upper(), slug, info["low"], now,
-                       info.get("history") or [], platforms=len(info.get("lows") or []))
+            if info.get("low_found", True):    # ohne Abschnitt bleibt der bekannte Wert (0.64)
+                _store_low(data, settings, lookup.upper(), slug, info["low"], now,
+                           info.get("history") or [], platforms=len(info.get("lows") or []))
             sleep(DEKU_PAUSE)
             if info["nsuids"]:
                 found = info["nsuids"]
@@ -528,6 +536,10 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
     first = _plan_card_urls(data, settings, now)
     todo.sort(key=lambda u: (u not in first, (prices.get(u) or {}).get("checked", 0)))
     fresh = len(urls) - len(todo)
+    # Höchstens CARDS_PER_SYNC je Abgleich (0.64): Alle Links stehen oft beim selben Shop und
+    # würden zusammen fällig; so verteilen sie sich auf die Abgleiche des Tages
+    later = max(0, len(todo) - CARDS_PER_SYNC)
+    todo = todo[:CARDS_PER_SYNC]
     if not todo:
         # Immer eine Zeile, auch ohne Abruf (0.54)
         _log(f"Kartenpreise: alle {len(urls)} aktuell (gelesen in den letzten 20 Stunden)" if urls
@@ -555,10 +567,12 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
         sleep(CARD_PAUSE)
     _log(f"Kartenpreise: {got} von {len(todo)} gelesen"
          + (f", {fresh} weitere aktuell" if fresh else "")
+         + (f", {later} folgen beim nächsten Abgleich" if later else "")
          + (f"; ohne Preis: {', '.join(failed)}, dort gilt der letzte Preis bis 14 Tage, sonst der Wert von Hand" if failed else "")
          + ("; Rest nach Sperre nicht gelesen" if got + len(failed) < len(todo) else ""))
 
 
+CARDS_PER_SYNC = 12       # Guthabenkarten mit Link, höchstens so viele Seiten je Abgleich (0.64)
 OFFERS_PER_SYNC = 10      # eigene Angebote mit Link, höchstens so viele Seiten je Abgleich
 
 
@@ -591,7 +605,9 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
         try:
             page = fetch(url)
         except sources.FetchError as e:
-            if e.status in sources.BLOCKED:
+            # Amazon liefert seine Prüfseite oft mit 503: wie eine Sperre, nicht weiter fragen (0.64)
+            if e.status in sources.BLOCKED or (e.status == 503 and sources.is_amazon(url)):
+                known[url] = _card_miss(known.get(url), now, f"HTTP {e.status}")
                 stop = f"Shop lehnt Abrufe ab (HTTP {e.status})"
                 break
             known[url] = _card_miss(known.get(url), now, f"HTTP {e.status or 'Fehler'}")
@@ -932,8 +948,11 @@ def sync_titledb(data, settings, fetch, now=None):
             n = ((rec.get("ids") or {}).get(fam) or [None])[0]
             chk = (rec.get("app_chk") or {}).get(fam)
             known = (rec.get("app_same") or {}).get(fam)
+            # Kennt titledb sie nicht, monatlich statt wöchentlich (0.64): Sonst lösen dieselben
+            # unbekannten DLC jede Woche drei Downloads zu je rund 25 MB aus
+            every = TITLEDB_RECHECK_SECONDS if chk is not None and known is None else TITLEDB_SECONDS
             if eu and n and fam in fams and not (isinstance(known, list) and known[0] == str(n)) \
-                    and (chk is None or now - chk >= TITLEDB_SECONDS):
+                    and (chk is None or now - chk >= every):
                 same.append((rec, fam, str(eu), str(n)))
                 same_new = same_new or chk is None
     # Neue IDs, die titledb noch nie gesehen hat: gleich, sonst wöchentlich
@@ -1134,14 +1153,20 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
         ids = (rec.get("ids") or {}).get("EU")
         if ids and due(rec, "EU"):
             eu.setdefault(ids[0], []).append(rec)
+    if eu and budget is not None and budget.get("EU") == 0:
+        eu = {}                          # schon im ersten Durchlauf gescheitert: nicht noch einmal (0.64)
     if eu:
         _step("Sprachen abrufen")
+        found, done = {}, []
         try:
-            found = sources.fetch_langs_eu(list(eu), fetch=fetch)
+            found.update(sources.fetch_langs_eu(list(eu), fetch=fetch, pause=lambda: sleep(NINTENDO_PAUSE),
+                                                out=found, done=done) or {})
         except Exception as e:
-            _log(f"Sprachen Europa nicht abrufbar ({e})")
-            found = None
-        if found is not None:
+            _log(f"Sprachen Europa nicht abrufbar ({e})" + (f", {len(done)} IDs vorher gelesen" if done else ""))
+            eu = {n: r for n, r in eu.items() if n in set(done)}   # nur Gelesenes gilt als geprüft
+            if budget is not None:
+                budget["EU"] = 0
+        if eu:
             for nsuid, recs in eu.items():
                 for rec in recs:
                     rec.setdefault("langs_checked", {})["EU"] = now
@@ -1220,6 +1245,8 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                     fails += 1
                     if e.status in (403, 429) or fails >= 5:
                         _log(f"Sprachen {name} unterbrochen ({e})")
+                        if budget is not None and e.status in (403, 429):
+                            budget[fam] = 0    # nach einer Sperre im selben Abgleich nicht noch einmal (0.64)
                         break
                     status["done"] += 1
                     sleep(DEKU_PAUSE)
@@ -1282,7 +1309,7 @@ def sync_lows(data, settings, fetch, sleep, now=None):
         _log(_lows_summary(data, settings, "nichts fällig"))
         return
     _step("Tiefstpreise nachladen", len(todo))
-    fails = read = 0
+    fails = read = kept = 0
     for _, code, slug, table in todo:
         try:
             info = sources.fetch_item(slug, code.lower(), fetch=fetch)
@@ -1294,6 +1321,14 @@ def sync_lows(data, settings, fetch, sleep, now=None):
             sleep(LOW_PAUSE)
             continue
         p = data[table][code][slug]
+        old_e = ((data.get("lows") or {}).get(code) or {}).get(slug) or {}
+        if not info.get("low_found", True) and ("low" in old_e or old_e.get("hist")):
+            # Die Seite hat keinen Abschnitt „All time low“ mehr, der Wert war aber bekannt: eher ein
+            # geänderter Seitenaufbau als ein verschwundener Tiefstpreis. Alter Wert bleibt (0.64)
+            kept += 1
+            status["done"] += 1
+            sleep(LOW_PAUSE)
+            continue
         cur = p.get("discount", p.get("regular"))
         # Spiele für Switch und Switch 2 haben je Plattform einen Tiefstpreis: Es gilt
         # der höchste, den das Angebot jetzt nicht übersteigt, also die eigene Fassung
@@ -1318,7 +1353,9 @@ def sync_lows(data, settings, fetch, sleep, now=None):
         sleep(LOW_PAUSE)
     store.save_data(data)
     _log(_lows_summary(data, settings, f"{read} von {len(todo)} Seiten gelesen"
-                       + (f", {later} folgen beim nächsten Abgleich" if later else "")))
+                       + (f", {later} folgen beim nächsten Abgleich" if later else "")
+                       + (f"; Warnung: {kept} Seiten ohne Abschnitt „All time low“, bekannte Werte behalten "
+                          "(hat DekuDeals die Seite umgebaut?)" if kept else "")))
 
 
 def _lows_summary(data, settings, head):
@@ -1441,7 +1478,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
         summary("nichts fällig")
         return
     _step("DLC und Pakete lesen", len(todo) + len(links_todo))
-    fails, notes = 0, []
+    fails, notes, kept = 0, [], []
     for slug in links_todo:
         try:
             info = sources.fetch_item(slug, "de", fetch=fetch)
@@ -1467,9 +1504,15 @@ def sync_related(data, settings, fetch, sleep, now=None):
             sleep(LOW_PAUSE)
             continue
         r = info.get("related") or {}
+        dlc = [list(x) for x in r.get("dlc", []) if x[0] != slug]
+        if not dlc and "dlc" not in (r.get("found") or ["dlc"]) and (rel.get(slug) or {}).get("dlc"):
+            # Bekannte DLC, aber kein DLC-Abschnitt mehr: eher ein geänderter Seitenaufbau als ein
+            # Spiel ohne DLC. Die alte Liste bleibt, sonst fielen fehlende DLC samt IDs weg (0.64)
+            dlc = rel[slug]["dlc"]
+            kept.append(info.get("title") or slug)
         rel[slug] = {"checked": now, "v": REL_V, "title": info.get("title"),
                      "parent": info.get("parent"),
-                     "dlc": [list(x) for x in r.get("dlc", []) if x[0] != slug],
+                     "dlc": dlc,
                      "in": [list(x) for x in r.get("included_in", []) if x[0] != slug],
                      "has": [list(x) for x in r.get("contains", []) if x[0] != slug]}
         notes += update_links(data, slug, r, now)
@@ -1479,6 +1522,9 @@ def sync_related(data, settings, fetch, sleep, now=None):
         sleep(LOW_PAUSE)
     store.save_data(data)
     _log_links(notes)
+    if kept:
+        _log(f"DLC und Pakete: Warnung, {len(kept)} Seiten ohne DLC-Abschnitt, bekannte DLC behalten "
+             f"(hat DekuDeals die Seite umgebaut?): {', '.join(kept[:5])}")
     summary(f"{status['done']} Seiten gelesen")
 
 
@@ -1713,6 +1759,12 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             raise RuntimeError("Kein Wishlist-Link in den Einstellungen")
         if not data.get("last_sync") and not data.get("lows"):
             data["lows_v"] = LOWS_VERSION      # frische Installation, nichts neu zu laden
+        # Nach einer Sperre ruht DekuDeals DEKU_REST_SECONDS, auch über Abgleiche hinweg (0.64)
+        resting = time.time() < (data.get("deku_wait") or 0)
+        if resting:
+            sources.deku_blocked = 429
+            _log("DekuDeals ruht nach einer Sperre bis " + datetime.fromtimestamp(data["deku_wait"], timezone.utc)
+                 .isoformat(timespec="minutes") + "; es gelten die zuletzt gelesenen Listen und Seiten")
         clean_ids(data)
         remember_eshop(data)
         _step("Wishlist lesen")
@@ -1753,6 +1805,12 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         # Stand der ID-Suche erst jetzt, mit den IDs aus titledb (0.48.1)
         _log_extra_ids(data.get("extra") or {}, data.get("glangs") or {}, needed_families(settings), time.time())
         sync_langs(data, settings, fetch, sleep, budget=langs_budget, report_idle=False)    # Sprachen der neu gefundenen DLC
+        if sources.deku_blocked and not resting:
+            data["deku_wait"] = time.time() + DEKU_REST_SECONDS
+            _log(f"DekuDeals hat gesperrt (HTTP {sources.deku_blocked}): Die nächsten {DEKU_REST_SECONDS // 3600} Stunden fragt kein Abgleich dort an")
+        elif not resting:
+            data.pop("deku_wait", None)
+        store.save_data(data)
         status["ok"] = True
         _step("Fertig")
     except Exception as e:
@@ -1774,8 +1832,20 @@ def diagnose(sleep=time.sleep):
     data = store.load_data()
     lines = [f"eShop-Kompass {sources.VERSION}"]
 
+    deku = {"n": 0, "blocked": 0}
+
     def probe(name, url, ua, extra=None):
+        # DekuDeals schonend auch hier (0.64): 1 s Pause zwischen den Proben, nach einer Sperre keine mehr
+        if "dekudeals.com" in url:
+            if deku["blocked"]:
+                lines.append(f"{name}: nicht angefragt, DekuDeals sperrte vorher (HTTP {deku['blocked']})")
+                return {"url": url, "status": 0, "text": "", "enc": "", "server": "", "error": "übersprungen"}
+            if deku["n"]:
+                sleep(DEKU_PAUSE)
+            deku["n"] += 1
         r = sources.request(url, ua, timeout=20)
+        if "dekudeals.com" in url and r["status"] in sources.BLOCKED:
+            deku["blocked"] = r["status"]
         if r["error"]:
             lines.append(f"{name}: keine Verbindung ({r['error']})")
             return r

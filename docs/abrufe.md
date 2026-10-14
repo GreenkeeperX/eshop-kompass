@@ -2,16 +2,24 @@
 
 Verbindliche Übersicht, was das Tool woher holt, wann, wie oft und wohin es das Ergebnis
 legt. Wer einen Abruf, eine Grenze oder eine Ablage ändert, passt diese Datei im selben
-Commit an. Stand: 0.63.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
+Commit an. Stand: 0.64.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
 
 ## Grundregeln
 
-- **Kennung:** Alle Abrufe des Servers laufen über `sources.request` mit ehrlicher Kennung
-  (`eshop-kompass/<Version> (privates Wishlist-Tool)`), gzip, 25 s Zeitlimit.
+- **Kennung:** Alle Abrufe des Servers tragen die ehrliche Kennung
+  (`eshop-kompass/<Version> (privates Wishlist-Tool)`). Seiten laufen über `sources.request`
+  (gzip, 25 s Zeitlimit, ein Cookie-Speicher je Prozess), titledb gestreamt mit 60 s, Proben
+  des Verbindungstests mit 20 s, Kopfdaten über `sources.head`.
 - **Sperren:** HTTP 403 und 429 beenden den betroffenen Schritt sofort, nie den ganzen
-  Abgleich. Sperrt DekuDeals, fragt auch kein späterer Schritt desselben Abgleichs DekuDeals
-  noch einmal (`sources.deku_blocked`); Nintendo-Preise, Kurse und Karten laufen weiter.
-  Warteräume und Bot-Schutz werden nicht umgangen.
+  Abgleich, auch nicht bei der Wishlist: Dann gilt die zuletzt gelesene. Sperrt DekuDeals, fragt
+  kein späterer Schritt desselben Abgleichs DekuDeals noch einmal (`sources.deku_blocked`), und
+  die nächsten 24 Stunden (`DEKU_REST_SECONDS`, `data.deku_wait`) auch kein anderer Abgleich;
+  Nintendo-Preise, Kurse und Karten laufen weiter. Warteräume und Bot-Schutz werden nicht
+  umgangen; Amazon liefert seine Prüfseite oft mit 503, das gilt dort wie eine Sperre.
+- **Nichts still löschen:** Ein Fehler auf einer Folgeseite von Wishlist oder Sammlung heißt
+  „nicht lesbar“, nicht „Liste zu Ende“ (nur 404 und andere 4xx außer Sperren beenden das
+  Blättern). Fehlt einer Artikelseite der Abschnitt „All time low“ oder der DLC-Abschnitt, obwohl
+  Werte bekannt sind, bleiben die alten Werte, und das Protokoll warnt.
 - **Schonend:** Pausen zwischen Seiten und Obergrenzen je Abgleich. Was nicht fällig ist,
   wird nicht geholt. Jede DekuDeals-Artikelseite kommt je Abgleich höchstens einmal
   (`sources.item_cache`), auch wenn IDs, Tiefstpreis und DLC sie alle brauchen.
@@ -35,23 +43,23 @@ Die Nummern entsprechen der Reihenfolge in `run_sync`.
 
 | # | Daten | Quelle | Häufigkeit, Grenzen | Ablage | Protokoll |
 |---|---|---|---|---|---|
-| 1 | Wishlist | DekuDeals, Wishlist-Seiten | jeder Abgleich, bis 30 Seiten, 1 s Pause; Fehler auf Seite 1 bricht ab | `data.items` (Titel bleiben, `active` wechselt) | `Wishlist: n Titel` |
-| 2 | Sammlung | DekuDeals, Sammlungsseiten | jeder Abgleich, bis 30 Seiten | `data.owned`, überschrieben | `Sammlung: n Titel` |
+| 1 | Wishlist | DekuDeals, Wishlist-Seiten | jeder Abgleich, bis 30 Seiten, 1 s Pause (`DEKU_PAUSE`); nicht lesbar: es gilt die zuletzt gelesene Liste, nur ohne jede bekannte Liste bricht der Abgleich ab | `data.items` (Titel bleiben, `active` wechselt) | `Wishlist: n Titel` / `Wishlist nicht lesbar (HTTP x), es gilt die zuletzt gelesene …` |
+| 2 | Sammlung | DekuDeals, Sammlungsseiten | jeder Abgleich, bis 30 Seiten, 1 s Pause; ohne eigenen Link die Kennung der Wishlist; nicht lesbar: `owned` bleibt | `data.owned`, überschrieben | `Sammlung: n Titel` / `Sammlung nicht lesbar (…)` |
 | – | Aufräumen | kein Abruf | jeder Abgleich mit gelesener Sammlung: Titel, die 180 Tage (`PRUNE_DAYS`) weder auf der Wishlist noch in der Sammlung stehen, fallen aus `items`; Einträge in `lows`, `rel`, `lchk` ohne Bezug sofort (Bezug: Wishlist, Sammlung, fehlender DLC, Paket), etwa nach „habe ich“ oder „ignorieren“ bei einem DLC; das Protokoll nennt die Titel | – | `Aufräumen: …` / `nichts zu entfernen` |
-| 3 | Fehlende eShop-IDs | DekuDeals-Artikelseite je Region | neu, nach 14 Tagen (`ID_RECHECK_SECONDS`) oder bei Verdacht; höchstens 120 Titel-Regionen (`IDS_PER_SYNC`); Sperre beendet nur diesen Schritt | `items.ids`, dazu Tiefstpreis je Land | `Titel-IDs: n Seiten gelesen, x von y gefunden` / `alle bekannt` |
+| 3 | Fehlende eShop-IDs | DekuDeals-Artikelseite je Region | neu, nach 14 Tagen (`ID_RECHECK_SECONDS`) oder bei Verdacht; höchstens 120 Titel-Regionen (`IDS_PER_SYNC`), je Region bis zu drei Länderansichten (`countries.FAMILY_LOOKUP`), also bis 360 Seiten; 1 s Pause; Sperre beendet nur diesen Schritt | `items.ids`, dazu Tiefstpreis je Land | `Titel-IDs: n Seiten gelesen, x von y gefunden` / `alle bekannt` |
 | 3a | eShop-IDs der Online-Mitgliedschaft je Region, alle sechs Varianten (ab 0.58) | Nintendos Mitgliedschaftsseite `ec.nintendo.com/{DE/de, US/en, JP/ja}/membership`, eine je Region mit aktivem Land; Zuordnung über Tarif und Laufzeit im Seitenzustand (`sources.parse_membership_page`) | monatlich (`NSO_RECHECK`), ohne Ergebnis wöchentlich (`NSO_RETRY`); 2,5 s Pause; Sperre beendet den Schritt samt DekuDeals-Teil | `data.nso.page[Region]` {ids {Variante: ID}, checked} | `Mitgliedschaft, Nintendos Seite: Europa 6 Varianten, …` |
 | 3b | eShop-IDs der Online-Mitgliedschaft je Land, für die Varianten, die DekuDeals führt (3 Monate, 12 Monate, Erweiterungspaket, Familie; `planner.NSO_VARIANTS` mit slug). Ein Land fragt mit der eigenen ID, sonst mit der seiner Region von Nintendos Seite, sonst mit der eines Nachbarlands | DekuDeals-Artikelseite je Variante und aktivem Land (`eshop_xx:7008…` in der Preistabelle) | monatlich (`NSO_RECHECK`), Land ohne ID wöchentlich (`NSO_RETRY`), höchstens 20 Seiten je Abgleich (`NSO_PER_SYNC`); 2,5 s Pause; Sperre beendet den Schritt. Land ohne eigene ID fragt mit den IDs seiner Region (USA über Kanada, Mexiko, Brasilien) | `data.nso.v[Variante]` {ids, urls (eShop-Link je Land), checked, lows (Tiefstpreis der letzten 24 Monate je Land)}; die flache Form bis 0.56 wird zu `m12` | `Mitgliedschaft: n Seiten gelesen; IDs je Variante (eigene, sonst Region): …` / `DekuDeals nichts fällig; …` |
 | 4 | Wechselkurse | open.er-api, Ersatz frankfurter (EZB) | nur, wenn der Stand der Quelle älter als 24 h ist (`FX_SOURCE_DAY`) und der letzte eigene Abruf über 20 h (`FX_RECHECK`) zurückliegt | `data.fx` {rates, updated, fetched, src}; fehlende Währungen behalten den alten Kurs | `Wechselkurse vom …, (Quelle)` |
-| 5 | Preise | Nintendo-Preisschnittstelle, 50 IDs je Anfrage | jeder Abgleich, alle Länder (auch abgeschaltete, fürs Preisniveau); abgeschaltete ohne Antwort ruhen 7 Tage | `data.prices`, `data.xprices`, `data.nso_prices` (Mitgliedschaft je Variante, nur aktive Länder) überschrieben; Änderungen in `history.json` | `XX: n von m Titeln kaufbar` je aktivem Land |
-| 6 | Guthabenkartenpreise | Shop-Links aus den Einstellungen (JSON-LD) | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), Plan-Länder zuerst, 3 s Pause | `data.card_prices`; gelesener Preis gilt bis 14 Tage; Faktor-Verlauf `card_hist` 90 Tage | `Kartenpreise: g von n gelesen, k weitere aktuell; ohne Preis: …` / `alle n aktuell` |
-| 6a | Eigene Angebote mit Link (Mitgliedschaft ab 0.61, Titel ab 0.62), etwa Codes bei Amazon Japan | Shop-Link aus den Einstellungen (`settings.nso_extra`, `settings.own_offers`); JSON-LD, bei Amazon das Hauptangebot der Produktseite mit seiner Währung (`sources.parse_shop_price`); an Amazon geht das Cookie `i18n-prefs` mit der Landeswährung (die Währungswahl der Seite, ab 0.62.1), sonst zeigt Amazon Besuchern aus Deutschland Europreise | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), höchstens 10 Links je Abgleich (`OFFERS_PER_SYNC`), 3 s Pause; Sperre (403/429) oder Prüfseite (Captcha) beendet den Schritt, nichts wird umgangen | `data.offer_prices` {Link: price, currency, ok, checked, error}; gelesener Preis gilt bis 14 Tage, nur in der Währung des Landes und höchstens 40 % vom eingetragenen entfernt (`planner.read_offer`, ab 0.62.1), sonst der eingetragene; Links, die nicht mehr eingetragen sind, fallen weg | `Eigene Angebote: g von n Preisen gelesen …; k nicht plausibel …` (dieselbe Prüfung wie die Rechnung) / `alle n Links aktuell` |
-| 7 | Sprachen Europa | Nintendo-Europa-Suche, 40 IDs je Anfrage | ohne Angabe: 3 Versuche im Tagesabstand, dann monatlich | `.langs.EU` | `Sprachen Europa: x von n` / `nichts fällig` |
-| 7 | Sprachen Amerika | nintendo.com-Titelseite | höchstens 40 Seiten je Abgleich, 3 Versuche, dann monatlich | `.langs.AM` | `Sprachen Amerika: …` / `nichts fällig` |
-| 7 | Sprachen Japan | store-jp-Titelseite | wie Amerika; nach einem Warteraum 7 Tage Ruhe (`JP_WAIT_SECONDS`) | `.langs.JP`, `data.lang_wait` | `Sprachen Japan: …`, Warteraum mit nächstem Versuch |
-| 8 | Tiefstpreise, Angebotsverläufe | DekuDeals-Artikelseite je aktivem Land | nur Titel im Angebot; Seiten ohne Tiefstpreis monatlich; Wishlist höchstens 60 (`LOWS_PER_SYNC`), Verläufe höchstens 40 (`SALES_PER_SYNC`), fehlende DLC 30 (`EXTRA_LOWS_PER_SYNC`); 2,5 s Pause | `data.lows` | `Tiefstpreise: … ; Wishlist x von n Titeln mit Tiefstpreis, k mit Angebotsverlauf` |
-| 9 | DLC, Pakete, Inhalte | DekuDeals-Artikelseite | höchstens 40 Seiten (`REL_PER_SYNC`), monatlich erneut, Paketverbindungen fehlender DLC alle 90 Tage | `data.rel`, `data.links`, `data.lchk` | `DLC und Pakete: …` / `nichts fällig` |
-| 10 | IDs fehlender DLC | DekuDeals-Artikelseite | höchstens 40 Seiten (`EXTRA_PER_SYNC`), 14 oder 90 Tage | `data.extra`, `data.glangs` | `Fehlende DLC der Sammlung: …` |
-| 11 | Sprachen und IDs Japan/Amerika; ab 0.61 auch die Fassung der DLC (Programm-ID in Europa gleich der in Japan bzw. Amerika?) | titledb (GitHub, Dateien zu rund 25 MB, gestreamt) | nur bei Bedarf, höchstens wöchentlich, bei neuen IDs nach 1 h; nach Fehlschlag 1 Tag Ruhe (`TITLEDB_FAIL_WAIT`) | nur Treffer; Fassung je DLC und Region in `app_same` {Region: [ID, gleich]}, geprüft am `app_chk` | `titledb: …`, `DLC-Fassungen: g von n geprüft, …` |
+| 5 | Preise | Nintendo-Preisschnittstelle, 50 IDs je Anfrage | jeder Abgleich, alle Länder (auch abgeschaltete, fürs Preisniveau); abgeschaltete ohne Antwort ruhen 7 Tage; 0,3 s Pause (`NINTENDO_PAUSE`); 403 beendet den Schritt für alle Länder; ohne Verbindung ein zweiter Versuch nach 5 s; bei HTTP 400 bis zu sechs Sprachparameter | `data.prices`, `data.xprices`, `data.nso_prices` (Mitgliedschaft je Variante, nur aktive Länder) überschrieben; Änderungen in `history.json` | `XX: n von m Titeln kaufbar` je aktivem Land |
+| 6 | Guthabenkartenpreise | Shop-Links aus den Einstellungen (JSON-LD) | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), höchstens 12 Links je Abgleich (`CARDS_PER_SYNC`), Plan-Länder zuerst, dann die am längsten nicht gelesenen, 3 s Pause | `data.card_prices`; gelesener Preis gilt bis 14 Tage; Faktor-Verlauf `card_hist` 90 Tage | `Kartenpreise: g von n gelesen, k weitere aktuell, j folgen beim nächsten Abgleich; ohne Preis: …` / `alle n aktuell` |
+| 6a | Eigene Angebote mit Link (Mitgliedschaft ab 0.61, Titel ab 0.62), etwa Codes bei Amazon Japan | Shop-Link aus den Einstellungen (`settings.nso_extra`, `settings.own_offers`); JSON-LD, bei Amazon das Hauptangebot der Produktseite mit seiner Währung (`sources.parse_shop_price`); an Amazon geht das Cookie `i18n-prefs` mit der Landeswährung (die Währungswahl der Seite, ab 0.62.1), sonst zeigt Amazon Besuchern aus Deutschland Europreise | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), höchstens 10 Links je Abgleich (`OFFERS_PER_SYNC`), 3 s Pause; Sperre (403/429, bei Amazon auch 503) oder Prüfseite (Captcha) beendet den Schritt, nichts wird umgangen; ohne Links keine Zeile | `data.offer_prices` {Link: price, currency, ok, checked, error}; gelesener Preis gilt bis 14 Tage, nur in der Währung des Landes und höchstens 40 % vom eingetragenen entfernt (`planner.read_offer`, ab 0.62.1), sonst der eingetragene; Links, die nicht mehr eingetragen sind, fallen weg | `Eigene Angebote: g von n Preisen gelesen …; k nicht plausibel …` (dieselbe Prüfung wie die Rechnung) / `alle n Links aktuell` |
+| 7 | Sprachen Europa | Nintendo-Europa-Suche, 40 IDs je Anfrage | ohne Angabe: 3 Versuche im Tagesabstand, dann monatlich; 0,3 s Pause zwischen den Anfragen; bei einem Fehler zählt, was vorher gelesen war, und 7b fragt nicht noch einmal | `.langs.EU` | `Sprachen Europa: x von n` / `nichts fällig` |
+| 7 | Sprachen Amerika | nintendo.com-Titelseite | höchstens 40 Seiten je Abgleich (`LANG_PER_SYNC`, mit 7b zusammen), 1 s Pause, 3 Versuche, dann monatlich; nach 403/429 auch in 7b keine Seite mehr | `.langs.AM` | `Sprachen Amerika: …` / `nichts fällig` |
+| 7 | Sprachen Japan | store-jp-Titelseite | Grenze und Pause wie Amerika, aber nach einem Versuch nur noch monatlich (die Sprachen kommen meist aus titledb und dem Browser-Helfer); nach einem Warteraum 7 Tage Ruhe (`JP_WAIT_SECONDS`) | `.langs.JP`, `data.lang_wait` | `Sprachen Japan: …`, Warteraum mit nächstem Versuch |
+| 8 | Tiefstpreise, Angebotsverläufe | DekuDeals-Artikelseite je aktivem Land | jeder kaufbare Titel ohne bekannten Tiefstpreis, Angebote zuerst; Verläufe nur bei laufenden Angeboten auffrischen; Seiten ohne Tiefstpreis monatlich; Wishlist höchstens 60 (`LOWS_PER_SYNC`), Verläufe höchstens 40 (`SALES_PER_SYNC`), fehlende DLC 30 (`EXTRA_LOWS_PER_SYNC`); 2,5 s Pause | `data.lows` | `Tiefstpreise: … ; Wishlist x von n Titeln mit Tiefstpreis, k mit Angebotsverlauf` |
+| 9 | DLC, Pakete, Inhalte | DekuDeals-Artikelseite | höchstens 40 Seiten (`REL_PER_SYNC`), monatlich erneut, Paketverbindungen fehlender DLC alle 90 Tage | `data.rel`, `data.links`, `data.lchk`; 2,5 s Pause | `DLC und Pakete: …` / `nichts fällig` |
+| 10 | IDs fehlender DLC | DekuDeals-Artikelseite | höchstens 40 Seiten (`EXTRA_PER_SYNC`), 14 oder 90 Tage, 2,5 s Pause | `data.extra`, `data.glangs` | `Fehlende DLC der Sammlung: …` |
+| 11 | Sprachen und IDs Japan/Amerika; ab 0.61 auch die Fassung der DLC (Programm-ID in Europa gleich der in Japan bzw. Amerika?) | titledb (GitHub, Dateien zu rund 25 MB, gestreamt) | nur bei Bedarf, bis zu drei Dateien je Lauf (DE.de, JP.ja, US.en), höchstens wöchentlich, bei neuen IDs nach 1 h; DLC, die titledb nicht kennt, monatlich (`TITLEDB_RECHECK_SECONDS`); nach Fehlschlag 1 Tag Ruhe (`TITLEDB_FAIL_WAIT`) | nur Treffer; Fassung je DLC und Region in `app_same` {Region: [ID, gleich]}, geprüft am `app_chk` | `titledb: …`, `DLC-Fassungen: g von n geprüft, …` |
 | 7b | Sprachen neu gefundener DLC | wie 7 | teilt die Seitengrenze mit 7 | wie 7 | nur bei Arbeit |
 
 Dazu kommt `self_check` ohne Abruf: Er prüft die Ergebnisse auf Glaubhaftigkeit und
@@ -69,7 +77,8 @@ Beide Lesezeichen geben ihren Stand mit (`hv`). Ist er älter als nötig, meldet
 
 ## Verbindungstest
 
-Je eine Probe, nichts wird gespeichert:
+Je eine Probe, nichts wird gespeichert. Zwischen DekuDeals-Proben 1 s Pause; nach einer Sperre
+fragt der Test DekuDeals nicht weiter an und sagt das je Probe:
 
 - Wishlist
 - Artikelseite mit Verlauf
