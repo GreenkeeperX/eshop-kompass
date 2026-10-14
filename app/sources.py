@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.65.0"
+VERSION = "0.66.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -90,9 +90,19 @@ def head(url, timeout=20):
             resp = e
         with resp:
             return {"status": getattr(resp, "status", None) or resp.getcode(), "error": "",
-                    "size": resp.headers.get("Content-Length"), "modified": resp.headers.get("Last-Modified")}
+                    "size": resp.headers.get("Content-Length"), "modified": resp.headers.get("Last-Modified"),
+                    "etag": resp.headers.get("ETag")}
     except Exception as e:
-        return {"status": 0, "error": str(e)[:160], "size": None, "modified": None}
+        return {"status": 0, "error": str(e)[:160], "size": None, "modified": None, "etag": None}
+
+
+def file_stamp(h):
+    """Kennzeichen eines Dateistands aus den Kopfdaten (ETag, sonst Datum und Größe), None ohne."""
+    if not h or h.get("status") != 200:
+        return None
+    if h.get("etag"):
+        return h["etag"]
+    return f"{h['modified']}|{h['size']}" if h.get("modified") and h.get("size") else None
 
 
 def fetch(url, timeout=25, ua=None):

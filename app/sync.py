@@ -32,6 +32,7 @@ LANG_RECHECK_SECONDS = 30 * 24 * 3600 # Seite gelesen, aber ohne Sprachen: monat
 LANG_RETRY_SECONDS = 20 * 3600        # ... bei den ersten Versuchen schon am nächsten Tag
 LANG_TRIES = 3                        # so viele Versuche, bevor nur noch monatlich gefragt wird
 LANG_PER_SYNC = 40                    # Seiten je Region und Abgleich, ungeprüfte zuerst
+AM_BLANK_ALARM = 3                    # so viele Seiten Amerika ohne Sprachen in einem Lauf: Seite geändert?
 TITLEDB_SECONDS = 7 * 24 * 3600       # titledb höchstens wöchentlich laden ...
 TITLEDB_RECHECK_SECONDS = 30 * 24 * 3600  # ... und je Titel ohne Angabe monatlich nachsehen
 TITLEDB_FRESH_SECONDS = 3600          # noch nie nachgesehene IDs gleich im nächsten Abgleich
@@ -978,9 +979,22 @@ def sync_titledb(data, settings, fetch, now=None):
             _log("titledb: zuletzt am " + datetime.fromtimestamp(data["titledb_at"]).strftime("%d.%m.")
                  + " geladen, wieder ab " + datetime.fromtimestamp(data["titledb_at"] + wait).strftime("%d.%m."))
         return
-    _step("Sprachen Japan aus titledb" if todo or verify else "IDs fehlender DLC aus titledb" if dlc else "DLC-Fassungen aus titledb")
     need = {fam for recs in dlc.values() for _, fam in recs}
     own = {fam: {n for _, f, _, n in same if f == fam} for fam in TDB_DLC_REGIONS}
+    # Nur bei geänderter Datei (0.66): Für reine Wiederholungen bringt dieselbe Datei nichts
+    # Neues. Kopfdaten kosten nichts; Neues (fresh) lädt immer, denn behalten wird nur, was gesucht war
+    files = (["DE.de"] if verify or dlc or same else []) \
+        + (["JP.ja"] if todo or verify or "JP" in need or own["JP"] else []) \
+        + ([TDB_DLC_REGIONS["AM"]] if "AM" in need or own["AM"] else [])
+    known = data.get("titledb_files") or {}
+    stamp = {f: sources.file_stamp(sources.head(sources.TITLEDB_URL.format(f))) for f in files}
+    if not fresh and files and all(stamp[f] and known.get(f) == stamp[f] for f in files):
+        data["titledb_at"] = now
+        _log("titledb: Dateien seit dem letzten Laden unverändert, nichts Neues zu lesen; wieder ab "
+             + datetime.fromtimestamp(now + TITLEDB_SECONDS).strftime("%d.%m."))
+        store.save_data(data)
+        return
+    _step("Sprachen Japan aus titledb" if todo or verify else "IDs fehlender DLC aus titledb" if dlc else "DLC-Fassungen aus titledb")
     try:
         eus = {eu for _, eu in verify.values()} | set(dlc) | {eu for _, _, eu, _ in same}
         europe = sources.fetch_titledb(sorted(eus), fetch=fetch, region="DE.de") if eus else {}
@@ -1000,6 +1014,7 @@ def sync_titledb(data, settings, fetch, now=None):
         data["titledb_fail_at"] = now
         return
     data["titledb_at"] = now
+    data["titledb_files"] = {**known, **{f: v for f, v in stamp.items() if v}}
     hits = {fam: [0, 0] for fam in need}
     for eu, recs in dlc.items():
         for e, fam in recs:
@@ -1224,6 +1239,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
             budget[fam] = n - len(todo)
         got = fails = suspects = 0
         queue = False
+        blank = []         # gelesene Seiten ohne Sprachen
         if todo:
             _step(f"Sprachen {name} abrufen", len(todo))
         for rec, nsuid in todo:
@@ -1251,6 +1267,9 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                     status["done"] += 1
                     sleep(DEKU_PAUSE)
                     continue
+            if not langs and not gone:
+                blank.append((rec, (rec.get("langs_checked") or {}).get(fam), (rec.get("langs_tries") or {}).get(fam),
+                              fam in (rec.get("ids_suspect") or {})))
             rec.setdefault("langs_checked", {})[fam] = now
             tries = rec.setdefault("langs_tries", {})
             tries[fam] = tries.get(fam, 0) + 1
@@ -1262,7 +1281,21 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                 suspects += 1
             status["done"] += 1
             sleep(DEKU_PAUSE)
-        if todo and not (queue and not got):
+        if fam == "AM" and not got and len(blank) >= AM_BLANK_ALARM:
+            # Amerika nennt die Sprachen sonst auf jeder Seite. Nennt keine einzige sie, hat sich
+            # eher die Seite geändert als alle Titel (0.66): melden, nichts als Versuch zählen
+            for rec, checked, tried, was_suspect in blank:
+                for key, old_v in (("langs_checked", checked), ("langs_tries", tried)):
+                    if old_v is None:
+                        rec[key].pop(fam, None)
+                    else:
+                        rec[key][fam] = old_v
+                if not was_suspect:
+                    (rec.get("ids_suspect") or {}).pop(fam, None)
+            _log(f"Sprachen {name}: Warnung: {len(blank)} Seiten gelesen, keine nannte Sprachen. Vermutlich hat "
+                 "nintendo.com den Aufbau der Seiten geändert; die Versuche zählen nicht, die Titel kommen beim "
+                 "nächsten Abgleich wieder dran")
+        elif todo and not (queue and not got):
             _log(f"Sprachen {name}: {got} von {len(todo)} Titeln" + (f", {rest} folgen beim nächsten Abgleich" if rest else "")
                  + (f", bei {suspects} sucht der nächste Abgleich die ID neu" if suspects else ""))
         elif not todo and report_idle:

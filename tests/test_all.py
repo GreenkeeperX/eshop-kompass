@@ -3127,7 +3127,13 @@ class ExtraDlcTest(unittest.TestCase):
         with mock.patch.object(sources, "fetch_titledb", titledb):
             sync.sync_titledb(data, settings, None, now=t0 + 8 * 86400)
             self.assertEqual(len(tdb), 1)
+            # 0.66: Ist die Datei seitdem unverändert, bringt sie nichts Neues und wird nicht geladen
             sync.sync_titledb(data, settings, None, now=t0 + 31 * 86400)
+            self.assertEqual(len(tdb), 1)
+            self.assertIn("titledb: Dateien seit dem letzten Laden unverändert", sync.status["log"][-1])
+            newer = {"status": 200, "error": "", "size": "25000000", "modified": "Mon, 09 Nov 2026 08:00:00 GMT"}
+            with mock.patch.object(sources, "head", lambda url, timeout=20: newer):
+                sync.sync_titledb(data, settings, None, now=t0 + 39 * 86400)
             self.assertEqual(tdb[-1], ["2"])
         # store-jp kommt durch: Angabe von Nintendo ersetzt titledb
         with mock.patch.object(sources, "fetch_langs_jp", lambda n, fetch=None: "日本語, 英語"):
@@ -3606,6 +3612,34 @@ class FetchRulesTest(unittest.TestCase):
         with self.assertRaises(sources.FetchError):     # außerhalb eines Abgleichs: jede Anfrage geht raus
             sources.fetch_item("c", "de", fetch=fake)
         self.assertEqual(len(calls), 2)
+
+    def test_americas_pages_without_languages_are_reported_not_counted(self):
+        # 0.66: Nennt keine gelesene Seite Amerikas Sprachen, hat sich eher die Seite geändert
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "US")
+        data = {"items": {f"t{i}": {"title": f"T{i}", "active": True, "ids": {"AM": [str(i)]},
+                                    "langs_tries": {"AM": 2}, "langs_checked": {"AM": 5}}
+                          for i in range(4)}, "prices": {}}
+        t0 = 1736467200
+        with mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: None):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0)
+        self.assertIn("keine nannte Sprachen", sync.status["log"][-1])
+        for it in data["items"].values():
+            self.assertEqual((it["langs_tries"], it["langs_checked"], it.get("ids_suspect", {})),
+                             ({"AM": 2}, {"AM": 5}, {}))
+        # Nennt eine Seite Sprachen, zählen die übrigen wie bisher als Versuch
+        answers = {"0": "english, german"}
+        with mock.patch.object(sources, "fetch_langs_am", lambda n, fetch=None: answers.get(n)):
+            sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 10)
+        self.assertIn("Sprachen Amerika: 1 von 4 Titeln", sync.status["log"][-1])
+        self.assertEqual(data["items"]["t1"]["langs_tries"], {"AM": 3})
+
+    def test_file_stamp(self):
+        self.assertEqual(sources.file_stamp({"status": 200, "etag": '"abc"'}), '"abc"')
+        self.assertEqual(sources.file_stamp({"status": 200, "modified": "M", "size": "9"}), "M|9")
+        self.assertIsNone(sources.file_stamp({"status": 0, "error": "x"}))
+        self.assertIsNone(sources.file_stamp({"status": 200, "size": "9"}))
 
     def test_wishlist_errors_never_shorten_or_stop(self):
         # 0.64: Eine Folgeseite mit Serverfehler oder Sperre heißt „nicht lesbar“, nicht „Ende der Liste“

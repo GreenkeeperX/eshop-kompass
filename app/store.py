@@ -15,7 +15,7 @@ DEFAULT_SETTINGS = {
     "card_fee_pct": 1.75,     # Fremdwährungsgebühr der eigenen Karte
     "gift_markup_pct": 5.0,   # Schätzung: Aufschlag auf den Kurs, wenn kein Kartenpreis lesbar ist
     # Servicegebühr des Kartenshops auf gelesene Preise: fester Betrag plus Anteil.
-    # Eneba, Okt. 2026: acht Käufe von 5,57 bis 93,03 € passen auf den Cent zu 0,40 € + 7,75 %
+    # Eneba, Okt. 2026: nachgerechnete Bestellungen passen auf den Cent zu 0,40 € + 7,75 %
     "shop_fee_pct": 7.75,
     "shop_fee_eur": 0.40,
     # ab dieser Ersparnis lohnt der Länderwechsel, je Stufe (leicht, mittel, schwer)

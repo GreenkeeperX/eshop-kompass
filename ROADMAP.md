@@ -24,17 +24,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 3. **Nutzen belegen.** Jede größere Erweiterung nennt vorher, wie viel Geld oder Zeit sie im Jahr
    spart.
 
-## Horizont 1: Verlässlich (keine neuen Funktionen)
-
-Neue Funktionen haben zuletzt alte Regeln an Stellen berührt, die keiner mehr im Blick hatte. Ein
-Kaufplan, dem man nicht traut, ist wertlos. Deshalb zuerst:
-
-- [ ] **Abrufe, Rest.** titledb nur laden, wenn sich die Datei geändert hat; der Sprachleser für
-  Amerika meldet, statt still nichts zu liefern, wenn sich die Seite ändert.
-- [ ] **Dokumentation als Anleitung.** README in drei Teilen (Kurzanleitung, Begriffe und Regeln,
-  Nachschlagen je Reiter), ohne Versionsvermerke; das Wann steht in der Git-Geschichte. Beispiele
-  neutral wählen.
-
 ## Horizont 2: Überall nutzbar und wartbar
 
 - [ ] **Handy zuerst für Jetzt und Korb.** Kaufplan als Karten, Korb mit Länder-Umschalter, Antippen
