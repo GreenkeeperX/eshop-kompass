@@ -585,6 +585,7 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
         _log(f"Eigene Angebote: alle {len(urls)} Links aktuell")
         return
     _step("Eigene Angebote lesen", len(todo))
+    pay = planner.pay_info(data, settings) if data.get("prices") else {}
     got, failed, stop, odd = 0, [], None, []
     for url in todo:
         try:
@@ -604,13 +605,15 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
             if found:
                 known[url] = {"checked": now, "ok": now, "price": found[0], "currency": found[1]}
                 got += 1
-                # Plausibel (ab 0.62.1)? Währung des Shops und nah am eingetragenen Preis;
-                # sonst gilt der eingetragene (planner.read_offer), das Protokoll sagt es
-                want = sources.amazon_currency(url)
-                if want and found[1] != want:
-                    odd.append(f"{found[0]:g} {found[1]} statt {want}")
-                elif any(x["price"] and abs(found[0] / x["price"] - 1) > planner.OFFER_DEVIATION for x in entries[url]):
-                    odd.append(f"{found[0]:g} {found[1]} statt eingetragen {entries[url][0]['price']:g}")
+                # Plausibel? Dieselbe Regel wie die Rechnung (planner.read_offer, 0.63): Währung
+                # des Landes, nah am eingetragenen Preis; sonst gilt der eingetragene
+                for x in entries[url][:1]:
+                    want = (pay.get(x["code"]) or {}).get("currency") or sources.amazon_currency(url)
+                    check = planner.read_offer(x, known, want, now)["check"] if want else None
+                    if check == "cur":
+                        odd.append(f"{found[0]:g} {found[1]} statt {want}")
+                    elif check == "off":
+                        odd.append(f"{found[0]:g} {found[1]} statt eingetragen {x['price']:g}")
             else:
                 known[url] = _card_miss(known.get(url), now, "Seite nennt keinen Preis")
                 failed.append("kein Preis")

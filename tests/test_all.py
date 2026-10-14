@@ -357,6 +357,45 @@ class OwnOfferTest(unittest.TestCase):
         self.assertAlmostEqual(ctx.countries["BR"]["offers"]["spiritfarer"]["direct"], 2000 * unit)
 
 
+    def test_own_offer_is_no_filler_and_code_rules(self):
+        # Ein Code zahlt die Kreditkarte, nicht das Guthaben: kein „passt in den Rest“ (0.63)
+        data, settings = sample()
+        ctx = planner.Context(data, settings, NOW)
+        fill = lambda ctx: [x["slug"] for x in planner._rest_fill(ctx, ctx.countries["BR"], {"rest": 100}, set(), set())]
+        self.assertIn("spiritfarer", fill(ctx))
+        settings["own_offers"] = [store._own_offer({"slug": "spiritfarer", "code": "BR", "price": 5, "src": "Amazon"},
+                                                   settings["countries"])]
+        ctx = planner.Context(data, settings, NOW)
+        self.assertIsNotNone(ctx.countries["BR"]["offers"]["spiritfarer"].get("direct"))
+        self.assertNotIn("spiritfarer", fill(ctx))
+        # Ein Code zählt immer zum Kurs plus Kartengebühr, im Euro-Land zum Betrag selbst
+        self.assertAlmostEqual(ctx.code_unit(ctx.countries["DE"]), 0.01)
+        self.assertAlmostEqual(ctx.code_unit(ctx.countries["BR"]), 1 / 100 / 5.6086 * (1 + settings["card_fee_pct"] / 100))
+        # Mitgliedschaft im Rest nur aus dem eShop, nicht als Code
+        settings["nso_extra"] = [{"key": "m12", "code": "BR", "price": 1, "src": "Amazon"}]
+        plan = planner.purchase_plan(data, settings, now=NOW)
+        for p in plan["steps"]:
+            self.assertTrue(all(f["local"] != 1 for f in p.get("fill_nso", [])))
+
+    def test_card_with_link_but_no_price_is_ignored(self):
+        # Eine Karte mit Link ohne gelesenen Preis geht nicht still als Schätzung in die Rechnung (0.63)
+        data, settings = sample()
+        before = {p["code"]: p for p in planner.plans(data, settings, basket=["hades"], now=NOW)}["BR"]
+        settings["countries"]["BR"]["cards"] += "\n10 | https://shop.example/br10"
+        after = {p["code"]: p for p in planner.plans(data, settings, basket=["hades"], now=NOW)}["BR"]
+        self.assertEqual((after["cost"], after["estimated"]), (before["cost"], before["estimated"]))
+        # Ohne jede Karte mit Preis bleibt nur die Schätzung, sichtbar als solche
+        settings["countries"]["BR"]["cards"] = "50 | https://shop.example/br50"
+        ctx = planner.Context(data, settings, NOW)
+        self.assertTrue(ctx.countries["BR"]["estimated"])
+
+    def test_own_low_outside_window(self):
+        data, settings = sample()
+        data["lows"] = {"BR": {"hades": {"low": 40.0, "own_low": 10.0, "own_since": "2020-01-01T00:00:00+00:00"}}}
+        self.assertEqual(planner.Context(data, settings, NOW).low_value("BR", "hades"), 40.0)
+        data["lows"]["BR"]["hades"]["own_since"] = NOW.isoformat()
+        self.assertEqual(planner.Context(data, settings, NOW).low_value("BR", "hades"), 10.0)
+
 class PlanTest(unittest.TestCase):
     def setUp(self):
         self.data, self.settings = sample()
@@ -1523,6 +1562,12 @@ class SafetyTest(unittest.TestCase):
             json.dump({"settings_v": 3, "countries": {"US": {"rest_blocks": True}}}, f)
         self.assertFalse(store.load_settings()["countries"]["US"]["rest_blocks"])
         store.save_settings({"countries": {"JP": {"rest_blocks": False}}})
+        # „Deutschland (Guthaben)“ ist kein eigenes Konto, sondern das deutsche (0.63)
+        with open(os.path.join(store.DATA_DIR, "settings.json"), "w") as f:
+            json.dump({"current_country": "DG"}, f)
+        self.assertEqual(store.load_settings()["current_country"], "DE")
+        self.assertEqual(store.save_settings({"current_country": "DG"})["current_country"], "DE")
+        self.assertEqual(store.save_settings({"current_country": ""})["current_country"], "")
         # 0.8.1 speicherte pauschal 10,5 % Eneba-Gebühr: wird zur gemessenen Formel
         with open(os.path.join(store.DATA_DIR, "settings.json"), "w", encoding="utf-8") as f:
             json.dump({"settings_v": 1, "shop_fee_pct": 10.5}, f)

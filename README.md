@@ -73,7 +73,8 @@ Die beiden Euro-Grenzen sind unter Einstellungen änderbar. Ob sich der Weg in
 ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
 
 - Jetzt (Startseite): oben, in welchem Land dein Konto steht und mit wie viel
-  Guthaben, direkt änderbar. Darunter "Zu erledigen": ungeprüfte Sprachen, die
+  Guthaben, direkt änderbar. Zur Wahl stehen Länder mit eigenem Shop; „Deutschland (Guthaben)“
+  ist dasselbe deutsche Konto. Darunter "Zu erledigen": ungeprüfte Sprachen, die
   etwas ändern würden (die Fassung wäre günstiger; alle offenen stehen unter
   Einstellungen, "Sprachen prüfen"), Länder ohne Guthabenkarte mit Preis und Kartenpreise,
   die älter als 30 Tage sind, jeweils mit Sprung an die richtige Stelle. Dazu fehlende DLC
@@ -138,7 +139,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
 - Füllartikel: Bleibt in einem Schritt des Kaufplans ein Rest, stehen darunter bis
   zu drei Wishlist-Titel, die hineinpassen, der kleinste verbleibende Rest zuerst.
   Das Urteil zählt dabei nicht, Titel aus der Sammlung, gekaufte und DLC ohne
-  Hauptspiel fehlen. Ein Klick nimmt den Titel in den Schritt, "Füller ×" nimmt
+  Hauptspiel fehlen, ebenso Titel, die dort als eigenes Angebot (Code) zählen: Den zahlt die
+  Kreditkarte, nicht das Guthaben. Aus demselben Grund nennt der Hinweis zur Mitgliedschaft im
+  Rest nur den eShop-Preis. Ein Klick nimmt den Titel in den Schritt, "Füller ×" nimmt
   ihn wieder heraus. Nach "gekauft" sind die Füller dieses Landes vergessen.
   Auch fehlende DLC deiner Spiele erscheinen dort, als Link zu DekuDeals:
   Übernehmen lassen sie sich, sobald sie auf der Wishlist stehen. Passt eine Online-Mitgliedschaft
@@ -318,8 +321,9 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Shop eine Prüfseite (Captcha), wird sie nicht umgangen, dann gilt dein eingetragener Preis.
 - Eigene Angebote für Titel (seit 0.62): In den Einzelheiten eines Titels trägst du unter „Eigene
   Angebote“ einen Code außerhalb des eShops ein, etwa bei Amazon Japan (Land, Preis in
-  Landeswährung, Quelle, Link). Bezahlt wird er mit Kreditkarte zum Mittelkurs plus Gebühr,
-  eingelöst im Konto des Landes. Ist er günstiger als der eShop dort, tritt er an dessen Stelle:
+  Landeswährung, Quelle, Link; der Preis gilt als Endpreis, ohne Steuer obendrauf). Bezahlt wird
+  er mit Kreditkarte zum Mittelkurs plus Gebühr, in einem Euro-Land genau zum Betrag (nie zum
+  Faktor der Guthabenkarten), eingelöst im Konto des Landes. Ist er günstiger als der eShop dort, tritt er an dessen Stelle:
   Er zählt für Bestpreis, Urteil, Korb und Kaufplan wie jedes Angebot, trägt die Marke der Quelle
   („Amazon“) und sein Preis verlinkt den Händler. Im Kaufplan läuft er nicht über Guthaben, also
   ohne Karten und Rest; die Kosten nennen ihn eigens. Die Sprachregel gilt wie für den eShop des
@@ -339,8 +343,8 @@ Wechselkurs und den Weg zum Guthaben (Kartengebühr oder Preis der
 Guthabenkarte). Der Tooltip am Preis zeigt die Rechnung samt Stand des
 Wechselkurses. Den Preis einer Guthabenkarte nimmt das Tool in dieser Reihenfolge: der
 gelesene Preis vom Link (scheitert ein Abruf, gilt der zuletzt gelesene bis zu 14 Tage weiter,
-mit Datum), dein eingetragener Preis, bei Werten ohne Link Guthaben zum Kurs. Gibt es nichts
-davon, heißt ein ≈ vor dem Preis geschätzt (Kurs plus der Wert unter Gebühren, Erweitert):
+mit Datum), dein eingetragener Preis, bei Werten ohne Link Guthaben zum Kurs. Eine Karte mit
+Link, deren Preis noch nicht gelesen ist, rechnet nicht mit. Gibt es für keine Karte einen Preis, heißt ein ≈ vor dem Preis geschätzt (Kurs plus der Wert unter Gebühren, Erweitert):
 Solche Preise entscheiden nichts, „das Günstigere“ nimmt dann die Kreditkarte, und „Zu
 erledigen“ nennt das Land.
 Auch Kartenzahlung ist eine Näherung (Mittelkurs plus Fremdwährungsgebühr),

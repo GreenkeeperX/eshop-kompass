@@ -1598,7 +1598,8 @@ function restHtml(p, bare){
 /* ---------- Jetzt: Startseite mit Konto, Aufgaben und Kaufplan ---------- */
 function accountLine(){
   const s = S.state.settings, cur = s.current_country, pi = cur ? S.state.pay[cur] : null;
-  const opts = [...S.state.countries].filter(c => (s.countries[c.code] || {}).enabled || c.code === cur)
+  // Nur Länder mit eigenem Shop: „Deutschland (Guthaben)“ ist dasselbe deutsche Konto (0.63)
+  const opts = [...S.state.countries].filter(c => c.shop === c.code && ((s.countries[c.code] || {}).enabled || c.code === cur))
     .sort((x, y) => x.name.localeCompare(y.name, "de"))
     .map(c => `<option value="${c.code}" ${c.code === cur ? "selected" : ""}>${esc(c.name)}</option>`).join("");
   const bal = cur && s.countries[cur] ? s.countries[cur].balance || 0 : 0;
@@ -2020,7 +2021,7 @@ function viewSettings(){
     <form class="set" id="setForm">
     <section class="setc"><h3 class="sec" id="set-laender">Länder</h3>
     <div class="fields" style="max-width:380px"><label class="f" title="Für dieses Land gilt keine Mindestersparnis, du bist ja schon dort.">Konto steht aktuell in<select name="current_country"><option value="">nicht angegeben</option>${
-      [...S.state.countries].sort((x, y) => x.name.localeCompare(y.name, "de")).map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label></div>
+      [...S.state.countries].filter(c => c.shop === c.code).sort((x, y) => x.name.localeCompare(y.name, "de")).map(c => sel(c.code, s.current_country, esc(c.name))).join("")}</select></label></div>
     <details class="fold" data-k="setcountries" ${S.folds.setcountries ? "open" : ""}><summary class="hint">Länder, Zahlwege und Guthabenkarten <span class="mut">(${act.length} aktiv${off.length ? `, ${off.length} weitere` : ""})</span></summary>
     ${table(act)}
     <p class="hint">Das Preisniveau vergleicht deine Wishlist mit Deutschland. Eine Guthabenkarte je Zeile: <code>Wert = Preis in Euro | Link</code>, zum Beispiel <code>100 = 16,00 | https://…</code>; mehr unter „So trägst du Karten ein“.</p>

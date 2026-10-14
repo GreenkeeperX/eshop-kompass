@@ -81,6 +81,8 @@ def load_settings():
         for k, v in DEFAULT_SETTINGS.items():
             s.setdefault(k, json.loads(json.dumps(v)))
         s.pop("card_market", None)    # gg.deals ist seit 0.20 ausgebaut
+        if s.get("current_country") in countries.BY_CODE:   # bis 0.62 war DG als Konto wählbar
+            s["current_country"] = countries.BY_CODE[s["current_country"]]["shop"]
         for group in ("tier_min_saving", "deal_eur", "eur_card_steps"):
             for k, value in DEFAULT_SETTINGS[group].items():
                 s[group].setdefault(k, value)
@@ -171,7 +173,8 @@ def save_settings(new):
                     pass
         s["cashback_pct"] = min(50.0, s["cashback_pct"])
         if new.get("current_country") in list(s["countries"]) + [""]:
-            s["current_country"] = new["current_country"]
+            # Ein Konto steht in einem Land mit eigenem Shop: „Deutschland (Guthaben)“ ist das deutsche (0.63)
+            s["current_country"] = countries.BY_CODE[new["current_country"]]["shop"] if new["current_country"] else ""
         if isinstance(new.get("nso_until"), str) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", new["nso_until"]):
             s["nso_until"] = new["nso_until"]
         if new.get("nso_variant") in NSO_KEYS:

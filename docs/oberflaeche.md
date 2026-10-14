@@ -130,6 +130,8 @@ Reiter (ab 0.61): Jetzt, Titel, Korb, Länder, Sammlung, Einstellungen, erst was
 Einkaufen, dann was du hast. Am Reiter Korb steht grau die Zahl
 seiner Titel (ab 0.59). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
 der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste).
+Auswahl „Konto steht in“ (Jetzt und Einstellungen): nur Länder mit eigenem Shop, ohne
+„Deutschland (Guthaben)“.
 
 DLC außerhalb Europas (ab 0.61 nach Programm-ID): Hat er dort eine eigene Fassung, steht hinter
 dem Land das violette „DLC“-Kästchen (`.dlc.need`), in den Tabellen ein violetter Strich am linken

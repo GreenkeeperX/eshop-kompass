@@ -123,7 +123,10 @@ def summary(r):
                  "cost": r["plan"]["cost"], "saving": r["plan"]["saving"],
                  "held": sorted(h["slug"] for h in r["plan"]["held"]),
                  "later": sorted(x["slug"] for x in r["plan"]["later"]),
-                 "nowhere": sorted(r["plan"]["nowhere"])},
+                 "nowhere": sorted(r["plan"]["nowhere"]),
+                 # Füller und Mitgliedschaft im Rest vergleichen sich mit (0.63)
+                 "fill": {p["code"]: sorted(f["slug"] for f in p.get("fill") or []) for p in r["plan"]["steps"]},
+                 "fill_nso": {p["code"]: sorted(f["key"] for f in p.get("fill_nso") or []) for p in r["plan"]["steps"]}},
         "langs_open": sorted(f'{t["slug"]}|{t["family"]}' for t in r["langs"]
                              if not t.get("manual") and t.get("state") is None),
         "collection": {"missing_eur": r["collection"].get("missing_eur"),
@@ -149,6 +152,14 @@ def check(r):
                 bad.append(f"Plan: {s} steht in der Sammlung und trotzdem im Plan")
         if p["cost"] is not None and p["cost"] < 0:
             bad.append(f"Plan: Schritt {p['code']} kostet weniger als 0")
+        # Ein Füller passt in den Rest (0.63)
+        rest = p.get("rest") or 0
+        for f in p.get("fill") or []:
+            if f["local"] > rest + 1e-9:
+                bad.append(f"Plan: Füller {f['slug']} ({p['code']}) passt nicht in den Rest")
+        for f in p.get("fill_nso") or []:
+            if f["local"] > rest + 1e-9:
+                bad.append(f"Plan: Mitgliedschaft {f['key']} ({p['code']}) passt nicht in den Rest")
     for key in ("held", "later"):
         for x in plan[key]:
             if x["slug"] in seen:

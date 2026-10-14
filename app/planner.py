@@ -440,7 +440,7 @@ class Context:
                 continue
             price, read = self.offer_price(x, c["currency"])
             local = cents(price)
-            direct = local * self._units(c)[0]
+            direct = local * self.code_unit(c)
             o = c["offers"].get(x["slug"])
             if o and not o.get("nocard") and self.oeur(c, o) <= direct + 0.005:
                 continue               # der eShop ist gleich günstig oder günstiger
@@ -457,7 +457,10 @@ class Context:
     def low_or_now(self, c, slug, o, low):
         """Europreis des Tiefstpreises der letzten 24 Monate, das Angebot jetzt eingeschlossen."""
         if o.get("direct") is not None:
-            return o["direct"] if low is None else min(o["direct"], self.est(c, round(cents(low) * (1 + c["tax"] / 100))))
+            # Ohne Kartenpreis zählt der eShop-Tiefstpreis dort nicht (er wäre nur geschätzt, 0.63)
+            if low is None or c.get("nocard"):
+                return o["direct"]
+            return min(o["direct"], self.est(c, round(cents(low) * (1 + c["tax"] / 100))))
         local = o["local"] if low is None else min(o["local"], round(cents(low) * (1 + c["tax"] / 100)))
         return self.est(c, local)
 
@@ -510,7 +513,9 @@ class Context:
             if not x["stock"]:
                 continue
             cost = self.face_cost(c, x)
-            unit = cost / x["face"] if cost is not None else est
+            if cost is None:               # ohne Preis keine Grundlage (0.63)
+                continue
+            unit = cost / x["face"]
             if card is None or unit < best - 1e-12:
                 best, card = unit, x
         return best, card
@@ -533,6 +538,13 @@ class Context:
             unit = self._euro_card(c)[0]
             return unit, unit
         return mid * (1 + self.settings["card_fee_pct"] / 100), self._gift(c)[0]
+
+    def code_unit(self, c):
+        """Euro je Hundertstel für einen Code beim Händler (eigene Angebote, 0.63): immer mit
+        Kreditkarte zum Mittelkurs plus Gebühr, in Euro genau der Betrag. Nie über Guthabenkarten,
+        auch nicht im Euro-Land, wo _units den Faktor der Guthabenkarten liefert."""
+        mid = 1 / 100 / c["rate"]
+        return mid if c["currency"] == "EUR" else mid * (1 + self.settings["card_fee_pct"] / 100)
 
     def _unit(self, c):
         if not c["rate"]:
@@ -717,6 +729,9 @@ class Context:
         gelesen, oder die Seite gilt für Switch und Switch 2) der Allzeit-Tiefstpreis."""
         e = self.lows.get(countries.BY_CODE[code]["shop"], {}).get(slug) or {}
         own = e.get("own_low")
+        # Das Fenster gilt für alle Werte (0.63): ein eigener Tiefstwert nur, wenn er darin liegt
+        if own is not None and str(e.get("own_since") or "9999")[:7] < self.best_since:
+            own = None
         if e.get("hist") and not e.get("hist_multi"):
             vals = [v for m, v in e["hist"] if m >= self.best_since and v and v > 0]
             if vals:
@@ -906,7 +921,10 @@ def make_payer(ctx, c):
     balance = cents(c["cfg"].get("balance") or 0)
     mode = c["cfg"]["pay"]
     card_unit, gift_unit = ctx._units(c)
-    stocked = [(x["face"], ctx.face_cost(c, x)) for x in c["cards"] if x["stock"]]
+    # Nur Karten mit Preis (0.63): Eine Karte mit Link, deren Preis (noch) nicht gelesen ist, ginge
+    # sonst still als Schätzung in die Rechnung. Hat keine Karte einen Preis, schätzt by_gift mit „ca.“
+    stocked = [(x["face"], ctx.face_cost(c, x)) for x in c["cards"]
+               if x["stock"] and ctx.face_cost(c, x) is not None]
     solver = None
     if stocked and mode in ("giftcard", "auto"):
         solver = CardSolver(stocked, c["rate"], ctx.markup(c))
@@ -2157,7 +2175,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 continue
             offers = ctx.countries[code]["offers"]
             for s in slugs:
-                if s not in taken and s not in done and s in offers and ctx.decides(offers[s]):
+                if s not in taken and s not in done and s in offers and ctx.decides(offers[s]) \
+                        and offers[s].get("direct") is None:
                     groups[code].append(s)
                     taken.add(s)
         later = [s for s in later if s not in taken]
@@ -2287,7 +2306,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         rest = round((p.get("rest") or 0) * 100)
         fits = []
         for v in ms["variants"]:
-            r = next((r for r in v["rows"] if r["code"] == p["code"] and r["counts"]), None)
+            # Nur der eShop zahlt aus dem Guthaben; eigene Angebote (Codes) zahlt die Kreditkarte (0.63)
+            r = next((r for r in v["rows"] if r["code"] == p["code"] and r["counts"] and not r.get("src")), None)
             if v.get("family") or not r or rest <= 0 or p.get("is_ref") or round(r["local"] * 100) > rest:
                 continue
             fits.append({"key": v["key"], "label": v["label"], "local": r["local"], "eur": r["eur"],
@@ -2335,7 +2355,8 @@ def _rest_fill(ctx, c, p, planned, skip, limit=3, xctx=None):
         parent = ctx.items[s].get("parent")
         if parent and parent not in ctx.owned and parent not in planned:
             continue
-        if o["local"] > rest:
+        # Ein eigenes Angebot (Code, ab 0.62) zahlt die Kreditkarte, nicht das Guthaben: kein Füller (0.63)
+        if o["local"] > rest or o.get("direct") is not None:
             continue
         out.append({"slug": s, "title": ctx.title(s), "short": ctx.short(s),
                     "local": o["local"] / 100, "eur": _r(o["local"] / 100 / c["rate"]) if c.get("rate") else None,
@@ -2574,7 +2595,7 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v, extra=
         # gelesene gilt wie bei Karten bis CARD_PRICE_MAX_AGE, sonst der eingetragene
         got = read_offer(x, data.get("offer_prices"), c["currency"], now.timestamp())
         price = got["price"]
-        eur = cents(price) * ctx._units(c)[0]
+        eur = cents(price) * ctx.code_unit(c)
         rows.append({
             "code": x["code"], "name": c["meta"]["name"], "tier": c["tier"], "eur": _r(eur),
             "month": _r(eur / v["months"]), "per_account": _r(eur / v["months"] / v["accounts"]),
