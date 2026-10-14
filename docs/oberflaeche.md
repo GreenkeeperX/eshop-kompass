@@ -100,6 +100,12 @@ Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü 
 - "ca." vor Beträgen: aus anderen Angaben errechnet (etwa Pass-Preis).
 - Nicht zählende Zeilen sind blass (`opacity`), nicht farbig.
 - Gepunktete Unterstreichung: Angabe aus titledb, nicht von Nintendo.
+- „am Bestpreis“ (grün) an einem Schritt oder Land steht nur, wenn jeder Titel darin am
+  Bestpreis ist; sonst der rote Betrag darüber (ab 0.65). So widersprechen sich Kopfzeile und
+  rotes „+x“ einer Zeile nie.
+- DLC mit gekürztem Namen tragen das Hauptspiel klein und grau davor („Vampire Survivors: Ode
+  to Castlevania“, `small.gm`, ab 0.65), damit „Pixel Pack“ nicht allein steht.
+- Links sind ruhig in der Textfarbe (`a` mit `--accent`), nie browser-blau: Blau heißt Rabatt.
 
 ## Vergleiche
 
@@ -115,6 +121,13 @@ Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü 
 
 ## Zahlen in Sätzen
 
+Eingabefelder für Beträge und Prozente nehmen Komma und Punkt und zeigen das Komma („7,75“,
+ab 0.65); sie sind Textfelder mit `inputmode="decimal"`, damit kein Browser „7.75“ zeigt.
+Was überall gleich ist, steht nur einmal: Kostet ein Titel überall 0,00 €, zeigt die Titel-Tabelle
+„kostenlos in allen 16 Ländern mit Preis“ statt lauter Nullen; hat er nirgends einen Preis, steht dort der Grund
+(etwa „noch nicht erschienen“) statt einer Reihe aus „–“. Fehlende DLC, die nichts kosten, heißen
+„kostenlos“, nicht „0,00 €“.
+
 Nur die Zahl trägt die Farbe, Verbindungswörter bleiben grau. Sammlung je Spiel: eine Zahl je
 Art, wie ein Satz aufgezählt und ohne Gesamtzahl („10 vorhanden und 7 ignoriert“, „3 vorhanden,
 2 fehlen und 1 ignoriert“; die Gesamtzahl steht im Tooltip), damit nichts wie „17,7“ liest. Der
@@ -129,7 +142,16 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 Reiter (ab 0.61): Jetzt, Titel, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
 Einkaufen, dann was du hast. Am Reiter Korb steht grau die Zahl
 seiner Titel (ab 0.59). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
-der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste).
+der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste). Ansicht und
+Reihenfolge merkt sich der Browser (`ek.view`, ab 0.65 auch für Länder), nie der Server.
+
+Handy (ab 0.65): Die Reiterleiste scrollt seitlich und blendet am Rand weich aus, solange rechts
+noch Reiter folgen (`nav.more`). Formulare, Vorschläge „Passt in den Rest“ und die Tabellen der
+Mitgliedschaft brechen um oder scrollen in sich; die Seite selbst scrollt nie seitlich (geprüft bei 390 px).
+
+„Zu erledigen“ (Jetzt): je Eintrag ein fetter Kern („7 fehlende DLC kostenlos holen“), Einzelheiten
+klein dahinter, lange Listen eingeklappt („welche“). Die Legende erklärt jedes Zeichen, das die
+Oberfläche zeigt, auch Chips, „ca.“, die DLC-Marken und Sammlung „fehlt“.
 Auswahl „Konto steht in“ (Jetzt und Einstellungen): nur Länder mit eigenem Shop, ohne
 „Deutschland (Guthaben)“.
 
@@ -155,6 +177,8 @@ Spaltenköpfe sortieren, Kopfzeile bleibt stehen und ist deckend: Länder ohne d
 grauen Kopftext, nur ihre Zellen sind blass (bis 0.62 schien die Tabelle durch den Kopf). Eine Zeile je
 Zelle wie in der Titel-Tabelle: Preis, blauer Rabatt, kleines rotes „+x“ über dem Bestpreis (`.abv.gap`, bis 0.62 grau); Zelle
 dunkel-/hellgrün nach Urteil, gold umrandet am Bestpreis. Landeswährung, Zahlweg und Ende im Tooltip.
+Der Stern im Korb gilt dem Preis im Korb, nicht dem Einzelpreis (ab 0.65; in Ländern ohne
+eigenen Shop können beide abweichen).
 Der Preis öffnet den eShop, bei DLC den Verlauf bei DekuDeals (kein fester eShop-Link für DLC).
 Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Menü Hell/Dunkel liegt
 über der Sprungleiste der Einstellungen (Kopfleiste `z-index` 7).

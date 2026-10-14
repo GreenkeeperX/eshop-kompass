@@ -268,7 +268,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   das Land, in dem es den Bestpreis gab. "Details" zeigt in jeder Zelle
   Landestief, Angebotsende und Sprache. Die Tabelle scrollt in einem eigenen
   Fenster, Kopfzeile und Titelspalte bleiben stehen. "nur Angebote" blendet
-  auch Länder ohne Angebot aus.
+  auch Länder ohne Angebot aus. Ist ein Titel überall kostenlos oder nirgends zu
+  haben, steht statt lauter gleicher Zellen eine Zeile mit dem Grund.
 - Länder: Länderkarten als dichtes Raster oder große Liste (Schalter rechts, wie Liste | Tabelle
   bei Titel). Das Land,
   in dem dein Konto steht, kommt zuerst, dann die übrigen nach der gewählten
@@ -335,8 +336,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Besuchern aus Deutschland umgerechnete Europreise; das Tool wählt deshalb über die
   Währungswahl der Seite (Cookie) die Landeswährung und erkennt die Währung am Preis.
 
-Die Ansicht (Reiter, Liste oder Tabelle, Filter, aufgeklappte Kästen) merkt
-sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.
+Die Ansicht (Reiter, Liste oder Tabelle, Raster oder Liste der Länder und deren
+Reihenfolge, Filter, aufgeklappte Kästen) merkt sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.
 
 Jeder Europreis enthält alles, was der Kauf dich kostet: Shop-Preis, Steuer,
 Wechselkurs und den Weg zum Guthaben (Kartengebühr oder Preis der

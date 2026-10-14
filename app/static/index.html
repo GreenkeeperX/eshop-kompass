@@ -43,9 +43,12 @@ button,select,input{font:inherit;color:inherit}
 button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
 button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+a{color:var(--accent)}
 button.link{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline}
 button:disabled{opacity:.5;cursor:default}
 nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav.more{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}
+select{max-width:100%}
 /* Kopf und Reiter kommen beim Scrollen mit, verschwinden nach unten weiter, kommen beim Hochscrollen zurück */
 .stick{position:sticky;top:0;z-index:7;background:var(--bg);margin-bottom:10px;
   transition:transform .8s cubic-bezier(.4,0,.2,1),opacity .7s ease,margin-top .8s cubic-bezier(.4,0,.2,1)}
@@ -173,6 +176,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .list .pc th{font-size:11px;padding:3px 6px}
 .list .pc td.t{font-size:14.5px}
 .list .tt .nm{display:block}
+.pc .nm small.gm,.nm small.gm{display:inline;color:var(--muted);font-size:.85em}
 .list .pc col.c-l{width:140px}.list .pc col.c-b{width:70px}.list .pc col.c-e{width:80px}.list .pc col.c-d{width:80px}
 .list .pc .c-t{display:table-cell}
 .list .pc col.c-t{display:table-column;width:110px}
@@ -248,21 +252,22 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .star{color:var(--gold);margin-right:2px}
 
 /* Einstellungen */
-form.set{display:grid;gap:16px}
+form.set{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}  /* breite Tabellen scrollen in ihrem Kasten (0.65) */
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .fields .pair{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
 label.f input[type=checkbox]{width:auto;margin:0 6px 0 0;vertical-align:-2px}
-label.f input,label.f select,.set td input[type=text],.set td input[type=number],.set td select{
+label.f input,label.f select,.set td input[type=text],.set td select{
   background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--ink);width:100%}
 .set td{text-align:left;vertical-align:middle;padding:4px 8px}
 .set th{text-align:left}
-.set td input[type=number]{width:90px}
+.set td input[inputmode=decimal]{width:90px}
 .set td.cards{min-width:230px}
 .code{color:var(--muted);font-size:12px;margin-left:4px}
 pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:240px;overflow:auto;font-size:12px;margin:0}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:8}
 @media (max-width:420px){.grid{grid-template-columns:1fr}}
+@media (max-width:520px){.sugg button{flex-wrap:wrap}.sugg small{white-space:normal}#nsobox .mini-t{display:block;overflow-x:auto}}
 @media (max-width:640px){.cmp td:first-child,.cmp th:first-child{min-width:130px;max-width:150px}}
 @media (max-width:640px){.list .pc .c-t,.list .pc col.c-t{display:none}.list .pc col.c-l{width:100px}
   .list .pc col.c-b{width:50px}.list .pc col.c-e{width:56px}.list .pc col.c-d{width:56px}}
@@ -327,7 +332,7 @@ details.hint{margin:6px 0}
 details.hint summary{cursor:pointer}
 .lvl-neg{color:var(--accent);font-weight:600}
 .lvl-pos{color:var(--muted)}
-.set td input[type=number].sm{width:64px}
+.set td input[inputmode=decimal].sm{width:64px}
 .set td select[data-k=tier]{width:92px}
 .set td select[data-k=pay]{width:156px}
 
@@ -373,6 +378,10 @@ form.set > .setc{margin-top:0}
 .todo{background:var(--warn-bg);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .todo>b{color:var(--warn)}
 .todo>div{display:flex;gap:10px;justify-content:space-between;align-items:baseline;padding-top:3px}
+.todo>div small{color:var(--muted);font-size:12px}
+.todo details.inl{display:inline}
+.todo details.inl summary{display:inline;cursor:pointer;color:var(--muted);font-size:12px}
+.todo details.inl[open]{display:block;font-size:12px;margin:2px 0 0}
 .acct{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px;font-size:13px}
 .acct select,.acct input{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
 .acct input{width:90px;text-align:right}
@@ -480,7 +489,7 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
     <div class="thm"><button id="thmBtn" data-act="thm" aria-haspopup="true" aria-expanded="false"></button><div class="thm-m" id="thmMenu" role="menu" hidden></div></div>
     <button class="primary" id="syncBtn" data-act="sync">Aktualisieren</button>
   </header>
-  <nav id="nav"></nav>
+  <nav id="nav" onscroll="navFade()"></nav>
   </div>
   <main id="main"></main>
 </div>
@@ -490,7 +499,7 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 "use strict";
 /* Ansicht je Browser: Reiter, Titelansicht, Filter, aufgeklappte Kästen */
 function loadView(){ try{ return JSON.parse(localStorage.getItem("ek.view") || "{}") || {}; }catch(e){ return {}; } }
-function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder})); }catch(e){} }
+function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder, dense:S.dense, lsort:S.lsort})); }catch(e){} }
 /* Hell, dunkel oder wie das Gerät. Gemerkt je Browser (ek.theme); das Skript im Kopf setzt es
    vor dem ersten Zeichnen, damit nichts aufblitzt. */
 const ICO = d => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${d}</svg>`;
@@ -520,8 +529,13 @@ const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? 
            onlySale:false, collMissing:false, rq:"", vf:V0.vf || "all", tview:V0.tview === "table" ? "table" : "list",
            openTitle:null, folds:V0.folds || {}, mDetails:!!V0.mDetails,
            sorts:V0.sorts && typeof V0.sorts === "object" ? V0.sorts : {}, colOrder:V0.colOrder || "tierbest",
+           // Ansicht und Sortierung der Länder merkt sich der Browser (0.65), früher der Server
+           dense:typeof V0.dense === "boolean" ? V0.dense : null, lsort:V0.lsort || null,
            timer:null, step:"", lastSync:null};
 const $ = id => document.getElementById(id);
+/* Zahlen in Eingabefeldern mit Komma (0.65): dc zeigt, num0 liest beides */
+const dc = v => v === null || v === undefined || v === "" ? "" : String(v).replace(".", ",");
+const num0 = v => parseFloat(String(v ?? "").replace(",", "."));
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /* Sortieren per Klick auf Spaltenköpfe: S.sorts[Tabelle] = {k, dir}. Erster Klick aufsteigend,
    zweiter absteigend, dritter zurück zur gewohnten Reihenfolge. Leere Werte stehen immer am Ende. */
@@ -778,6 +792,8 @@ async function loadPlans(){
 async function refresh(){
   S.state = await api("/api/state");
   S.ui = S.state.ui;
+  if(S.dense === null) S.dense = S.ui.dense !== false;
+  if(!S.lsort) S.lsort = S.ui.sort || "optimum";
   S.lastSync = S.state.last_sync;
   migrateLocal();
   if(S.ui.basket){   // Titel, die nicht mehr auf der Wishlist stehen, fallen aus dem Korb
@@ -919,7 +935,14 @@ function render(){
   m.querySelectorAll(".scroll,.fitbox").forEach((e, k) => { if(keep[k]){ e.scrollLeft = keep[k][0]; e.scrollTop = keep[k][1]; } });
   const grp = m.querySelector(".matrix tr.grp");
   if(grp) grp.closest(".matrix").style.setProperty("--grp", grp.getBoundingClientRect().height + "px");
+  navFade();
 }
+/* Reiterleiste schmaler als ihre Reiter (Handy): rechts ausblenden, damit man sieht, dass es weitergeht (0.65) */
+function navFade(){
+  const n = $("nav");
+  if(n) n.classList.toggle("more", n.scrollLeft + n.clientWidth < n.scrollWidth - 2);
+}
+addEventListener("resize", navFade);
 const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || {title:slug, slug};
 const inBasket = slug => (S.ui.basket || []).includes(slug);
 
@@ -931,6 +954,9 @@ const pill = v => v === "none" || !v ? `<span class="mut">kein Urteil</span>` : 
 const star = x => x && x.mark === "best" ? `<span class="star" title="Einkaufspreis erreicht den Bestpreis">★</span>` : "";
 /* Bis 2 % über dem Bestpreis gilt ein Preis als Bestpreis, wie im Urteil (BEST_TOLERANCE) */
 const atBest = (eurNow, champ) => eurNow <= champ * 1.02 + 0.005;
+/* Eine Bestpreis-Regel auf allen Ebenen (0.65): Eine Summe heißt nur „am Bestpreis“, wenn auch jeder
+   Titel darin es ist. Sonst stünde oben grün „am Bestpreis“ und darunter rot „+0,86 €“. */
+const itemsAtBest = items => items.every(i => i.champ === null || i.champ === undefined || atBest(i.eur, i.champ));
 const nearTip = d => d >= 0.005 ? ` title="${eur(d)} über dem Bestpreis, das zählt noch als Bestpreis (bis 2 %)"` : "";
 /* Abstand zum Bestpreis als Text: am Bestpreis in der Farbe des Urteils, +x € rot (teurer) */
 function overBest(eurNow, champ, grade){
@@ -1020,7 +1046,7 @@ function collGame(g){
     g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : ""].filter(Boolean);
   // Wie ein Satz: „10 vorhanden und 7 ignoriert“, „3 vorhanden, 2 fehlen und 1 ignoriert“ (0.56.3)
   const sum = [parts.length > 1 ? parts.slice(0, -1).join(", ") + " und " + parts[parts.length - 1] : parts[0] || "",
-    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
+    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${g.missing_eur < 0.005 && g.missing_priced === g.missing ? "kostenlos" : eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
   const sumTip = `${g.dlc.length} DLC insgesamt`;
   const key = "ign:" + g.slug;
   const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
@@ -1154,7 +1180,7 @@ function titleDetail(r){
   if(rh) h += `<span>Angebote</span><span>${rh}</span>`;
   const now = Math.min(...[r.easy, r.hard].filter(Boolean).map(b => b.eur));
   const sug = r.target === null && ce && (!isFinite(now) || ce.eur < now - 0.005) ? ce.eur : null;
-  h += `<span>Zielpreis</span><span><input class="tgt" type="number" step="0.5" min="0" data-act="target" data-s="${esc(r.slug)}" value="${r.target ?? ""}" placeholder="–">
+  h += `<span>Zielpreis</span><span><input class="tgt" type="text" inputmode="decimal" data-act="target" data-s="${esc(r.slug)}" value="${dc(r.target ?? "")}" placeholder="–">
     ${sug !== null ? `<button class="sm" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}">Bestpreis ${eur(sug)} übernehmen</button>` : ""}
     <small class="mut" style="display:inline">${r.target !== null ? "Ist er erreicht, heißt das Urteil „kaufen“." : "leer: Das Urteil misst am Bestpreis."}</small></span>`;
   h += `<span>Urteil</span><span>${pill(r.verdict)} ${esc(r.reason)}</span>`;
@@ -1199,7 +1225,7 @@ function ownOffersRow(r, mr){
   const form = `<details class="fold" data-k="own-${esc(r.slug)}" ${S.folds["own-" + r.slug] ? "open" : ""}><summary class="hint">${mine.length ? "Weiteres " : ""}Angebot außerhalb des eShops eintragen, etwa einen Code bei Amazon Japan</summary>
     <p class="hint">Bezahlt mit Kreditkarte zum Kurs plus deiner Gebühr, eingelöst im Konto des Landes. Ist es günstiger als der eShop dort, zählt es für Bestpreis, Urteil und Kaufplan. Mit Link liest der Abgleich den Preis einmal am Tag selbst.</p>
     <p class="nsox"><select id="ownc-${esc(r.slug)}">${act.map(c => `<option value="${c.code}" ${c.code === "JP" ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
-    <input id="ownp-${esc(r.slug)}" type="number" min="0" step="0.01" placeholder="Preis" style="width:90px">
+    <input id="ownp-${esc(r.slug)}" type="text" inputmode="decimal" placeholder="Preis" style="width:90px">
     <input id="owns-${esc(r.slug)}" type="text" value="Amazon" style="width:90px" title="Quelle">
     <input id="ownu-${esc(r.slug)}" type="url" placeholder="Link (optional)" style="width:220px">
     <button class="sm" data-act="ownadd" data-s="${esc(r.slug)}">Eintragen</button></p></details>`;
@@ -1282,7 +1308,7 @@ function viewKauf(){
   if(!k) return `<p class="hint">Kaufplan wird berechnet …</p>`;
   const sums = planSums(k.steps);
   const head = k.count
-    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${atBest(sums.opt + sums.gap, sums.opt) ? `<span class="g-buy"${nearTip(sums.gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(sums.gap)}</span> über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)} Rest verfällt beim Wechsel</span>` : ""}</span>`
+    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${atBest(sums.opt + sums.gap, sums.opt) && k.steps.every(p => itemsAtBest(p.items)) ? `<span class="g-buy"${nearTip(sums.gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(sums.gap)}</span> über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)} Rest verfällt beim Wechsel</span>` : ""}</span>`
     : `<span>Gerade steht kein Titel auf „kaufen“${!S.ui.plan_good && k.good_left ? `, aber ${k.good_left} auf „gut“: rechts „auch gute Angebote“ anhaken` : ""}.</span>`;
   let h = `<div class="bar on"><b>Jetzt kaufen</b>${head}<span class="sp"></span>
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
@@ -1347,7 +1373,7 @@ function sortPlans(list){
   const sav = (a, b) => (b.gain ?? b.saving ?? -1e9) - (a.gain ?? a.saving ?? -1e9);
   const opt = (a, b) => (a.opt_gap ?? 1e9) - (b.opt_gap ?? 1e9) || sav(a, b);
   const by = {optimum: opt, saving: sav, rest: (a, b) => (a.rest_value ?? a.rest_eur ?? 1e9) - (b.rest_value ?? b.rest_eur ?? 1e9) || sav(a, b),
-              end: (a, b) => endOf(a) - endOf(b) || sav(a, b), tier: (a, b) => a.tier - b.tier || sav(a, b)}[S.ui.sort] || sav;
+              end: (a, b) => endOf(a) - endOf(b) || sav(a, b), tier: (a, b) => a.tier - b.tier || sav(a, b)}[S.lsort] || sav;
   // Das Land, in dem das Konto steht, vorn, dann die Alternativen, Deutschland als Vergleich am Ende
   const cur = list.filter(p => p.current), rest = list.filter(p => !p.current);
   return cur.concat(rest.filter(p => !p.is_ref).sort(by), rest.filter(p => p.is_ref));
@@ -1358,17 +1384,17 @@ function hiddenLine(){
     `${esc(country(c).name)} <button class="link" data-act="unhide" data-c="${c}">einblenden</button>`).join(" · ") + `</p>`;
 }
 function viewCards(){
-  const opt = (v, l) => `<option value="${v}" ${S.ui.sort === v ? "selected" : ""}>${l}</option>`;
+  const opt = (v, l) => `<option value="${v}" ${S.lsort === v ? "selected" : ""}>${l}</option>`;
   // Werkzeugzeile wie in Titel: links Reihenfolge, rechts der Ansichtsschalter (0.59)
   let h = `<div class="tools"><select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Bestpreis")}${opt("saving","nach Wechselgewinn")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
     ${Object.values(S.ui.overrides).some(ov => ov && ((ov.add || []).length || (ov.remove || []).length)) ? `<button class="sm" data-act="resetall" title="Eigene Änderungen an allen Warenkörben verwerfen">alle zurücksetzen</button>` : ""}
-    <span class="seg"><button data-act="dense" data-v="1" class="${S.ui.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.ui.dense ? "" : "on"}">Liste</button></span></div>`;
+    <span class="seg"><button data-act="dense" data-v="1" class="${S.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.dense ? "" : "on"}">Liste</button></span></div>`;
   const cards = [], empty = [];
   for(const p of sortPlans(cardPlans())){
     if(S.ui.hidden.includes(p.code) && !p.is_ref) continue;
     (!p.items.length && !p.fillers.length ? empty : cards).push(p);
   }
-  h += `<div class="grid ${S.ui.dense ? "" : "list"}">${cards.map(p => planCard(p)).join("")}</div>`;
+  h += `<div class="grid ${S.dense ? "" : "list"}">${cards.map(p => planCard(p)).join("")}</div>`;
   if(empty.length)
     h += `<p class="restline">Ohne passendes Angebot: ` + empty.map(p =>
       `${esc(p.name)} <small>(${p.rate ? p.available + " kaufbar" : "noch keine Preise"})</small>`).join(" · ") + `</p>`;
@@ -1399,7 +1425,7 @@ function priceLine(p){
   const tip = `Bestpreis-Summe ${eur(p.optimum)}: was diese ${p.items.length} Titel zum jeweiligen Bestpreis gekostet hätten. Die Spiele kosten hier ${eur(games)}` +
     (p.rest_value >= 0.5 ? ` (von ${eur(p.cost)} für die Karten bleiben ${eur(p.rest_value)} als Rest)` : "") + `. Rot ist der Betrag über der Bestpreis-Summe, die Urteile stehen dahinter.`;
   const main = under ? `<span class="warnc" title="${esc(tip)} So billig nur mit Angeboten, die nicht zählen (Sprache ungeprüft oder ohne Guthabenkarte): erst prüfen."><span class="q">?</span> ${eur(p.optimum - games)} unter Bestpreis-Summe, zählt nicht</span>`
-    : `<span title="${esc(tip)}">${atBest(p.optimum + p.opt_gap, p.optimum) ? `<span class="g-${p.grade || "buy"}"${nearTip(p.opt_gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span> über Bestpreis-Summe ${eur(p.optimum)}${p.opt_pct ? ` (${p.opt_pct} %)` : ""}`}</span>`;
+    : `<span title="${esc(tip)}">${atBest(p.optimum + p.opt_gap, p.optimum) && itemsAtBest(p.items) ? `<span class="g-${p.grade || "buy"}"${nearTip(p.opt_gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(p.opt_gap)}</span> über Bestpreis-Summe ${eur(p.optimum)}${p.opt_pct ? ` (${p.opt_pct} %)` : ""}`}</span>`;
   return `${spiele}${main}${counts ? ` <span class="mut">· ${counts}</span>` : ""}`;
 }
 /* Was beim Wechsel verfällt: Guthaben aus dem Kontoland, Rest dieses Schritts */
@@ -1528,14 +1554,14 @@ function planCard(p, step){
     if(rl) h += `<div class="ln"><span class="k">Rest</span>${rl}</div>`;
     const hd = hurdles(p, last);
     if(hd.length) h += `<div class="hurd">${hd.join(" · ")}</div>`;
-    const wide = !S.ui.dense || step;
+    const wide = !S.dense || step;
     const T = step ? "schritt" : "land";     // eine Sortierung für alle Karten einer Ansicht
     h += `<div class="scroll"><table class="it"><thead><tr>${sth(T, "title", "Titel")}${wide ? sth(T, "local", `Shop ${esc(cur || "")}`, "Preis im eShop des Landes") : ""}${sth(T, "end", "bis")}${sth(T, "eur", "Einkaufspreis", "Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben")}${sth(T, "over", "über Bestpreis", "Einkaufspreis minus Bestpreis")}${wide && !p.is_ref ? sth(T, "alt", "sonst", "Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land") : ""}</tr></thead><tbody>` +
       sortRows(T, p.items, {title: i => i.short, local: i => i.local, end: i => i.sale && i.end ? +new Date(i.end) : null, eur: i => i.eur,
         over: i => i.champ === null || i.champ === undefined ? null : i.eur - i.champ, alt: i => i.alt}).map(i => {
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
         const need = i.needs_parent ? needsRegion(i.dlc_of, p.code, i.slug) : "";
-        const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${need || (i.parent_owned ? "has" : "")}"${need ? ` title="${esc(needTip(p.code, need))}"` : ""}>DLC${need === "open" ? "?" : ""}</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${esc(i.short)}${i.own ? " " + ownMark(i) : ""}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
+        const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${need || (i.parent_owned ? "has" : "")}"${need ? ` title="${esc(needTip(p.code, need))}"` : ""}>DLC${need === "open" ? "?" : ""}</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${i.dlc_of && i.short !== i.title ? `<small class="gm">${esc(i.dlc_of)}:</small> ` : ""}${esc(i.short)}${i.own ? " " + ownMark(i) : ""}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
         const filled = step && (p.fill_slugs || []).includes(i.slug)
           ? ` <button class="link" data-act="planunfill" data-c="${p.code}" data-s="${esc(i.slug)}" title="Von dir als Füllartikel übernommen. Klick nimmt ihn wieder heraus.">Füller ×</button>` : "";
         const first = step ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
@@ -1554,7 +1580,7 @@ function planCard(p, step){
       .concat(p.fillers.map(f =>
         `<button data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: ${esc(money(f.local, cur))}, Aufpreis ${eur(f.extra)}, ohne den Wechsel ${eur(f.ref)}">
           <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)}, sonst ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>spart ${eur(f.gain)}</b></button>`));
-    if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.ui.dense ? 3 : 99).join("")}</div>`;
+    if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.dense ? 3 : 99).join("")}</div>`;
   } else if((p.fill || []).length || (p.fill_nso || []).length){
     // Mitgliedschaft passt in den Rest: nur ein Hinweis, gekauft wird sie über ihren Kasten (0.57.1)
     const nsoFit = (p.fill_nso || []).map(f => `<button class="sm" data-act="gonso" title="Online-Mitgliedschaft ${esc(f.label)} für ${esc(money(f.local, cur))}${f.at_best ? ", am Bestpreis" : ""}. Danach bleiben ${esc(money(f.left, cur))}. Sie verlängert deine laufende Mitgliedschaft. Klick zeigt den Kasten Online-Mitgliedschaft.">${f.at_best ? `<span class="star">★</span>` : ""}Mitgliedschaft ${esc(f.label)} <small style="display:inline">${money(f.local, cur)}</small></button>`);
@@ -1604,7 +1630,7 @@ function accountLine(){
     .map(c => `<option value="${c.code}" ${c.code === cur ? "selected" : ""}>${esc(c.name)}</option>`).join("");
   const bal = cur && s.countries[cur] ? s.countries[cur].balance || 0 : 0;
   return `<div class="acct">Konto steht in <select data-act="acct"><option value="">nicht angegeben</option>${opts}</select>` +
-    (cur && cur !== "DE" ? ` · Guthaben dort <input type="number" step="0.01" min="0" data-act="bal" value="${bal}"> ${esc((pi || {}).currency || "")}` : "") +
+    (cur && cur !== "DE" ? ` · Guthaben dort <input type="text" inputmode="decimal" data-act="bal" value="${dc(bal)}"> ${esc((pi || {}).currency || "")}` : "") +
     ` <span class="hint">„gekauft“ stellt beides selbst um.</span></div>`;
 }
 function todos(){
@@ -1612,36 +1638,37 @@ function todos(){
   // Nur was gerade Geld kostet: offene Sprachen, wo die Fassung günstiger wäre. Die übrigen
   // offenen Titel stehen unter Einstellungen, Sprachen prüfen.
   const open = (S.state.lang_todo || []).filter(t => !t.manual && t.state === null && t.here), need = open.filter(t => t.matters);
-  if(need.length) out.push([`${need.length} Titel wären in ${[...new Set(need.map(t => t.family_name))].join(", ")} günstiger, die Sprache dort ist aber offen (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})${open.length > need.length ? `; insgesamt ${open.length} offen` : ""}`, `<button class="link" data-act="gosprachen">prüfen</button>`]);
+  // Je Aufgabe ein fetter Kern, Einzelheiten klein dahinter (0.65)
+  if(need.length) out.push([`<b>${need.length} ${need.length === 1 ? "Sprache" : "Sprachen"} prüfen</b> <small>in ${[...new Set(need.map(t => t.family_name))].join(", ")} wäre es günstiger (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})${open.length > need.length ? `; insgesamt ${open.length} offen` : ""}</small>`, `<button class="link" data-act="gosprachen">prüfen</button>`]);
   for(const p of S.plans){
     if(p.is_ref || p.code === "DG" || !(s.countries[p.code] || {}).enabled) continue;
     if(p.warnings.some(w => w.startsWith("Keine Guthabenkarten")))
-      out.push([`${esc(p.name)}: keine Guthabenkarte mit Preis, Preise dort sind geschätzt`, `<button class="link" data-act="gocards" data-c="${p.code}">Karten eintragen</button>`]);
+      out.push([`<b>${esc(p.name)}: Guthabenkarte eintragen</b> <small>ohne Karte mit Preis sind die Preise dort geschätzt</small>`, `<button class="link" data-act="gocards" data-c="${p.code}">Karten eintragen</button>`]);
   }
   const coll = S.state.collection || {};
   // Kostenlose DLC deiner Spiele: holen kostet nichts (0.52)
   const free = coll.free || [];
-  if(free.length) out.push([`${free.length === 1 ? "Ein fehlender DLC ist" : `${free.length} fehlende DLC sind`} gerade kostenlos: ${free.slice(0, 4).map(f =>
-    `<a class="tl" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="${f.end ? `kostenlos bis ${esc(dmy(f.end))}` : "bei DekuDeals ansehen"}">${esc(f.game)}: ${esc(f.title)}</a>`).join(", ")}${free.length > 4 ? ` und ${free.length - 4} weitere` : ""}`,
+  if(free.length) out.push([`<b>${free.length === 1 ? "Einen fehlenden DLC" : `${free.length} fehlende DLC`} kostenlos holen</b> <details class="inl" data-k="todofree" ${S.folds.todofree ? "open" : ""}><summary>welche</summary>${free.map(f =>
+    `<a class="tl" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="${f.end ? `kostenlos bis ${esc(dmy(f.end))}` : "bei DekuDeals ansehen"}">${esc(f.game)}: ${esc(f.title)}</a>`).join("<br>")}</details>`,
     `<button class="link" data-act="gotab" data-v="sammlung">Sammlung</button>`]);
   // Pass statt Teile: Teile stehen auf der Wishlist, der Pass ist günstiger als alle fehlenden Teile
   for(const x of coll.pass_hints || [])
-    out.push([`${esc(x.game)}: ${x.wished.map(w => esc(w.title)).join(", ")} ${x.wished.length === 1 ? "steht" : "stehen"} auf der Wishlist. <a class="tl" href="${esc(deku(x.slug))}" target="_blank" rel="noopener">${esc(x.title)}</a> enthält ${x.open} fehlende DLC, einzeln ${eur(x.single)}, als Pass ${x.est ? "ca. " : ""}${eur(x.eur)} (spart ${eur(x.saving)}). Auf die Wishlist gesetzt, plant ihn der Kaufplan statt der Teile.`, ""]);
+    out.push([`<b>${esc(x.game)}: Pass statt Teile</b> <small>${x.wished.map(w => esc(w.title)).join(", ")} ${x.wished.length === 1 ? "steht" : "stehen"} auf der Wishlist. <a class="tl" href="${esc(deku(x.slug))}" target="_blank" rel="noopener">${esc(x.title)}</a> enthält ${x.open} fehlende DLC, einzeln ${eur(x.single)}, als Pass ${x.est ? "ca. " : ""}${eur(x.eur)} (spart ${eur(x.saving)}). Auf die Wishlist gesetzt, plant ihn der Kaufplan statt der Teile.</small>`, ""]);
   // Erinnerung an „Käufe lesen“: älter als 30 Tage und seitdem gekauft
   const at = S.state.eshop_at || 0, k = S.kauf;
   if(at && Date.now() / 1000 - at > 30 * 86400 &&
      ((S.state.eshop_owned_n !== null && S.state.eshop_owned_n !== undefined && S.state.owned_count > S.state.eshop_owned_n) ||
       (k && (k.bought || []).some(b => new Date(b.at) / 1000 > at))))
-    out.push([`Käufe aus dem eShop zuletzt am ${esc(dmy(new Date(at * 1000).toISOString()))} gelesen, seitdem hast du gekauft`, `<button class="link" data-act="gokaeufe">Käufe lesen</button>`]);
+    out.push([`<b>Käufe lesen</b> <small>zuletzt am ${esc(dmy(new Date(at * 1000).toISOString()))}, seitdem hast du gekauft</small>`, `<button class="link" data-act="gokaeufe">Käufe lesen</button>`]);
   // Online-Mitgliedschaft: 30 Tage vor Ablauf (0.56)
   const nso = S.state.nso;
   if(nso && nso.due){
     const b = (nso.rows || []).find(r => r.counts);
-    out.push([`Online-Mitgliedschaft ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}${b ? `: am günstigsten in ${esc(b.name)} für ${eur(b.eur)}` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
+    out.push([`<b>Online-Mitgliedschaft ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}</b>${b ? ` <small>am günstigsten in ${esc(b.name)} für ${eur(b.eur)}</small>` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
   }
   for(const [code, c] of Object.entries(s.countries)){
     if(c.enabled && c.cards && c.cards_checked && Date.now() - new Date(c.cards_checked) > 30 * 86400000)
-      out.push([`${esc(country(code).name)}: Kartenpreise älter als 30 Tage`, `<button class="link" data-act="gocards" data-c="${code}">prüfen</button>`]);
+      out.push([`<b>${esc(country(code).name)}: Kartenpreise prüfen</b> <small>älter als 30 Tage</small>`, `<button class="link" data-act="gocards" data-c="${code}">prüfen</button>`]);
   }
   if(!out.length) return "";
   return `<div class="todo"><b>Zu erledigen</b>` + out.map(([t, a]) => `<div><span>${t}</span>${a}</div>`).join("") + `</div>`;
@@ -1715,7 +1742,7 @@ function nsoBox(){
     <p class="hint">Gilt, bis du es entfernst; bezahlt mit Kreditkarte zum Kurs plus deiner Gebühr. Preis in der Landeswährung. Mit Link liest der Abgleich den Preis einmal am Tag selbst, etwa bei Amazon; zeigt der Shop eine Prüfseite, gilt dein Preis.</p>
     <p class="nsox"><select id="nsoxk">${vs.map(v => `<option value="${v.key}" ${v.key === sel.key ? "selected" : ""}>${esc(v.label)}</option>`).join("")}</select>
     <select id="nsoxc">${act.map(c => `<option value="${c.code}" ${c.code === "JP" ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
-    <input id="nsoxp" type="number" min="0" step="0.01" placeholder="Preis" style="width:90px">
+    <input id="nsoxp" type="text" inputmode="decimal" placeholder="Preis" style="width:90px">
     <input id="nsoxs" type="text" value="Amazon" style="width:90px" title="Quelle">
     <input id="nsoxu" type="url" placeholder="Link (optional)" style="width:220px">
     <button class="sm" data-act="nsoxadd">Eintragen</button></p></details>`;
@@ -1734,7 +1761,9 @@ function openLegend(){
     <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b class="bad">lohnt nicht</b> ist rot.</div>
     <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> Guthabenkarten, ein Wechsel mit Guthaben geht nur über den Support.</div>
     <div><span class="pct">−60 %</span> Rabatt im Shop (blau). <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
-    <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch.</div>
+    <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch · <span class="lg tdb">Deutsch</span> gepunktet: laut titledb, nicht von Nintendo.</div>
+    <div><b>Wechsel</b> am Schritt: <b>✓ lohnt</b> oder <b class="bad">lohnt nicht</b>. Chips: <span class="chip">Konto</span> dein Konto steht dort, <span class="chip">im Plan</span> der Kaufplan kauft dort, <span class="chip">Switch-2-Upgrade</span> Upgrade-Paket. <b>ca.</b> vor einem Preis heißt geschätzt.</div>
+    <div>Marken: <span class="dlc">DLC</span> Zusatzinhalt · <span class="dlc need">DLC</span> braucht das Spiel aus dieser Region · <span class="dlc open">DLC?</span> Fassung ungeprüft · <span class="dlc ownm">Amazon</span> eigenes Angebot, mit Kreditkarte bezahlt. In der Sammlung: <span class="warnc">fehlt</span> noch nicht in deiner Sammlung.</div>
     <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">violett</span> heißt prüfen, <span class="bad">rot</span> heißt nein oder teurer, etwa der Betrag über dem Bestpreis. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
   </div>`;
   if(!d.open) d.showModal();
@@ -1804,7 +1833,8 @@ function viewCompare(){
           i.own && i.own.url ? `Klick öffnet ${i.own.src}` : url ? `Klick öffnet den eShop ${country(p.code).name}` : "Klick öffnet den Verlauf bei DekuDeals"].filter(Boolean).join(" · ");
         const price = `<a class="pl" href="${url || deku(slug, p.code)}" target="_blank" rel="noopener">${num(i.eur)}</a>`;
         return `<td class="${cls(p)}${g} ${champHere ? "champ" : ""} ${counts ? "" : "nc"} ${need === "need" ? "needr" : ""}" title="${esc(tip)}">` +
-          `${star(i)}${ax(i)}${counts ? "" : `<span class="q">?</span>`}${price}${i.sale ? `<span class="pct">−${i.pct}%</span>` : ""}` +
+          // ★ nach dem Preis im Korb, nicht dem eines Einzelkaufs: Guthabenkarten teilen sich hier auf (0.65)
+          `${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}${price}${i.sale ? `<span class="pct">−${i.pct}%</span>` : ""}` +
           `${gap > 0.005 ? ` <span class="abv gap">+${num(gap)}</span>` : ""}${i.own ? " " + ownMark(i) : ""}${need ? " " + needMark(p.code, need) : ""}${langTag(i, false)}</td>`;
       }).join("") + `</tr>`;
   }
@@ -1871,6 +1901,12 @@ function viewMatrix(){
     <div class="matrix scroll fitbox ${det ? "" : "compact"}"><table><thead><tr class="grp"><th></th><th></th>${groups.map(([g, n]) => `<th colspan="${n}">${g}</th>`).join("")}</tr>
     <tr>${sth("matrix", "title", "Titel")}${sth("matrix", "best", "Bestpreis", "Niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden Länder. Das Land ist in der Zeile gold umrandet.")}${cols.map(c => sth("matrix", c.code, `${c.code}${bests[c.code] ? `<small class="bc">${bests[c.code]}★</small>` : ""}`, `${c.name} · ${bests[c.code] === 1 ? "1 Bestpreis" : `${bests[c.code]} Bestpreise`} in den gezeigten Titeln`)).join("")}</tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><button class="tbtn" data-act="gotitle" data-s="${esc(r.slug)}" title="Einzelheiten in der Liste">${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r.title)}</button>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
+    ((() => {
+      // Zeilen ohne Unterschied (0.65): kostenlos überall oder nirgends ein Preis, dann eine Zeile mit Grund statt lauter gleicher Zellen
+      const cs = cols.map(c => r.cells[c.code]).filter(Boolean), priced = cs.filter(x => !x.na);
+      const why = !priced.length ? ((S.state.radar.find(x => x.slug === r.slug) || {}).reason || "in keinem Land ein Preis") : priced.every(x => x.eur === 0) ? "kostenlos" : null;
+      return why ? `<td class="bp">${why === "kostenlos" ? "kostenlos" : `<span class="mut">–</span>`}</td><td class="mut l" colspan="${cols.length}">${esc(why)}${why === "kostenlos" ? ` in ${priced.length === 1 ? "einem Land" : `allen ${priced.length} Ländern mit Preis`}` : ""}</td></tr>` : null;
+    })() ??
     `<td class="bp">${r.champ ? `${ax(r.champ)}<b>${eur(r.champ.eur)}</b> <small style="display:inline">${r.champ.code}</small>` : `<span class="mut">–</span>`}${det && r.typical ? `<small title="Typischer Angebotspreis in ${esc(country(r.typical.code).name)}, aus ${r.typical.runs} Angeboten der letzten zwei Jahre">typisch ${ax(r.typical)}${eur(r.typical.eur)}</small>` : ""}</td>` +
     cols.map(c => {
       const x = r.cells[c.code];
@@ -1884,7 +1920,7 @@ function viewMatrix(){
         (needsRegion(r.dlc_of, c.code, r.slug) ? " · " + needTip(c.code, needsRegion(r.dlc_of, c.code, r.slug)) : "") + (x.low_eur !== null && x.low_eur !== undefined ? ` · Landestief ${eur(x.low_eur)}` : "") + (x.sale && x.end ? ` · Angebot bis ${dm(x.end)}` : "");
       return `<td class="${g} ${champ ? "champ" : ""} ${counts ? "" : "nc"} ${needsRegion(r.dlc_of, c.code, r.slug) === "need" ? "needr" : ""}" title="${esc(tip)}">${star(x)}${ax(x)}${counts ? "" : `<span class="q">?</span>`}${priceLink(r.slug, c.code, num(x.eur), x, c.currency)}${x.sale ? `<span class="pct">−${x.pct}%</span>` : ""}${x.own ? " " + ownMark(x) : ""}${langTag(x, false)}` +
         (det ? `<small>Landestief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}</small>${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}${x.nocard ? `<small>ohne Karte</small>` : x.lang === "unknown" ? `<small><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">Sprache?</button></small>` : ""}` : "") + `</td>`;
-    }).join("") + `</tr>`).join("");
+    }).join("") + `</tr>`)).join("");
   if(!rows.length) h += `<tr><td colspan="${cols.length + 2}" class="mut">Kein Titel passt zum Filter.</td></tr>`;
   return h + `</tbody></table></div><p class="hint" style="margin-top:6px">Zellfarbe für Angebote: dunkelgrün „kaufen“, hellgrün „gut“. Gold umrandet: hier gab es den Bestpreis. <span class="q">?</span> zählt nicht. Ein Klick auf den Preis öffnet den Verlauf bei DekuDeals, auf den Titel die Einzelheiten.</p>`;
 }
@@ -1996,8 +2032,8 @@ function viewSettings(){
       <td><input type="checkbox" data-k="enabled" ${x.enabled ? "checked" : ""} ${ref ? "disabled" : ""}></td>
       <td>${ref ? "" : `<select data-k="tier">${sel(1, x.tier, "leicht")}${sel(2, x.tier, "mittel")}${sel(3, x.tier, "schwer")}</select>`}</td>
       <td>${ref ? "" : `<select data-k="pay">${sel("card", x.pay, "Karte")}${sel("giftcard", x.pay, "Guthabenkarte")}${sel("auto", x.pay, "das Günstigere")}</select>`}</td>
-      <td>${ref ? "" : `<input class="sm" type="number" data-k="tax_pct" step="0.5" min="0" max="50" value="${x.tax_pct || 0}">`}</td>
-      <td>${ref ? "" : `<input type="number" data-k="balance" step="0.01" min="0" value="${x.balance || 0}">`}</td>
+      <td>${ref ? "" : `<input class="sm" type="text" inputmode="decimal" data-k="tax_pct" value="${dc(x.tax_pct || 0)}">`}</td>
+      <td>${ref ? "" : `<input type="text" inputmode="decimal" data-k="balance" value="${dc(x.balance || 0)}">`}</td>
       <td>${ref ? "" : `<input type="checkbox" data-k="rest_blocks" ${x.rest_blocks ? "checked" : ""}>`}</td>
       <td style="white-space:nowrap">${kurs}</td><td style="white-space:nowrap">${level}</td></tr>`;
   };
@@ -2031,16 +2067,16 @@ function viewSettings(){
     </section><section class="setc"><h3 class="sec" id="set-regeln">Regeln</h3>
     <p class="rule">„kaufen“ bis ${eur(de.buy)} oder 2 % über dem Bestpreis, „gut“ bis ${eur(de.good)} oder 15 %. Ein Wechsel lohnt ab ${eur(t["1"])} Gewinn in einem leichten, ${eur(t["2"])} in einem mittleren und ${eur(t["3"])} in einem schweren Land. Regionen ohne deutsche Fassung ${({exclude: "fallen weg", warn: "bekommen einen Hinweis", off: "werden nicht geprüft"})[s.lang_rule] || "fallen weg"}.</p>
     <details class="fold" data-k="rulefields" ${S.folds.rulefields ? "open" : ""}><summary class="hint">Grenzen anpassen</summary>
-    <div class="fields"><label class="f" title="Liegt der günstigste zählende Preis jetzt (in jedem Land, jeder Stufe, mit oder ohne Rabatt) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="number" step="0.1" min="0" value="${s.deal_eur.buy}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="number" step="0.5" min="0" value="${s.deal_eur.good}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Amerika wird bei Nintendo geprüft, Japan bestätigst du von Hand. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
-    <div class="fields" style="margin-top:12px"><label class="f" title="Kaufplan und Pakete: Ein Land lohnt sich erst, wenn es gegenüber dem, was dieselben Titel ohne diesen Wechsel kosten (günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), so viel spart. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Gewinn, Stufe leicht (€)<input name="tier1" type="number" step="0.5" min="0" value="${s.tier_min_saving["1"]}"></label><label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="number" step="0.5" min="0" value="${s.tier_min_saving["2"]}"></label><label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="number" step="0.5" min="0" value="${s.tier_min_saving["3"]}"></label></div>
+    <div class="fields"><label class="f" title="Liegt der günstigste zählende Preis jetzt (in jedem Land, jeder Stufe, mit oder ohne Rabatt) höchstens so viel über dem Bestpreis, heißt das Urteil „kaufen“. Unabhängig davon gilt: bis 2 % über dem Bestpreis. Dieselbe Grenze färbt die Pakete.">Urteil „kaufen“ bis … € über Bestpreis<input name="deal_buy" type="text" inputmode="decimal" value="${dc(s.deal_eur.buy)}"></label><label class="f" title="Bis zu diesem Abstand heißt das Urteil „gutes Angebot“. Unabhängig davon gilt: bis 15 % über dem Bestpreis.">Urteil „gut“ bis … € über Bestpreis<input name="deal_good" type="text" inputmode="decimal" value="${dc(s.deal_eur.good)}"></label><label class="f" title="Gibt es in Deutschland eine deutsche Fassung, fallen Regionen ohne sie weg (ausschließen) oder bekommen einen Hinweis (nur warnen). Europa gilt als dasselbe Produkt, Amerika wird bei Nintendo geprüft, Japan bestätigst du von Hand. Beim Ausschließen zählen ungeprüfte Angebote nicht für Bestpreis, Urteil und Kaufplan, beim Warnen zählen sie mit.">Regionen ohne deutsche Fassung<select name="lang_rule">${sel("exclude", s.lang_rule, "ausschließen")}${sel("warn", s.lang_rule, "nur warnen")}${sel("off", s.lang_rule, "nicht prüfen")}</select></label></div>
+    <div class="fields" style="margin-top:12px"><label class="f" title="Kaufplan und Pakete: Ein Land lohnt sich erst, wenn es gegenüber dem, was dieselben Titel ohne diesen Wechsel kosten (günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), so viel spart. Stufe leicht: Kartenzahlung, kein Rest.">Wechsel lohnt ab Gewinn, Stufe leicht (€)<input name="tier1" type="text" inputmode="decimal" value="${dc(s.tier_min_saving["1"])}"></label><label class="f" title="Stufe mittel: Guthabenkarten, ein Rest verfällt beim Wechsel.">… Stufe mittel (€)<input name="tier2" type="text" inputmode="decimal" value="${dc(s.tier_min_saving["2"])}"></label><label class="f" title="Stufe schwer: Restguthaben blockiert den Wechsel und muss über den Support gelöst werden.">… Stufe schwer (€)<input name="tier3" type="text" inputmode="decimal" value="${dc(s.tier_min_saving["3"])}"></label></div>
     </details>
     </section><section class="setc"><h3 class="sec" id="set-gebuehren">Gebühren</h3>
-    <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="number" step="0.05" min="0" value="${s.card_fee_pct}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="number" step="0.05" min="0" value="${s.shop_fee_pct}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="number" step="0.01" min="0" value="${s.shop_fee_eur}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="number" step="0.1" min="0" max="50" value="${s.cashback_pct ?? 0}"></label></div>
+    <div class="fields"><label class="f" title="Auslandseinsatzentgelt der Karte, mit der du im eShop zahlst. 0 bei Karten ohne Gebühr, zum Beispiel C24 oder Gebührenfrei/Eventim. Auch dann rechnet die Bank mit ihrem eigenen Kurs, der meist etwas über dem Mittelkurs liegt.">Fremdwährungsgebühr deiner Karte (%)<input name="card_fee_pct" type="text" inputmode="decimal" value="${dc(s.card_fee_pct)}"></label><label class="f" title="Gilt für Kartenpreise, die das Tool von einer Shopseite liest. Der Shop zeigt sie ohne seine Servicegebühr, die erst an der Kasse dazukommt. Bei Eneba waren es im Oktober 2026 genau 0,40 € plus 7,75 % je Bestellung. Von Hand eingetragene Kartenpreise bleiben, wie du sie einträgst.">Servicegebühr des Kartenshops (%)<input name="shop_fee_pct" type="text" inputmode="decimal" value="${dc(s.shop_fee_pct)}"></label><label class="f" title="Fester Teil der Servicegebühr je Bestellung. Kaufst du mehrere Karten in einer Bestellung, fällt er nur einmal an, und so rechnen Pakete und Kaufplan.">Servicegebühr, fester Teil (€)<input name="shop_fee_eur" type="text" inputmode="decimal" value="${dc(s.shop_fee_eur)}"></label><label class="f" title="Manche Kartenshops (Eneba) geben einen Teil des Kaufpreises als Guthaben zurück, aber nicht immer. Das Tool rechnet es nicht in die Preise, markiert aber in der Titelliste mit ✱, wo es ein Angebot zum Bestpreis machen könnte. 0 schaltet den Hinweis ab.">Mögliches Cashback des Kartenshops (%)<input name="cashback_pct" type="text" inputmode="decimal" value="${dc(s.cashback_pct ?? 0)}"></label></div>
     <details class="fold" data-k="feeadv" ${S.folds.feeadv ? "open" : ""}><summary class="hint">Erweitert</summary>
     <p class="hint">Nur ein Notbehelf: Zahlt ein Land mit Guthaben und ist kein Kartenpreis bekannt (kein Link mit lesbarem Preis in den letzten 14 Tagen, kein eigener Preis, keine Werte ohne Link), zeigt das Tool seine Preise geschätzt als Kurs plus diesen Wert, markiert mit ≈. Solche Preise entscheiden nichts: kein Urteil, kein Kaufplan, und „das Günstigere“ nimmt dann die Kreditkarte. Unter „Zu erledigen“ steht, wo Karten fehlen.</p>
-    <div class="fields" style="max-width:300px"><label class="f">Schätzung ohne lesbaren Kartenpreis (%)<input name="gift_markup_pct" type="number" step="0.5" min="0" value="${s.gift_markup_pct}"></label></div>
+    <div class="fields" style="max-width:300px"><label class="f">Schätzung ohne lesbaren Kartenpreis (%)<input name="gift_markup_pct" type="text" inputmode="decimal" value="${dc(s.gift_markup_pct)}"></label></div>
     <p class="hint" style="margin-top:10px">Euro-Guthaben (Deutschland mit Guthaben) bewertet das Tool nach festen Stufen für den Faktor: bis zu diesem Wert Top, gut, okay, darüber teuer. Andere Länder misst es an der Kreditkarte oder am besten Faktor der Karte in 90 Tagen.</p>
-    <div class="fields" style="max-width:640px;grid-template-columns:repeat(3,1fr)"><label class="f">Top bis Faktor<input name="eur_top" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.top}"></label><label class="f">gut bis<input name="eur_good" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.good}"></label><label class="f">okay bis<input name="eur_ok" type="number" step="0.01" min="0.5" max="1" value="${s.eur_card_steps.ok}"></label></div></details>
+    <div class="fields" style="max-width:640px;grid-template-columns:repeat(3,1fr)"><label class="f">Top bis Faktor<input name="eur_top" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.top)}"></label><label class="f">gut bis<input name="eur_good" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.good)}"></label><label class="f">okay bis<input name="eur_ok" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.ok)}"></label></div></details>
     </section></form><section class="setc">` + langSection() + `</section>
     <section class="setc"><h3 class="sec" id="set-quellen">Quellen</h3>
     <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist und Preise neu geholt werden. Wechselkurse nur, wenn die Quelle neue hat (einmal am Tag); was sonst wie oft geholt wird, steht in docs/abrufe.md.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
@@ -2058,14 +2094,15 @@ function viewSettings(){
 }
 function settingsBody(form){
   const body = {countries:{}, tier_min_saving:{}};
+  const nv = el => el.value.trim().replace(",", ".");
   for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","shop_fee_eur","refresh_hours","lang_rule","cashback_pct"])
-    body[k] = form.elements[k].value;
-  for(const t of ["1","2","3"]) body.tier_min_saving[t] = form.elements["tier" + t].value;
-  body.deal_eur = {buy: form.elements.deal_buy.value, good: form.elements.deal_good.value};
-  body.eur_card_steps = {top: form.elements.eur_top.value, good: form.elements.eur_good.value, ok: form.elements.eur_ok.value};
+    body[k] = form.elements[k].inputMode === "decimal" ? nv(form.elements[k]) : form.elements[k].value;
+  for(const t of ["1","2","3"]) body.tier_min_saving[t] = nv(form.elements["tier" + t]);
+  body.deal_eur = {buy: nv(form.elements.deal_buy), good: nv(form.elements.deal_good)};
+  body.eur_card_steps = {top: nv(form.elements.eur_top), good: nv(form.elements.eur_good), ok: nv(form.elements.eur_ok)};
   form.querySelectorAll("tr[data-code]").forEach(tr => {
     const c = {};
-    tr.querySelectorAll("[data-k]").forEach(el => { c[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value; });
+    tr.querySelectorAll("[data-k]").forEach(el => { c[el.dataset.k] = el.type === "checkbox" ? el.checked : el.inputMode === "decimal" ? nv(el) : el.value; });
     body.countries[tr.dataset.code] = c;
   });
   form.querySelectorAll("textarea[data-cards]").forEach(el => {
@@ -2405,14 +2442,14 @@ document.addEventListener("click", async e => {
     else if(a === "gotab"){ go(d.v); }
     else if(a === "nsov"){ S.folds.nso = 1; await api("/api/settings", {nso_variant: d.v}); await refresh(); }
     else if(a === "nsoxadd"){
-      const price = parseFloat(($("nsoxp").value || "").replace(",", "."));
+      const price = num0($("nsoxp").value);
       if(!(price > 0)){ toast("Bitte einen Preis eintragen"); return; }
       const list = (S.state.settings.nso_extra || []).concat({key: $("nsoxk").value, code: $("nsoxc").value, price,
         src: $("nsoxs").value, url: $("nsoxu").value, date: new Date().toISOString().slice(0, 10)});
       await api("/api/settings", {nso_extra: list}); S.folds.nso = 1; S.folds.nsox = 0; await refresh(); toast("Angebot eingetragen");
     }
     else if(a === "ownadd"){
-      const k = d.s, price = parseFloat(($("ownp-" + k).value || "").replace(",", "."));
+      const k = d.s, price = num0($("ownp-" + k).value);
       if(!(price > 0)){ toast("Bitte einen Preis eintragen"); return; }
       const list = (S.state.settings.own_offers || []).concat({slug: k, code: $("ownc-" + k).value, price,
         src: $("owns-" + k).value, url: $("ownu-" + k).value, date: new Date().toISOString().slice(0, 10)});
@@ -2480,7 +2517,7 @@ document.addEventListener("click", async e => {
       const r = await api("/api/sync", {});
       if(!r.started) toast("Ein Abgleich läuft schon, sein Protokoll steht unter Einstellungen");
       S.state.status.running = true; S.state.status.ok = null; S.state.status.step = "Abgleich startet"; render(); watch(); }
-    else if(a === "dense"){ S.ui.dense = d.v === "1"; saveUi(); render(); }
+    else if(a === "dense"){ S.dense = d.v === "1"; saveView(); render(); }
     else if(a === "add"){ addTo(d.c, d.s.split(",")); await replan(); }
     else if(a === "trim"){ const name = rowOf(d.s).title; await change(`${name} entfernt`, () => dropFrom(d.c, d.s)); }
     else if(a === "resetall"){ await change("Alle Warenkörbe zurückgesetzt", () => { S.ui.overrides = {}; }); }
@@ -2543,7 +2580,7 @@ document.addEventListener("change", async e => {
     }
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
-    else if(a === "sort"){ S.ui.sort = el.value; saveUi(); render(); }
+    else if(a === "sort"){ S.lsort = el.value; saveView(); render(); }
     else if(a === "tsortsel"){ if(el.value){ const [k, dir] = el.value.split(":"); S.sorts[el.dataset.t] = {k, dir: +dir}; } else delete S.sorts[el.dataset.t]; saveView(); render(); }
     else if(a === "colorder"){ S.colOrder = el.value; saveView(); render(); }
     else if(a === "onlysale"){ S.onlySale = el.checked; render(); }
@@ -2554,7 +2591,7 @@ document.addEventListener("change", async e => {
     else if(a === "acct" || a === "bal"){
       const s = S.state.settings, cur = s.current_country;
       const body = a === "acct" ? {current_country: el.value}
-        : {countries: {[cur]: {balance: Math.max(0, parseFloat(el.value) || 0)}}};
+        : {countries: {[cur]: {balance: Math.max(0, num0(el.value) || 0)}}};
       const back = a === "acct" ? {current_country: cur}
         : {countries: {[cur]: {balance: (s.countries[cur] || {}).balance || 0}}};
       await api("/api/settings", body); await refresh();
@@ -2563,7 +2600,7 @@ document.addEventListener("change", async e => {
     }
     else if(a === "plangood"){ S.ui.plan_good = el.checked; await saveUi(); S.kauf = await api("/api/kaufplan"); render(); }
     else if(a === "target"){
-      const v = parseFloat(el.value);
+      const v = num0(el.value);
       if(v > 0) S.ui.targets[el.dataset.s] = v; else delete S.ui.targets[el.dataset.s];
       await saveUi();
       await refresh();

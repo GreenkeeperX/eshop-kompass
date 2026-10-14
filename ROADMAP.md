@@ -29,25 +29,8 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 Neue Funktionen haben zuletzt alte Regeln an Stellen berührt, die keiner mehr im Blick hatte. Ein
 Kaufplan, dem man nicht traut, ist wertlos. Deshalb zuerst:
 
-- [ ] **Rechnung dicht (0.63).** Eigene Angebote (Codes) laufen nicht über Guthaben: Sie dürfen
-  weder als „passt in den Rest“ noch als Mitgliedschaft im Rest erscheinen, und ein Code zählt
-  immer zum Kurs plus Kartengebühr. „Deutschland (Guthaben)“ ist kein Kontoland. Karten ohne
-  gelesenen Preis gehen nicht still als Schätzung in die Rechnung. Das 24-Monats-Fenster des
-  Bestpreises gilt für alle Werte. Dazu Tests und Regeln in der Prüfumgebung.
-- [ ] **Abrufe robust (0.64).**
-  - Eine Sperre bricht nie den ganzen Abgleich ab.
-  - Ein Fehler auf einer Folgeseite kürzt keine Liste.
-  - Ein Parser, der nichts findet, löscht keine Daten, sondern meldet es.
-  - Pausen und Obergrenzen in jedem Schritt (Sprachen Europa, Guthabenkarten).
-  - titledb nur bei geänderter Datei.
-  - `docs/abrufe.md` stimmt wieder mit dem Code.
-- [ ] **Oberfläche klar (0.65).**
-  - Eine Bestpreis-Regel auf allen Ebenen: kein rotes „+x“ innerhalb der Toleranz.
-  - Eine vollständige Legende.
-  - „Zu erledigen“ als kurze Zeilen.
-  - DLC-Namen mit Hauptspiel.
-  - Breite Tabellen in Scrollkästen.
-  - Einheitliche Links und Zahlen.
+- [ ] **Abrufe, Rest.** titledb nur laden, wenn sich die Datei geändert hat; der Sprachleser für
+  Amerika meldet, statt still nichts zu liefern, wenn sich die Seite ändert.
 - [ ] **Dokumentation als Anleitung.** README in drei Teilen (Kurzanleitung, Begriffe und Regeln,
   Nachschlagen je Reiter), ohne Versionsvermerke; das Wann steht in der Git-Geschichte. Beispiele
   neutral wählen.
