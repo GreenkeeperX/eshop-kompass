@@ -30,7 +30,7 @@ Fünf Reiter: Jetzt, Titel, Sammlung, Länder, Einstellungen. Das "?" oben recht
 die Legende mit allen Farben, Marken und Begriffen. Die Farben haben je eine
 Bedeutung: Grün fürs Urteil und für Positives (Ersparnis, vollständig), Gold
 (★, Umrandung) nur für den Bestpreis,
-Bernstein heißt prüfen, Rot heißt nein oder teurer (Wechsel lohnt nicht, Rest
+Violett heißt prüfen, Rot heißt nein oder teurer (Wechsel lohnt nicht, Rest
 blockiert, hier teurer als ohne den Wechsel, Betrag über dem Bestpreis). Rabatte
 stehen dezent blau daneben. Die verbindlichen Regeln stehen in
 `docs/oberflaeche.md`.
@@ -91,14 +91,16 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Stufe, oder das Land, in dem dein Konto steht), minus was sie hier kosten.
   Das gilt auch für den Weg zurück nach Deutschland, wenn dein Konto woanders
   steht. Ohne eingetragenes Kontoland gilt Deutschland als Konto.
-  Unter dem Kaufplan, zugeklappt: Online-Mitgliedschaft. Seit 0.57 in allen Varianten, die
-  DekuDeals führt: 12 Monate, 3 Monate, Erweiterungspaket und Familie (nur zum Vergleich, kaufen
-  kann die Verwalterin oder der Verwalter der Gruppe). Oben je Variante das beste Land, darunter
+  Unter dem Kaufplan, zugeklappt: Online-Mitgliedschaft in sechs Varianten: 1 Monat, 3 Monate,
+  12 Monate, Erweiterungspaket, Familie und Erweiterungspaket Familie (die beiden Familien nur zum
+  Vergleich, kaufen kann die Verwalterin oder der Verwalter der Gruppe). Oben je Variante das beste Land, darunter
   die Länder der gewählten Variante; deine Variante stellst du im Kasten ein. Je aktivem
   Land der Einkaufspreis mit deinem Zahlweg wie bei Spielen, je Monat, der Shop-Preis,
   Angebote und ob das Land dein Konto ist oder im Kaufplan steht. Das Ablaufdatum trägst du
   dort ein; 30 Tage vorher klappt der Kasten auf. Die eShop-IDs der Mitgliedschaft je Land
-  liest der Abgleich monatlich von DekuDeals, die Preise kommen mit dem normalen Preisabruf.
+  liest der Abgleich monatlich: je Region von Nintendos Mitgliedschaftsseite (seit 0.58, damit auch
+  Japan, 1 Monat und Erweiterungspaket Familie) und je Land von DekuDeals; die Preise kommen mit
+  dem normalen Preisabruf.
   Seit 0.56.1 wie bei Titeln: ★ am Bestpreis der letzten 24 Monate über alle zählenden
   Länder, Preis grün nach Urteil, Abstand zum Bestpreis rot; der Preis führt in den eShop
   des Landes, „DekuDeals“ zum Preisverlauf.
@@ -280,7 +282,7 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   und was hineinpasst. Bezahlst du ganz oder teils aus vorhandenem Guthaben,
   steht das unter der Kopfzahl. Hürden (Rest blockiert, Karten fehlen, DLC
   braucht eine andere Region als Europa) stehen darunter. Die betroffenen DLC sind in der
-  Tabelle wie der Hinweis bernsteinfarben markiert. Die Tabelle zeigt je Titel Einkaufspreis,
+  Tabelle wie der Hinweis violett markiert. Die Tabelle zeigt je Titel Einkaufspreis,
   Abstand zum Bestpreis und den Preis ohne diesen Wechsel ("sonst").
   Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen unter der Tabelle,
   die ganze Rechnung unter "Rechnung". Ein Rest ist kein Verlust: Gewinn und
@@ -458,8 +460,8 @@ Sicherung und Protokoll.
   Stück für Stück gelesen, nur die eigenen IDs behalten); und der Browser-Helfer unter
   „Sprachen prüfen“: ein Lesezeichen, das in deinem Browser die Shopseiten der
   offenen Titel liest (eine alle 2,5 Sekunden; die IDs bekommt es über den Link zu
-  store-jp im Tool, der sie zugleich in die Zwischenablage legt; verliert der Store sie unterwegs,
-  liest das Lesezeichen sie aus der Zwischenablage, erst dann fragt es danach) und das Ergebnis mit „Im eShop-Kompass
+  store-jp im Tool; verliert der Store sie unterwegs, holt das Lesezeichen sie seit 0.58 über ein
+  kleines Fenster des Tools, das sie per postMessage übergibt und sich schließt, erst dann fragt es danach) und das Ergebnis mit „Im eShop-Kompass
   übernehmen“ ans Tool gibt, ersatzweise als Text mit Kopieren-Knopf. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des
   Spiels, auf die sie verweist. Angaben von Nintendo (store-jp, Browser-Helfer) gehen titledb vor. DLC übernimmt
   die Sprache seines Spiels, für fehlende DLC reicht deshalb eine Seite je
@@ -577,7 +579,8 @@ prüft er auch, woher Preise der Online-Mitgliedschaft kommen könnten: die
 12-Monats-Einzelmitgliedschaft bei DekuDeals für Deutschland, Brasilien, Japan und die USA und
 mit den eShop-IDs, die DekuDeals im Link der Preistabelle nennt, die Preise bei Nintendo
 (seit 0.53.6) und welche weiteren Varianten (3 Monate, Familie, Erweiterungspaket) die
-Seite verlinkt. Gespeichert wird nichts. Protokoll und Testergebnis lassen sich kopieren.
+Seite verlinkt; seit 0.58 dazu Nintendos Mitgliedschaftsseite für Japan, Deutschland und die USA
+mit den erkannten Varianten und ihren Preisen. Gespeichert wird nichts. Protokoll und Testergebnis lassen sich kopieren.
 
 Die Oberfläche nimmt Änderungen nur als JSON an. Eine fremde Webseite kann so
 keine Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen

@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.57.1"
+VERSION = "0.58.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -516,6 +516,43 @@ def fetch_prices(country, nsuids, lang="en", fetch=fetch, pause=None):
             raise last_err
         if pause:
             pause()
+    return out
+
+
+# Nintendos Mitgliedschaftsseite ec.nintendo.com/{Land}/{Sprache}/membership (ab 0.58): Sie nennt
+# die eShop-IDs aller Varianten, gruppiert nach Tarif, im eingebetteten Seitenzustand (Next.js,
+# Anführungszeichen dort als \\"). Je Tarif eine Liste ticketItemsV2; ein Eintrag hat seine
+# nsUid, darin eine Abo-Fassung (subscriptionTicketItem, eigene ID, hier nicht gebraucht) und am
+# Ende die Laufzeit in Minuten (grantMinutes, 43200 = 30 Tage). isOp2LimitedRight true ist eine
+# Probe-Mitgliedschaft. Aufbau am 14.10.2026 im echten HTML für JP, DE und US gesehen.
+NSO_GROUPS = {"individual": None, "family": "fam", "exIndividual": "ep", "exFamily": "epfam"}
+NSO_MONTHS = {1: "m1", 3: "m3", 12: "m12"}
+_NSO_GROUP_RE = re.compile(r'"(individual|family|exIndividual|exFamily)":\{"ticketItemsV2":\[')
+_NSO_ITEM_RE = re.compile(r'\{"nsUid":"?(7008\d{10})')
+_NSO_GRANT_RE = re.compile(r'"isOp2LimitedRight":(true|false),"grantMinutes":(\d+)')
+
+
+def parse_membership_page(page_html):
+    """{Variante: eShop-ID} aus Nintendos Mitgliedschaftsseite, Varianten wie planner.NSO_VARIANTS."""
+    t = (page_html or "").replace('\\"', '"')
+    starts = [(m.start(), m.end(), m.group(1)) for m in _NSO_GROUP_RE.finditer(t)]
+    out = {}
+    for i, (_, pos, group) in enumerate(starts):
+        end = starts[i + 1][0] if i + 1 < len(starts) else pos + 20000
+        seg = t[pos:end]
+        for m in _NSO_ITEM_RE.finditer(seg):
+            if "subscriptionTicketItem" in seg[max(0, m.start() - 30):m.start()]:
+                continue                  # Abo-Fassung desselben Eintrags
+            key = NSO_GROUPS[group]
+            if key is None:               # einzeln: Laufzeit entscheidet
+                g = _NSO_GRANT_RE.search(t, pos + m.end())
+                if not g or g.group(1) == "true":
+                    continue
+                key = NSO_MONTHS.get(round(int(g.group(2)) / 43200))
+            if key and key not in out:
+                out[key] = m.group(1)
+            if NSO_GROUPS[group]:         # Familie und Erweiterungspaket: je Tarif eine Laufzeit
+                break
     return out
 
 

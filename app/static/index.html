@@ -9,20 +9,20 @@
 :root{
   color-scheme:light dark;
   --bg:#f4f2ec; --card:#fffdf8; --ink:#1d2320; --muted:#667069; --line:#dcd8cc;
-  --accent:#2f3b35; --warn:#8a5a00; --warn-bg:#fbefd2;
+  --accent:#2f3b35; --warn:#7a3e9d; --warn-bg:#f1e5f7;
   --sale:#b3261e; --best:#ebe8de; --chip:#ece9df; --gold:#c28800; --gold-ink:#2b2000;
   --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690; --brand:#e60012;
 }
 /* Ansicht: data-theme am html-Element (hell/dunkel), ohne Angabe wie das Gerät */
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]){
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
-  --accent:#cdd6d1; --warn:#f0c36a; --warn-bg:#3a2e12;
+  --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
   --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
 }}
 :root[data-theme=dark]{color-scheme:dark;
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
-  --accent:#cdd6d1; --warn:#f0c36a; --warn-bg:#3a2e12;
+  --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
   --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
 }
@@ -151,6 +151,9 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .sugg small{color:var(--muted);white-space:nowrap}
 .sugg b{white-space:nowrap}
 .foot{display:flex;gap:6px;align-items:center;margin-top:6px}
+/* Rechnung in eigener Zeile unter den Knöpfen: Aufklappen schiebt nichts zur Seite (0.58) */
+.foot{flex-wrap:wrap}
+.foot>.bill{order:9;flex-basis:100%;margin-top:0}
 .foot button{padding:1px 8px;font-size:12px;border-radius:6px;white-space:nowrap}
 .foot select{flex:1;min-width:0;font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px}
 .restline{margin:10px 2px 0;color:var(--muted);font-size:13px}
@@ -308,7 +311,7 @@ details.hint summary{cursor:pointer}
 .set td select[data-k=tier]{width:92px}
 .set td select[data-k=pay]{width:156px}
 
-/* Signale 0.17: Grün nur fürs Urteil, Gold nur für den Bestpreis, Bernstein prüfen, Rot nein */
+/* Signale 0.17: Grün nur fürs Urteil, Gold nur für den Bestpreis, Violett prüfen (bis 0.57 Bernstein, zu nah am Gold), Rot nein */
 .g-buy{color:var(--go);font-weight:700}
 .g-good{color:var(--go)}
 .g-wait{color:var(--muted)}
@@ -343,7 +346,7 @@ form.set > .setc{margin-top:0}
 .mini-t{margin-top:4px}
 .box h4{margin:10px 0 2px;font-size:13px}
 .mini-t td{white-space:normal;vertical-align:top;padding:4px 6px}
-.mini-t td.l,.mini-t td:nth-child(2){text-align:left}
+.mini-t td.l,.mini-t td:nth-child(2),.mini-t th.l{text-align:left}
 .mini-t td.num,.mini-t th.num{text-align:right}
 .mini-t.nsov tr.on td{background:var(--best)}
 .big{font-size:20px;font-variant-numeric:tabular-nums}
@@ -855,13 +858,16 @@ let fitMatrix = () => {}, showStick = () => {};
 function copyNow(text){
   const t = document.createElement("textarea");
   t.value = text; t.style.cssText = "position:fixed;top:0;left:0;opacity:0";
-  document.body.appendChild(t); t.select();
+  const back = document.activeElement;
+  document.body.appendChild(t); t.focus(); t.select();   // Firefox kopiert nur aus dem fokussierten Feld (0.58)
   let ok = false;
   try{ ok = document.execCommand("copy"); }catch(e){}
   t.remove();
+  if(back && back.focus) back.focus();
   if(!ok) try{ navigator.clipboard.writeText(text); }catch(e){}
 }
 function render(){
+  if(S.handover) return;          // Fenster für das JP-Lesezeichen, siehe jpHandOver
   renderHead();
   const m = $("main");
   m.className = S.tab === "settings" ? "narrow" : "";
@@ -999,9 +1005,10 @@ function viewCollection(){
   const plain = (c.plain || []).filter(g => hit(g.title)).sort((a, b) => a.title.localeCompare(b.title, "de"));
   const waiting = (c.waiting || []).filter(g => hit(g.title));
   const missing = c.games.reduce((n, g) => n + g.missing, 0);
-  let h = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
+  // Filter und Reihenfolge direkt über den Spielen, unter Zahlen und Erklärung (0.58)
+  const tools = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
     <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
-  h += eshopBox();
+  let h = eshopBox();
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)
   const nDone = c.games.filter(g => !g.missing).length;
@@ -1010,7 +1017,7 @@ function viewCollection(){
     ${missing ? `<div class="cstat"><span><b>${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b>${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}
     <details class="fold" data-k="collhow" ${S.folds.collhow ? "open" : ""}><summary class="hint">So funktioniert die Sammlung</summary><p class="hint" style="margin:2px 0 8px">Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details></div>`;
-  h += games.map(collGame).join("");
+  h += tools + games.map(collGame).join("");
   // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
   const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
   h += fold("colldone", done, "Ohne offene DLC", "Alle DLC da, ignoriert oder nicht mehr erhältlich. Klick auf ein Spiel zeigt seine DLC.", `<div class="cgl">${done.map(collGame).join("")}</div>`);
@@ -1357,7 +1364,7 @@ function giftOver(p){
   if(p.is_ref || !r || r.level !== "bad" || !r.best || !k || p.currency === "EUR") return 0;
   return Math.round(100 * (k.factor / r.best - 1));
 }
-/* Hürden: was den Kauf hier erschwert, rot heißt nein, bernstein heißt prüfen */
+/* Hürden: was den Kauf hier erschwert, rot heißt nein, violett heißt prüfen */
 function hurdles(p, last){
   const out = [];
   if(giftOver(p)) out.push(`<span class="warnc" title="Guthaben gerade ${giftOver(p)} % über seinem Bestwert der letzten 90 Tage. Wenn die Titel nicht drängen: Warten lohnt eher wegen des Guthabens.">Guthaben teuer</span>`);
@@ -1558,7 +1565,9 @@ function nsoBox(){
     h += `<table class="mini-t nsov"><tr>${sth("nsov", "label", "Variante", "", "l")}${sth("nsov", "land", "bestes Land", "", "l")}${sth("nsov", "eur", "Einkaufspreis", "", "num")}${sth("nsov", "month", "je Monat", "Bei der Familie je Konto", "num")}<th class="l"></th></tr>` + sortRows("nsov", vs, {
       label: v => v.label, land: v => v.best ? v.best.name : null, eur: v => v.best ? v.best.eur : null, month: v => v.best ? v.best.per_account : null}).map(v => {
       const b = v.best;
-      const name = `<button class="link" data-act="nsov" data-v="${v.key}" title="Länder für diese Variante zeigen">${esc(v.label)}</button>`;
+      // Nur der Name ist Link, die Laufzeit in Klammern steht grau daneben (0.58)
+      const [main, paren] = v.label.split(" (");
+      const name = `<button class="link" data-act="nsov" data-v="${v.key}" title="Länder für diese Variante zeigen">${esc(main)}</button>${paren ? ` <span class="mut">(${esc(paren)}</span>` : ""}`;
       const tags = [v.key === m.mine ? `<span class="chip" title="Deine Mitgliedschaft, eingestellt oben">deine</span>` : "",
         v.family ? `<span class="chip" title="Kaufen kann nur, wer die Familiengruppe verwaltet; der Preis gilt für bis zu ${v.accounts} Konten">kauft der Verwalter</span>` : ""].filter(Boolean).join(" ");
       if(!b) return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l mut" colspan="4">noch kein Preis</td></tr>`;
@@ -1580,10 +1589,10 @@ function nsoBox(){
         planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land: Die Mitgliedschaft ließe sich im selben Schritt mitkaufen">im Plan</span>` : ""].filter(Boolean).join(" ");
       const chips = [r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
         !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis: ${eur(sel.champ)} in ${esc(r.champ_name || "")}">+${eur(r.over)}</span>` : "",
-        `<a class="tl" href="${esc(deku(sel.slug, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>`].filter(Boolean).join(" ");
+        sel.slug ? `<a class="tl" href="${esc(deku(sel.slug, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>` : ""].filter(Boolean).join(" ");
       return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tags}</td><td class="l">${tierTag(r.tier)}</td><td class="num">${starOf(r)}${price}</td><td class="num mut">${eur(r.month)}</td><td class="num mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
     }).join("") + `</table>`;
-  } else if(vs.length) h += `<p class="hint">Für ${esc(sel.label)} gibt es noch keine Preise. Die eShop-IDs liest der Abgleich nach und nach, höchstens 20 Seiten je Abgleich.</p>`;
+  } else if(vs.length) h += `<p class="hint">Für ${esc(sel.label)} gibt es noch keine Preise. Die eShop-IDs liest der nächste Abgleich von Nintendos Mitgliedschaftsseite und von DekuDeals.</p>`;
   return h + `</details>`;
 }
 
@@ -1600,7 +1609,7 @@ function openLegend(){
     <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> Guthabenkarten, ein Wechsel mit Guthaben geht nur über den Support.</div>
     <div><span class="pct">−60 %</span> Rabatt im Shop (blau). <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
     <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch.</div>
-    <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">bernstein</span> heißt prüfen, <span class="bad">rot</span> heißt nein oder teurer, etwa der Betrag über dem Bestpreis. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
+    <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">violett</span> heißt prüfen, <span class="bad">rot</span> heißt nein oder teurer, etwa der Betrag über dem Bestpreis. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
   </div>`;
   if(!d.open) d.showModal();
 }
@@ -2026,7 +2035,7 @@ box.append(p,go,ta,c,b);
    ein Link zum Ziehen und „Code kopieren“ für ein von Hand angelegtes Lesezeichen (auch am Handy).
    v: Stand des Codes, need: ab welchem Stand ein altes Lesezeichen noch genügt. Ältere melden
    sich beim Übernehmen, damit niemand unbemerkt mit einem alten Lesezeichen weiterarbeitet. */
-const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 5, need: 4, label: "JP-Sprachen lesen"}};
+const HELPERS = {eshop: {v: 2, need: 1, label: "Käufe lesen"}, jp: {v: 6, need: 6, label: "JP-Sprachen lesen"}};
 const BM_CODE = {};
 function helpersOld(){ try{ return JSON.parse(localStorage.getItem("ek.helpers") || "{}") || {}; }catch(e){ return {}; } }
 function helperSeen(k, hv){
@@ -2094,9 +2103,12 @@ const fromLink=decodeURIComponent(((location.search+location.hash).match(/ek-ids
 const box=document.createElement("div");box.style.cssText="position:fixed;z-index:2147483647;top:12px;right:12px;width:min(440px,90vw);background:#fff;color:#111;border:2px solid #333;border-radius:8px;padding:12px;font:14px sans-serif";document.body.appendChild(box);
 const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.style.marginRight="8px";b.onclick=f;return b};
 let src=fromLink;
-if(!/\\d{14}/.test(src))src=await new Promise(res=>{const p=document.createElement("p");p.textContent="eShop-Kompass: Japan-IDs hier einfügen (Strg+V) oder aus der Zwischenablage holen.";p.style.margin="0 0 6px";
+const TOOL=${JSON.stringify(tool)};
+if(!/\\d{14}/.test(src))src=await new Promise(res=>{const p=document.createElement("p");p.textContent="eShop-Kompass: hole die Japan-IDs aus einem kleinen Fenster des Tools. Klappt das nicht, hier einfügen (Strg+V), dann „Lesen“.";p.style.margin="0 0 6px";
 const t=document.createElement("textarea");t.style.cssText="width:100%;height:70px;margin:0 0 6px";
-box.append(p,t,btn("Aus Zwischenablage",async()=>{try{t.value=await navigator.clipboard.readText()}catch(e){}}),btn("Lesen",()=>res(t.value)),btn("Abbrechen",()=>res("")));t.focus()});
+const ask=()=>window.open(TOOL+"/#ek-jpids","ekjp","popup,width=520,height=360");
+window.addEventListener("message",ev=>{if(ev.origin===TOOL&&ev.data&&typeof ev.data.ekJpIds==="string"){t.value=ev.data.ekJpIds;if(/\\d{14}/.test(t.value))res(t.value)}});
+box.append(p,t,btn("Vom Tool holen",ask),btn("Lesen",()=>res(t.value)),btn("Abbrechen",()=>res("")));ask()});
 const ids=[...new Set(src.match(/\\d{14}/g)||[])];
 if(!ids.length){box.remove();return}
 box.textContent="";
@@ -2123,14 +2135,17 @@ c.onclick=async()=>{ta.select();try{await navigator.clipboard.writeText(txt)}cat
 const b=document.createElement("button");b.textContent="Schließen";b.onclick=()=>box.remove();
 box.append(p,go,ta,c,b);
 })();`; }
+// Japan-IDs, die der Browser-Helfer lesen soll: ohne Angabe von Nintendo und nicht von dir festgelegt
+const jpOpenIds = (todo = S.state.lang_todo || []) =>
+  [...new Set(todo.filter(t => t.family === "JP" && !t.manual && (t.state === null || t.src === "titledb")).map(t => t.nsuid))];
 function jpHelper(todo){
   const jp = todo.filter(t => t.family === "JP");
   if(!jp.length) return "";
-  const ids = [...new Set(jp.filter(t => !t.manual && (t.state === null || t.src === "titledb")).map(t => t.nsuid))];
+  const ids = jpOpenIds(todo);
   return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>
-      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit und legt sie zugleich in die Zwischenablage. Verliert der Store die IDs unterwegs, öffnet das Lesezeichen ein Feld: einfügen (Strg+V) oder „Aus Zwischenablage“ (Firefox fragt dann mit einem kleinen Knopf „Einfügen“), dann „Lesen“." : ""}</li>
+      <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit. Verliert der Store sie unterwegs, holt das Lesezeichen sie über ein kleines Fenster des Tools, das sich danach selbst schließt." : ""}</li>
       <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
     </ol>
     <details class="fold" data-k="jpfb" ${S.folds.jpfb ? "open" : ""}><summary class="hint">Geht das nicht? IDs und Ergebnis von Hand</summary>
@@ -2248,8 +2263,7 @@ document.addEventListener("click", async e => {
     else if(a === "bmdone"){ const o = helpersOld(); delete o[d.k]; try{ localStorage.setItem("ek.helpers", JSON.stringify(o)); }catch(e){} render(); }
     else if(a === "jpopen"){ const ta = $("jpids"); if(ta && ta.value) copyNow(ta.value); }
     else if(a === "jpcopy"){
-      const ta = $("jpids"); ta.select();
-      try{ await navigator.clipboard.writeText(ta.value); }catch(e){ document.execCommand("copy"); }
+      copyNow($("jpids").value);
       toast("IDs kopiert");
     }
     else if(a === "eshopimport"){ await eshopImport($("eshopimport").value); }
@@ -2461,8 +2475,21 @@ renderTheme();
 // Ebenso „JP-Sprachen lesen“ mit #jpsprachen=
 const KAEUFE = location.hash.startsWith("#kaeufe=") ? decodeURIComponent(location.hash.slice(8)) : null;
 const JPSPR = location.hash.startsWith("#jpsprachen=") ? decodeURIComponent(location.hash.slice(12)) : null;
-if(KAEUFE || JPSPR) history.replaceState(null, "", location.pathname + location.search);
-refresh().then(() => KAEUFE ? (S.tab = "sammlung", saveView(), eshopImport(KAEUFE).catch(err => toast("Fehler: " + err.message)))
+// Vom JP-Lesezeichen im Store geöffnet (ab 0.58): die offenen Japan-IDs per postMessage zurück an den Store-Tab,
+// ohne Zwischenablage. Ist die Verbindung zum Store-Tab weg, zeigt das Fenster die IDs zum Kopieren.
+const JPASK = location.hash === "#ek-jpids";
+if(KAEUFE || JPSPR || JPASK) history.replaceState(null, "", location.pathname + location.search);
+function jpHandOver(){
+  const ids = jpOpenIds().join(" ");
+  let sent = false;
+  render(); S.handover = true;
+  if(window.opener) try{ window.opener.postMessage({ekJpIds: ids}, "https://store-jp.nintendo.com"); sent = true; }catch(e){}
+  document.title = "Japan-IDs";
+  $("main").innerHTML = sent && ids ? `<div class="box"><p>${ids.split(" ").length} Japan-IDs an den Store übergeben. Dieses Fenster schließt sich.</p></div>`
+    : `<div class="box"><p>${ids ? "Die IDs kopieren und im Store-Tab ins Feld des Lesezeichens einfügen:" : "Gerade sind keine Japan-Titel offen."}</p>${ids ? `<textarea id="jpids" readonly rows="4" style="width:100%">${esc(ids)}</textarea> <button data-act="jpcopy">IDs kopieren</button>` : ""}</div>`;
+  if(sent && ids) setTimeout(() => window.close(), 1500);
+}
+refresh().then(() => JPASK ? jpHandOver() : KAEUFE ? (S.tab = "sammlung", saveView(), eshopImport(KAEUFE).catch(err => toast("Fehler: " + err.message)))
   : JPSPR && (S.tab = "settings", saveView(), render(), jpImport(JPSPR).then(() => { const t = $("sprachen"); if(t) t.scrollIntoView(); }, err => toast("Fehler: " + err.message)))).catch(err => { $("main").innerHTML = `<div class="banner">Server nicht erreichbar: ${esc(err.message)}</div>`; });
 </script>
 </body>

@@ -2368,15 +2368,19 @@ def case_export(data, settings, history, slug, now=None):
 
 
 NSO_TITLE = "Online-Mitgliedschaft"
-# Varianten der Online-Mitgliedschaft, die DekuDeals führt (Verbindungstest 14.10.2026). 1 Monat und
-# Erweiterungspaket Familie verlinkt DekuDeals nicht. accounts: Konten, auf die sich der Preis verteilt.
+# Varianten der Online-Mitgliedschaft. IDs je Region von Nintendos Mitgliedschaftsseite (ab 0.58),
+# je Land von DekuDeals, wo es sie führt (slug); 1 Monat und Erweiterungspaket Familie führt DekuDeals
+# nicht (Verbindungstest 14.10.2026). accounts: Konten, auf die sich der Preis verteilt.
 NSO_VARIANTS = [
-    {"key": "m12", "slug": "nintendo-switch-online-12-month-membership", "label": "12 Monate", "months": 12, "accounts": 1},
+    {"key": "m1", "slug": None, "label": "1 Monat", "months": 1, "accounts": 1},
     {"key": "m3", "slug": "nintendo-switch-online-3-month-membership", "label": "3 Monate", "months": 3, "accounts": 1},
+    {"key": "m12", "slug": "nintendo-switch-online-12-month-membership", "label": "12 Monate", "months": 12, "accounts": 1},
     {"key": "ep", "slug": "nintendo-switch-online-expansion-pack-12-month-individual-membership",
      "label": "Erweiterungspaket (12 Monate)", "months": 12, "accounts": 1},
     {"key": "fam", "slug": "nintendo-switch-online-12-month-family-membership", "label": "Familie (12 Monate)",
      "months": 12, "accounts": 8, "family": True},
+    {"key": "epfam", "slug": None, "label": "Erweiterungspaket Familie (12 Monate)", "months": 12, "accounts": 8,
+     "family": True},
 ]
 NSO_KEYS = [v["key"] for v in NSO_VARIANTS]
 
@@ -2454,7 +2458,9 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v):
             "sale": o["sale"], "pct": round(100 * (1 - o["local"] / o["regular"])) if o["sale"] and o["regular"] else None,
             "end": o.get("end") if o["sale"] else None, "est": c["estimated"], "counts": ctx.decides(o),
             "current": code == current or (not current and code == countries.REFERENCE),
-            "url": urls.get(c["meta"]["shop"]), "low_eur": None})
+            # Kauflink von DekuDeals, sonst Nintendos Mitgliedschaftsseite des Landes (ab 0.58, etwa Japan)
+            "url": urls.get(c["meta"]["shop"]) or f"https://ec.nintendo.com/{code}/{c['meta']['lang']}/membership",
+            "low_eur": None})
         # Tiefstpreis dieses Landes (24 Monate, DekuDeals) mit deinem heutigen Zahlweg, wie bei Titeln
         low = lows.get(c["meta"]["shop"])
         if low:

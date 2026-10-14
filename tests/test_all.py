@@ -1717,6 +1717,8 @@ class SyncTest(unittest.TestCase):
                 if "country=CL" in url:
                     raise sources.FetchError(url, 500)     # abgeschaltetes Land fällt aus
                 return '{"prices":[]}'                     # übrige Länder: nichts im Angebot
+            if "ec.nintendo.com/" in url and url.endswith("/membership"):
+                return "<html>ohne Mitgliedschaftsdaten</html>"
             raise AssertionError("unerwarteter Abruf " + url)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
         self.assertTrue(sync.status["ok"], sync.status["log"])
@@ -3219,6 +3221,25 @@ class ReplayTest(unittest.TestCase):
         self.assertNotIn("Traceback", out3)
 
 
+def nso_page(base):
+    """Nachbau von Nintendos Mitgliedschaftsseite (Aufbau wie im echten HTML, 14.10.2026): Tarife mit
+    ticketItemsV2, je Eintrag eine Abo-Fassung, Laufzeit in Minuten, vorneweg eine Probe-Mitgliedschaft.
+    IDs: base+1 1 Monat, base 3 Monate, base+2 12 Monate, base+12 Familie, base+40 EP, base+60 EP Familie."""
+    def item(n, grant, lim="false"):
+        return ('{"nsUid":%d,"ticketItemGroupId":"a","__typename":"NormalTicketItem","subscriptionTicketItem":{"nsUid":%d,'
+                '"__typename":"NormalSubscriptionTicketItem","grantMinutes":%d},"isOp2LimitedRight":%s,"grantMinutes":%d}'
+                % (n, n + 500, grant, lim, grant))
+
+    def one(n):
+        return ('{"nsUid":%d,"ticketItemGroupId":"b","__typename":"NormalTicketItem","subscriptionTicketItem":{"nsUid":%d,'
+                '"__typename":"NormalSubscriptionTicketItem"},"grantMinutes":525600}' % (n, n + 500))
+    body = ('{"ticketItemGroupsFragment":{"individual":{"ticketItemsV2":['
+            + ",".join([item(base + 2000, 12960, "true"), item(base + 1, 43200), item(base, 129600), item(base + 2, 525600)])
+            + ']},"family":{"ticketItemsV2":[' + one(base + 12) + ']},"exIndividual":{"ticketItemsV2":[' + one(base + 40)
+            + ']},"exFamily":{"ticketItemsV2":[' + one(base + 60) + ']}}}')
+    return '<script>self.__next_f.push([1,"' + body.replace('"', '\\"') + '"])</script>'
+
+
 class MembershipTest(unittest.TestCase):
     """Online-Mitgliedschaft, 12 Monate, einzeln (0.56): IDs je Land aus der DekuDeals-Seite,
     Preise über den normalen Preisabruf, Einkaufspreis je Land wie bei Spielen."""
@@ -3235,8 +3256,12 @@ class MembershipTest(unittest.TestCase):
         calls = []
 
         def fake(url, ua=None):
+            if url == "https://ec.nintendo.com/DE/de/membership":
+                return nso_page(70080000000300)
+            if url == "https://ec.nintendo.com/US/en/membership":
+                return nso_page(70080000000400)
             calls.append(url)
-            i = next(i for i, v in enumerate(planner.NSO_VARIANTS) if f"/items/{v['slug']}?" in url)
+            i = next(i for i, v in enumerate(v for v in planner.NSO_VARIANTS if v["slug"]) if f"/items/{v['slug']}?" in url)
             if "country=de" in url:
                 return self.PAGE.format(cc="de", n=str(70080000000189 + 10 * i))
             if "country=br" in url:
@@ -3247,23 +3272,33 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(planner.nso_variants(data)["m12"]["ids"], {"DE": ["70080000000189"]})
         sync.sync_nso(data, settings, fake, lambda s: None, now=1e9)
         self.assertNotIn("ids", data["nso"])
-        self.assertEqual(data["nso"]["v"]["m12"]["ids"], {"DE": ["70080000000189"], "BR": ["70080000000186"]})
-        self.assertEqual(data["nso"]["v"]["m3"]["ids"], {"DE": ["70080000000199"], "BR": ["70080000000196"]})
-        self.assertEqual(len(calls), 2 * len(planner.NSO_VARIANTS))       # je Variante und Land eine Seite
+        self.assertEqual(data["nso"]["v"]["m12"]["ids"], {"DE": ["70080000000199"], "BR": ["70080000000196"]})
+        self.assertEqual(data["nso"]["v"]["m3"]["ids"], {"DE": ["70080000000189"], "BR": ["70080000000186"]})
+        slugged = sum(1 for v in planner.NSO_VARIANTS if v["slug"])
+        self.assertEqual(len(calls), 2 * slugged)       # je Variante, die DekuDeals führt, und Land eine Seite
+        # 0.58: Nintendos Seite je Region liefert alle Varianten, die Laufzeit entscheidet, nicht die Reihenfolge
+        self.assertEqual(data["nso"]["page"]["EU"]["ids"], {"m1": "70080000000301", "m3": "70080000000300", "m12": "70080000000302",
+                                                            "fam": "70080000000312", "ep": "70080000000340", "epfam": "70080000000360"})
+        self.assertNotIn("JP", data["nso"]["page"])     # Japan ist nicht aktiv
+        # eigene ID von DekuDeals geht vor, sonst die der Region von Nintendos Seite
+        self.assertEqual(sync.nso_ids_for(data, "DE", "m1"), ["70080000000301"])
+        self.assertEqual(sync.nso_ids_for(data, "DE", "m12"), ["70080000000199"])
+        self.assertEqual(sync.nso_ids_for(data, "MX", "epfam"), ["70080000000460"])
         # monatlich: im nächsten Abgleich nichts fällig
         sync.sync_nso(data, settings, fake, lambda s: None, now=1e9 + 3600)
-        self.assertEqual(len(calls), 2 * len(planner.NSO_VARIANTS))
-        self.assertEqual(sync.nso_ids_for(data, "MX"), ["70080000000186"])   # Region Amerika als Ersatz
+        self.assertEqual(len(calls), 2 * slugged)
+        del data["nso"]["page"]
+        self.assertEqual(sync.nso_ids_for(data, "MX"), ["70080000000196"])   # Region Amerika als Ersatz
 
         def prices(url, ua=None):
             self.assertIn("api.ec.nintendo.com", url)
             if "country=DE" in url:
                 self.assertIn("70080000000189", url)
-                return ('{"prices":[{"title_id":70080000000189,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"19.99"}},'
-                        '{"title_id":70080000000199,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"7.99"}}]}')
+                return ('{"prices":[{"title_id":70080000000199,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"19.99"}},'
+                        '{"title_id":70080000000189,"sales_status":"onsale","regular_price":{"currency":"EUR","raw_value":"7.99"}}]}')
             if "country=BR" in url:
-                self.assertIn("70080000000186", url)
-                return '{"prices":[{"title_id":70080000000186,"sales_status":"onsale","regular_price":{"currency":"BRL","raw_value":"109.9"}}]}'
+                self.assertIn("70080000000196", url)
+                return '{"prices":[{"title_id":70080000000196,"sales_status":"onsale","regular_price":{"currency":"BRL","raw_value":"109.9"}}]}'
             return '{"prices":[]}'
         data["items"] = {"t": {"title": "T", "active": True, "ids": {"EU": ["70010000000001"], "AM": ["70010000000002"]}}}
         data["fx"] = {"rates": {"EUR": 1.0, "BRL": 5.5}, "updated": ""}

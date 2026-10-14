@@ -52,6 +52,8 @@ EXTRA_PER_SYNC = 40                   # Artikelseiten je Abgleich für IDs fehle
 NSO_RECHECK = 30 * 24 * 3600          # eShop-IDs der Online-Mitgliedschaft: monatlich prüfen
 NSO_RETRY = 7 * 24 * 3600             # Land ohne ID auf der Seite: wöchentlich erneut
 NSO_PER_SYNC = 20                     # höchstens so viele Mitgliedschaftsseiten je Abgleich
+# Nintendos Mitgliedschaftsseite je Region (ab 0.58): Land und Sprache der gelesenen Seite
+NSO_PAGES = {"EU": ("DE", "de"), "AM": ("US", "en"), "JP": ("JP", "ja")}
 
 status = {"running": False, "step": "", "done": 0, "total": 0,
           "log": [], "started": None, "finished": None, "ok": None, "boot_sync": None}
@@ -285,12 +287,15 @@ def _track(data, history, code, table, stamp):
 
 
 def nso_ids_for(data, code, key="m12"):
-    """eShop-IDs einer Variante der Mitgliedschaft für ein Land: die eigenen, sonst die der Länder
-    derselben Region (so bekommt die USA ihren Preis über Kanada, Mexiko und Brasilien)."""
+    """eShop-IDs einer Variante der Mitgliedschaft für ein Land: die eigenen von DekuDeals, sonst
+    die von Nintendos Seite für die Region (ab 0.58), sonst die der Länder derselben Region."""
     ids = (planner.nso_variants(data).get(key) or {}).get("ids") or {}
     if ids.get(code):
         return ids[code]
     fam = countries.BY_CODE[code]["family"]
+    page = (((data.get("nso") or {}).get("page") or {}).get(fam) or {}).get("ids") or {}
+    if page.get(key):
+        return [page[key]]
     out = []
     for other, lst in ids.items():
         if other in countries.BY_CODE and countries.BY_CODE[other]["family"] == fam:
@@ -310,22 +315,20 @@ def sync_nso(data, settings, fetch, sleep, now=None):
     if old and "m12" not in var:                 # Daten bis 0.56: nur 12 Monate, flach
         var["m12"] = old
     shops = [c for c in countries.ORDER if countries.BY_CODE[c]["shop"] == c and settings["countries"][c]["enabled"]]
+    if sync_nso_pages(data, shops, fetch, sleep, now) == "blocked":
+        return
     due = []
     for v in planner.NSO_VARIANTS:
         e = var.setdefault(v["key"], {})
         ids, checked = e.setdefault("ids", {}), e.setdefault("checked", {})
-        due += [(v, c) for c in shops if now - checked.get(c, 0) > (NSO_RECHECK if ids.get(c) else NSO_RETRY)]
+        if v["slug"]:                            # nur Varianten, die DekuDeals führt
+            due += [(v, c) for c in shops if now - checked.get(c, 0) > (NSO_RECHECK if ids.get(c) else NSO_RETRY)]
 
     def known():
-        parts = [f"{v['label']} {sum(1 for c in shops if var[v['key']]['ids'].get(c))}/{len(shops)}" for v in planner.NSO_VARIANTS]
-        own = var["m12"]["ids"]
-        lack = [c for c in shops if not own.get(c)]
-        via = [c for c in lack if nso_ids_for(data, c)]
-        return ("IDs je Variante: " + ", ".join(parts)
-                + (f"; ohne eigene ID: {', '.join(lack)}" if lack else "")
-                + (f" ({', '.join(via)} über Nachbarländer der Region)" if via else ""))
+        parts = [f"{v['label']} {sum(1 for c in shops if nso_ids_for(data, c, v['key']))}/{len(shops)}" for v in planner.NSO_VARIANTS]
+        return "IDs je Variante (eigene, sonst Region): " + ", ".join(parts)
     if not due:
-        _log(f"Mitgliedschaft: nichts fällig; {known()}")
+        _log(f"Mitgliedschaft: DekuDeals nichts fällig; {known()}")
         return
     rest = max(0, len(due) - NSO_PER_SYNC)
     due = due[:NSO_PER_SYNC]
@@ -364,6 +367,38 @@ def sync_nso(data, settings, fetch, sleep, now=None):
         checked[code] = now
         status["done"] += 1
     _log(f"Mitgliedschaft: {read} Seiten gelesen{f', {rest} folgen im nächsten Abgleich' if rest else ''}; {known()}")
+
+
+def sync_nso_pages(data, shops, fetch, sleep, now):
+    """Nintendos Mitgliedschaftsseite je Region mit aktivem Land (ab 0.58): eShop-IDs aller
+    Varianten, auch 1 Monat, Erweiterungspaket Familie und Japan, die DekuDeals nicht führt.
+    Drei Seiten höchstens, monatlich, ohne Ergebnis wöchentlich."""
+    pages = data["nso"].setdefault("page", {})
+    fams = [f for f in NSO_PAGES if any(countries.BY_CODE[c]["family"] == f for c in shops)]
+    read, notes = 0, []
+    for fam in fams:
+        e = pages.setdefault(fam, {})
+        if now - e.get("checked", 0) <= (NSO_RECHECK if e.get("ids") else NSO_RETRY):
+            continue
+        code, lang = NSO_PAGES[fam]
+        if read:
+            sleep(LOW_PAUSE)
+        read += 1
+        try:
+            found = sources.parse_membership_page(fetch(f"https://ec.nintendo.com/{code}/{lang}/membership"))
+        except sources.FetchError as err:
+            if err.status in sources.BLOCKED:
+                _log(f"Mitgliedschaft: Nintendo sperrt die Mitgliedschaftsseite ({err.status}), weiter beim nächsten Abgleich")
+                return "blocked"
+            notes.append(f"{countries.FAMILIES[fam]} nicht lesbar ({err})")
+            e["checked"] = now
+            continue
+        e["checked"] = now
+        if found:
+            e["ids"] = found
+        notes.append(f"{countries.FAMILIES[fam]} {len(found)} Varianten")
+    if read:
+        _log("Mitgliedschaft, Nintendos Seite: " + ", ".join(notes))
 
 
 def sync_prices(data, settings, fetch, sleep, history=None):
@@ -1748,7 +1783,7 @@ def diagnose(sleep=time.sleep):
     return lines
 
 
-MEMBERSHIP_SLUG = planner.NSO_VARIANTS[0]["slug"]
+MEMBERSHIP_SLUG = next(v["slug"] for v in planner.NSO_VARIANTS if v["key"] == "m12")
 
 
 def membership_probe(probe, sleep=time.sleep):
@@ -1785,32 +1820,29 @@ def membership_probe(probe, sleep=time.sleep):
               sources.NINTENDO_PRICE_URL + f"?country={code}&lang={lang}&ids={','.join(ids[code][:10])}",
               None, lambda t: t[:500])
         sleep(1)
-    # Nintendos eigene Mitgliedschaftsseite (0.56.3 Japan, 0.57.1 auch DE und US): Sie nennt die
-    # eShop-IDs aller Varianten, auch 1 Monat und Familie mit Erweiterungspaket, die DekuDeals nicht
-    # führt. Je ID der Text davor und danach, dazu ihre Preise: daraus wird die Zuordnung je Variante.
-    for code, lang in (("JP", "ja"), ("DE", "de"), ("US", "en")):
-        found = []
+    # Nintendos eigene Mitgliedschaftsseite (ab 0.58 Quelle der IDs je Region): Zuordnung je Variante
+    # und die Preise dazu, so lässt sie sich gegen die Seite im Browser prüfen
+    labels = {v["key"]: v["label"] for v in planner.NSO_VARIANTS}
+    for fam, (code, lang) in NSO_PAGES.items():
+        found = {}
 
         def ec_page(t, found=found):
-            found += sorted(set(sources.re.findall(r"7008\d{10}", t)))
-            ctx = []
-            for n in found[:16]:
-                i = t.find(n)
-                before = sources.re.sub(r"\s+", " ", sources.html.unescape(sources.re.sub(r"<[^>]+>", " ", t[max(0, i - 600):i]))).strip()
-                after = sources.re.sub(r"\s+", " ", sources.html.unescape(sources.re.sub(r"<[^>]+>", " ", t[i + 14:i + 300]))).strip()
-                ctx.append(f"{n} [{before[-90:]} | {after[:60]}]")
-            return f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, {len(found)} eShop-IDs: " + "; ".join(ctx)
+            found.update(sources.parse_membership_page(t))
+            return (f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Varianten: "
+                    + (", ".join(f"{labels[k]} {n}" for k, n in found.items()) or "keine erkannt"))
         probe(f"Mitgliedschaft Nintendo-Seite ({code})", f"https://ec.nintendo.com/{code}/{lang}/membership", None, ec_page)
         sleep(1)
         if found:
-            def amounts(t):
+            def amounts(t, found=found):
+                by = {str(p.get("title_id")): p for p in json.loads(t).get("prices") or []}
                 out = []
-                for p in json.loads(t).get("prices") or []:
+                for k, n in found.items():
+                    p = by.get(n) or {}
                     rp = p.get("discount_price") or p.get("regular_price") or {}
-                    out.append(f"{p.get('title_id')} {rp.get('amount') or p.get('sales_status')}")
+                    out.append(f"{labels[k]} {rp.get('amount') or p.get('sales_status') or '–'}")
                 return ", ".join(out)
             probe(f"Mitgliedschaft Preise der Nintendo-Seite ({code})",
-                  sources.NINTENDO_PRICE_URL + f"?country={code}&lang={lang}&ids={','.join(found[:50])}", None, amounts)
+                  sources.NINTENDO_PRICE_URL + f"?country={code}&lang={lang}&ids={','.join(found.values())}", None, amounts)
             sleep(1)
     return lines
 
