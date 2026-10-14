@@ -264,7 +264,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Landestief, Angebotsende und Sprache. Die Tabelle scrollt in einem eigenen
   Fenster, Kopfzeile und Titelspalte bleiben stehen. "nur Angebote" blendet
   auch Länder ohne Angebot aus.
-- Länder, je Land: Länderkarten als dichtes Raster oder große Liste. Das Land,
+- Länder: Länderkarten als dichtes Raster oder große Liste (Schalter rechts, wie Liste | Tabelle
+  bei Titel). Das Land,
   in dem dein Konto steht, kommt zuerst, dann die übrigen nach der gewählten
   Reihenfolge, Deutschland als Vergleich am Ende. Hast du Warenkörbe geändert,
   setzt "alle zurücksetzen" in der Leiste alle auf einmal zurück. Jede
@@ -288,11 +289,13 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   die ganze Rechnung unter "Rechnung". Ein Rest ist kein Verlust: Gewinn und
   Schwelle rechnen mit dem, was die Spiele selbst kosten ("Spiele X €").
   Vorhandenes Guthaben ist schon bezahlt, zählt aber zum Kurs mit.
-- Länder, Korb: ein gemeinsamer Korb, verglichen in allen Ländern, Titel als
+- Korb (eigener Reiter seit 0.59): ein gemeinsamer Korb, verglichen in allen Ländern, Titel als
   Zeilen, Länder als Spalten, darunter Einkaufspreis, Preis, Wechsel und Rest
   wie auf den Karten. Das günstigste Land ist hervorgehoben, aber nur unter
   Ländern, die den ganzen Korb anbieten. "+" in der Titelliste legt einen
-  Titel in den Korb.
+  Titel in den Korb, "als Korb vergleichen" auf einer Länderkarte oder im Kaufplan übernimmt
+  dessen Titel. Die Länderkarten behalten dabei ihre eigenen Körbe; "Korb leeren" löst nur
+  den gemeinsamen auf.
 
 Die Ansicht (Reiter, Liste oder Tabelle, Filter, aufgeklappte Kästen) merkt
 sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.

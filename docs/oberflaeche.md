@@ -121,7 +121,11 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 
 ## Flächen
 
-Länder-Karten: Die Knöpfe „Korb für alle“ und „Titel hinzufügen“ stehen in einer Zeile, die
+Reiter: Jetzt, Titel, Sammlung, Länder, Korb, Einstellungen; am Reiter Korb steht grau die Zahl
+seiner Titel (ab 0.59). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
+der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste).
+
+Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel hinzufügen“ stehen in einer Zeile, die
 „Rechnung“ darunter in eigener Zeile; Aufklappen schiebt so nichts zur Seite (ab 0.58).
 
 Einstellungen: Jeder Bereich (Länder, Regeln, Gebühren, Sprachen prüfen, Quellen, Sicherung und

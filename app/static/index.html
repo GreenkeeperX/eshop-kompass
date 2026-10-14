@@ -204,6 +204,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 
 /* Preisvergleich */
 .tools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.tools .seg{margin-left:auto}     /* Ansichtsschalter immer rechts, in jedem Reiter gleich (0.59) */
 .tools input[type=search]{flex:1;min-width:180px;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .matrix{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
 .matrix td,.matrix th{padding:3px 6px}
@@ -492,7 +493,7 @@ function setTheme(k){
   try{ if(k === "system") localStorage.removeItem("ek.theme"); else localStorage.setItem("ek.theme", k); }catch(e){}
   renderTheme(); themeMenu(false);
 }
-const TABS = [["jetzt","Jetzt"],["titel","Titel"],["sammlung","Sammlung"],["laender","Länder"],["settings","Einstellungen"]];
+const TABS = [["jetzt","Jetzt"],["titel","Titel"],["sammlung","Sammlung"],["laender","Länder"],["korb","Korb"],["settings","Einstellungen"]];
 const V0 = loadView();
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
 const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? V0.tab : "jetzt",
@@ -723,7 +724,7 @@ function markTip(x, cur){
 }
 
 /* ---------- Zustand ---------- */
-const planBody = () => ({overrides:S.ui.overrides, must:[], basket:S.ui.basket || []});
+const planBody = (basket = []) => ({overrides:S.ui.overrides, must:[], basket});
 function saveUi(){ return api("/api/ui", S.ui).catch(err => toast("Nicht gespeichert: " + err.message)); }
 function migrateLocal(){   // frühere Versionen merkten sich den Korb im Browser
   try{
@@ -739,8 +740,11 @@ function migrateLocal(){   // frühere Versionen merkten sich den Korb im Browse
   }catch(e){}
 }
 async function loadPlans(){
+  // Länder zeigen immer die Körbe je Land; der gemeinsame Korb (Reiter Korb) rechnet extra (0.59)
   const r = await api("/api/plans", planBody());
-  S.plans = r.plans; S.mix = r.mix;
+  S.plans = r.plans;
+  const b = S.ui.basket ? await api("/api/plans", planBody(S.ui.basket)) : null;
+  S.bplans = b ? b.plans : []; S.mix = b ? b.mix : null;
   S.kauf = await api("/api/kaufplan");
 }
 async function refresh(){
@@ -831,7 +835,7 @@ function renderHead(){
   }
   $("syncBtn").disabled = st.running;
   $("nav").innerHTML = TABS.map(([k,l]) =>
-    `<button data-act="tab" data-tab="${k}" class="${S.tab===k?"on":""}">${l}</button>`).join("");
+    `<button data-act="tab" data-tab="${k}" class="${S.tab===k?"on":""}">${l}${k === "korb" && S.ui && S.ui.basket ? ` <small class="mut">${S.ui.basket.length}</small>` : ""}</button>`).join("");
 }
 function banners(){
   let h = "";
@@ -874,7 +878,8 @@ function render(){
   if(S.tab === "jetzt") m.innerHTML = banners() + viewJetzt();
   else if(S.tab === "titel") m.innerHTML = banners() + (S.tview === "table" ? viewMatrix() : viewTitles());
   else if(S.tab === "sammlung") m.innerHTML = banners() + viewCollection();
-  else if(S.tab === "laender") m.innerHTML = banners() + (S.ui.basket ? viewCompare() : viewCards());
+  else if(S.tab === "laender") m.innerHTML = banners() + viewCards();
+  else if(S.tab === "korb") m.innerHTML = banners() + (S.ui.basket ? viewCompare() : viewKorbEmpty());
   else { m.innerHTML = viewSettings(); showLog(S.state.status.log); }
   document.body.classList.toggle("fit", S.tab === "titel" && S.tview === "table" && innerWidth > 700);
   if(!document.body.classList.contains("fit")) showStick();
@@ -1041,7 +1046,7 @@ function viewTitles(){
   h += rows.map(titleRow).join("");
   if(!rows.length) h += `<tr><td colspan="6" class="mut">Kein Titel passt zum Filter.</td></tr>`;
   h += `</tbody></table></div>`;
-  if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="gobasket">Korb in allen Ländern vergleichen</button></p>`;
+  if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="tab" data-tab="korb">Korb in allen Ländern vergleichen</button></p>`;
   return h;
 }
 const VORDER = {buy: 0, good: 1, wait: 2, none: 3};
@@ -1279,9 +1284,10 @@ function hiddenLine(){
 }
 function viewCards(){
   const opt = (v, l) => `<option value="${v}" ${S.ui.sort === v ? "selected" : ""}>${l}</option>`;
-  let h = `<div class="bar"><span class="seg"><button data-act="dense" data-v="1" class="${S.ui.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.ui.dense ? "" : "on"}">Liste</button></span>
-    <select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Bestpreis")}${opt("saving","nach Wechselgewinn")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
-    <span class="sp"></span>${Object.values(S.ui.overrides).some(ov => ov && ((ov.add || []).length || (ov.remove || []).length)) ? `<button class="sm" data-act="resetall" title="Eigene Änderungen an allen Warenkörben verwerfen">alle zurücksetzen</button><span class="sp"></span>` : ""}${basketSeg()}</div>`;
+  // Werkzeugzeile wie in Titel: links Reihenfolge, rechts der Ansichtsschalter (0.59)
+  let h = `<div class="tools"><select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Bestpreis")}${opt("saving","nach Wechselgewinn")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
+    ${Object.values(S.ui.overrides).some(ov => ov && ((ov.add || []).length || (ov.remove || []).length)) ? `<button class="sm" data-act="resetall" title="Eigene Änderungen an allen Warenkörben verwerfen">alle zurücksetzen</button>` : ""}
+    <span class="seg"><button data-act="dense" data-v="1" class="${S.ui.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.ui.dense ? "" : "on"}">Liste</button></span></div>`;
   const cards = [], empty = [];
   for(const p of sortPlans(cardPlans())){
     if(S.ui.hidden.includes(p.code) && !p.is_ref) continue;
@@ -1293,8 +1299,12 @@ function viewCards(){
       `${esc(p.name)} <small>(${p.rate ? p.available + " kaufbar" : "noch keine Preise"})</small>`).join(" · ") + `</p>`;
   return h + hiddenLine();
 }
-function basketSeg(){
-  return `<span class="seg"><button data-act="unshare" class="${S.ui.basket ? "" : "on"}" title="Angebote je Land">je Land</button><button data-act="gobasket" class="${S.ui.basket ? "on" : ""}" title="Ein Korb, verglichen in allen Ländern">Korb${S.ui.basket ? ` (${S.ui.basket.length})` : ""}</button></span>`;
+/* Reiter Korb ohne Korb: wie man einen anlegt (0.59) */
+function viewKorbEmpty(){
+  const plan = S.kauf && S.kauf.steps && S.kauf.steps.some(p => p.items.length);
+  return `<div class="box"><p><b>Noch kein Korb.</b> Ein Korb ist deine eigene Auswahl an Titeln, verglichen in allen Ländern: Was kostet genau das hier, dort und aufgeteilt?</p>
+    <p class="hint">So legst du einen an: „+“ in der Spalte Korb im Reiter Titel, „als Korb vergleichen“ auf einer Länderkarte oder den ganzen Kaufplan übernehmen.</p>
+    ${plan ? `<p><button data-act="plan2basket">Kaufplan als Korb übernehmen</button></p>` : ""}</div>`;
 }
 function cardsHtml(p){
   return p.cards.map(c => {
@@ -1463,7 +1473,7 @@ function planCard(p, step){
       .map(r => `<option value="${esc(r.slug)}">${esc(r.title)} · ${num(r.cells[p.code].local, cur)}</option>`).join("");
     const ov = S.ui.overrides[p.code];
     const changed = ov && ((ov.add||[]).length || (ov.remove||[]).length);
-    foot += (has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb in allen Ländern vergleichen">Korb für alle</button>` : "") +
+    foot += (has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb als Korb übernehmen und in allen Ländern vergleichen (Reiter Korb)">als Korb vergleichen</button>` : "") +
       (opts ? `<select data-act="pick" data-c="${p.code}"><option value="">Titel hinzufügen …</option>${opts}</select>` : "") +
       (changed ? `<button class="link" data-act="reset" data-c="${p.code}">zurücksetzen</button>` : "");
   }
@@ -1619,7 +1629,7 @@ function viewCompare(){
   const inB = new Set(S.ui.basket);
   const opts = S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids)
     .map(r => `<option value="${esc(r.slug)}">${esc(r.title)}</option>`).join("");
-  const shown = S.plans.filter(p => p.is_ref || !S.ui.hidden.includes(p.code));
+  const shown = S.bplans.filter(p => p.is_ref || !S.ui.hidden.includes(p.code));
   const usable = shown.filter(p => p.rate && p.items.length);
   const cols = usable.filter(p => p.is_ref).concat(usable.filter(p => !p.is_ref));
   const none = shown.filter(p => !usable.includes(p));
@@ -1639,7 +1649,7 @@ function viewCompare(){
     verdict = `<span class="hint">Nur ${esc(complete[0].name)} bietet den ganzen Korb.</span>`;
   }
   let h = `<div class="bar on">${verdict}<span class="sp"></span>
-    <select data-act="bpick"><option value="">Titel hinzufügen …</option>${opts}</select>${basketSeg()}</div>`;
+    <select data-act="bpick"><option value="">Titel hinzufügen …</option>${opts}</select><button class="sm" data-act="unshare" title="Korb leeren; die Länder behalten ihre eigenen Körbe">Korb leeren</button></div>`;
   if(!cols.length) return h + `<p class="restline">Kein Titel aus dem Korb ist in einem aktiven Land kaufbar.</p>` + hiddenLine();
 
   const cls = p => (win && p.code === win.code ? "win " : "") + (p.missing.length ? "incomplete " : "");
@@ -2171,7 +2181,7 @@ function go(tab, top = true){ S.tab = tab; saveView(); render(); if(top) window.
    Preise und Summen mit „Jetzt“ übereinstimmen (die Kartenkosten hängen am ganzen Korb).
    Eigene Änderungen an der Karte gehen vor. */
 function planStepFor(code){
-  if(S.ui.basket || !S.kauf) return null;
+  if(!S.kauf) return null;
   const n = S.kauf.steps.findIndex(st => st.code === code);
   if(n < 0) return null;
   const st = S.kauf.steps[n], slugs = new Set(st.items.map(i => i.slug)), o = S.ui.overrides[code];
@@ -2194,8 +2204,9 @@ function ov(code){
   }
   return S.ui.overrides[code] || (S.ui.overrides[code] = {add:[], remove:[]});
 }
+// Ohne Land: der gemeinsame Korb; mit Land: der Korb dieses Landes (ab 0.59 getrennt)
 function addTo(code, slugs){
-  if(S.ui.basket){ for(const s of slugs) if(!S.ui.basket.includes(s)) S.ui.basket.push(s); return; }
+  if(!code){ S.ui.basket = S.ui.basket || []; for(const s of slugs) if(!S.ui.basket.includes(s)) S.ui.basket.push(s); return; }
   const o = ov(code);
   for(const s of slugs){
     o.remove = o.remove.filter(x => x !== s);
@@ -2203,7 +2214,7 @@ function addTo(code, slugs){
   }
 }
 function dropFrom(code, s){
-  if(S.ui.basket){ S.ui.basket = S.ui.basket.filter(x => x !== s); return; }
+  if(!code){ S.ui.basket = (S.ui.basket || []).filter(x => x !== s); return; }
   const o = ov(code);
   o.add = o.add.filter(x => x !== s);
   if(!o.remove.includes(s)) o.remove.push(s);
@@ -2239,9 +2250,9 @@ document.addEventListener("click", async e => {
       if(!S.ui.basket){
         const p = S.plans.find(x => !x.is_ref && x.items.length);
         if(!p){ toast("Noch kein Titel im Angebot, den du vergleichen könntest"); return; }
-        await change("Korb gilt jetzt für alle Länder", () => { S.ui.basket = p.items.map(i => i.slug); });
+        await change("Korb übernommen", () => { S.ui.basket = p.items.map(i => i.slug); });
       }
-      go("laender");
+      go("korb");
     }
     else if(a === "gocards"){
       S.folds["cards:" + d.c] = 1;
@@ -2315,10 +2326,10 @@ document.addEventListener("click", async e => {
     else if(a === "unhide"){ S.ui.hidden = S.ui.hidden.filter(c => c !== d.c); await replan(); }
     else if(a === "share"){
       const slugs = cardPlans().find(p => p.code === d.c).items.map(i => i.slug);
-      await change("Korb gilt jetzt für alle Länder", () => { S.ui.basket = slugs; });
-      window.scrollTo(0, 0);
+      await change(`Korb von ${country(d.c).name} übernommen`, () => { S.ui.basket = slugs; });
+      go("korb");
     }
-    else if(a === "unshare"){ await change("Gemeinsamer Korb aufgelöst", () => { S.ui.basket = null; }); }
+    else if(a === "unshare"){ await change("Korb geleert", () => { S.ui.basket = null; }); }
     else if(a === "bdrop"){ const name = rowOf(d.s).title; await change(`${name} entfernt`, () => dropFrom(null, d.s)); }
     else if(a === "star"){
       const b = S.ui.basket || [];
@@ -2328,7 +2339,7 @@ document.addEventListener("click", async e => {
     else if(a === "plan2basket"){
       const slugs = S.kauf.steps.flatMap(p => p.items.map(i => i.slug));
       await change("Kaufplan als Korb übernommen", () => { S.ui.basket = slugs; });
-      go("laender");
+      go("korb");
     }
     else if(a === "pickfile"){ $("impFile").click(); }
     else if(a === "copy"){
