@@ -35,6 +35,7 @@ DEFAULT_SETTINGS = {
     # Weitere Angebote der Mitgliedschaft von Hand, etwa Codes bei Amazon Japan (ab 0.60):
     # [{"key": "m12", "code": "JP", "price": 2970, "src": "Amazon", "url": "…", "date": "JJJJ-MM-TT"}]
     "nso_extra": [],
+    "own_offers": [],         # eigene Angebote für Titel, etwa Codes bei Amazon Japan (ab 0.62)
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
     # Angebot als Kauf bzw. gutes Angebot, auch wenn es prozentual mehr ist
     "deal_eur": {"buy": 0.5, "good": 2.0},
@@ -145,6 +146,14 @@ def _nso_extra(e, known):
             "date": date if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else ""}
 
 
+def _own_offer(e, known):
+    """Ein eigenes Angebot für einen Titel prüfen (ab 0.62); None, wenn es nicht passt."""
+    if not isinstance(e, dict) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,150}", str(e.get("slug") or "")):
+        return None
+    x = _nso_extra(dict(e, key=NSO_KEYS[0]), known)
+    return x and {"slug": e["slug"], **{k: v for k, v in x.items() if k != "key"}}
+
+
 def save_settings(new):
     """Übernimmt nur bekannte Felder mit passendem Typ."""
     with lock:
@@ -169,6 +178,8 @@ def save_settings(new):
             s["nso_variant"] = new["nso_variant"]
         if isinstance(new.get("nso_extra"), list):
             s["nso_extra"] = [x for x in (_nso_extra(e, s["countries"]) for e in new["nso_extra"][:30]) if x]
+        if isinstance(new.get("own_offers"), list):
+            s["own_offers"] = [x for x in (_own_offer(e, s["countries"]) for e in new["own_offers"][:60]) if x]
         if new.get("lang_rule") in ("exclude", "warn", "off"):
             s["lang_rule"] = new["lang_rule"]
         for slug, fams in (new.get("lang_confirm") or {}).items() if isinstance(

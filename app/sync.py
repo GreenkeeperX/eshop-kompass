@@ -563,12 +563,14 @@ OFFERS_PER_SYNC = 10      # eigene Angebote mit Link, höchstens so viele Seiten
 
 
 def sync_offer_prices(data, settings, fetch, sleep, now=None):
-    """Eigene Angebote mit Link, etwa Codes bei Amazon Japan (ab 0.61): Preis höchstens einmal
+    """Eigene Angebote mit Link, etwa Codes bei Amazon Japan (Mitgliedschaft ab 0.61, Titel ab
+    0.62): Preis höchstens einmal
     am Tag je Link von der Shopseite lesen. Eine Prüfseite (Captcha) oder Sperre beendet den
     Schritt, sie wird nicht umgangen; dann gilt der eingetragene Preis."""
     now = now or time.time()
     known = data.setdefault("offer_prices", {})
-    urls = list(dict.fromkeys(x["url"] for x in settings.get("nso_extra") or [] if x.get("url")))
+    urls = list(dict.fromkeys(x["url"] for x in (settings.get("nso_extra") or []) + (settings.get("own_offers") or [])
+                              if x.get("url")))
     for url in list(known):
         if url not in urls:
             del known[url]
@@ -1875,7 +1877,7 @@ def diagnose(sleep=time.sleep):
     lines.extend(membership_probe(probe, sleep))
     # Angebote der Mitgliedschaft von Hand (ab 0.60): Ließe sich der Preis lesen? Je Link ein Abruf
     # mit ehrlicher Kennung; eine Prüfseite (Captcha) wird nur gemeldet, nicht umgangen.
-    for x in [x for x in settings.get("nso_extra") or [] if x.get("url")][:3]:
+    for x in [x for x in (settings.get("nso_extra") or []) + (settings.get("own_offers") or []) if x.get("url")][:4]:
         def shop_info(t, x=x):
             if sources.is_amazon(x["url"]) and sources.amazon_captcha(t):
                 return f"{len(t)} Zeichen, Prüfseite (Captcha), nicht lesbar, eingetragen {x['price']}"
@@ -1886,7 +1888,8 @@ def diagnose(sleep=time.sleep):
                     f"gelesen {found[0]:g} {found[1]}{f' ({amz[2]})' if amz else ''}" if found else
                     f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, kein Preis erkannt") + \
                 f", Beträge auf der Seite {yen or 'keine'}, eingetragen {x['price']}"
-        probe(f"Mitgliedschaft {x['src']} ({x['code']}, {x['key']})", x["url"], None, shop_info)
+        probe(f"Mitgliedschaft {x['src']} ({x['code']}, {x['key']})" if x.get("key") else
+              f"Eigenes Angebot {x['src']} ({x['code']}, {x['slug']})", x["url"], None, shop_info)
         sleep(2)
     return lines
 

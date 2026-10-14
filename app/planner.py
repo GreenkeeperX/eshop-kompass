@@ -330,6 +330,7 @@ class Context:
         rates = data["fx"]["rates"]
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
+        self.offer_prices = data.get("offer_prices") or {}
         self.card_hist = data.get("card_hist") or {}
         self._payers, self._shares = {}, {}
         self.countries = {}
@@ -370,6 +371,7 @@ class Context:
             if c["nocard"]:
                 for o in c["offers"].values():
                     o["nocard"] = True
+            self._own_offers(c)
             self.countries[code] = c
         self._apply_language_rule()
         ref = self.countries.get(countries.REFERENCE, {"offers": {}})
@@ -377,6 +379,49 @@ class Context:
         unit = ref.get("unit") or 0.01
         self.ref = {s: o["local"] * unit for s, o in ref["offers"].items()}
         self._champions()
+
+    def offer_price(self, x, currency):
+        """Preis eines eigenen Angebots in Landeswährung: vom Link gelesen (gilt bis
+        CARD_PRICE_MAX_AGE) oder wie eingetragen. (Preis, gelesen um oder None)."""
+        got = self.offer_prices.get(x.get("url")) or {} if x.get("url") else {}
+        if got.get("price") and got.get("currency") == currency and \
+                self.now.timestamp() - got.get("ok", 0) <= CARD_PRICE_MAX_AGE:
+            return got["price"], got["ok"]
+        return x["price"], None
+
+    def _own_offers(self, c):
+        """Eigene Angebote für Titel (ab 0.62), etwa Codes bei Amazon Japan: bezahlt mit
+        Kreditkarte zum Mittelkurs plus Gebühr, eingelöst im Konto dieses Landes. Ist der
+        Code günstiger als der eShop, tritt er an dessen Stelle; er zählt dann wie jedes
+        Angebot für Bestpreis, Urteil und Kaufplan. `direct` ist sein Europreis: Er läuft
+        nicht über Guthaben, also auch nicht über Karten und Rest."""
+        if not c["rate"]:
+            return
+        for j, x in enumerate(self.settings.get("own_offers") or []):
+            if x.get("code") != c["code"] or x.get("slug") not in self.items:
+                continue
+            price, read = self.offer_price(x, c["currency"])
+            local = cents(price)
+            direct = local * self._units(c)[0]
+            o = c["offers"].get(x["slug"])
+            if o and not o.get("nocard") and self.oeur(c, o) <= direct + 0.005:
+                continue               # der eShop ist gleich günstig oder günstiger
+            c["offers"][x["slug"]] = {
+                "local": local, "regular": local, "sale": False, "end": None, "currency": c["currency"],
+                "net": local, "regular_net": local, "nsuid": (o or {}).get("nsuid"), "direct": direct,
+                "own": {"src": x.get("src") or "Händler", "url": x.get("url") or "", "read": read,
+                        "manual": x["price"], "idx": j, "eshop": _r(self.oeur(c, o)) if o else None}}
+
+    def oeur(self, c, o):
+        """Europreis eines Angebots: eigenes Angebot direkt, sonst über den Zahlweg des Landes."""
+        return o["direct"] if o.get("direct") is not None else self.est(c, o["local"])
+
+    def low_or_now(self, c, slug, o, low):
+        """Europreis des Tiefstpreises der letzten 24 Monate, das Angebot jetzt eingeschlossen."""
+        if o.get("direct") is not None:
+            return o["direct"] if low is None else min(o["direct"], self.est(c, round(cents(low) * (1 + c["tax"] / 100))))
+        local = o["local"] if low is None else min(o["local"], round(cents(low) * (1 + c["tax"] / 100)))
+        return self.est(c, local)
 
     def _live_cards(self, cards, country_rate, implausible):
         """Setzt für Karten mit Link den zuletzt gelesenen Shop-Preis ein, solange
@@ -683,11 +728,7 @@ class Context:
                     eur = self.est(c, round(cents(typ[0]) * (1 + c["tax"] / 100)))
                     if slug not in self.typ_all or eur < self.typ_all[slug][0] - 1e-9:
                         self.typ_all[slug] = (eur, code, c["estimated"], typ[1])
-                local = o["local"]
-                low = self.low_value(code, slug)
-                if low is not None:
-                    local = min(local, round(cents(low) * (1 + c["tax"] / 100)))
-                eur = self.est(c, local)
+                eur = self.low_or_now(c, slug, o, self.low_value(code, slug))
                 if slug not in self.champ_all or eur < self.champ_all[slug][0] - 1e-9:
                     self.champ_all[slug] = (eur, code, c["estimated"])
 
@@ -722,7 +763,7 @@ class Context:
             o = c["offers"].get(slug)
             if not o or not self.decides(o):
                 continue
-            eur = self.est(c, o["local"])
+            eur = self.oeur(c, o)
             if best is None or eur < best[0] - 1e-9:
                 best = (eur, code)
         return best
@@ -730,7 +771,7 @@ class Context:
     def mark(self, c, slug, o):
         """Deal-Güte eines Angebots: Marke und Abstand zum Bestpreis in Prozent."""
         out = {"mark": "", "gap": None, "champ": None, "champ_code": None}
-        eur, best = self.est(c, o["local"]), self.champ_all.get(slug)
+        eur, best = self.oeur(c, o), self.champ_all.get(slug)
         if eur is None or not best or not best[0]:
             return out
         out.update(champ=_r(best[0]), champ_code=best[1],
@@ -765,16 +806,16 @@ class Context:
     def low_eur(self, c, slug, o):
         """Landestief in Euro zum heutigen Kurs, mit Steuer; das Angebot jetzt zählt mit."""
         low = self.low_value(c["code"], slug)
-        local = o["local"] if low is None else min(o["local"], round(cents(low) * (1 + c["tax"] / 100)))
-        return None if low is None else _r(self.est(c, local))
+        return None if low is None else _r(self.low_or_now(c, slug, o, low))
 
     def cell(self, c, slug, o):
         """Ein Angebot, wie es Tabellen und Karten anzeigen."""
         return {"low_eur": self.low_eur(c, slug, o),"local": o["local"] / 100, "regular": o["regular"] / 100, "sale": o["sale"],
                 "net": o.get("net", o["local"]) / 100,
                 "pct": round(100 * (1 - o["local"] / o["regular"])) if o["regular"] else 0,
-                "end": o["end"], "eur": _r(self.est(c, o["local"])), "est": c["estimated"],
-                "lang": o.get("lang"), "nocard": bool(o.get("nocard")), "nsuid": o.get("nsuid"), "alone": self.alone(c, o["local"]),
+                "end": o["end"], "eur": _r(self.oeur(c, o)), "est": c["estimated"],
+                "lang": o.get("lang"), "nocard": bool(o.get("nocard")), "nsuid": o.get("nsuid"),
+                "alone": None if o.get("direct") is not None else self.alone(c, o["local"]), "own": o.get("own"),
                 **self.low(c["code"], slug, o), **self.mark(c, slug, o)}
 
     # ---- Titel
@@ -929,11 +970,11 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
             if not o:
                 continue
             # Deutschland misst sich nicht an sich selbst: Dort zählt jedes Angebot
-            cheaper = is_ref or slug not in ref or ctx.est(c, o["local"]) < ref[slug] - 0.005
+            cheaper = is_ref or slug not in ref or ctx.oeur(c, o) < ref[slug] - 0.005
             # Angebote, und dauerhaft günstige Normalpreise, die das Urteil "kaufen" tragen:
             # Sie zählen im Kaufplan, also auch hier (Entscheidung 12.10.2026)
             lasting = not o["sale"] and ctx.decides(o) and \
-                ctx.grade(ctx.est(c, o["local"]), slug) == "buy"
+                ctx.grade(ctx.oeur(c, o), slug) == "buy"
             if (o["sale"] or lasting) and cheaper:
                 chosen.append(slug)
         chosen = [s for s in chosen if s not in set(override.get("remove", []))]
@@ -957,8 +998,11 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
             alt[slug], alt_code[slug] = ctx.ref[slug], countries.REFERENCE
 
     pay, has_cards = make_payer(ctx, c)
-    total = sum(offers[s]["local"] for s in chosen)
+    # Eigene Angebote (ab 0.62) laufen nicht über das Guthaben: direkt in Euro, ohne Karten und Rest
+    direct = {s: offers[s]["direct"] for s in chosen if offers[s].get("direct") is not None}
+    total = sum(offers[s]["local"] for s in chosen if s not in direct)
     base = pay(total)
+    extra_cost = sum(direct.values())
 
     no_ref = 0
     for slug in chosen:
@@ -973,12 +1017,13 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
             "needs_parent": bool(it.get("parent") and it["parent"] not in chosen),
             "alt": _r(alt.get(slug)), "alt_code": alt_code.get(slug),
             **ctx.owned_flags(slug),
-            "over": bool(slug in alt and ctx.est(c, o["local"]) > alt[slug] + 0.005),
+            "over": bool(slug in alt and ctx.oeur(c, o) > alt[slug] + 0.005),
             **ctx.cell(c, slug, o),
         })
     ref_total = sum(ref.get(s, 0) for s in chosen)
     out.update({
-        "total": total / 100, "cost": _r(base["cost"]), "estimated": base["estimated"],
+        "total": total / 100, "cost": _r(base["cost"] + extra_cost), "estimated": base["estimated"],
+        "direct": _r(extra_cost), "direct_n": len(direct),
         "via": base["via"],
         "cards": [{"face": f / 100, "count": n, "url": pay.urls.get(f, "")}
                   for f, n in base["cards"]],
@@ -990,12 +1035,12 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
     })
     if chosen:
         # Titel ohne deutschen Vergleichspreis zählen zum geschätzten Europreis
-        ref_cmp = ref_total + sum(ctx.est(c, offers[s]["local"])
+        ref_cmp = ref_total + sum(ctx.oeur(c, offers[s])
                                   for s in chosen if s not in ref)
         # Ein Rest bleibt auf dem Konto und ist kein Verlust: Ersparnis und
         # Schwelle rechnen mit dem, was die Spiele selbst kosten (Entscheidung 12.10.2026).
         # Ein hoher Rest wird gewarnt.
-        games = base["cost"] - out["rest_value"]
+        games = base["cost"] - out["rest_value"] + extra_cost
         # Vorhandenes Guthaben ist schon bezahlt, aber nicht umsonst: Es zählt mit
         # dem Kurs, zu dem du es bekommst, sonst stünde ein Paket aus Guthaben bei 0 €
         used = min(cfg_balance(c), total)
@@ -1009,11 +1054,12 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
         # Im Paket teilen sich die Titel die Karten: Europreis je Titel anteilig
         if total and not base["estimated"] and base["via"] == "giftcard":
             for i in out["items"]:
-                i["eur"] = _r(games * offers[i["slug"]]["local"] / total)
+                if i["slug"] not in direct:
+                    i["eur"] = _r((games - extra_cost) * offers[i["slug"]]["local"] / total)
         out["saving"] = _r(ref_cmp - games)
         out["saving_pct"] = round(100 * (ref_cmp - games) / ref_cmp) if ref_cmp else 0
         # Wechselgewinn gegenüber der Alternative ohne diesen Wechsel (Entscheidung 12.10.2026)
-        alt_total = sum(alt.get(s, ctx.est(c, offers[s]["local"])) for s in chosen)
+        alt_total = sum(alt.get(s, ctx.oeur(c, offers[s])) for s in chosen)
         out["alt_total"] = _r(alt_total)
         out["gain"] = _r(alt_total - games)
         codes = [alt_code[s] for s in chosen if s in alt_code]
@@ -1083,10 +1129,13 @@ def _trims(ctx, c, chosen, total, base, pay, ref, must):
     for s in chosen:
         if s in must or s not in ref:
             continue
-        p = pay(total - offers[s]["local"])
-        if p["cost"] is None or base["cost"] is None:
-            continue
-        marginal = base["cost"] - p["cost"]
+        if offers[s].get("direct") is not None:
+            p, marginal = dict(base), offers[s]["direct"]     # eigenes Angebot: kostet genau sich selbst
+        else:
+            p = pay(total - offers[s]["local"])
+            if p["cost"] is None or base["cost"] is None:
+                continue
+            marginal = base["cost"] - p["cost"]
         gain = marginal - ref[s]
         if gain >= MIN_FILLER_GAIN:
             res.append({"slug": s, "title": ctx.title(s), "short": ctx.short(s),
@@ -1101,9 +1150,9 @@ def _fillers(ctx, c, chosen, total, base, pay, has_cards, ref):
     cand = [s for s in ctx.order if s in offers and s not in chosen and s in ref]
 
     def rate_combo(slugs):
-        add = sum(offers[s]["local"] for s in slugs)
+        add = sum(offers[s]["local"] for s in slugs if offers[s].get("direct") is None)
         p = pay(total + add)
-        extra = p["cost"] - base["cost"]
+        extra = p["cost"] - base["cost"] + sum(offers[s]["direct"] for s in slugs if offers[s].get("direct") is not None)
         gain = sum(ref[s] for s in slugs) - extra
         return {"slugs": list(slugs), "titles": [ctx.title(s) for s in slugs],
                 "shorts": [ctx.short(s) for s in slugs],
@@ -1149,8 +1198,8 @@ def mix(ctx, basket):
         best = None
         for c in eligible:
             o = c["offers"].get(slug)
-            if o and (best is None or ctx.est(c, o["local"]) < best[0] - 0.005):
-                best = (ctx.est(c, o["local"]), c)
+            if o and (best is None or ctx.oeur(c, o) < best[0] - 0.005):
+                best = (ctx.oeur(c, o), c)
         if best is None:
             return None                      # ein Titel fehlt überall: kein Mix
         eur, c = best
@@ -1261,7 +1310,7 @@ def radar(data, settings, targets=None, now=None):
             if not ctx.decides(o):
                 (nocard if o.get("nocard") else unsure).append(code)
                 continue
-            raw = ctx.est(c, o["local"])
+            raw = ctx.oeur(c, o)
             group = "easy" if c["tier"] <= 2 else "hard"
             if best[group] is None or raw < best[group]["raw"] - 0.005:
                 best[group] = dict(ctx.cell(c, slug, o), code=code, name=c["meta"]["name"],
@@ -1592,7 +1641,7 @@ def _extra_best(xctx, slug):
         o = c["offers"].get(slug)
         if not o or c["unit"] is None or not xctx.decides(o):
             continue
-        eur = xctx.est(c, o["local"])
+        eur = xctx.oeur(c, o)
         if best is None or eur < best["eur"] - 0.005:
             best = {"eur": _r(eur), "code": code, "name": c["meta"]["name"], "est": c["estimated"],
                     "sale": o["sale"], "end": o.get("end") if o["sale"] else None,
@@ -1823,10 +1872,7 @@ def lang_todo(data, settings, now=None):
             o = c and c["offers"].get(slug)
             if not o or c["unit"] is None:
                 continue
-            local, low = o["local"], c_.low_value(code, slug)
-            if low is not None:
-                local = min(local, round(cents(low) * (1 + c["tax"] / 100)))
-            eur = c_.est(c, local)
+            eur = c_.low_or_now(c, slug, o, c_.low_value(code, slug))
             if best is None or eur < best[0]:
                 best = (eur, code)
         return best
@@ -1956,13 +2002,13 @@ def price_levels(data, settings, now=None):
         common = [s for s in c["offers"] if s in ctx.ref]
         if len(common) < 3:
             continue
-        here = sum(ctx.est(c, c["offers"][s]["local"]) for s in common)
+        here = sum(ctx.oeur(c, c["offers"][s]) for s in common)
         home = sum(ctx.ref[s] for s in common)
         out[code] = {
             "level": round(100 * (here / home - 1)) if home else 0,
             "titles": len(common),
             "cheaper": sum(1 for s in common
-                           if ctx.est(c, c["offers"][s]["local"]) < ctx.ref[s] * 0.95),
+                           if ctx.oeur(c, c["offers"][s]) < ctx.ref[s] * 0.95),
             "sale": sum(1 for s in common if c["offers"][s]["sale"]),
         }
     return out
@@ -2049,7 +2095,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             o = c["offers"].get(slug)
             if not o or not ctx.decides(o):
                 continue
-            eur = ctx.est(c, o["local"])
+            eur = ctx.oeur(c, o)
             if best is None or eur < best[0] - 0.005:
                 best = (eur, code)
         return best
@@ -2195,7 +2241,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
         # deutschen Schritt (dort ist die Ersparnis dann 0)
         p["de_now"] = _r(sum(ctx.ref[i["slug"]] if i["slug"] in ctx.ref
-                             else ctx.est(c, c["offers"][i["slug"]]["local"]) for i in p["items"]))
+                             else ctx.oeur(c, c["offers"][i["slug"]]) for i in p["items"]))
     # Online-Mitgliedschaft als Füllartikel (0.57.1, Vorschlag ohne Übernahme): Varianten, die du
     # selbst kaufen kannst und die in den Rest eines Schritts passen, die größte zuerst
     ms = membership(data, settings, now) if any((p.get("rest") or 0) > 0 for p in steps) else {"variants": []}
@@ -2328,7 +2374,7 @@ def price_history(data, settings, history, slug, now=None):
             "tier": c["tier"], "est": c["estimated"], "regular": _r(regular * gross),
             "regular_eur": eur(regular),
             "points": [[t, _r(v * gross), eur(v)] for t, _, v in points],
-            "now_eur": _r(ctx.est(c, o["local"])) if o else None,
+            "now_eur": _r(ctx.oeur(c, o)) if o else None,
             "low": _r(low_v * gross), "low_eur": eur(low_v), "low_at": low_t,
             "deku_low_eur": (lambda lv: None if lv is None else eur(lv))(
                 (ctx.lows.get(c["meta"]["shop"], {}).get(slug) or {}).get("low")),
@@ -2462,7 +2508,7 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v, extra=
         o = c["offers"].get("nso")
         if not o or c["unit"] is None:
             continue
-        eur = ctx.est(c, o["local"])
+        eur = ctx.oeur(c, o)
         if eur is None:
             continue
         rows.append({

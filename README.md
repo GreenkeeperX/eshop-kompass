@@ -316,6 +316,14 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   plus Gebühr). Sie zählen wie jedes Land, bis du sie entfernst. Mit Link liest der Abgleich den
   Preis seit 0.61 einmal am Tag selbst (bei Amazon das Hauptangebot der Produktseite); zeigt der
   Shop eine Prüfseite (Captcha), wird sie nicht umgangen, dann gilt dein eingetragener Preis.
+- Eigene Angebote für Titel (seit 0.62): In den Einzelheiten eines Titels trägst du unter „Eigene
+  Angebote“ einen Code außerhalb des eShops ein, etwa bei Amazon Japan (Land, Preis in
+  Landeswährung, Quelle, Link). Bezahlt wird er mit Kreditkarte zum Mittelkurs plus Gebühr,
+  eingelöst im Konto des Landes. Ist er günstiger als der eShop dort, tritt er an dessen Stelle:
+  Er zählt für Bestpreis, Urteil, Korb und Kaufplan wie jedes Angebot, trägt die Marke der Quelle
+  („Amazon“) und sein Preis verlinkt den Händler. Im Kaufplan läuft er nicht über Guthaben, also
+  ohne Karten und Rest; die Kosten nennen ihn eigens. Die Sprachregel gilt wie für den eShop des
+  Landes. Mit Link liest der Abgleich den Preis einmal am Tag wie bei der Mitgliedschaft.
 
 Die Ansicht (Reiter, Liste oder Tabelle, Filter, aufgeklappte Kästen) merkt
 sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.

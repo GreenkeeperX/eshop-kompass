@@ -327,6 +327,36 @@ def sample():
     return data, settings
 
 
+class OwnOfferTest(unittest.TestCase):
+    """Eigene Angebote für Titel (ab 0.62), etwa Codes bei Amazon Japan."""
+    def test_own_offer_replaces_dearer_eshop_and_pays_by_card(self):
+        data, settings = sample()
+        raw = [{"slug": "spiritfarer", "code": "BR", "price": 30, "src": "Amazon", "url": "https://www.amazon.example/dp/1"},
+               {"slug": "hades", "code": "BR", "price": 90, "src": "Amazon"},          # teurer als der eShop
+               {"slug": "Kein Slug!", "code": "BR", "price": 5}]
+        settings["own_offers"] = [x for x in (store._own_offer(e, settings["countries"]) for e in raw) if x]
+        self.assertEqual(len(settings["own_offers"]), 2)
+        ctx = planner.Context(data, settings, NOW)
+        unit = 1 / 100 / 5.6086 * (1 + settings["card_fee_pct"] / 100)
+        o = ctx.countries["BR"]["offers"]["spiritfarer"]
+        self.assertAlmostEqual(o["direct"], 3000 * unit)
+        self.assertEqual(o["own"]["src"], "Amazon")
+        self.assertIsNone(ctx.countries["BR"]["offers"]["hades"].get("direct"))
+        # Im Korb: Guthaben nur für den eShop-Titel, der Code kommt obendrauf
+        both = {p["code"]: p for p in planner.plans(data, settings, basket=["hades", "spiritfarer"], now=NOW)}["BR"]
+        alone = {p["code"]: p for p in planner.plans(data, settings, basket=["hades"], now=NOW)}["BR"]
+        self.assertAlmostEqual(both["total"], alone["total"])
+        self.assertAlmostEqual(both["cost"], round(alone["cost"] + 3000 * unit, 2), places=2)
+        self.assertEqual(both["direct_n"], 1)
+        sf = next(i for i in both["items"] if i["slug"] == "spiritfarer")
+        self.assertAlmostEqual(sf["eur"], round(3000 * unit, 2))
+        self.assertEqual(sf["own"]["src"], "Amazon")
+        # Der gelesene Preis gilt vor dem eingetragenen
+        data["offer_prices"] = {"https://www.amazon.example/dp/1": {"price": 20.0, "currency": "BRL", "ok": NOW.timestamp(), "checked": NOW.timestamp()}}
+        ctx = planner.Context(data, settings, NOW)
+        self.assertAlmostEqual(ctx.countries["BR"]["offers"]["spiritfarer"]["direct"], 2000 * unit)
+
+
 class PlanTest(unittest.TestCase):
     def setUp(self):
         self.data, self.settings = sample()

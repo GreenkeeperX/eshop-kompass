@@ -135,6 +135,12 @@ Zellrand (`td.needr`); ungeprüft ein gestricheltes graues „DLC?“ (`.dlc.ope
 Überall gleich: Kaufplan, Länder, Korb, Titelliste, Titel-Tabelle, Sammlung („14,12 € in Japan DLC?“).
 Auswahlfelder hängen „(DLC)“ an den Titel.
 
+Eigene Angebote für Titel (ab 0.62): Stammt ein Preis aus einem eigenen Angebot, steht die Quelle
+als kleines graues Kästchen daneben (`.dlc.ownm`, etwa „Amazon“), überall wo Preise stehen; der
+Preis verlinkt den Händler, der Tooltip nennt Code-Preis, Kreditkarte, Kurs und den eShop-Preis.
+Eintragen und Entfernen in den Einzelheiten des Titels, Zeile „Eigene Angebote“: grün „zählt“,
+grau „zählt nicht: der eShop ist dort günstiger“.
+
 Werkzeugzeile, Reihenfolge in jedem Reiter: Suche, Sortierung, Filter; rechts die Ansicht oder eine
 Aktion (Korb leeren). Auswahlfelder „Wishlist-Titel dazunehmen“ gruppieren nach Urteil, darin A–Z.
 Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen“, Zahl von Nintendo grün, andere Quellen
