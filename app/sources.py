@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.60.0"
+VERSION = "0.61.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -826,6 +826,61 @@ def parse_ld_price(page_html):
     # Mehrere Währungen: die häufigste nehmen, darin den kleinsten Preis
     cur = max({c for _, c in found}, key=lambda c: sum(1 for _, x in found if x == c))
     return min(p for p, c in found if c == cur), cur
+
+
+# Amazon (ab 0.61): Die Produktseite nennt den Preis des Hauptangebots als Daten der
+# Kaufoptionen ("priceAmount") und sichtbar als a-price-whole im Kasten corePrice. Andere
+# Beträge auf der Seite (Referenzpreis, Zubehör, Werbung) zählen nicht.
+_AMZ_AMOUNT_RE = re.compile(r'"desktop_buybox_group_1"\s*:\s*\[\s*\{[^\]]{0,3000}?"priceAmount"\s*:\s*([\d.]+)')
+_AMZ_CORE_RE = re.compile(r'id="(?:corePrice(?:Display)?_(?:desktop_)?feature_div|apex_desktop)"(.{0,6000})', re.S)
+_AMZ_WHOLE_RE = re.compile(r'class="a-price-whole">\s*([\d.,]+)')
+_AMZ_OFF_RE = re.compile(r'class="a-offscreen">\s*[￥¥]\s*([\d,]+)')
+
+
+def is_amazon(url):
+    return bool(re.match(r"https?://(?:www\.)?amazon\.[a-z.]+/", url or "", re.I))
+
+
+def amazon_captcha(page_html):
+    """Prüfseite statt Produktseite. Das Wort „robot“ allein genügt nicht: Es steht auch
+    auf normalen Produktseiten (bis 0.60 ein Fehlalarm)."""
+    t = page_html or ""
+    return "validateCaptcha" in t or ("captcha" in t.lower() and len(t) < 30000)
+
+
+def _yen(text):
+    try:
+        v = float(text.replace(",", ""))
+    except ValueError:
+        return None
+    return v if 0 < v < 1_000_000 else None
+
+
+def parse_amazon_price(page_html):
+    """(Preis, Währung, Fundstelle) des Hauptangebots einer Produktseite von Amazon Japan,
+    sonst None."""
+    t = page_html or ""
+    m = _AMZ_AMOUNT_RE.search(t.replace("&quot;", '"'))
+    if m and _yen(m.group(1)):
+        return _yen(m.group(1)), "JPY", "Kaufoptionen"
+    core = _AMZ_CORE_RE.search(t)
+    if core:
+        for rx, where in ((_AMZ_OFF_RE, "Preiskasten"), (_AMZ_WHOLE_RE, "Preiskasten")):
+            m = rx.search(core.group(1))
+            if m and _yen(m.group(1)):
+                return _yen(m.group(1)), "JPY", where
+    return None
+
+
+def parse_shop_price(url, page_html):
+    """Preis einer Shopseite: Produktdaten (schema.org), bei Amazon das Hauptangebot.
+    (Preis, Währung) oder None."""
+    if is_amazon(url):
+        if amazon_captcha(page_html):
+            return None
+        found = parse_amazon_price(page_html)
+        return found[:2] if found else None
+    return parse_ld_price(page_html)
 
 
 def fetch_card_price(url, fetch=fetch):

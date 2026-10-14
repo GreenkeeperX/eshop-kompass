@@ -26,7 +26,8 @@ Ohne Docker: `python3 -m app.server` (Python 3.10+, keine Zusatzpakete).
 
 ## Ansichten
 
-Fünf Reiter: Jetzt, Titel, Sammlung, Länder, Einstellungen. Das "?" oben rechts öffnet
+Sechs Reiter: Jetzt, Titel, Korb, Länder, Sammlung, Einstellungen (seit 0.61 in dieser
+Reihenfolge: erst was ansteht, dann Wishlist, Korb und Länder zum Einkaufen, dann was du hast). Das "?" oben rechts öffnet
 die Legende mit allen Farben, Marken und Begriffen. Die Farben haben je eine
 Bedeutung: Grün fürs Urteil und für Positives (Ersparnis, vollständig), Gold
 (★, Umrandung) nur für den Bestpreis,
@@ -94,7 +95,8 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Unter dem Kaufplan, zugeklappt: Online-Mitgliedschaft in sechs Varianten: 1 Monat, 3 Monate,
   12 Monate, Erweiterungspaket, Familie und Erweiterungspaket Familie (die beiden Familien nur zum
   Vergleich, kaufen kann die Verwalterin oder der Verwalter der Gruppe). Oben je Variante das beste Land, darunter
-  die Länder der gewählten Variante; deine Variante stellst du im Kasten ein. Je aktivem
+  die Länder deiner Variante; ein Klick auf eine andere Variante macht sie zu deiner (seit 0.61
+  eine einzige Auswahl, sie gilt für Kopfzeile, Erinnerung und Länderliste). Je aktivem
   Land der Einkaufspreis mit deinem Zahlweg wie bei Spielen, je Monat, der Shop-Preis,
   Angebote und ob das Land dein Konto ist oder im Kaufplan steht. Das Ablaufdatum trägst du
   dort ein; 30 Tage vorher klappt der Kasten auf. Die eShop-IDs der Mitgliedschaft je Land
@@ -297,14 +299,23 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Kaufplan kauft in mehreren Ländern nacheinander und ist deshalb kein Korb). Die Länderkarten
   behalten ihre eigenen Körbe; "Korb leeren" löst nur den gemeinsamen auf. Seit 0.60 wie die
   Titel-Tabelle: Spalte Bestpreis, Preise grün nach Urteil, rot nur der Abstand zum Bestpreis,
-  Klick auf einen Spaltenkopf sortiert nach dem Preis dort.
-- DLC aus Japan oder Amerika braucht in der Regel das Hauptspiel aus derselben Region. Seit 0.60
-  ist das überall gleich markiert (violettes „DLC“ am Land, in der Tabelle ein violetter Strich
-  am linken Zellrand): Kaufplan, Länder, Korb, Titelliste, Titel-Tabelle und Sammlung.
+  Klick auf einen Spaltenkopf sortiert nach dem Preis dort. Seit 0.61 fensterhoch mit fester
+  Kopfzeile wie die Titel-Tabelle, eine Zeile je Zelle (Preis, Rabatt, Abstand zum Bestpreis;
+  Landeswährung, Zahlweg und Angebotsende im Tooltip). Der Preis öffnet den eShop, bei DLC den
+  Verlauf bei DekuDeals, weil es für DLC keinen festen eShop-Link gibt. Sortieren lässt jede
+  Tabelle dort stehen, wohin du gescrollt hast.
+- DLC aus Japan oder Amerika: Ob er zu deinem Spiel aus Europa passt, hängt an der Programm-ID,
+  nicht am Shop. Die meisten Spiele haben weltweit eine, dann passt auch der DLC aus Japan. Seit
+  0.61 vergleicht der Abgleich die Programm-IDs des DLC in titledb (Europa gegen Japan und
+  Amerika). Nur bei einer eigenen Fassung in der Region steht das violette „DLC“ hinter dem Land
+  (in der Tabelle ein violetter Strich am linken Zellrand); ungeprüft steht ein gestricheltes
+  „DLC?“. Das gilt überall: Kaufplan, Länder, Korb, Titelliste, Titel-Tabelle und Sammlung. Am
+  Rechnen ändert die Marke nichts.
 - Mitgliedschaft: Angebote außerhalb des eShops, etwa Codes bei Amazon Japan, trägst du im Kasten
   unter „Weiteres Angebot eintragen“ ein (Preis in Landeswährung, bezahlt mit Kreditkarte zum Kurs
-  plus Gebühr). Sie zählen wie jedes Land, bis du sie entfernst; der Verbindungstest prüft, ob
-  sich ihr Link lesen ließe.
+  plus Gebühr). Sie zählen wie jedes Land, bis du sie entfernst. Mit Link liest der Abgleich den
+  Preis seit 0.61 einmal am Tag selbst (bei Amazon das Hauptangebot der Produktseite); zeigt der
+  Shop eine Prüfseite (Captcha), wird sie nicht umgangen, dann gilt dein eingetragener Preis.
 
 Die Ansicht (Reiter, Liste oder Tabelle, Filter, aufgeklappte Kästen) merkt
 sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.

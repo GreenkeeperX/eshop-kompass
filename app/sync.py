@@ -559,6 +559,56 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
          + ("; Rest nach Sperre nicht gelesen" if got + len(failed) < len(todo) else ""))
 
 
+OFFERS_PER_SYNC = 10      # eigene Angebote mit Link, höchstens so viele Seiten je Abgleich
+
+
+def sync_offer_prices(data, settings, fetch, sleep, now=None):
+    """Eigene Angebote mit Link, etwa Codes bei Amazon Japan (ab 0.61): Preis höchstens einmal
+    am Tag je Link von der Shopseite lesen. Eine Prüfseite (Captcha) oder Sperre beendet den
+    Schritt, sie wird nicht umgangen; dann gilt der eingetragene Preis."""
+    now = now or time.time()
+    known = data.setdefault("offer_prices", {})
+    urls = list(dict.fromkeys(x["url"] for x in settings.get("nso_extra") or [] if x.get("url")))
+    for url in list(known):
+        if url not in urls:
+            del known[url]
+    if not urls:
+        return
+    todo = sorted((u for u in urls if now - (known.get(u) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS),
+                  key=lambda u: (known.get(u) or {}).get("checked", 0))[:OFFERS_PER_SYNC]
+    if not todo:
+        _log(f"Eigene Angebote: alle {len(urls)} Links aktuell")
+        return
+    _step("Eigene Angebote lesen", len(todo))
+    got, failed, stop = 0, [], None
+    for url in todo:
+        try:
+            page = fetch(url)
+        except sources.FetchError as e:
+            if e.status in sources.BLOCKED:
+                stop = f"Shop lehnt Abrufe ab (HTTP {e.status})"
+                break
+            known[url] = _card_miss(known.get(url), now, f"HTTP {e.status or 'Fehler'}")
+            failed.append(f"HTTP {e.status or 'Fehler'}")
+        else:
+            if sources.is_amazon(url) and sources.amazon_captcha(page):
+                known[url] = _card_miss(known.get(url), now, "Prüfseite (Captcha)")
+                stop = "Amazon zeigt eine Prüfseite (Captcha)"
+                break
+            found = sources.parse_shop_price(url, page)
+            if found:
+                known[url] = {"checked": now, "ok": now, "price": found[0], "currency": found[1]}
+                got += 1
+            else:
+                known[url] = _card_miss(known.get(url), now, "Seite nennt keinen Preis")
+                failed.append("kein Preis")
+        status["done"] += 1
+        sleep(CARD_PAUSE)
+    _log(f"Eigene Angebote: {got} von {len(todo)} Preisen gelesen"
+         + (f", {len(failed)} ohne Preis ({', '.join(sorted(set(failed)))})" if failed else "")
+         + (f"; {stop}, Rest nicht gelesen, es gilt der eingetragene Preis" if stop else ""))
+
+
 def record_card_factors(data, settings, now=None):
     """Verlauf der Faktoren je Karten-Link, einer je Tag (der niedrigste), für die
     Bewertung in reinen Guthabenländern. Älteres als CARD_HIST_DAYS fällt weg (0.53)."""
@@ -855,11 +905,26 @@ def sync_titledb(data, settings, fetch, now=None):
                     and (tried is None or now - tried >= TITLEDB_SECONDS):
                 dlc.setdefault(str(eu), []).append((e, fam))
                 dlc_new = dlc_new or tried is None
+    # DLC mit Japan- oder Amerika-ID: Passt es zum Spiel aus Europa? Ja, wenn titledb in beiden
+    # Regionen dieselbe Programm-ID nennt; meist ist das so. Eine eigene Fassung je Region hat eine
+    # andere, dann braucht der DLC das Spiel aus dieser Region (ab 0.61, app_same {Region: [ID, gleich]})
+    same, same_new = [], False
+    recs = list((data.get("extra") or {}).values()) + [it for it in data["items"].values() if it.get("parent")]
+    for rec in recs:
+        eu = ((rec.get("ids") or {}).get("EU") or [None])[0]
+        for fam in TDB_DLC_REGIONS:
+            n = ((rec.get("ids") or {}).get(fam) or [None])[0]
+            chk = (rec.get("app_chk") or {}).get(fam)
+            known = (rec.get("app_same") or {}).get(fam)
+            if eu and n and fam in fams and not (isinstance(known, list) and known[0] == str(n)) \
+                    and (chk is None or now - chk >= TITLEDB_SECONDS):
+                same.append((rec, fam, str(eu), str(n)))
+                same_new = same_new or chk is None
     # Neue IDs, die titledb noch nie gesehen hat: gleich, sonst wöchentlich
-    fresh = dlc_new or any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
+    fresh = same_new or dlc_new or any("tdb_checked" not in r for n in todo for r in todo[n]) or any(
         (r.get("ids_tdb") or {}).get("JP") is None for r, _ in verify.values())
     wait = TITLEDB_FRESH_SECONDS if fresh else TITLEDB_SECONDS
-    if not (todo or verify or dlc):
+    if not (todo or verify or dlc or same):
         _log("titledb: nichts fällig")
         return
     if now - data.get("titledb_fail_at", 0) < TITLEDB_FAIL_WAIT:
@@ -868,7 +933,7 @@ def sync_titledb(data, settings, fetch, now=None):
              + datetime.fromtimestamp(data["titledb_fail_at"] + TITLEDB_FAIL_WAIT).strftime("%d.%m., %H:%M"))
         return
     if now - data.get("titledb_at", 0) < wait:
-        if dlc_new:
+        if dlc_new or same_new:
             # Sonst verschwindet der Schritt still, und die zurückgestellten DLC wirken vergessen
             _log("IDs fehlender DLC aus titledb: zuletzt um "
                  + datetime.fromtimestamp(data["titledb_at"]).strftime("%H:%M")
@@ -878,21 +943,23 @@ def sync_titledb(data, settings, fetch, now=None):
             _log("titledb: zuletzt am " + datetime.fromtimestamp(data["titledb_at"]).strftime("%d.%m.")
                  + " geladen, wieder ab " + datetime.fromtimestamp(data["titledb_at"] + wait).strftime("%d.%m."))
         return
-    _step("Sprachen Japan aus titledb" if todo or verify else "IDs fehlender DLC aus titledb")
+    _step("Sprachen Japan aus titledb" if todo or verify else "IDs fehlender DLC aus titledb" if dlc else "DLC-Fassungen aus titledb")
     need = {fam for recs in dlc.values() for _, fam in recs}
+    own = {fam: {n for _, f, _, n in same if f == fam} for fam in TDB_DLC_REGIONS}
     try:
-        eus = {eu for _, eu in verify.values()} | set(dlc)
+        eus = {eu for _, eu in verify.values()} | set(dlc) | {eu for _, _, eu, _ in same}
         europe = sources.fetch_titledb(sorted(eus), fetch=fetch, region="DE.de") if eus else {}
         app_of = {eu: (europe.get(eu) or {}).get("app") for eu in dlc}
         apps = {e["app"] for e in europe.values() if e.get("app")}
         # Japan: Sprachen, Programm-IDs der eigenen IDs und die Japan-ID zu jeder
         # Programm-ID aus Europa (Kandidat, falls die eigene nicht passt, und DLC-IDs)
-        found, by_app = sources.fetch_titledb(list(set(todo) | set(verify)), fetch=fetch, apps=apps) \
-            if todo or verify or "JP" in need else ({}, {})
-        by_region = {"JP": by_app}
-        if "AM" in need:
-            by_region["AM"] = sources.fetch_titledb([], fetch=fetch, region=TDB_DLC_REGIONS["AM"],
-                                                    apps={a for a in app_of.values() if a})[1]
+        found, by_app = sources.fetch_titledb(list(set(todo) | set(verify) | own["JP"]), fetch=fetch, apps=apps) \
+            if todo or verify or "JP" in need or own["JP"] else ({}, {})
+        by_region, found_in = {"JP": by_app}, {"JP": found, "AM": {}}
+        if "AM" in need or own["AM"]:
+            found_in["AM"], by_region["AM"] = sources.fetch_titledb(
+                sorted(own["AM"]), fetch=fetch, region=TDB_DLC_REGIONS["AM"],
+                apps={a for a in app_of.values() if a})
     except Exception as e:
         _log(f"titledb nicht abrufbar ({e})")
         data["titledb_fail_at"] = now
@@ -907,11 +974,27 @@ def sync_titledb(data, settings, fetch, now=None):
             if n:
                 e["ids"][fam] = [str(n)]
                 e.setdefault("ids_checked", {})[fam] = now
+                e.setdefault("app_same", {})[fam] = [str(n), True]     # über die Programm-ID gefunden
                 hits[fam][0] += 1
     if dlc:
         _log("IDs fehlender DLC aus titledb: " + ", ".join(
             f"{countries.FAMILIES[f]} {h[0]} von {h[1]}" for f, h in sorted(hits.items()))
             + "; der Rest über DekuDeals")
+    if same:
+        diff, unknown = [], 0
+        for rec, fam, eu, n in same:
+            a, b = (europe.get(eu) or {}).get("app"), (found_in.get(fam).get(n) or {}).get("app")
+            rec.setdefault("app_chk", {})[fam] = now
+            if a and b:
+                rec.setdefault("app_same", {})[fam] = [n, a == b]     # gilt nur für diese ID
+                if a != b:
+                    diff.append(f"{rec.get('title') or eu} ({countries.FAMILIES[fam]})")
+            else:
+                unknown += 1
+        _log(f"DLC-Fassungen: {len(same) - unknown} von {len(same)} geprüft, "
+             + (f"eigene Fassung je Region bei {len(diff)}: {', '.join(diff[:8])}{' …' if len(diff) > 8 else ''}"
+                if diff else "alle passen zum Spiel aus Europa")
+             + (f"; {unknown} kennt titledb nicht, wieder in einer Woche" if unknown else ""))
     got = 0
     for nsuid, recs in todo.items():
         langs = (found.get(nsuid) or {}).get("langs")
@@ -1079,7 +1162,16 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
         wait_until = (data.get("lang_wait") or {}).get(fam, 0)
         if todo and now < wait_until:
             if report_idle:
-                _log(f"Sprachen {name}: {len(todo)} offen, der Store zeigte zuletzt den Warteraum; nächster Versuch ab "
+                # Aufgeschlüsselt (0.61): Die Sprachprüfung zeigt nur Wishlist-Titel ohne Angabe; hier zählen
+                # auch Spiele der Sammlung (für fehlende DLC) und Angaben aus titledb, die der Store bestätigen soll
+                mine = {id(x) for x in items.values()}
+                tdb = sum(1 for r, _ in todo if (r.get("langs") or {}).get(fam))
+                wish = sum(1 for r, _ in todo if id(r) in mine)
+                bare = sum(1 for r, _ in todo if id(r) in mine and not (r.get("langs") or {}).get(fam))
+                parts = [f"{wish} Wishlist-Titel, {bare} davon ohne Angabe" if wish else "",
+                         f"{len(todo) - wish} Spiele der Sammlung (Sprache für fehlende DLC)" if len(todo) > wish else "",
+                         f"davon {tdb} schon aus titledb, nur zur Bestätigung" if tdb else ""]
+                _log(f"Sprachen {name}: {len(todo)} Seiten offen ({', '.join(x for x in parts if x)}), der Store zeigte zuletzt den Warteraum; nächster Versuch ab "
                      f"{datetime.fromtimestamp(wait_until).strftime('%d.%m.')}, bis dahin titledb und Browser-Helfer")
             continue
         # Schonend: ungeprüfte zuerst, höchstens LANG_PER_SYNC Seiten, der Rest beim nächsten Abgleich
@@ -1621,6 +1713,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_prices(data, settings, fetch, sleep, history)
         store.save_history(history)
         sync_card_prices(data, settings, fetch, sleep)
+        sync_offer_prices(data, settings, fetch, sleep)
         record_card_factors(data, settings)
         self_check(data, settings)
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -1783,11 +1876,16 @@ def diagnose(sleep=time.sleep):
     # Angebote der Mitgliedschaft von Hand (ab 0.60): Ließe sich der Preis lesen? Je Link ein Abruf
     # mit ehrlicher Kennung; eine Prüfseite (Captcha) wird nur gemeldet, nicht umgangen.
     for x in [x for x in settings.get("nso_extra") or [] if x.get("url")][:3]:
-        def shop_info(t):
-            yen = sorted(set(re.findall(r"[￥¥]\s?([\d,]{3,7})", t)))[:6]
-            blocked = "captcha" in t.lower() or "robot" in t.lower()
-            return (f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Yen-Beträge {yen or 'keine'}"
-                    f"{', Prüfseite (Captcha), nicht lesbar' if blocked else ''}, eingetragen {x['price']}")
+        def shop_info(t, x=x):
+            if sources.is_amazon(x["url"]) and sources.amazon_captcha(t):
+                return f"{len(t)} Zeichen, Prüfseite (Captcha), nicht lesbar, eingetragen {x['price']}"
+            amz = sources.parse_amazon_price(t) if sources.is_amazon(x["url"]) else None
+            found = sources.parse_shop_price(x["url"], t)
+            yen = sorted(set(re.findall(r'a-price-whole">\s*([\d,]+)', t)))[:8]
+            return (f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, "
+                    f"gelesen {found[0]:g} {found[1]}{f' ({amz[2]})' if amz else ''}" if found else
+                    f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, kein Preis erkannt") + \
+                f", Beträge auf der Seite {yen or 'keine'}, eingetragen {x['price']}"
         probe(f"Mitgliedschaft {x['src']} ({x['code']}, {x['key']})", x["url"], None, shop_info)
         sleep(2)
     return lines

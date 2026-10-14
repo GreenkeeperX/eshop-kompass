@@ -24,10 +24,11 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 ## Online-Mitgliedschaft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
-Ablauf offen und eine Zeile unter „Zu erledigen“). Deine Variante wählst du in der Spalte „deine“
-der Variantentabelle (ab 0.60, kein eigenes Auswahlfeld mehr). Angebote von Hand (etwa Amazon-Codes)
-stehen als eigene Zeile mit Chip „Amazon-Code“ und × zum Entfernen. Die Kopfzeile nennt deine Variante (Auswahl im
-Kasten). Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“); in der
+Ablauf offen und eine Zeile unter „Zu erledigen“). Eine einzige Auswahl (ab 0.61): Die
+markierte Variante (fett, Chip „deine“, Zeile hinterlegt) ist deine; ein Klick auf eine andere macht
+sie zu deiner und zeigt ihre Länder. Angebote von Hand (etwa Amazon-Codes) stehen als eigene Zeile
+mit Chip „Amazon-Code“, grau „gelesen TT.MM.“, „eingetragen, wird gelesen“ oder violett „eingetragen,
+Link nicht lesbar“ und einem kleinen × zum Entfernen. Die Kopfzeile nennt deine Variante. Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“); in der
 Variantentabelle ist nur der Name der Link, die Klammer steht grau daneben. Tabellenköpfe mit
 Klasse `l` stehen linksbündig über ihrer Spalte. Beide Tabellen
 sind sortierbar wie alle anderen; die Ländertabelle hat die Wechselstufe als eigene Spalte nach
@@ -52,7 +53,7 @@ nicht. Die Bewegung dauert 0,8 s, sanft an- und auslaufend, bei „Bewegung redu
 Tabellenköpfe und die Sprungleiste halten über `--stick` Abstand und gleiten im selben Takt mit.
 Kein `will-change` an der Leiste, sonst zeichnen Browser den Text dünner.
 
-Titel-Tabelle (ab 0.56.3, breiter als 700 px): Die Seite ist genau fensterhoch (`body.fit`), es
+Titel-Tabelle (ab 0.56.3) und Korb (ab 0.61), breiter als 700 px, Klasse `.fitbox`: Die Seite ist genau fensterhoch (`body.fit`), es
 scrollt nur die Tabelle. Ihr Scrollen steuert die Leiste. Ausgeblendet klappt die Leiste weg
 (negativer Rand statt Verschieben), und die Tabelle wächst im selben Takt um ihre Höhe. So bleibt
 kein leerer Streifen, und die zurückkehrende Leiste verdeckt nie die Filterzeile. Die zweite
@@ -123,19 +124,27 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 
 ## Flächen
 
-Reiter: Jetzt, Titel, Sammlung, Länder, Korb, Einstellungen; am Reiter Korb steht grau die Zahl
+Reiter (ab 0.61): Jetzt, Titel, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
+Einkaufen, dann was du hast. Am Reiter Korb steht grau die Zahl
 seiner Titel (ab 0.59). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
 der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste).
 
-DLC, das das Hauptspiel aus einer Region außerhalb Europas braucht: überall dasselbe violette
-„DLC“-Kästchen am Land (Kaufplan, Länder, Korb, Titelliste, Sammlung), in der Titel-Tabelle ein
-violetter Strich am linken Zellrand (`td.needr`) mit Tooltip (ab 0.60).
+DLC außerhalb Europas (ab 0.61 nach Programm-ID): Hat er dort eine eigene Fassung, steht hinter
+dem Land das violette „DLC“-Kästchen (`.dlc.need`), in den Tabellen ein violetter Strich am linken
+Zellrand (`td.needr`); ungeprüft ein gestricheltes graues „DLC?“ (`.dlc.open`); passt er, nichts.
+Überall gleich: Kaufplan, Länder, Korb, Titelliste, Titel-Tabelle, Sammlung („14,12 € in Japan DLC?“).
+Auswahlfelder hängen „(DLC)“ an den Titel.
 
 Werkzeugzeile, Reihenfolge in jedem Reiter: Suche, Sortierung, Filter; rechts die Ansicht oder eine
 Aktion (Korb leeren). Auswahlfelder „Wishlist-Titel dazunehmen“ gruppieren nach Urteil, darin A–Z.
 Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen“, Zahl von Nintendo grün, andere Quellen
 (titledb, von dir) violett. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
-Korb-Tabelle: Spalte Bestpreis, Spaltenköpfe sortieren, Preis grün nach Urteil, rot nur „+x €“.
+Korb-Tabelle: Spalte Bestpreis, Spaltenköpfe sortieren, Kopfzeile bleibt stehen. Eine Zeile je
+Zelle wie in der Titel-Tabelle: Preis, blauer Rabatt, kleines rotes „+x“ über dem Bestpreis; Zelle
+dunkel-/hellgrün nach Urteil, gold umrandet am Bestpreis. Landeswährung, Zahlweg und Ende im Tooltip.
+Der Preis öffnet den eShop, bei DLC den Verlauf bei DekuDeals (kein fester eShop-Link für DLC).
+Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Menü Hell/Dunkel liegt
+über der Sprungleiste der Einstellungen (Kopfleiste `z-index` 7).
 
 Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel hinzufügen“ stehen in einer Zeile, die
 „Rechnung“ darunter in eigener Zeile; Aufklappen schiebt so nichts zur Seite (ab 0.58).

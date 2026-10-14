@@ -2,7 +2,7 @@
 
 Verbindliche Übersicht, was das Tool woher holt, wann, wie oft und wohin es das Ergebnis
 legt. Wer einen Abruf, eine Grenze oder eine Ablage ändert, passt diese Datei im selben
-Commit an. Stand: 0.60.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
+Commit an. Stand: 0.61.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
 
 ## Grundregeln
 
@@ -44,13 +44,14 @@ Die Nummern entsprechen der Reihenfolge in `run_sync`.
 | 4 | Wechselkurse | open.er-api, Ersatz frankfurter (EZB) | nur, wenn der Stand der Quelle älter als 24 h ist (`FX_SOURCE_DAY`) und der letzte eigene Abruf über 20 h (`FX_RECHECK`) zurückliegt | `data.fx` {rates, updated, fetched, src}; fehlende Währungen behalten den alten Kurs | `Wechselkurse vom …, (Quelle)` |
 | 5 | Preise | Nintendo-Preisschnittstelle, 50 IDs je Anfrage | jeder Abgleich, alle Länder (auch abgeschaltete, fürs Preisniveau); abgeschaltete ohne Antwort ruhen 7 Tage | `data.prices`, `data.xprices`, `data.nso_prices` (Mitgliedschaft je Variante, nur aktive Länder) überschrieben; Änderungen in `history.json` | `XX: n von m Titeln kaufbar` je aktivem Land |
 | 6 | Guthabenkartenpreise | Shop-Links aus den Einstellungen (JSON-LD) | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), Plan-Länder zuerst, 3 s Pause | `data.card_prices`; gelesener Preis gilt bis 14 Tage; Faktor-Verlauf `card_hist` 90 Tage | `Kartenpreise: g von n gelesen, k weitere aktuell; ohne Preis: …` / `alle n aktuell` |
+| 6a | Eigene Angebote mit Link (ab 0.61), etwa Codes der Mitgliedschaft bei Amazon Japan | Shop-Link aus den Einstellungen (`settings.nso_extra`); JSON-LD, bei Amazon das Hauptangebot der Produktseite (`sources.parse_shop_price`) | je Link höchstens alle 20 h (`CARD_RECHECK_SECONDS`), höchstens 10 Links je Abgleich (`OFFERS_PER_SYNC`), 3 s Pause; Sperre (403/429) oder Prüfseite (Captcha) beendet den Schritt, nichts wird umgangen | `data.offer_prices` {Link: price, currency, ok, checked, error}; gelesener Preis gilt bis 14 Tage, sonst der eingetragene; Links, die nicht mehr eingetragen sind, fallen weg | `Eigene Angebote: g von n Preisen gelesen …` / `alle n Links aktuell` |
 | 7 | Sprachen Europa | Nintendo-Europa-Suche, 40 IDs je Anfrage | ohne Angabe: 3 Versuche im Tagesabstand, dann monatlich | `.langs.EU` | `Sprachen Europa: x von n` / `nichts fällig` |
 | 7 | Sprachen Amerika | nintendo.com-Titelseite | höchstens 40 Seiten je Abgleich, 3 Versuche, dann monatlich | `.langs.AM` | `Sprachen Amerika: …` / `nichts fällig` |
 | 7 | Sprachen Japan | store-jp-Titelseite | wie Amerika; nach einem Warteraum 7 Tage Ruhe (`JP_WAIT_SECONDS`) | `.langs.JP`, `data.lang_wait` | `Sprachen Japan: …`, Warteraum mit nächstem Versuch |
 | 8 | Tiefstpreise, Angebotsverläufe | DekuDeals-Artikelseite je aktivem Land | nur Titel im Angebot; Seiten ohne Tiefstpreis monatlich; Wishlist höchstens 60 (`LOWS_PER_SYNC`), Verläufe höchstens 40 (`SALES_PER_SYNC`), fehlende DLC 30 (`EXTRA_LOWS_PER_SYNC`); 2,5 s Pause | `data.lows` | `Tiefstpreise: … ; Wishlist x von n Titeln mit Tiefstpreis, k mit Angebotsverlauf` |
 | 9 | DLC, Pakete, Inhalte | DekuDeals-Artikelseite | höchstens 40 Seiten (`REL_PER_SYNC`), monatlich erneut, Paketverbindungen fehlender DLC alle 90 Tage | `data.rel`, `data.links`, `data.lchk` | `DLC und Pakete: …` / `nichts fällig` |
 | 10 | IDs fehlender DLC | DekuDeals-Artikelseite | höchstens 40 Seiten (`EXTRA_PER_SYNC`), 14 oder 90 Tage | `data.extra`, `data.glangs` | `Fehlende DLC der Sammlung: …` |
-| 11 | Sprachen und IDs Japan/Amerika | titledb (GitHub, Dateien zu rund 25 MB, gestreamt) | nur bei Bedarf, höchstens wöchentlich, bei neuen IDs nach 1 h; nach Fehlschlag 1 Tag Ruhe (`TITLEDB_FAIL_WAIT`) | nur Treffer | `titledb: …` |
+| 11 | Sprachen und IDs Japan/Amerika; ab 0.61 auch die Fassung der DLC (Programm-ID in Europa gleich der in Japan bzw. Amerika?) | titledb (GitHub, Dateien zu rund 25 MB, gestreamt) | nur bei Bedarf, höchstens wöchentlich, bei neuen IDs nach 1 h; nach Fehlschlag 1 Tag Ruhe (`TITLEDB_FAIL_WAIT`) | nur Treffer; Fassung je DLC und Region in `app_same` {Region: [ID, gleich]}, geprüft am `app_chk` | `titledb: …`, `DLC-Fassungen: g von n geprüft, …` |
 | 7b | Sprachen neu gefundener DLC | wie 7 | teilt die Seitengrenze mit 7 | wie 7 | nur bei Arbeit |
 
 Dazu kommt `self_check` ohne Abruf: Er prüft die Ergebnisse auf Glaubhaftigkeit und
@@ -80,14 +81,14 @@ Je eine Probe, nichts wird gespeichert:
 - Wechselkurse und ihre Ersatzquelle
 - titledb, nur Kopfdaten (Größe, Stand), ohne die Datei zu laden
 - Online-Mitgliedschaft: Nintendos Mitgliedschaftsseite für JP, DE und US (je eine Seite: erkannte Varianten mit ihrer eShop-ID, dazu eine Preisabfrage für diese IDs), DekuDeals für DE, BR, JP und US (mit allen dort genannten Ländern und verlinkten Varianten), damit die Nintendo-Preise der dort genannten eShop-IDs
-- Angebote der Mitgliedschaft von Hand (ab 0.60): je Link höchstens drei Abrufe im Verbindungstest, nur Titel und Yen-Beträge; eine Prüfseite (Captcha) wird gemeldet, nicht umgangen. Im Abgleich nie.
+- Angebote der Mitgliedschaft von Hand (ab 0.60): höchstens drei Links im Verbindungstest, je einer ein Abruf: gelesener Preis mit Fundstelle, Beträge auf der Seite, eingetragener Preis; eine Prüfseite (Captcha) wird gemeldet, nicht umgangen. Seit 0.61 liest auch der Abgleich diese Links (Zeile 6a).
 
 ## Dateien
 
 | Datei | Inhalt | Lebensdauer |
 |---|---|---|
 | `settings.json` | nur Eingaben | dauerhaft |
-| `data.json` | Abgleichsdaten | `prices`, `fx`, `owned`, `card_prices`, `checks` werden überschrieben; `items`, `lows` und `rel` verlieren Titel nach 180 Tagen ohne Wishlist und Sammlung; `extra`, `glangs`, `links` und `card_hist` räumen sich selbst auf |
+| `data.json` | Abgleichsdaten | `prices`, `fx`, `owned`, `card_prices`, `offer_prices`, `checks` werden überschrieben; `items`, `lows` und `rel` verlieren Titel nach 180 Tagen ohne Wishlist und Sammlung; `extra`, `glangs`, `links` und `card_hist` räumen sich selbst auf |
 | `history.json` | eigene Preisaufzeichnung | wächst, wird nie gekürzt, weil sie unersetzlich ist |
 | `eshop_history.json` | Kaufverlauf | bis 3000 Einträge |
 | `purchases.json`, `ui.json` | Kaufprotokoll, Ansicht | dauerhaft |

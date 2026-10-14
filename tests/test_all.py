@@ -2523,10 +2523,19 @@ class ExtraDlcTest(unittest.TestCase):
             self.assertIn(("rl-b", "us"), got)                      # Rest über DekuDeals
             self.assertNotIn(("rl-b", "jp"), got)
             self.assertEqual(rlb["ids"]["AM"], ["70050000000002"])
-            # titledb einmal je DLC und Region: Der nächste Lauf holt nur noch die Sprache
-            # zur neuen Japan-ID, ohne Europa und Amerika
+            self.assertEqual(rlb["app_same"], {"JP": ["70050000000777", True]})   # über die Programm-ID gefunden
+            # titledb einmal je DLC und Region: Der nächste Lauf vergleicht nur noch die Programm-ID
+            # der neuen Amerika-ID (ab 0.61); Japan ist schon bestätigt
             sync.sync_titledb(data, settings, None, now=t0 + 2 * 3600)
-            self.assertEqual(regions[3:], ["JP.ja"])
+            self.assertEqual(regions[3:], ["DE.de", "JP.ja", "US.en"])
+            self.assertIn("AM", rlb["app_chk"])
+            self.assertNotIn("AM", rlb["app_same"])                   # titledb kennt sie nicht
+            self.assertTrue(any("DLC-Fassungen: 0 von 1 geprüft" in x for x in sync.status["log"]))
+            self.assertEqual(planner.dlc_fit(data), {"rl-b": {"JP": True}})
+            # In der Woche danach fragt titledb dafür nicht wieder
+            sync.sync_titledb(data, settings, None, now=t0 + 3 * 3600)
+            self.assertEqual(len(regions), 6)
+
         # Fällt titledb aus, sucht DekuDeals wieder alles selbst
         data = self.data()
         data["titledb_fail_at"] = t0
@@ -2534,6 +2543,27 @@ class ExtraDlcTest(unittest.TestCase):
         with mock.patch.object(sources, "fetch_item", item):
             sync.sync_extra_ids(data, settings, fetch=None, sleep=lambda s: None, now=t0 + 60)
         self.assertIn(("rl-b", "jp"), got)
+
+    def test_dlc_with_own_version_per_region(self):
+        # Ein DLC mit eigener Fassung in Japan: andere Programm-ID als in Europa, braucht das
+        # Spiel aus Japan; die Marke gilt nur für genau diese Japan-ID
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP")
+        data = self.data()
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["70050000000001"], "JP": ["70050000000900"]}}}
+
+        def titledb(ids, fetch=None, region="JP.ja", apps=None):
+            if region == "DE.de":
+                return {"70050000000001": {"app": "0100AAAA0000B001"}}
+            return {"70050000000900": {"app": "0100BBBB0000B001"}}, {}
+        with mock.patch.object(sources, "fetch_titledb", titledb):
+            sync.sync_titledb(data, settings, None, now=1736467200)
+        self.assertEqual(data["extra"]["rl-b"]["app_same"], {"JP": ["70050000000900", False]})
+        self.assertTrue(any("eigene Fassung je Region bei 1: Car B (Japan)" in x for x in sync.status["log"]))
+        self.assertEqual(planner.dlc_fit(data), {"rl-b": {"JP": False}})
+        data["extra"]["rl-b"]["ids"]["JP"] = ["70050000000901"]      # neue ID: wieder ungeprüft
+        self.assertEqual(planner.dlc_fit(data), {})
 
     def test_dlc_without_id_rechecked_by_titledb_weekly_dekudeals_rarely(self):
         # Kennen titledb und DekuDeals keine Japan-ID, gibt es den DLC dort meist nicht:
@@ -3370,6 +3400,52 @@ class MembershipExtraTest(unittest.TestCase):
         self.assertEqual(jp["extra"], 0)
         # Kreditkarte: Mittelkurs plus Gebühr
         self.assertAlmostEqual(jp["eur"], round(2970 / 160 * (1 + s["card_fee_pct"] / 100), 2), places=2)
+        self.assertIsNone(jp["read"])
+        # Ab 0.61 liest der Abgleich den Preis vom Link; der gelesene gilt 14 Tage
+        now = datetime(2026, 10, 14, tzinfo=timezone.utc).timestamp()
+        data["offer_prices"] = {"https://example.com/code": {"price": 2800.0, "currency": "JPY", "ok": now - 3600, "checked": now - 3600}}
+        jp = next(r for r in next(v for v in planner.membership(data, s, now=datetime(2026, 10, 14, tzinfo=timezone.utc))["variants"]
+                                  if v["key"] == "m12")["rows"] if r.get("src"))
+        self.assertEqual((jp["local"], jp["manual"]), (2800.0, 2970))
+        self.assertTrue(jp["read"])
+        data["offer_prices"]["https://example.com/code"]["ok"] = now - 15 * 86400
+        jp = next(r for r in next(v for v in planner.membership(data, s, now=datetime(2026, 10, 14, tzinfo=timezone.utc))["variants"]
+                                  if v["key"] == "m12")["rows"] if r.get("src"))
+        self.assertEqual(jp["local"], 2970)
+
+    def test_amazon_price(self):
+        whole = ('<div id="corePrice_feature_div"><span class="a-price"><span class="a-price-symbol">￥</span>'
+                 '<span class="a-price-whole">2,970</span></span></div>')
+        self.assertEqual(sources.parse_amazon_price("<span>参考価格 ￥3,980</span>" + whole), (2970.0, "JPY", "Preiskasten"))
+        data_div = '<div>{"desktop_buybox_group_1":[{"displayPrice":"￥990","priceAmount":990.00,"currencySymbol":"￥"}]}</div>'
+        self.assertEqual(sources.parse_amazon_price(data_div + whole)[:2], (990.0, "JPY"))
+        self.assertIsNone(sources.parse_amazon_price("<html>nichts</html>"))
+        # Fehlalarm bis 0.60: „robot“ steht auch auf normalen Produktseiten
+        self.assertFalse(sources.amazon_captcha("x" * 50000 + "robots" + whole))
+        self.assertTrue(sources.amazon_captcha('<form action="/errors/validateCaptcha">'))
+        self.assertEqual(sources.parse_shop_price("https://www.amazon.co.jp/dp/B000", whole), (2970.0, "JPY"))
+        self.assertIsNone(sources.parse_shop_price("https://www.amazon.co.jp/dp/B000", '<form action="/errors/validateCaptcha">' + whole))
+
+    def test_offer_prices_sync(self):
+        settings = {"nso_extra": [{"key": "m12", "code": "JP", "price": 2970, "src": "Amazon", "url": "https://www.amazon.co.jp/dp/A"},
+                                  {"key": "m3", "code": "JP", "price": 990, "src": "Amazon", "url": "https://www.amazon.co.jp/dp/B"},
+                                  {"key": "ep", "code": "JP", "price": 5841, "src": "Amazon"}]}
+        pages = {"https://www.amazon.co.jp/dp/A": '<div id="corePrice_feature_div"><span class="a-price-whole">2,880</span></div>',
+                 "https://www.amazon.co.jp/dp/B": '<form action="/errors/validateCaptcha"></form>'}
+        calls = []
+
+        def fetch(url):
+            calls.append(url)
+            return pages[url]
+        data = {"offer_prices": {"https://alt/weg": {"price": 1}}}
+        sync.sync_offer_prices(data, settings, fetch, lambda s: None, now=1e9)
+        self.assertEqual(data["offer_prices"]["https://www.amazon.co.jp/dp/A"]["price"], 2880.0)
+        self.assertEqual(data["offer_prices"]["https://www.amazon.co.jp/dp/B"]["error"], "Prüfseite (Captcha)")
+        self.assertNotIn("https://alt/weg", data["offer_prices"])
+        self.assertIn("Prüfseite", sync.status["log"][-1])
+        sync.sync_offer_prices(data, settings, fetch, lambda s: None, now=1e9 + 3600)     # höchstens einmal am Tag
+        self.assertEqual(len(calls), 2)
+        self.assertIn("alle 2 Links aktuell", sync.status["log"][-1])
 
 
 class FetchRulesTest(unittest.TestCase):

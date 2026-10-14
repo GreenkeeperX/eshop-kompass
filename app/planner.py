@@ -2401,6 +2401,19 @@ def nso_price(table, key):
 NSO_REMIND_DAYS = 30      # so lange vor Ablauf erscheint die Verlängerung unter „Zu erledigen“
 
 
+def dlc_fit(data):
+    """Passt ein DLC aus Japan oder Amerika zum Spiel aus Europa? {slug: {Region: True/False}}
+    aus dem Vergleich der Programm-IDs in titledb (ab 0.61). Fehlt eine Region, ist es ungeprüft."""
+    out = {}
+    recs = list((data.get("extra") or {}).items()) + [(s, it) for s, it in data["items"].items() if it.get("parent")]
+    for slug, rec in recs:
+        for fam, v in (rec.get("app_same") or {}).items():
+            cur = ((rec.get("ids") or {}).get(fam) or [None])[0]
+            if isinstance(v, list) and len(v) == 2 and cur and v[0] == str(cur):
+                out.setdefault(slug, {})[fam] = bool(v[1])
+    return out
+
+
 def membership(data, settings, now=None):
     """Online-Mitgliedschaft in allen Varianten (ab 0.57): je Variante der Einkaufspreis je aktivem
     Land mit demselben Zahlweg wie bei Spielen (Kreditkarte oder Guthabenkarten), Bestpreis, Güte
@@ -2473,12 +2486,20 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v, extra=
         c = ctx.countries.get(x["code"])
         if not c or not c["rate"]:
             continue
-        eur = cents(x["price"]) * ctx._units(c)[0]
+        # Mit Link liest der Abgleich den Preis von der Shopseite (ab 0.61); der zuletzt
+        # gelesene gilt wie bei Karten bis CARD_PRICE_MAX_AGE, sonst der eingetragene
+        got = (data.get("offer_prices") or {}).get(x.get("url")) or {} if x.get("url") else {}
+        live = got.get("price") if got.get("currency") == c["currency"] and \
+            now.timestamp() - got.get("ok", 0) <= CARD_PRICE_MAX_AGE else None
+        price = live if live else x["price"]
+        eur = cents(price) * ctx._units(c)[0]
         rows.append({
             "code": x["code"], "name": c["meta"]["name"], "tier": c["tier"], "eur": _r(eur),
             "month": _r(eur / v["months"]), "per_account": _r(eur / v["months"] / v["accounts"]),
-            "local": x["price"], "currency": c["currency"], "sale": False, "pct": None, "end": None,
+            "local": price, "currency": c["currency"], "sale": False, "pct": None, "end": None,
             "est": False, "counts": True, "src": x["src"], "date": x.get("date") or "", "extra": x.get("idx", 0),
+            "read": got.get("ok") if live else None, "manual": x["price"],
+            "read_err": got.get("error") if x.get("url") else None,
             "current": x["code"] == current or (not current and x["code"] == countries.REFERENCE),
             "url": x.get("url") or None, "low_eur": None})
     # Bestpreis über alle zählenden Länder, Güte und ★ wie bei Titeln (0.56.1)

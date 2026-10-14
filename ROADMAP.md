@@ -12,10 +12,14 @@ Konto (siehe [CLAUDE.md](CLAUDE.md)).
 ## Offen
 
 - [ ] **Online-Mitgliedschaft ausbauen.** Da ist bisher: sechs Varianten je aktivem Land mit
-  Einkaufspreis, Bestpreis, Links und Erinnerung vor Ablauf. Fehlt noch:
+  Einkaufspreis, Bestpreis, Links, Erinnerung vor Ablauf und eigenen Angeboten (Amazon Japan liest
+  der Abgleich vom Link). Fehlt noch:
   - Tiefstpreise für 1 Monat und Erweiterungspaket Familie (DekuDeals führt sie nicht),
-  - weitere Bezugsquellen: Händler-Codes (Keyshops), Amazon Japan, Deals etwa von mydealz,
+  - weitere Bezugsquellen: Händler-Codes (Keyshops), Deals etwa von mydealz,
   - die Mitgliedschaft wählbar im Warenkorb (als Hinweis im Rest steht sie seit 0.57.1).
+- [ ] **Eigene Angebote für Spiele.** Codes außerhalb des eShops, etwa bei Amazon Japan, auch für
+  Wishlist-Titel, mit Link gelesen wie bei der Mitgliedschaft. Offen: ob sie Bestpreis, Urteil und
+  Kaufplan mitbestimmen (bezahlt per Kreditkarte, eingelöst im Konto des Landes).
 - [ ] **Kleinteile zusammenfassen.** Viele Kleinteile eines Spiels (etwa Kostüme) zusammenfassen,
   aber erst nach Erfahrung mit den gruppierten Pässen.
 - [ ] **Kaufverlauf und Sammlung abgleichen.** Den Kaufverlauf mit der ganzen DekuDeals-Sammlung

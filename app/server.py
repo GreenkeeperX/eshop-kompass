@@ -46,6 +46,7 @@ def state():
         "item_count": sum(1 for it in data["items"].values() if it.get("active")),
         "matrix": planner.matrix(data, settings),
         "lang_todo": planner.lang_todo(data, settings),
+        "dlc_fit": planner.dlc_fit(data),
         "eshop": planner.eshop_matches(data)["rows"],
         "eshop_seit": (data.get("_eshop") or {}).get("seit") or 0,
         "eshop_at": (data.get("_eshop") or {}).get("at") or 0,
