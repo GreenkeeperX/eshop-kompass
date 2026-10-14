@@ -671,6 +671,22 @@ class PlanTest(unittest.TestCase):
         items["hades"]["langs"]["JP"] = "日本語, ドイツ語"
         self.assertTrue(planner.matrix(self.data, self.settings, now=NOW)["rows"][0]["cells"]["JP"]["nolang"])
 
+    def test_wishlist_dlc_takes_language_of_its_game_page(self):
+        # DLC auf der Wishlist, Hauptspiel nicht: Die DLC-Seite fehlt in Amerika oft ganz.
+        # Seit 0.68 zählt die Seite des Spiels, wie bei den fehlenden DLC der Sammlung
+        items = self.data["items"]
+        items["vs-foscari"]["langs"] = {"EU": "english, german"}
+        items["vs-foscari"]["ids"].update(AM=["70050000000009"])
+        rows = {(t["slug"], t["family"]): t for t in planner.lang_todo(self.data, self.settings, now=NOW)}
+        self.assertEqual(rows[("vs-foscari", "AM")]["nsuid"], "70050000000009")
+        self.assertIsNone(rows[("vs-foscari", "AM")]["state"])
+        self.data["glangs"] = {"vampire-survivors": {"ids": {"AM": ["70010000000007"]}, "langs": {"AM": "english, german"}}}
+        rows = {(t["slug"], t["family"]): t for t in planner.lang_todo(self.data, self.settings, now=NOW)}
+        self.assertEqual((rows[("vs-foscari", "AM")]["nsuid"], rows[("vs-foscari", "AM")]["state"]), ("70010000000007", True))
+        self.assertIn("/titles/70010000000007", rows[("vs-foscari", "AM")]["url"])
+        self.assertEqual(planner.wish_dlc_parents(self.data), {"vampire-survivors": ["vs-foscari"]})
+        self.assertEqual(sync.game_ids(self.data, "AM"), {"vampire-survivors": "70010000000007"})
+
     def test_package_distance_to_optimum(self):
         self.only_sales()
         by = self.by(planner.plans(self.data, self.settings, now=NOW))
@@ -1795,6 +1811,9 @@ class SyncTest(unittest.TestCase):
                 return '{"prices":[]}'                     # übrige Länder: nichts im Angebot
             if "ec.nintendo.com/" in url and url.endswith("/membership"):
                 return "<html>ohne Mitgliedschaftsdaten</html>"
+            if "ec.nintendo.com/US/en/titles/" in url:
+                # Seite des Hauptspiels: Der DLC auf der Wishlist übernimmt seine Sprache (0.68)
+                return '<script>{"supportedLanguages":["English","German"]}</script>'
             raise AssertionError("unerwarteter Abruf " + url)
         sync.run_sync(fetch=fake, sleep=lambda s: None)
         self.assertTrue(sync.status["ok"], sync.status["log"])
@@ -3568,6 +3587,17 @@ class MembershipExtraTest(unittest.TestCase):
         sync.sync_offer_prices({}, settings, lambda u: '<div id="corePrice_feature_div"><span class="a-offscreen">€45.66</span></div>',
                                lambda s: None, now=now)
         self.assertTrue(any("nicht plausibel" in str(l) and "EUR statt JPY" in str(l) for l in sync.status["log"]))
+
+    def test_offer_prices_from_before_0_62_1_are_read_again(self):
+        # 0.62.0 las Euro als Yen (5,65 statt 1000); solche Werte blieben einen Tag stehen
+        settings = {"nso_extra": [{"key": "m3", "code": "JP", "price": 1000, "src": "Amazon", "url": "https://www.amazon.co.jp/dp/A"}]}
+        data = {"offer_prices": {"https://www.amazon.co.jp/dp/A": {"price": 5.65, "currency": "JPY", "ok": 1e9, "checked": 1e9}}}
+        page = '<div id="corePrice_feature_div"><span class="a-offscreen">￥1,000</span></div>'
+        sync.sync_offer_prices(data, settings, lambda u: page, lambda s: None, now=1e9 + 60)
+        self.assertEqual(data["offer_prices"]["https://www.amazon.co.jp/dp/A"]["price"], 1000.0)
+        data["offer_prices"]["https://www.amazon.co.jp/dp/A"]["price"] = 1.0
+        sync.sync_offer_prices(data, settings, lambda u: page, lambda s: None, now=1e9 + 120)
+        self.assertEqual(data["offer_prices"]["https://www.amazon.co.jp/dp/A"]["price"], 1.0)   # nur einmal
 
     def test_offer_prices_sync(self):
         settings = {"nso_extra": [{"key": "m12", "code": "JP", "price": 2970, "src": "Amazon", "url": "https://www.amazon.co.jp/dp/A"},

@@ -21,6 +21,20 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 - Die dunklen Tokens stehen zweimal (Gerät dunkel, Wahl dunkel) und müssen gleich bleiben;
   ein Test prüft das.
 
+## Kaufplan (Jetzt)
+
+Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Wishlist-Titel
+dazunehmen …“ (ab 0.68). Dazugenommenes ist ein Füllartikel des Schritts und trägt „dazugenommen ×“
+(vorher „Füller ×“). Weglassen-Vorschläge gibt es im Plan nicht: Der Plan nimmt nur, was dort
+kaufen heißt und dessen Wechsel sich rechnet.
+
+## Käufe aus dem eShop
+
+Vorschläge stehen je Kauf mit Art, Plattform und Betrag (grau); jeder Vorschlag ist ein Link zu
+DekuDeals mit dem Spiel klein davor (`small.gm`), daneben der Knopf „ja“, darunter „nein, keiner davon“.
+Unter „Zählen als Besitz“: von dir Zugeordnetes mit „zurücknehmen“ (zurück zu den Vorschlägen),
+automatisch Zugeordnetes mit „stimmt nicht“.
+
 ## Online-Mitgliedschaft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
@@ -30,7 +44,10 @@ sie zu deiner und zeigt ihre Länder. Angebote von Hand (etwa Amazon-Codes) steh
 mit Chip „Amazon-Code“ und dem Prüfstand des Links (ab 0.62.1, `offerNote`, überall gleich): grau
 „gelesen TT.MM.“ oder „wird gelesen“; violett „Link zeigt 45,66 €“ (andere Währung), „Link liest x,
 passt nicht“ (mehr als 40 % Abstand), „Link nicht lesbar“, „Link länger nicht gelesen“, jeweils mit
-Tooltip „Es gilt dein eingetragener Preis“; dazu ein kleines × zum Entfernen. Die Kopfzeile nennt deine Variante. Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“); in der
+Tooltip „Es gilt dein eingetragener Preis“; das Wort „Link“ führt zur Seite (ab 0.68). Ein kleines × zum Entfernen
+steht gleich hinter dem Preis, in der Titelliste mit Quelle, Land und Preis in einer nicht umbrechenden Gruppe (`.nw`).
+Die Kopfzeile nennt die Variante als „ausgewählt: …“ (ab 0.68, vorher „deine“). Der Wechsel der Variante rechnet nicht
+neu: Alle Varianten kommen mit dem Stand, die Oberfläche schaltet sofort um und speichert die Wahl danach. Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“); in der
 Variantentabelle ist nur der Name der Link, die Klammer steht grau daneben. Tabellenköpfe mit
 Klasse `l` stehen linksbündig über ihrer Spalte. Beide Tabellen
 sind sortierbar wie alle anderen; die Ländertabelle hat die Wechselstufe als eigene Spalte nach
@@ -174,7 +191,8 @@ Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen“, Zahl von Nintendo gr�
 (titledb, von dir) violett. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
 Korb-Tabelle: Erklärung zugeklappt („So liest du den Korb“, ab 0.62.1), Spalte Bestpreis,
 Spaltenköpfe sortieren, Kopfzeile bleibt stehen und ist deckend: Länder ohne den ganzen Korb haben
-grauen Kopftext, nur ihre Zellen sind blass (bis 0.62 schien die Tabelle durch den Kopf). Eine Zeile je
+grauen Kopftext, nur ihre Zellen sind blass (bis 0.62 schien die Tabelle durch den Kopf); grün hinterlegte Zellen
+nicht, sonst trübt die Deckkraft ihre weiße Schrift (ab 0.68). Eine Zeile je
 Zelle wie in der Titel-Tabelle: Preis, blauer Rabatt, kleines rotes „+x“ über dem Bestpreis (`.abv.gap`, bis 0.62 grau); Zelle
 dunkel-/hellgrün nach Urteil, gold umrandet am Bestpreis. Landeswährung, Zahlweg und Ende im Tooltip.
 Der Stern im Korb gilt dem Preis im Korb, nicht dem Einzelpreis (ab 0.65; in Ländern ohne

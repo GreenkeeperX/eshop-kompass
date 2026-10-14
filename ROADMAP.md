@@ -33,14 +33,16 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   Karten und Plan.
 - [ ] **Notbetrieb.** Festlegen und zeigen, was läuft, wenn DekuDeals sperrt oder seine Seiten
   ändert.
-- [ ] **Online-Mitgliedschaft abschließen.** Wählbar im Warenkorb (als Hinweis im Rest steht sie
-  schon), dann gilt das Thema als fertig. Tiefstpreise für 1 Monat und Erweiterungspaket Familie
+- [ ] **Online-Mitgliedschaft abschließen.** Wählbar im Warenkorb und unter „Wishlist-Titel
+  dazunehmen“ (als Hinweis im Rest steht sie schon); die Ländertabelle einklappbar, wenn die
+  Variantentabelle Links und Rechnung trägt. Dann gilt das Thema als fertig. Tiefstpreise für 1 Monat und Erweiterungspaket Familie
   und weitere Bezugsquellen nur nach Leitsatz 3.
 
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 
 - [ ] **Kaufverlauf und Sammlung abgleichen:** Slug-Stufe, „Bei DekuDeals nachtragen“, eine Zeile in
-  „Zu erledigen“, nur für neue Spiele.
+  „Zu erledigen“, nur für neue Spiele. Dazu ein vollständiger Lauf des Lesezeichens „Käufe lesen“
+  auf Wunsch, wenn sich die Zuordnung verbessert hat.
 - [ ] **Kleinteile zusammenfassen** (Kostüme, Packs), nach Erfahrung mit den gruppierten Pässen.
 - [ ] **Weitere Bezugsquellen** wie Händler-Codes, nur wenn sie regelmäßig günstiger sind.
 - [ ] **Rückblick:** Was hat der Kompass im Jahr gespart, welche Länder haben sich gelohnt?
@@ -52,8 +54,8 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 - **Nintendos Preisschnittstelle** ist nicht offiziell.
 - **Shopseiten mit Prüfseiten** (Amazon) können jederzeit unlesbar werden; dann gilt der
   eingetragene Preis.
-- **Wartung:** Planer und Oberfläche haben je rund 2600 Zeilen, die Oberfläche hat keine
-  automatischen Tests.
+- **Wartung:** Planer und Oberfläche haben je rund 2600 Zeilen; die Oberfläche prüfen nur
+  Vertrags- und Breitentests, keine Abläufe.
 
 ## Ohne Arbeit für uns
 

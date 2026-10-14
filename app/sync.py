@@ -584,6 +584,11 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
     Schritt, sie wird nicht umgangen; dann gilt der eingetragene Preis."""
     now = now or time.time()
     known = data.setdefault("offer_prices", {})
+    if data.get("offer_prices_v", 0) < 1:
+        # 0.62.0 las Amazon-Preise in Euro als Yen (etwa 6 statt 1000). Solche Werte blieben bis
+        # zum nächsten Lesen einen Tag stehen; einmal alle Links neu lesen (0.68)
+        known.clear()
+        data["offer_prices_v"] = 1
     entries = {}
     for x in (settings.get("nso_extra") or []) + (settings.get("own_offers") or []):
         if x.get("url"):
@@ -810,7 +815,7 @@ def prune_langs(data, settings):
             it.pop("langs_tries", None)
             it.pop("langs_src", None)
             it.pop("tdb_checked", None)
-    games = {e.get("parent") for e in (data.get("extra") or {}).values()}
+    games = {e.get("parent") for e in (data.get("extra") or {}).values()} | set(planner.wish_dlc_parents(data))
     glangs = data.get("glangs") or {}
     for game in [g for g in glangs if g not in games]:
         del glangs[game]
@@ -891,6 +896,12 @@ def game_ids(data, fam):
         if game and game not in out and (ids or ((glangs.get(game) or {}).get("ids") or {}).get(fam)):
             own = ((glangs.get(game) or {}).get("ids") or {}).get(fam)
             out[game] = own[0] if own else ids[0]
+    # Hauptspiele von DLC auf der Wishlist (0.68): nur mit eigener ID, die DLC-Seite nennt
+    # die Sprache oft nicht oder fehlt ganz
+    for game in planner.wish_dlc_parents(data):
+        own = ((glangs.get(game) or {}).get("ids") or {}).get(fam)
+        if game not in out and own:
+            out[game] = own[0]
     return out
 
 
@@ -1589,7 +1600,8 @@ def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
     # nicht (Japan: DLC-Seiten gibt es dort unter dieser Adresse gar nicht). Seit 0.53 auch
     # Europa: Dort fehlte die Angabe bei fast allen DLC.
     glangs = data.setdefault("glangs", {})
-    for game in dict.fromkeys(parent for _, parent in wanted.values()):
+    # Dazu die Hauptspiele von DLC auf der Wishlist, die selbst nicht darauf stehen (0.68)
+    for game in dict.fromkeys([parent for _, parent in wanted.values()] + list(planner.wish_dlc_parents(data))):
         g = glangs.setdefault(game, {})
         g.setdefault("ids", {})
         g.setdefault("ids_checked", {})
@@ -1767,7 +1779,7 @@ def import_eshop_history(text, now=None):
         entries.append({"key": f"nin:{k}" if k else f"{nid or title}|{date}", "id": nid,
                         "title": title, "date": date, "region": str(e.get("region") or region)[:4],
                         "type": str(e.get("type") or "")[:30], "item": str(e.get("item") or "")[:30],
-                        "amount": str(e.get("amount") or "")[:30]})
+                        "amount": str(e.get("amount") or "")[:30], "plat": str(e.get("plat") or "")[:10]})
     new, total = store.merge_eshop_history(entries, now or time.time(), newest,
                                            len(store.load_data().get("owned") or []))
     data = store.load_data()

@@ -303,11 +303,13 @@ der Tabelle der Titel. DLC mit gekürztem Namen tragen das Hauptspiel klein davo
 **Füllartikel:** Bleibt in einem Schritt ein Rest, stehen darunter Wishlist-Titel, die
 hineinpassen, der kleinste verbleibende Rest zuerst. Das Urteil zählt dabei nicht; Titel aus
 der Sammlung, gekaufte, DLC ohne Hauptspiel und eigene Angebote (die zahlt die Kreditkarte)
-fehlen. Ein Klick nimmt den Titel in den Schritt, „Füller ×“ nimmt ihn wieder heraus. Fehlende
+fehlen. Ein Klick nimmt den Titel in den Schritt, „dazugenommen ×“ nimmt ihn wieder heraus. Fehlende
 DLC deiner Spiele erscheinen dort als Link zu DekuDeals; übernehmen lassen sie sich, sobald sie
 auf der Wishlist stehen. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
-steht sie dort als Hinweis, mit ihrem eShop-Preis. Nach „gekauft“ sind die Füller dieses
-Landes vergessen.
+steht sie dort als Hinweis, mit ihrem eShop-Preis. Jeden anderen Wishlist-Titel, den es dort
+gibt, nimmt „Wishlist-Titel dazunehmen …“ unter der Karte in den Schritt; „als Korb
+vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
+dazugenommenen Titel dieses Landes vergessen.
 
 **Gekauft:** „gekauft“ an einem Land vermerkt den Kauf im Kaufprotokoll
 (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort als Guthaben,
@@ -319,8 +321,8 @@ vergleichen“ übernimmt die Titel in den gemeinsamen Korb.
 **Online-Mitgliedschaft** (unter dem Kaufplan, zugeklappt; 30 Tage vor Ablauf offen): sechs
 Varianten, 1 Monat, 3 Monate, 12 Monate, Erweiterungspaket, Familie und Erweiterungspaket
 Familie (die beiden Familien nur zum Vergleich, kaufen kann, wer die Gruppe verwaltet). Oben
-je Variante das beste Land; ein Klick macht eine Variante zu deiner, sie gilt für Kopfzeile,
-Erinnerung und Länderliste. Darunter je aktivem Land der Einkaufspreis mit deinem Zahlweg wie
+je Variante das beste Land; ein Klick wählt eine Variante aus, sie gilt für Kopfzeile
+(„ausgewählt“), Erinnerung und Länderliste. Darunter je aktivem Land der Einkaufspreis mit deinem Zahlweg wie
 bei Spielen, je Monat, der Shop-Preis, Angebote und ob das Land dein Konto ist oder im
 Kaufplan steht. Zeichen wie bei Titeln: ★ am Bestpreis der letzten 24 Monate, Preis grün nach
 Urteil, Abstand zum Bestpreis rot; der Preis führt in den eShop des Landes, „DekuDeals“ zum
@@ -462,11 +464,16 @@ Betrag. Abgeglichen wird deshalb in Stufen:
   „Spiel: DLC“), zählt er als Besitz und fällt aus dem Kaufplan, auch ohne Eintrag bei
   DekuDeals.
 - Ist er nur ähnlich, schlägt das Tool bis zu drei Titel vor, die erst nach deiner
-  Bestätigung zählen.
+  Bestätigung zählen. Neben dem Kauf stehen Art, Plattform und Betrag, neben jedem Vorschlag
+  sein Spiel; der Name führt zu DekuDeals. „ja“ zählt ihn als Besitz, „nein, keiner davon“
+  legt ihn zu den übrigen Käufen. Beides gilt für diesen einen Kauf, gefragt wird nicht wieder.
 - Der Rest, meist längst Besessenes, steht eingeklappt darunter. Erstattete Käufe zählen
   nicht.
 
-Zuordnungen bleiben und stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
+Was du zugeordnet hast, steht mit „von dir zugeordnet“ unter „Zählen als Besitz“;
+„zurücknehmen“ macht es wieder zum Vorschlag. Automatisch Zugeordnetes nimmt „stimmt nicht“
+heraus, ein „nein“ nimmt „zurücknehmen“ bei den übrigen Käufen zurück. Zuordnungen bleiben und
+stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
 Stand des letzten lückenlosen Laufs mit; das Lesezeichen liest dann bis dorthin und zur
 Sicherheit eine ganze Seite bereits bekannter Käufe weiter. Bricht ein Lauf ab, übernimmt das
 Tool das Gelesene, behält aber den alten Stand, und der nächste Lauf liest wieder ab dort.
@@ -531,7 +538,9 @@ der Rest zählt mit.
 Das Tool prüft jeden Wishlist-Titel und die fehlenden DLC deiner Spiele einmal je Region und
 speichert das Ergebnis dauerhaft, unabhängig vom Preis. Europa gilt als dasselbe Produkt wie
 Deutschland. DLC übernimmt die Sprache seines Spiels; für fehlende DLC reicht deshalb eine
-Seite je Spiel und Region.
+Seite je Spiel und Region. Dasselbe gilt für DLC auf der Wishlist, deren Spiel nicht darauf
+steht: Das Tool sucht die Seite des Spiels je Region und nimmt dessen Sprachen, denn eigene
+Seiten von DLC fehlen in Amerika und Japan oft ganz.
 
 Oben stehen alle offenen Titel, einmal je Region (fehlende DLC als ein Eintrag je Spiel; der
 Preis nennt dann den günstigsten fehlenden DLC, „fehlende DLC dort ab“), mit Link in den Store

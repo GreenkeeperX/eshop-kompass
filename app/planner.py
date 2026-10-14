@@ -75,7 +75,7 @@ def eshop_matches(data):
     cands = {s: it for s, it in items.items() if it.get("active")}
     for s, e in (data.get("extra") or {}).items():
         cands.setdefault(s, e)
-    by_id, by_title, toks = {}, {}, {}
+    by_id, by_title, toks, games = {}, {}, {}, {}
     for s, it in cands.items():
         for ids in (it.get("ids") or {}).values():
             for i in ids or []:
@@ -86,6 +86,7 @@ def eshop_matches(data):
             p_title = it.get("parent_title") or (items.get(parent) or {}).get("title") or \
                 ((data.get("rel") or {}).get(parent) or {}).get("title") or parent.replace("-", " ")
             names.add(_tnorm(f"{p_title} {it.get('title')}"))
+            games[s] = p_title          # zum Prüfen: „Upgrade Pack“ allein sagt nicht, welches Spiel (0.68)
         for n in names:
             if n:
                 by_title.setdefault(n, set()).add(s)
@@ -115,11 +116,13 @@ def eshop_matches(data):
                 common = len(words & t)
                 if common and common / len(words | t) >= 0.5:
                     scored.append((-common / len(words | t), cands[s].get("title") or s, s))
-            suggest = [{"slug": s, "title": t} for _, t, s in sorted(scored)[:3]]
+            suggest = [{"slug": s, "title": t, "game": games.get(s)} for _, t, s in sorted(scored)[:3]]
         if slug:
             owned.add(slug)
         rows.append({"key": key, "title": e.get("title"), "date": e.get("date"),
                      "type": e.get("type"), "slug": slug, "how": how, "suggest": suggest,
+                     "item": e.get("item") or "", "plat": e.get("plat") or "", "amount": e.get("amount") or "",
+                     "game": games.get(slug) if slug else None,
                      "name": (cands.get(slug) or items.get(slug) or {}).get("title") if slug else None})
     return {"rows": rows, "owned": owned}
 
@@ -368,6 +371,7 @@ class Context:
         self.lows = data.get("lows", {})
         self.owned = owned_set(data, settings)
         self.rel = data.get("rel") or {}
+        self.glangs = data.get("glangs") or {}
         rates = data["fx"]["rates"]
         self.rates = rates
         self.card_prices = data.get("card_prices") or {}
@@ -683,6 +687,10 @@ class Context:
         found = own(slug, it)
         if found is None and it.get("parent") in self.items:
             found = own(it["parent"], self.items[it["parent"]])
+        elif found is None and it.get("parent") in getattr(self, "glangs", {}):
+            # Hauptspiel nicht auf der Wishlist: seine eigene Seite je Region (0.68), wie bei
+            # den fehlenden DLC der Sammlung
+            found = own(it["parent"], self.glangs[it["parent"]])
         return found
 
     def _apply_language_rule(self):
@@ -1653,6 +1661,18 @@ def _nso(slug, title):
     return "nintendo switch online" in f"{slug} {title}".lower().replace("-", " ")
 
 
+def wish_dlc_parents(data):
+    """Hauptspiele der DLC auf der Wishlist, die selbst nicht darauf stehen: {Spiel: [DLC]}.
+    Ihre Seite je Region nennt die Sprachen, die eines DLC oft nicht (0.68)."""
+    items = data.get("items") or {}
+    out = {}
+    for slug, it in items.items():
+        p = it.get("parent")
+        if it.get("active") and p and not (items.get(p) or {}).get("active"):
+            out.setdefault(p, []).append(slug)
+    return out
+
+
 def extra_dlc(data, settings):
     """DLC deiner Spiele, die fehlen und nicht auf der Wishlist stehen: {DLC: (Titel, Spiel)}.
     Ohne Abo-Inhalte, ohne abgehakte und ignorierte."""
@@ -1958,14 +1978,17 @@ def lang_todo(data, settings, now=None):
         # DLC mit Hauptspiel auf der Wishlist richtet sich nach dem Spiel
         if it.get("parent") in ctx.items or ctx.german(it, "EU", slug) is not True:
             continue
+        game = ctx.glangs.get(it.get("parent")) or {} if it.get("parent") else {}
         for fam, codes in fams.items():
             ids = (it.get("ids") or {}).get(fam) or []
             if ids:
-                out.append(row(slug, it["title"], fam, codes, ids[0], ctx.german(it, fam, slug),
-                               ctx.german(it, fam, slug, by_hand=False),
-                               (it.get("langs") or {}).get(fam), cheapest(slug, codes),
-                               live.champ_all.get(slug), (it.get("langs_src") or {}).get(fam),
-                               (it.get("ids_doubt") or {}).get(fam)))
+                # DLC ohne eigene Angabe: Seite und Angabe seines Spiels (0.68)
+                src = it if (it.get("langs") or {}).get(fam) or not ((game.get("ids") or {}).get(fam)) else game
+                out.append(row(slug, it["title"], fam, codes, (src.get("ids") or {})[fam][0] if src is game else ids[0],
+                               ctx.german(it, fam, slug), ctx.german(it, fam, slug, by_hand=False),
+                               (src.get("langs") or {}).get(fam), cheapest(slug, codes),
+                               live.champ_all.get(slug), (src.get("langs_src") or {}).get(fam),
+                               (src.get("ids_doubt") or {}).get(fam)))
     if xctx:
         rel, games = data.get("rel") or {}, {}
         for s in xctx.order:
