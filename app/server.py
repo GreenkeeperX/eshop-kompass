@@ -24,6 +24,7 @@ def state():
     data = store.load_data()
     ui = store.load_ui()
     radar = planner.radar(data, settings, ui["targets"])
+    pay = planner.pay_info(data, settings)
     return {
         "settings": settings,
         "ui": ui,
@@ -33,7 +34,8 @@ def state():
         "s2": planner.switch2_paths(data, radar, settings),
         "bundles": planner.bundles(data, radar, settings),
         "levels": planner.price_levels(data, settings),
-        "pay": planner.pay_info(data, settings),
+        "pay": pay,
+        "offer_checks": planner.offer_checks(data, settings, pay),
         "card_status": planner.card_status(data, settings),
         "owned_count": len(data.get("owned") or []),
         "countries": [dict(countries.BY_CODE[c], family_name=countries.FAMILIES[

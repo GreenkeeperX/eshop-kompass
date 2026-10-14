@@ -3456,6 +3456,67 @@ class MembershipExtraTest(unittest.TestCase):
         self.assertEqual(sources.parse_shop_price("https://www.amazon.co.jp/dp/B000", whole), (2970.0, "JPY"))
         self.assertIsNone(sources.parse_shop_price("https://www.amazon.co.jp/dp/B000", '<form action="/errors/validateCaptcha">' + whole))
 
+    def test_amazon_currency(self):
+        # Amazon zeigt Besuchern aus Deutschland Europreise (bis 0.62 als Yen gelesen)
+        eur = '<div>{"desktop_buybox_group_1":[{"displayPrice":"€45.66","priceAmount":45.66,"currencySymbol":"€"}]}</div>'
+        self.assertEqual(sources.parse_amazon_price(eur, "JPY"), (45.66, "EUR", "Kaufoptionen"))
+        esc = '{"desktop_buybox_group_1":[{"priceAmount":8082,"currencySymbol":"\\uffe5"}]}'
+        self.assertEqual(sources.parse_amazon_price(esc)[:2], (8082.0, "JPY"))
+        core = '<div id="corePrice_feature_div"><span class="a-offscreen">45,66 €</span></div>'
+        self.assertEqual(sources.parse_amazon_price(core, "JPY")[:2], (45.66, "EUR"))
+        core = '<div id="corePrice_feature_div"><span class="a-offscreen">￥8,082</span></div>'
+        self.assertEqual(sources.parse_shop_price("https://www.amazon.co.jp/-/en/dp/X", core), (8082.0, "JPY"))
+        self.assertEqual(sources.amazon_currency("https://www.amazon.co.jp/-/en/dp/X"), "JPY")
+        self.assertIsNone(sources.amazon_currency("https://example.com/x"))
+        # Die Währungswahl der Seite (Cookie) stellt Yen ein, nur bei Amazon
+        seen = []
+
+        class Resp:
+            status, headers = 200, {}
+
+            def __init__(self):
+                import email.message
+                self.headers = email.message.Message()
+
+            def read(self):
+                return b"ok"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+        old = sources._opener.open
+        sources._opener.open = lambda req, timeout=None: seen.append(req.get_header("Cookie")) or Resp()
+        try:
+            sources.request("https://www.amazon.co.jp/-/en/dp/X")
+            sources.request("https://example.com/x")
+        finally:
+            sources._opener.open = old
+        self.assertEqual(seen, ["i18n-prefs=JPY", None])
+
+    def test_offer_plausible(self):
+        x = {"code": "JP", "price": 8082, "url": "https://www.amazon.co.jp/dp/X"}
+        now = 1e9
+        known = {x["url"]: {"price": 45.66, "currency": "EUR", "ok": now, "checked": now}}
+        r = planner.read_offer(x, known, "JPY", now)
+        self.assertEqual((r["price"], r["read"], r["check"]), (8082, None, "cur"))
+        known[x["url"]].update(price=4500.0, currency="JPY")
+        self.assertEqual(planner.read_offer(x, known, "JPY", now)["check"], "off")
+        known[x["url"]]["price"] = 7980.0
+        r = planner.read_offer(x, known, "JPY", now)
+        self.assertEqual((r["price"], r["read"], r["check"]), (7980.0, now, None))
+        self.assertEqual(planner.read_offer(x, known, "JPY", now + 15 * 86400)["check"], "old")
+        self.assertEqual(planner.read_offer(x, {}, "JPY", now)["check"], "wait")
+        self.assertEqual(planner.read_offer(x, {x["url"]: {"error": "HTTP 500", "checked": now}}, "JPY", now)["check"], "err")
+        self.assertIsNone(planner.read_offer(dict(x, url=""), known, "JPY", now)["check"])
+        # Das Protokoll nennt unplausible Werte
+        sync.status["log"] = []
+        settings = {"own_offers": [dict(x, slug="a", src="Amazon")]}
+        sync.sync_offer_prices({}, settings, lambda u: '<div id="corePrice_feature_div"><span class="a-offscreen">€45.66</span></div>',
+                               lambda s: None, now=now)
+        self.assertTrue(any("nicht plausibel" in str(l) and "EUR statt JPY" in str(l) for l in sync.status["log"]))
+
     def test_offer_prices_sync(self):
         settings = {"nso_extra": [{"key": "m12", "code": "JP", "price": 2970, "src": "Amazon", "url": "https://www.amazon.co.jp/dp/A"},
                                   {"key": "m3", "code": "JP", "price": 990, "src": "Amazon", "url": "https://www.amazon.co.jp/dp/B"},

@@ -324,6 +324,12 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   („Amazon“) und sein Preis verlinkt den Händler. Im Kaufplan läuft er nicht über Guthaben, also
   ohne Karten und Rest; die Kosten nennen ihn eigens. Die Sprachregel gilt wie für den eShop des
   Landes. Mit Link liest der Abgleich den Preis einmal am Tag wie bei der Mitgliedschaft.
+- Plausibilität gelesener Preise (seit 0.62.1): Ein vom Link gelesener Preis gilt nur in der
+  Währung des Landes und höchstens 40 % von deinem eingetragenen entfernt. Sonst gilt dein Preis,
+  und neben dem Angebot steht violett, was der Link liefert („Link zeigt 45,66 €“, „Link liest
+  2.880 ¥, passt nicht“): ein Hinweis auf einen falschen Link oder Tippfehler. Amazon zeigt
+  Besuchern aus Deutschland umgerechnete Europreise; das Tool wählt deshalb über die
+  Währungswahl der Seite (Cookie) die Landeswährung und erkennt die Währung am Preis.
 
 Die Ansicht (Reiter, Liste oder Tabelle, Filter, aufgeklappte Kästen) merkt
 sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.

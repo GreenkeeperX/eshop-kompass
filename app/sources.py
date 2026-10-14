@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.62.0"
+VERSION = "0.62.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -48,12 +48,18 @@ def _decode(raw, enc):
 
 def request(url, ua=None, timeout=25, encoding="gzip, deflate"):
     """HTTP GET ohne Ausnahme: liefert Status, Text und Kopfdaten für die Diagnose."""
-    req = urllib.request.Request(url, headers={
+    headers = {
         "User-Agent": ua or USER_AGENT,
         "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
         "Accept-Encoding": encoding,
-    })
+    }
+    cur = amazon_currency(url)
+    if cur:
+        # Amazon rechnet für Besucher aus Deutschland in Euro um (bis 0.62 als Yen gelesen).
+        # Die Währungswahl der Seite selbst ist ein Cookie; er stellt die Landeswährung ein.
+        headers["Cookie"] = f"i18n-prefs={cur}"
+    req = urllib.request.Request(url, headers=headers)
     out = {"url": url, "status": 0, "text": "", "enc": "", "server": "", "error": ""}
     try:
         try:
@@ -829,16 +835,31 @@ def parse_ld_price(page_html):
 
 
 # Amazon (ab 0.61): Die Produktseite nennt den Preis des Hauptangebots als Daten der
-# Kaufoptionen ("priceAmount") und sichtbar als a-price-whole im Kasten corePrice. Andere
-# Beträge auf der Seite (Referenzpreis, Zubehör, Werbung) zählen nicht.
-_AMZ_AMOUNT_RE = re.compile(r'"desktop_buybox_group_1"\s*:\s*\[\s*\{[^\]]{0,3000}?"priceAmount"\s*:\s*([\d.]+)')
+# Kaufoptionen ("priceAmount" mit "currencySymbol") und sichtbar im Kasten corePrice. Andere
+# Beträge auf der Seite (Referenzpreis, Zubehör, Werbung) zählen nicht. Die Währung steht
+# daneben: Amazon zeigt Besuchern aus Deutschland umgerechnete Europreise (ab 0.62.1 erkannt).
+_AMZ_AMOUNT_RE = re.compile(r'"desktop_buybox_group_1"\s*:\s*\[\s*\{([^\]]{0,3000}?)"priceAmount"\s*:\s*([\d.]+)([^}\]]{0,800})')
+_AMZ_SYMBOL_RE = re.compile(r'"(?:currencySymbol|displayPrice)"\s*:\s*"([^"]{1,40})"')
 _AMZ_CORE_RE = re.compile(r'id="(?:corePrice(?:Display)?_(?:desktop_)?feature_div|apex_desktop)"(.{0,6000})', re.S)
-_AMZ_WHOLE_RE = re.compile(r'class="a-price-whole">\s*([\d.,]+)')
-_AMZ_OFF_RE = re.compile(r'class="a-offscreen">\s*[￥¥]\s*([\d,]+)')
+_AMZ_OFF_RE = re.compile(r'class="a-offscreen">\s*([^<]{1,40}?)\s*<')
+_AMZ_PRICE_RE = re.compile(r'(?:class="a-price-symbol">\s*([^<]{1,6}?)\s*</span>\s*)?<span class="a-price-whole">\s*([\d.,]+)')
+_AMZ_SHOPS = {"amazon.co.jp": "JPY", "amazon.de": "EUR", "amazon.fr": "EUR", "amazon.it": "EUR",
+              "amazon.es": "EUR", "amazon.nl": "EUR", "amazon.com": "USD", "amazon.ca": "CAD",
+              "amazon.co.uk": "GBP", "amazon.com.au": "AUD", "amazon.com.mx": "MXN", "amazon.com.br": "BRL"}
+_SYMBOLS = (("JP¥", "JPY"), ("CA$", "CAD"), ("A$", "AUD"), ("R$", "BRL"), ("MX$", "MXN"), ("US$", "USD"),
+            ("￥", "JPY"), ("¥", "JPY"), ("円", "JPY"), ("€", "EUR"), ("£", "GBP"), ("$", "USD"),
+            ("\\u20ac", "EUR"), ("\\uffe5", "JPY"), ("\\u00a5", "JPY"), ("\\u00a3", "GBP"),
+            ("EUR", "EUR"), ("JPY", "JPY"), ("USD", "USD"), ("GBP", "GBP"))
 
 
 def is_amazon(url):
     return bool(re.match(r"https?://(?:www\.)?amazon\.[a-z.]+/", url or "", re.I))
+
+
+def amazon_currency(url):
+    """Landeswährung eines Amazon-Shops nach seiner Adresse, sonst None."""
+    m = re.match(r"https?://(?:www\.)?(amazon\.[a-z.]+)/", url or "", re.I)
+    return _AMZ_SHOPS.get(m.group(1).lower()) if m else None
 
 
 def amazon_captcha(page_html):
@@ -848,27 +869,56 @@ def amazon_captcha(page_html):
     return "validateCaptcha" in t or ("captcha" in t.lower() and len(t) < 30000)
 
 
-def _yen(text):
+def _symbol(text):
+    """Währung aus einem Zeichen oder Kürzel wie €, ￥, JP¥, EUR; sonst None."""
+    for sym, cur in _SYMBOLS:
+        if sym in (text or ""):
+            return cur
+    return None
+
+
+def _amount(text, cur):
+    """Betrag aus einem Preistext. Yen ohne Nachkommastellen, Euro auch mit Komma."""
+    t = re.sub(r"[^\d.,]", "", text or "")
+    if not t:
+        return None
+    if cur == "JPY":
+        t = t.replace(",", "").split(".")[0]
+    elif re.search(r",\d{2}$", t):
+        t = t.replace(".", "").replace(",", ".")
+    else:
+        t = t.replace(",", "")
     try:
-        v = float(text.replace(",", ""))
+        v = float(t.rstrip("."))
     except ValueError:
         return None
     return v if 0 < v < 1_000_000 else None
 
 
-def parse_amazon_price(page_html):
-    """(Preis, Währung, Fundstelle) des Hauptangebots einer Produktseite von Amazon Japan,
-    sonst None."""
+def parse_amazon_price(page_html, default=None):
+    """(Preis, Währung, Fundstelle) des Hauptangebots einer Amazon-Produktseite, sonst None.
+    Die Währung kommt von der Seite; nennt sie keine, gilt `default` (die des Shops)."""
     t = page_html or ""
     m = _AMZ_AMOUNT_RE.search(t.replace("&quot;", '"'))
-    if m and _yen(m.group(1)):
-        return _yen(m.group(1)), "JPY", "Kaufoptionen"
+    if m:
+        around = m.group(1) + m.group(3)
+        cur = next((_symbol(x) for x in _AMZ_SYMBOL_RE.findall(around) if _symbol(x)), None) or default
+        v = _amount(m.group(2), None)
+        if v and cur:
+            return v, cur, "Kaufoptionen"
     core = _AMZ_CORE_RE.search(t)
     if core:
-        for rx, where in ((_AMZ_OFF_RE, "Preiskasten"), (_AMZ_WHOLE_RE, "Preiskasten")):
-            m = rx.search(core.group(1))
-            if m and _yen(m.group(1)):
-                return _yen(m.group(1)), "JPY", where
+        for text in _AMZ_OFF_RE.findall(core.group(1)):
+            cur = _symbol(text) or default
+            v = _amount(text, cur)
+            if v and cur:
+                return v, cur, "Preiskasten"
+        m = _AMZ_PRICE_RE.search(core.group(1))
+        if m:
+            cur = _symbol(m.group(1) or "") or default
+            v = _amount(m.group(2), cur)
+            if v and cur:
+                return v, cur, "Preiskasten"
     return None
 
 
@@ -878,7 +928,7 @@ def parse_shop_price(url, page_html):
     if is_amazon(url):
         if amazon_captcha(page_html):
             return None
-        found = parse_amazon_price(page_html)
+        found = parse_amazon_price(page_html, amazon_currency(url))
         return found[:2] if found else None
     return parse_ld_price(page_html)
 

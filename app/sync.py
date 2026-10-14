@@ -569,8 +569,11 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
     Schritt, sie wird nicht umgangen; dann gilt der eingetragene Preis."""
     now = now or time.time()
     known = data.setdefault("offer_prices", {})
-    urls = list(dict.fromkeys(x["url"] for x in (settings.get("nso_extra") or []) + (settings.get("own_offers") or [])
-                              if x.get("url")))
+    entries = {}
+    for x in (settings.get("nso_extra") or []) + (settings.get("own_offers") or []):
+        if x.get("url"):
+            entries.setdefault(x["url"], []).append(x)
+    urls = list(entries)
     for url in list(known):
         if url not in urls:
             del known[url]
@@ -582,7 +585,7 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
         _log(f"Eigene Angebote: alle {len(urls)} Links aktuell")
         return
     _step("Eigene Angebote lesen", len(todo))
-    got, failed, stop = 0, [], None
+    got, failed, stop, odd = 0, [], None, []
     for url in todo:
         try:
             page = fetch(url)
@@ -601,6 +604,13 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
             if found:
                 known[url] = {"checked": now, "ok": now, "price": found[0], "currency": found[1]}
                 got += 1
+                # Plausibel (ab 0.62.1)? Währung des Shops und nah am eingetragenen Preis;
+                # sonst gilt der eingetragene (planner.read_offer), das Protokoll sagt es
+                want = sources.amazon_currency(url)
+                if want and found[1] != want:
+                    odd.append(f"{found[0]:g} {found[1]} statt {want}")
+                elif any(x["price"] and abs(found[0] / x["price"] - 1) > planner.OFFER_DEVIATION for x in entries[url]):
+                    odd.append(f"{found[0]:g} {found[1]} statt eingetragen {entries[url][0]['price']:g}")
             else:
                 known[url] = _card_miss(known.get(url), now, "Seite nennt keinen Preis")
                 failed.append("kein Preis")
@@ -608,6 +618,7 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
         sleep(CARD_PAUSE)
     _log(f"Eigene Angebote: {got} von {len(todo)} Preisen gelesen"
          + (f", {len(failed)} ohne Preis ({', '.join(sorted(set(failed)))})" if failed else "")
+         + (f"; {len(odd)} nicht plausibel, dort gilt der eingetragene Preis ({'; '.join(odd[:5])})" if odd else "")
          + (f"; {stop}, Rest nicht gelesen, es gilt der eingetragene Preis" if stop else ""))
 
 
@@ -1881,9 +1892,9 @@ def diagnose(sleep=time.sleep):
         def shop_info(t, x=x):
             if sources.is_amazon(x["url"]) and sources.amazon_captcha(t):
                 return f"{len(t)} Zeichen, Prüfseite (Captcha), nicht lesbar, eingetragen {x['price']}"
-            amz = sources.parse_amazon_price(t) if sources.is_amazon(x["url"]) else None
+            amz = sources.parse_amazon_price(t, sources.amazon_currency(x["url"])) if sources.is_amazon(x["url"]) else None
             found = sources.parse_shop_price(x["url"], t)
-            yen = sorted(set(re.findall(r'a-price-whole">\s*([\d,]+)', t)))[:8]
+            yen = sorted(set(re.findall(r'a-offscreen">\s*([^<]{1,20}?)\s*<', t)))[:8]
             return (f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, "
                     f"gelesen {found[0]:g} {found[1]}{f' ({amz[2]})' if amz else ''}" if found else
                     f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, kein Preis erkannt") + \

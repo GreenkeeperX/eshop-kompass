@@ -14,6 +14,7 @@ from .sources import ec_url, parse_amount
 
 MAX_STATES = 3_000_000
 CARD_PRICE_MAX_AGE = 14 * 24 * 3600  # zuletzt gelesene Kartenpreise gelten so lange, auch wenn ein Abruf scheitert
+OFFER_DEVIATION = 0.4                # ein vom Link gelesener Preis, der so weit vom eingetragenen abweicht, gilt nicht
 # Faktor einer Guthabenkarte = Preis in Euro ÷ Wert zum Mittelkurs (0.53). Reines Guthabenland:
 # gemessen am besten Faktor der Karte in CARD_HIST_DAYS Tagen, aussagekräftig ab CARD_HIST_MIN_DAYS
 CARD_HIST_DAYS = 90
@@ -311,6 +312,46 @@ def offer(price, now):
             "end": end, "currency": price.get("currency")}
 
 
+def read_offer(x, offer_prices, currency, now_ts):
+    """Welcher Preis gilt für ein eigenes Angebot (ab 0.62.1 mit Plausibilität)?
+
+    Der vom Link gelesene Preis gilt bis CARD_PRICE_MAX_AGE nach dem letzten Erfolg, aber nur
+    in der Währung des Landes und höchstens OFFER_DEVIATION vom eingetragenen Preis entfernt.
+    Sonst gilt der eingetragene, und `check` sagt warum: "cur" (Seite zeigt eine andere
+    Währung, etwa Amazon in Euro), "off" (weicht stark ab: falscher Link oder Tippfehler),
+    "err" (letzter Abruf gescheitert), "old" (zu lange nicht gelesen), "wait" (noch nie gelesen)."""
+    out = {"price": x["price"], "read": None, "check": None, "seen": None, "seen_cur": None, "error": None}
+    if not x.get("url"):
+        return out
+    got = (offer_prices or {}).get(x["url"]) or {}
+    out["error"] = got.get("error")
+    if got.get("price") is None:
+        out["check"] = "err" if got.get("error") else "wait"
+        return out
+    out["seen"], out["seen_cur"] = got["price"], got.get("currency")
+    if got.get("currency") != currency:
+        out["check"] = "cur"
+    elif x["price"] and abs(got["price"] / x["price"] - 1) > OFFER_DEVIATION:
+        out["check"] = "off"
+    elif now_ts - got.get("ok", 0) > CARD_PRICE_MAX_AGE:
+        out["check"] = "old"
+    else:
+        out["price"], out["read"] = got["price"], got.get("ok")
+    return out
+
+
+def offer_checks(data, settings, pay, now=None):
+    """Prüfstand aller eigenen Angebote mit Link für die Oberfläche: {url: read_offer}.
+    `pay` ist pay_info (Währung je Land)."""
+    now_ts = (now or datetime.now(timezone.utc)).timestamp()
+    out = {}
+    for x in (settings.get("nso_extra") or []) + (settings.get("own_offers") or []):
+        cur = (pay.get(x.get("code")) or {}).get("currency")
+        if x.get("url") and cur:
+            out[x["url"]] = read_offer(x, data.get("offer_prices"), cur, now_ts)
+    return out
+
+
 class Context:
     """Alles, was die Rechnungen brauchen: Angebote je Land in Bruttopreisen,
     Europreis je Währungseinheit, Sprachregel und Bestpreise."""
@@ -381,13 +422,10 @@ class Context:
         self._champions()
 
     def offer_price(self, x, currency):
-        """Preis eines eigenen Angebots in Landeswährung: vom Link gelesen (gilt bis
-        CARD_PRICE_MAX_AGE) oder wie eingetragen. (Preis, gelesen um oder None)."""
-        got = self.offer_prices.get(x.get("url")) or {} if x.get("url") else {}
-        if got.get("price") and got.get("currency") == currency and \
-                self.now.timestamp() - got.get("ok", 0) <= CARD_PRICE_MAX_AGE:
-            return got["price"], got["ok"]
-        return x["price"], None
+        """Preis eines eigenen Angebots in Landeswährung: vom Link gelesen oder wie
+        eingetragen. (Preis, gelesen um oder None), Prüfung siehe read_offer."""
+        r = read_offer(x, self.offer_prices, currency, self.now.timestamp())
+        return r["price"], r["read"]
 
     def _own_offers(self, c):
         """Eigene Angebote für Titel (ab 0.62), etwa Codes bei Amazon Japan: bezahlt mit
@@ -2534,18 +2572,15 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v, extra=
             continue
         # Mit Link liest der Abgleich den Preis von der Shopseite (ab 0.61); der zuletzt
         # gelesene gilt wie bei Karten bis CARD_PRICE_MAX_AGE, sonst der eingetragene
-        got = (data.get("offer_prices") or {}).get(x.get("url")) or {} if x.get("url") else {}
-        live = got.get("price") if got.get("currency") == c["currency"] and \
-            now.timestamp() - got.get("ok", 0) <= CARD_PRICE_MAX_AGE else None
-        price = live if live else x["price"]
+        got = read_offer(x, data.get("offer_prices"), c["currency"], now.timestamp())
+        price = got["price"]
         eur = cents(price) * ctx._units(c)[0]
         rows.append({
             "code": x["code"], "name": c["meta"]["name"], "tier": c["tier"], "eur": _r(eur),
             "month": _r(eur / v["months"]), "per_account": _r(eur / v["months"] / v["accounts"]),
             "local": price, "currency": c["currency"], "sale": False, "pct": None, "end": None,
             "est": False, "counts": True, "src": x["src"], "date": x.get("date") or "", "extra": x.get("idx", 0),
-            "read": got.get("ok") if live else None, "manual": x["price"],
-            "read_err": got.get("error") if x.get("url") else None,
+            "read": got["read"], "manual": x["price"], "read_err": got["error"],
             "current": x["code"] == current or (not current and x["code"] == countries.REFERENCE),
             "url": x.get("url") or None, "low_eur": None})
     # Bestpreis über alle zählenden Länder, Güte und ★ wie bei Titeln (0.56.1)

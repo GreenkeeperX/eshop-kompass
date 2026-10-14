@@ -25,10 +25,12 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
 Ablauf offen und eine Zeile unter „Zu erledigen“). Eine einzige Auswahl (ab 0.61): Die
-markierte Variante (fett, Chip „deine“, Zeile hinterlegt) ist deine; ein Klick auf eine andere macht
+markierte Variante (fett, Zeile hinterlegt; der Chip „deine“ fiel 0.62.1 weg) ist deine; ein Klick auf eine andere macht
 sie zu deiner und zeigt ihre Länder. Angebote von Hand (etwa Amazon-Codes) stehen als eigene Zeile
-mit Chip „Amazon-Code“, grau „gelesen TT.MM.“, „eingetragen, wird gelesen“ oder violett „eingetragen,
-Link nicht lesbar“ und einem kleinen × zum Entfernen. Die Kopfzeile nennt deine Variante. Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“); in der
+mit Chip „Amazon-Code“ und dem Prüfstand des Links (ab 0.62.1, `offerNote`, überall gleich): grau
+„gelesen TT.MM.“ oder „wird gelesen“; violett „Link zeigt 45,66 €“ (andere Währung), „Link liest x,
+passt nicht“ (mehr als 40 % Abstand), „Link nicht lesbar“, „Link länger nicht gelesen“, jeweils mit
+Tooltip „Es gilt dein eingetragener Preis“; dazu ein kleines × zum Entfernen. Die Kopfzeile nennt deine Variante. Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“); in der
 Variantentabelle ist nur der Name der Link, die Klammer steht grau daneben. Tabellenköpfe mit
 Klasse `l` stehen linksbündig über ihrer Spalte. Beide Tabellen
 sind sortierbar wie alle anderen; die Ländertabelle hat die Wechselstufe als eigene Spalte nach
@@ -139,14 +141,17 @@ Eigene Angebote für Titel (ab 0.62): Stammt ein Preis aus einem eigenen Angebot
 als kleines graues Kästchen daneben (`.dlc.ownm`, etwa „Amazon“), überall wo Preise stehen; der
 Preis verlinkt den Händler, der Tooltip nennt Code-Preis, Kreditkarte, Kurs und den eShop-Preis.
 Eintragen und Entfernen in den Einzelheiten des Titels, Zeile „Eigene Angebote“: grün „zählt“,
-grau „zählt nicht: der eShop ist dort günstiger“.
+grau „zählt nicht: der eShop ist dort günstiger“, mit Link dahinter der Prüfstand wie bei der Mitgliedschaft.
 
-Werkzeugzeile, Reihenfolge in jedem Reiter: Suche, Sortierung, Filter; rechts die Ansicht oder eine
+Werkzeugzeile, Reihenfolge in jedem Reiter: Suche, Sortierung, Filter; das Suchfeld hat ein eigenes
+graues × (ab 0.62.1, `searchBox`, das × des Browsers ist ausgeblendet), Esc leert ebenso; rechts die Ansicht oder eine
 Aktion (Korb leeren). Auswahlfelder „Wishlist-Titel dazunehmen“ gruppieren nach Urteil, darin A–Z.
 Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen“, Zahl von Nintendo grün, andere Quellen
 (titledb, von dir) violett. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
-Korb-Tabelle: Spalte Bestpreis, Spaltenköpfe sortieren, Kopfzeile bleibt stehen. Eine Zeile je
-Zelle wie in der Titel-Tabelle: Preis, blauer Rabatt, kleines rotes „+x“ über dem Bestpreis; Zelle
+Korb-Tabelle: Erklärung zugeklappt („So liest du den Korb“, ab 0.62.1), Spalte Bestpreis,
+Spaltenköpfe sortieren, Kopfzeile bleibt stehen und ist deckend: Länder ohne den ganzen Korb haben
+grauen Kopftext, nur ihre Zellen sind blass (bis 0.62 schien die Tabelle durch den Kopf). Eine Zeile je
+Zelle wie in der Titel-Tabelle: Preis, blauer Rabatt, kleines rotes „+x“ über dem Bestpreis (`.abv.gap`, bis 0.62 grau); Zelle
 dunkel-/hellgrün nach Urteil, gold umrandet am Bestpreis. Landeswährung, Zahlweg und Ende im Tooltip.
 Der Preis öffnet den eShop, bei DLC den Verlauf bei DekuDeals (kein fester eShop-Link für DLC).
 Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Menü Hell/Dunkel liegt

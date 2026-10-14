@@ -78,6 +78,7 @@ th small.bc{display:inline;margin-left:3px;font-weight:400;color:var(--muted)}
 .pct.m-best{background:var(--gold);color:var(--gold-ink);border-radius:4px;padding:0 2px;font-weight:700}
 .pct.m-best_easy{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--ink);border-radius:4px;padding:0 2px;font-weight:600}
 .gap{color:var(--muted);font-size:11px;margin-left:3px}
+.abv.gap{color:var(--stop)}
 .approx{color:var(--warn);margin-right:2px;cursor:help}
 .warnc{color:var(--warn)}
 .today{color:var(--warn);font-weight:700}
@@ -206,7 +207,8 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .cmp tr.sumtop td{border-top:2px solid var(--line)}
 .cmp tr.pay td{font-size:15px;font-weight:700}
 .cmp tfoot td:first-child{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
-.cmp .incomplete{opacity:.6}
+.cmp td.incomplete{opacity:.6}
+.cmp thead th.incomplete{color:var(--muted)}  /* Kopf deckend: sonst scheint beim Scrollen die Tabelle durch */
 .cmp .x,.mini-t .x,.dg .x{border:0;background:none;padding:0 6px 0 0;color:var(--muted)}
 .mini-t .x,.dg .x{padding:0 4px;font-size:13px}
 .cmp .fl{border:0;background:var(--bg);border-radius:6px;padding:1px 6px;font-size:11.5px;white-space:normal;text-align:right}
@@ -218,7 +220,11 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .tools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .tools .seg{margin-left:auto}
 .cstatb + .tools{margin-top:16px}   /* Sammlung: Filterzeile mit Luft zum Kopf darüber (0.60) */     /* Ansichtsschalter immer rechts, in jedem Reiter gleich (0.59) */
-.tools input[type=search]{flex:1;min-width:180px;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.tools .sbox{position:relative;display:flex;flex:1;min-width:180px;max-width:420px}
+.tools input[type=search]{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 28px 6px 10px}
+input[type=search]::-webkit-search-cancel-button{display:none}
+.sbox .sx{position:absolute;right:3px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:17px;line-height:1;padding:2px 6px;cursor:pointer}
+.sbox .sx:hover{color:var(--ink)}
 .matrix{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
 .matrix td,.matrix th{padding:3px 6px}
 .matrix.scroll{overflow:auto;max-height:calc(100vh - 150px)}
@@ -1038,7 +1044,7 @@ function viewCollection(){
   const waiting = (c.waiting || []).filter(g => hit(g.title));
   const missing = c.games.reduce((n, g) => n + g.missing, 0);
   // Filter und Reihenfolge direkt über den Spielen, unter Zahlen und Erklärung (0.58)
-  const tools = `<div class="tools"><input type="search" id="rq" placeholder="Spiel oder DLC filtern" value="${esc(S.rq)}">
+  const tools = `<div class="tools">${searchBox("Spiel oder DLC filtern")}
     <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
   let h = eshopBox();
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
@@ -1066,7 +1072,7 @@ function viewTitles(){
     title: r => r.title, verdict: r => VORDER[r.verdict], price: r => off(r)?.eur,
     over: r => off(r) && r.champ ? off(r).eur - r.champ.eur : null, end: r => off(r)?.sale && off(r).end ? +new Date(off(r).end) : null,
     alt: r => { const x = shownOffer(r); return x && x.tier >= 3 && r.easy ? r.easy.eur : null; }});
-  let h = `<div class="tools"><input type="search" id="rq" placeholder="Titel filtern" value="${esc(S.rq)}">${titleSortSel()}${titleFilterBar()}${viewSeg()}</div>
+  let h = `<div class="tools">${searchBox("Titel filtern")}${titleSortSel()}${titleFilterBar()}${viewSeg()}</div>
     <div class="radar"><table><thead><tr>${sth("titel", "title", "Titel")}${sth("titel", "verdict", "Urteil", "", "l")}${sth("titel", "price", "Einkaufspreis", "Was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr: im Land des Kaufplans, sonst im günstigsten zählenden Land")}
     ${sth("titel", "over", "über Bestpreis", "Einkaufspreis minus Bestpreis. Bestpreis: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet")}
     ${sth("titel", "alt", "Alternative", "Liegt das beste Angebot in einem Land der Stufe schwer: das beste Angebot in einem leichten oder mittleren Land")}<th>Korb</th></tr></thead><tbody>`;
@@ -1158,6 +1164,25 @@ function titleDetail(r){
   if(pk) h += `<span>Pakete</span><span>${pk}</span>`;
   return h + `</div>`;
 }
+/* Suchfeld mit eigenem ×, das in jedem Browser gleich aussieht (0.62.1); Esc leert ebenfalls */
+const searchBox = ph => `<span class="sbox"><input type="search" id="rq" placeholder="${esc(ph)}" value="${esc(S.rq)}">${S.rq ? `<button class="sx" data-act="rqclear" title="Suche leeren (Esc)">×</button>` : ""}</span>`;
+/* Prüfstand eines eigenen Angebots mit Link (ab 0.62.1): Gilt der gelesene Preis oder der eingetragene?
+   Die Plausibilität prüft der Server (planner.read_offer): Währung des Landes, höchstens 40 % Abstand. */
+function offerNote(url, cur){
+  const k = (S.state.offer_checks || {})[url];
+  if(!url || !k) return "";
+  const day = t => new Date(t * 1000).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"});
+  if(!k.check) return `<small class="mut" title="Vom Link gelesen am ${stamp(k.read)}">gelesen ${day(k.read)}</small>`;
+  const seen = k.seen !== null && k.seen !== undefined ? money(k.seen, k.seen_cur || cur) : "";
+  const keep = " Es gilt dein eingetragener Preis.";
+  const why = {
+    cur: [`Link zeigt ${seen}`, `Die Seite nennt den Preis in ${k.seen_cur || "anderer Währung"} statt in ${cur}.` + keep],
+    off: [`Link liest ${seen}, passt nicht`, "Der gelesene Preis weicht um mehr als 40 % von deinem ab: falscher Link oder Tippfehler?" + keep],
+    err: ["Link nicht lesbar", `Der letzte Abruf scheiterte: ${k.error || "unbekannt"}.` + keep],
+    old: ["Link länger nicht gelesen", "Der zuletzt gelesene Preis ist älter als 14 Tage." + keep],
+    wait: ["wird gelesen", "Der nächste Abgleich liest den Preis vom Link."]}[k.check];
+  return `<small class="${k.check === "wait" ? "mut" : "warnc"}" title="${esc(why[1])}">${esc(why[0])}</small>`;
+}
 /* Eigene Angebote für einen Titel (ab 0.62), etwa Codes bei Amazon Japan: Liste und Eintragen */
 function ownOffersRow(r, mr){
   const all = S.state.settings.own_offers || [];
@@ -1166,8 +1191,9 @@ function ownOffersRow(r, mr){
   const rows = mine.map(({x, i}) => {
     const cell = mr.cells[x.code] || {};
     const used = cell.own && cell.own.idx === i;
-    const state = used ? `<span class="gn">zählt${cell.own.read ? `, gelesen ${new Date(cell.own.read * 1000).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})}` : ""}</span>`
-      : cell.na ? `<span class="mut">zählt nicht: dort keine deutsche Fassung</span>` : `<span class="mut">zählt nicht: der eShop ist dort günstiger</span>`;
+    const state = (used ? `<span class="gn">zählt</span>`
+      : cell.na ? `<span class="mut">zählt nicht: dort keine deutsche Fassung</span>` : `<span class="mut">zählt nicht: der eShop ist dort günstiger</span>`)
+      + (x.url ? " " + offerNote(x.url, (S.state.pay[x.code] || {}).currency || "") : "");
     return `${esc(x.src)} ${esc(country(x.code).name)} ${x.url ? `<a class="tl" href="${esc(x.url)}" target="_blank" rel="noopener">${money(x.price, (S.state.pay[x.code] || {}).currency || "")}</a>` : money(x.price, (S.state.pay[x.code] || {}).currency || "")} · ${state} <button class="x" data-act="owndel" data-i="${i}" title="Angebot entfernen">×</button>`;
   });
   const form = `<details class="fold" data-k="own-${esc(r.slug)}" ${S.folds["own-" + r.slug] ? "open" : ""}><summary class="hint">${mine.length ? "Weiteres " : ""}Angebot außerhalb des eShops eintragen, etwa einen Code bei Amazon Japan</summary>
@@ -1653,7 +1679,7 @@ function nsoBox(){
       const b = v.best;
       // Nur der Name ist Link, die Laufzeit in Klammern steht grau daneben (0.58)
       const [main, paren] = v.label.split(" (");
-      const name = v.key === sel.key ? `<b title="Deine Mitgliedschaft: Kopfzeile, Erinnerung und Länder unten gelten ihr">${esc(main)}</b>${paren ? ` <span class="mut">(${esc(paren)}</span>` : ""} <span class="chip">deine</span>`
+      const name = v.key === sel.key ? `<b title="Deine Mitgliedschaft: Kopfzeile, Erinnerung und Länder unten gelten ihr">${esc(main)}</b>${paren ? ` <span class="mut">(${esc(paren)}</span>` : ""}`
         : `<button class="link" data-act="nsov" data-v="${v.key}" title="Als deine Mitgliedschaft wählen und ihre Länder zeigen">${esc(main)}</button>${paren ? ` <span class="mut">(${esc(paren)}</span>` : ""}`;
       const tags = [v.family ? `<span class="chip" title="Kaufen kann nur, wer die Familiengruppe verwaltet; der Preis gilt für bis zu ${v.accounts} Konten">kauft der Verwalter</span>` : ""].filter(Boolean).join(" ");
       if(!b) return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l mut" colspan="4">noch kein Preis</td></tr>`;
@@ -1672,9 +1698,7 @@ function nsoBox(){
       let price = `<span class="${grade(r)}" title="${esc(tip)}">${r.est ? "ca. " : ""}${eur(r.eur)}</span>`;
       if(r.url) price = `<a class="pl" href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(tip)} · Klick öffnet den eShop ${esc(r.name)}">${price}</a>`;
       // Eigene Angebote: Preis vom Link gelesen (ab 0.61) oder wie eingetragen
-      const xstate = !r.src ? "" : r.read ? `<small class="mut" title="Vom Link gelesen am ${stamp(r.read)}; eingetragen hattest du ${money(r.manual, r.currency)}">gelesen ${new Date(r.read * 1000).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})}</small>`
-        : r.url && r.read_err ? `<small class="warnc" title="Der letzte Abruf scheiterte: ${esc(r.read_err)}. Es gilt dein eingetragener Preis.">eingetragen, Link nicht lesbar</small>`
-        : r.url ? `<small class="mut" title="Der nächste Abgleich liest den Preis vom Link">eingetragen, wird gelesen</small>` : `<small class="mut">eingetragen${r.date ? " " + esc(dmy(r.date)) : ""}</small>`;
+      const xstate = !r.src ? "" : r.url ? offerNote(r.url, r.currency) : `<small class="mut">eingetragen${r.date ? " " + esc(dmy(r.date)) : ""}</small>`;
       const tags = [r.src ? `<span class="chip" title="Bezahlt mit Kreditkarte zum Kurs plus Gebühr; den Code löst du im Konto dieses Landes ein.">${esc(r.src)}-Code</span> ${xstate} <button class="x" data-act="nsoxdel" data-i="${r.extra}" title="Angebot entfernen">×</button>` : "",
         r.current ? `<span class="chip" title="Dein Konto steht gerade in diesem Land: Hier kaufst du ohne Wechsel">Konto</span>` : "",
         planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land: Die Mitgliedschaft ließe sich im selben Schritt mitkaufen">im Plan</span>` : ""].filter(Boolean).join(" ");
@@ -1742,7 +1766,7 @@ function viewCompare(){
   let h = `<div class="tools"><select data-act="bpick" title="Deine Wishlist-Titel, die noch nicht im Korb sind"><option value="">Wishlist-Titel dazunehmen …</option>${opts}</select>
     <button class="sm" style="margin-left:auto" data-act="unshare" title="Korb leeren; die Länder behalten ihre eigenen Körbe">Korb leeren</button></div>
     <div class="bar on">${verdict}</div>
-    <p class="hint">Was genau diese Titel in jedem Land kosten, mit Guthabenkarten und Rest wie auf den Länderkarten. Zellfarbe wie in der Titel-Tabelle: dunkelgrün „kaufen“, hellgrün „gut“, gold umrandet der Bestpreis; rot nur der Betrag darüber. Ein Klick auf den Preis öffnet die Seite im eShop, bei DLC den Verlauf bei DekuDeals (für DLC gibt es keinen festen eShop-Link); ein Klick auf den Ländernamen sortiert.</p>`;
+    <details class="fold" data-k="korbhow" ${S.folds.korbhow ? "open" : ""}><summary class="hint">So liest du den Korb</summary><p class="hint" style="margin:2px 0 8px">Was genau diese Titel in jedem Land kosten, mit Guthabenkarten und Rest wie auf den Länderkarten. Zellfarbe wie in der Titel-Tabelle: dunkelgrün „kaufen“, hellgrün „gut“, gold umrandet der Bestpreis; rot nur der Betrag darüber. Ein Klick auf den Preis öffnet die Seite im eShop, bei DLC den Verlauf bei DekuDeals (für DLC gibt es keinen festen eShop-Link); ein Klick auf den Ländernamen sortiert.</p></details>`;
   if(!cols.length) return h + `<p class="restline">Kein Titel aus dem Korb ist in einem aktiven Land kaufbar.</p>` + hiddenLine();
 
   const cls = p => (win && p.code === win.code ? "win " : "") + (p.missing.length ? "incomplete " : "");
@@ -1839,7 +1863,7 @@ function viewMatrix(){
   }
   const det = !!S.mDetails;
   // Reihenfolge wie in allen Reitern: Suche, Sortierung, Filter, rechts die Ansicht (0.60)
-  let h = `<div class="tools"><input type="search" id="rq" placeholder="Titel filtern" value="${esc(S.rq)}">
+  let h = `<div class="tools">${searchBox("Titel filtern")}
     <select class="srt" data-act="colorder" title="Reihenfolge der Länderspalten">${[["tierbest", "Länder nach Stufe, darin Bestpreise"], ["best", "Länder nach Bestpreisen"], ["tier", "Länder nach Stufe"]].map(([v, l]) => `<option value="${v}" ${S.colOrder === v ? "selected" : ""}>${l}</option>`).join("")}</select>${titleFilterBar()}
     <label><input type="checkbox" data-act="onlysale" ${S.onlySale ? "checked" : ""}> nur Angebote</label>
     <label title="Landestief, Angebotsende und Sprache in jeder Zelle"><input type="checkbox" data-act="mdet" ${det ? "checked" : ""}> Details</label>${viewSeg()}</div>
@@ -2467,6 +2491,7 @@ document.addEventListener("click", async e => {
       await change(`Korb von ${country(d.c).name} übernommen`, () => { S.ui.basket = slugs; });
       go("korb");
     }
+    else if(a === "rqclear"){ S.rq = ""; render(); $("rq").focus(); }
     else if(a === "unshare"){ await change("Korb geleert", () => { S.ui.basket = null; }); }
     else if(a === "bdrop"){ const name = rowOf(d.s).title; await change(`${name} entfernt`, () => dropFrom(null, d.s)); }
     else if(a === "star"){
@@ -2552,6 +2577,10 @@ document.addEventListener("input", e => {
   const pos = el.selectionStart, id = el.id;
   render();
   const q = $(id); q.focus(); q.setSelectionRange(pos, pos);
+});
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape" || e.target.id !== "rq" || !S.rq) return;
+  e.preventDefault(); S.rq = ""; render(); $("rq").focus();
 });
 $("verlauf").addEventListener("click", e => {   // Klick neben das Fenster schließt es
   const d = e.currentTarget, r = d.getBoundingClientRect();
