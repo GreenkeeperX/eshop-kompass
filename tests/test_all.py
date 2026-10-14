@@ -2355,6 +2355,9 @@ class PackLinksTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, mock.patch.object(store, "DATA_DIR", d):
             store.merge_eshop_history([{"key": "nin:1", "title": "A"}], 100, 0, 91)
             self.assertEqual((store.load_eshop_history()["owned_n"], store.load_eshop_history()["at"]), (91, 100))
+            # Ein voller Lauf ergänzt fehlende Angaben bekannter Einträge, ohne Doppel (0.68.1)
+            new, total = store.merge_eshop_history([{"key": "nin:1", "title": "A", "plat": "BEE"}], 101, 0)
+            self.assertEqual((new, store.load_eshop_history()["entries"][-1].get("plat")), (0, "BEE"))
 
     def test_plan_buys_pass_not_its_parts(self):
         data, settings = sample()

@@ -69,7 +69,7 @@ schreibt `Prüfung: …`.
 
 | Helfer | Holt | Rückweg | Ablage |
 |---|---|---|---|
-| „Käufe lesen“ auf ec.nintendo.com | Kaufverlauf über die Schnittstelle der Seite, 1,2 s je Seite, bis zum Stand des letzten vollständigen Laufs | Adresse mit `#kaeufe=` oder Einfügen | `eshop_history.json`, bis 3000 Einträge |
+| „Käufe lesen“ auf ec.nintendo.com | Kaufverlauf über die Schnittstelle der Seite, 1,2 s je Seite, bis zum Stand des letzten vollständigen Laufs; „alles neu lesen“ (ab 0.68.1) liest den ganzen Verlauf, bekannte Einträge bekommen nur fehlende Angaben | Adresse mit `#kaeufe=` oder Einfügen | `eshop_history.json`, bis 3000 Einträge |
 | „JP-Sprachen lesen“ auf store-jp | Titelseiten der IDs aus dem Link (`?ek-ids=` oder `#ek-ids=`; der Link legt sie auch in die Zwischenablage, ab Stand 4 liest das Lesezeichen sie dort selbst), sonst eingefügt, 2,5 s Pause | Adresse mit `#jpsprachen=` oder Einfügen | `.langs.JP` |
 
 Beide Lesezeichen geben ihren Stand mit (`hv`). Ist er älter als nötig, meldet das Tool das

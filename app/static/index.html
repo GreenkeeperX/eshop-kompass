@@ -2289,7 +2289,7 @@ function eshopBox(){
     <p class="hint">Was du bei Nintendo gekauft hast, fällt aus dem Kaufplan, auch ohne Eintrag bei DekuDeals. Der Kaufverlauf reicht laut Nintendo zwei Jahre zurück.</p>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("eshop", eshopHelper(location.origin))}</li>
-      <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? " Über den Link liest es nur, was seit dem letzten vollständigen Lesen dazugekommen ist." : ""}</li>
+      <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? ` Über den Link liest es nur, was seit dem letzten vollständigen Lesen dazugekommen ist; <a href="https://ec.nintendo.com/my/transactions/1" target="_blank" rel="noopener" title="Liest den ganzen Kaufverlauf noch einmal. Deine Zuordnungen bleiben, ältere Einträge bekommen fehlende Angaben wie die Plattform.">alles neu lesen</a>.` : ""}</li>
       <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
     </ol>
     <details class="fold" data-k="eshopfb" ${S.folds.eshopfb ? "open" : ""}><summary class="hint">Geht das nicht? Text von Hand einfügen</summary>

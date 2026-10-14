@@ -477,6 +477,9 @@ stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
 Stand des letzten lückenlosen Laufs mit; das Lesezeichen liest dann bis dorthin und zur
 Sicherheit eine ganze Seite bereits bekannter Käufe weiter. Bricht ein Lauf ab, übernimmt das
 Tool das Gelesene, behält aber den alten Stand, und der nächste Lauf liest wieder ab dort.
+„alles neu lesen“ daneben liest den ganzen Verlauf noch einmal: Bekannte Käufe bekommen nur
+fehlende Angaben (etwa die Plattform), deine Zuordnungen bleiben. Der Abgleich der Titel läuft
+ohnehin bei jedem Öffnen über alle gespeicherten Käufe, bessere Regeln gelten also auch für alte.
 
 ### Einstellungen
 

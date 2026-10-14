@@ -335,13 +335,20 @@ def merge_eshop_history(entries, now, newest=0, owned_n=None):
     Vorgang eines lückenlosen Laufs, ab dem das Lesezeichen künftig liest. Gibt (neu, gesamt)."""
     with lock:
         h = load_eshop_history()
-        known = {e["key"] for e in h["entries"]}
+        known = {e["key"]: e for e in h["entries"]}
         new = 0
         for e in entries:
             if e["key"] not in known:
-                known.add(e["key"])
+                known[e["key"]] = e
                 h["entries"].append(e)
                 new += 1
+            else:
+                # Ein erneuter Lauf ergänzt Angaben, die ältere Einträge noch nicht hatten
+                # (Plattform ab 0.68); Zuordnungen bleiben
+                old = known[e["key"]]
+                for k, v in e.items():
+                    if v and not old.get(k):
+                        old[k] = v
         h["entries"] = h["entries"][-3000:]
         h["at"] = now
         if newest and newest > (h.get("seit") or 0):
