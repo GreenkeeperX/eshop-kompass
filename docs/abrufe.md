@@ -2,7 +2,7 @@
 
 Verbindliche Übersicht, was das Tool woher holt, wann, wie oft und wohin es das Ergebnis
 legt. Wer einen Abruf, eine Grenze oder eine Ablage ändert, passt diese Datei im selben
-Commit an. Stand: 0.58.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
+Commit an. Stand: 0.60.0. Maßgeblich bleibt der Code; Konstanten stehen in `app/sync.py`.
 
 ## Grundregeln
 
@@ -80,6 +80,7 @@ Je eine Probe, nichts wird gespeichert:
 - Wechselkurse und ihre Ersatzquelle
 - titledb, nur Kopfdaten (Größe, Stand), ohne die Datei zu laden
 - Online-Mitgliedschaft: Nintendos Mitgliedschaftsseite für JP, DE und US (je eine Seite: erkannte Varianten mit ihrer eShop-ID, dazu eine Preisabfrage für diese IDs), DekuDeals für DE, BR, JP und US (mit allen dort genannten Ländern und verlinkten Varianten), damit die Nintendo-Preise der dort genannten eShop-IDs
+- Angebote der Mitgliedschaft von Hand (ab 0.60): je Link höchstens drei Abrufe im Verbindungstest, nur Titel und Yen-Beträge; eine Prüfseite (Captcha) wird gemeldet, nicht umgangen. Im Abgleich nie.
 
 ## Dateien
 

@@ -3349,6 +3349,29 @@ class MembershipTest(unittest.TestCase):
         self.assertFalse(m["due"])
 
 
+class MembershipExtraTest(unittest.TestCase):
+    """Angebote der Mitgliedschaft von Hand (0.60), etwa Codes bei Amazon Japan."""
+    def test_extra_offer(self):
+        store.save_settings({"countries": {c: {"enabled": c in ("DE", "JP")} for c in countries.ORDER}})
+        s = store.save_settings({"nso_extra": [
+            {"key": "m12", "code": "JP", "price": "2970", "src": "Amazon", "url": "https://example.com/code", "date": "2026-10-14"},
+            {"key": "xx", "code": "JP", "price": 1},                   # unbekannte Variante
+            {"key": "m3", "code": "JP", "price": -5},                  # kein Preis
+            {"key": "m3", "code": "JP", "price": 990, "url": "javascript:alert(1)"}]})
+        self.assertEqual(len(s["nso_extra"]), 1)
+        data = store.load_data()
+        data["nso_prices"] = {"DE": {"m12": {"local": 1999, "regular": 1999, "sale": False, "currency": "EUR"}},
+                              "JP": {"m12": {"local": 3000, "regular": 3000, "sale": False, "currency": "JPY"}}}
+        data["fx"] = {"rates": {"EUR": 1.0, "JPY": 160.0}, "updated": ""}
+        m = planner.membership(data, s, now=datetime(2026, 10, 14, tzinfo=timezone.utc))
+        rows = next(v for v in m["variants"] if v["key"] == "m12")["rows"]
+        jp = next(r for r in rows if r["code"] == "JP" and r.get("src"))
+        self.assertEqual(jp["src"], "Amazon")
+        self.assertEqual(jp["extra"], 0)
+        # Kreditkarte: Mittelkurs plus Gebühr
+        self.assertAlmostEqual(jp["eur"], round(2970 / 160 * (1 + s["card_fee_pct"] / 100), 2), places=2)
+
+
 class FetchRulesTest(unittest.TestCase):
     def test_deku_block_stops_all_later_deku_steps(self):
         # 0.56.1: Nach einer Sperre fragt in diesem Abgleich kein Schritt DekuDeals mehr an

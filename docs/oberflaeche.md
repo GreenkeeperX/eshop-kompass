@@ -24,7 +24,9 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 ## Online-Mitgliedschaft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
-Ablauf offen und eine Zeile unter „Zu erledigen“). Die Kopfzeile nennt deine Variante (Auswahl im
+Ablauf offen und eine Zeile unter „Zu erledigen“). Deine Variante wählst du in der Spalte „deine“
+der Variantentabelle (ab 0.60, kein eigenes Auswahlfeld mehr). Angebote von Hand (etwa Amazon-Codes)
+stehen als eigene Zeile mit Chip „Amazon-Code“ und × zum Entfernen. Die Kopfzeile nennt deine Variante (Auswahl im
 Kasten). Namen der Varianten mit Laufzeit in Klammern („Familie (12 Monate)“); in der
 Variantentabelle ist nur der Name der Link, die Klammer steht grau daneben. Tabellenköpfe mit
 Klasse `l` stehen linksbündig über ihrer Spalte. Beide Tabellen
@@ -124,6 +126,16 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 Reiter: Jetzt, Titel, Sammlung, Länder, Korb, Einstellungen; am Reiter Korb steht grau die Zahl
 seiner Titel (ab 0.59). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
 der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste).
+
+DLC, das das Hauptspiel aus einer Region außerhalb Europas braucht: überall dasselbe violette
+„DLC“-Kästchen am Land (Kaufplan, Länder, Korb, Titelliste, Sammlung), in der Titel-Tabelle ein
+violetter Strich am linken Zellrand (`td.needr`) mit Tooltip (ab 0.60).
+
+Werkzeugzeile, Reihenfolge in jedem Reiter: Suche, Sortierung, Filter; rechts die Ansicht oder eine
+Aktion (Korb leeren). Auswahlfelder „Wishlist-Titel dazunehmen“ gruppieren nach Urteil, darin A–Z.
+Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen“, Zahl von Nintendo grün, andere Quellen
+(titledb, von dir) violett. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
+Korb-Tabelle: Spalte Bestpreis, Spaltenköpfe sortieren, Preis grün nach Urteil, rot nur „+x €“.
 
 Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel hinzufügen“ stehen in einer Zeile, die
 „Rechnung“ darunter in eigener Zeile; Aufklappen schiebt so nichts zur Seite (ab 0.58).

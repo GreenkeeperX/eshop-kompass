@@ -293,9 +293,18 @@ ein Land lohnt, sagt getrennt davon die Zeile "Wechsel".
   Zeilen, Länder als Spalten, darunter Einkaufspreis, Preis, Wechsel und Rest
   wie auf den Karten. Das günstigste Land ist hervorgehoben, aber nur unter
   Ländern, die den ganzen Korb anbieten. "+" in der Titelliste legt einen
-  Titel in den Korb, "als Korb vergleichen" auf einer Länderkarte oder im Kaufplan übernimmt
-  dessen Titel. Die Länderkarten behalten dabei ihre eigenen Körbe; "Korb leeren" löst nur
-  den gemeinsamen auf.
+  Titel in den Korb, "als Korb vergleichen" auf einer Länderkarte übernimmt deren Titel (der
+  Kaufplan kauft in mehreren Ländern nacheinander und ist deshalb kein Korb). Die Länderkarten
+  behalten ihre eigenen Körbe; "Korb leeren" löst nur den gemeinsamen auf. Seit 0.60 wie die
+  Titel-Tabelle: Spalte Bestpreis, Preise grün nach Urteil, rot nur der Abstand zum Bestpreis,
+  Klick auf einen Spaltenkopf sortiert nach dem Preis dort.
+- DLC aus Japan oder Amerika braucht in der Regel das Hauptspiel aus derselben Region. Seit 0.60
+  ist das überall gleich markiert (violettes „DLC“ am Land, in der Tabelle ein violetter Strich
+  am linken Zellrand): Kaufplan, Länder, Korb, Titelliste, Titel-Tabelle und Sammlung.
+- Mitgliedschaft: Angebote außerhalb des eShops, etwa Codes bei Amazon Japan, trägst du im Kasten
+  unter „Weiteres Angebot eintragen“ ein (Preis in Landeswährung, bezahlt mit Kreditkarte zum Kurs
+  plus Gebühr). Sie zählen wie jedes Land, bis du sie entfernst; der Verbindungstest prüft, ob
+  sich ihr Link lesen ließe.
 
 Die Ansicht (Reiter, Liste oder Tabelle, Filter, aufgeklappte Kästen) merkt
 sich der Browser; Korb, Auswahl und Zielpreise speichert der Server.

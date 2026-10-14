@@ -1780,6 +1780,16 @@ def diagnose(sleep=time.sleep):
                  f"titledb (JP.ja): HTTP {h['status']}, Größe {int(h['size']) // 1_000_000 if (h['size'] or '').isdigit() else '?'} MB, "
                  f"Stand {h['modified'] or '?'}")
     lines.extend(membership_probe(probe, sleep))
+    # Angebote der Mitgliedschaft von Hand (ab 0.60): Ließe sich der Preis lesen? Je Link ein Abruf
+    # mit ehrlicher Kennung; eine Prüfseite (Captcha) wird nur gemeldet, nicht umgangen.
+    for x in [x for x in settings.get("nso_extra") or [] if x.get("url")][:3]:
+        def shop_info(t):
+            yen = sorted(set(re.findall(r"[￥¥]\s?([\d,]{3,7})", t)))[:6]
+            blocked = "captcha" in t.lower() or "robot" in t.lower()
+            return (f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Yen-Beträge {yen or 'keine'}"
+                    f"{', Prüfseite (Captcha), nicht lesbar' if blocked else ''}, eingetragen {x['price']}")
+        probe(f"Mitgliedschaft {x['src']} ({x['code']}, {x['key']})", x["url"], None, shop_info)
+        sleep(2)
     return lines
 
 

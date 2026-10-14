@@ -32,6 +32,9 @@ DEFAULT_SETTINGS = {
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
     "nso_until": "",          # Online-Mitgliedschaft läuft bis (JJJJ-MM-TT), leer = unbekannt
     "nso_variant": "m12",     # deine Mitgliedschaft: m1, m3, m12, ep, fam, epfam (planner.NSO_VARIANTS)
+    # Weitere Angebote der Mitgliedschaft von Hand, etwa Codes bei Amazon Japan (ab 0.60):
+    # [{"key": "m12", "code": "JP", "price": 2970, "src": "Amazon", "url": "…", "date": "JJJJ-MM-TT"}]
+    "nso_extra": [],
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
     # Angebot als Kauf bzw. gutes Angebot, auch wenn es prozentual mehr ist
     "deal_eur": {"buy": 0.5, "good": 2.0},
@@ -122,6 +125,26 @@ def load_settings():
         return s
 
 
+NSO_KEYS = ("m1", "m3", "m12", "ep", "fam", "epfam")
+
+
+def _nso_extra(e, known):
+    """Ein Angebot der Mitgliedschaft von Hand prüfen; None, wenn es nicht passt."""
+    if not isinstance(e, dict) or e.get("key") not in NSO_KEYS or e.get("code") not in known:
+        return None
+    try:
+        price = float(e.get("price"))
+    except (TypeError, ValueError):
+        return None
+    url = str(e.get("url") or "").strip()
+    if price <= 0 or len(url) > 2000 or (url and not re.match(r"https?://", url)):
+        return None
+    date = str(e.get("date") or "")
+    return {"key": e["key"], "code": e["code"], "price": round(price, 2),
+            "src": (str(e.get("src") or "").strip() or "Händler")[:30], "url": url,
+            "date": date if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else ""}
+
+
 def save_settings(new):
     """Übernimmt nur bekannte Felder mit passendem Typ."""
     with lock:
@@ -142,8 +165,10 @@ def save_settings(new):
             s["current_country"] = new["current_country"]
         if isinstance(new.get("nso_until"), str) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", new["nso_until"]):
             s["nso_until"] = new["nso_until"]
-        if new.get("nso_variant") in ("m1", "m3", "m12", "ep", "fam", "epfam"):
+        if new.get("nso_variant") in NSO_KEYS:
             s["nso_variant"] = new["nso_variant"]
+        if isinstance(new.get("nso_extra"), list):
+            s["nso_extra"] = [x for x in (_nso_extra(e, s["countries"]) for e in new["nso_extra"][:30]) if x]
         if new.get("lang_rule") in ("exclude", "warn", "off"):
             s["lang_rule"] = new["lang_rule"]
         for slug, fams in (new.get("lang_confirm") or {}).items() if isinstance(

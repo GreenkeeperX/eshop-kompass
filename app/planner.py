@@ -2426,7 +2426,8 @@ def membership(data, settings, now=None):
     for v in NSO_VARIANTS:
         e = var_data.get(v["key"]) or {}
         vp = {code: {"nso": p} for code, t in prices.items() if (p := nso_price(t, v["key"]))}
-        rows, champ = _membership_rows(data, settings, now, vp, e.get("lows") or {}, e.get("urls") or {}, current, v)
+        extra = [dict(x, idx=j) for j, x in enumerate(settings.get("nso_extra") or []) if x.get("key") == v["key"]]
+        rows, champ = _membership_rows(data, settings, now, vp, e.get("lows") or {}, e.get("urls") or {}, current, v, extra)
         out["variants"].append(dict({k: v[k] for k in ("key", "slug", "label", "months", "accounts")},
                                     family=bool(v.get("family")), rows=rows, champ=champ,
                                     best=next((r for r in rows if r["counts"]), None)))
@@ -2435,8 +2436,8 @@ def membership(data, settings, now=None):
     return out
 
 
-def _membership_rows(data, settings, now, prices, lows, urls, current, v):
-    if not prices:
+def _membership_rows(data, settings, now, prices, lows, urls, current, v, extra=()):
+    if not prices and not extra:
         return [], None
     # Ein Kunstgriff: Die Mitgliedschaft ist ein Titel mit Deutsch in jeder Region, damit die
     # Sprachregel sie nicht ausschließt
@@ -2466,6 +2467,20 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v):
         if low:
             le = ctx.est(c, cents(low * (1 + c["tax"] / 100)))
             rows[-1]["low_eur"] = _r(min(le, eur)) if le is not None else None
+    # Angebote von Hand (ab 0.60), etwa Codes bei Amazon Japan: bezahlt mit Kreditkarte zum Mittelkurs
+    # plus Fremdwährungsgebühr, eingelöst auf dem Konto des Landes
+    for x in extra:
+        c = ctx.countries.get(x["code"])
+        if not c or not c["rate"]:
+            continue
+        eur = cents(x["price"]) * ctx._units(c)[0]
+        rows.append({
+            "code": x["code"], "name": c["meta"]["name"], "tier": c["tier"], "eur": _r(eur),
+            "month": _r(eur / v["months"]), "per_account": _r(eur / v["months"] / v["accounts"]),
+            "local": x["price"], "currency": c["currency"], "sale": False, "pct": None, "end": None,
+            "est": False, "counts": True, "src": x["src"], "date": x.get("date") or "", "extra": x.get("idx", 0),
+            "current": x["code"] == current or (not current and x["code"] == countries.REFERENCE),
+            "url": x.get("url") or None, "low_eur": None})
     # Bestpreis über alle zählenden Länder, Güte und ★ wie bei Titeln (0.56.1)
     # Bestpreis und sein Land: Ist er gerade nicht zu haben, sagt das Land, wo er war (0.57.1)
     champ_row = min((r for r in rows if r["counts"]), key=lambda r: r["low_eur"] if r["low_eur"] is not None else r["eur"], default=None)
