@@ -31,8 +31,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 - [ ] **„Heute“-Zeile.** Oben höchstens drei Aufgaben als Knöpfe mit Frist.
 - [ ] **Code aufteilen.** Die Oberfläche in mehrere Dateien ohne Build, der Planer in Bewertung,
   Karten und Plan.
-- [ ] **Oberflächentests ohne Zusatzpakete.** Ein Vertragstest für die Felder, die die Oberfläche
-  liest, und eine Prüfung auf seitlichen Überlauf bei Handybreite.
 - [ ] **Notbetrieb.** Festlegen und zeigen, was läuft, wenn DekuDeals sperrt oder seine Seiten
   ändert.
 - [ ] **Online-Mitgliedschaft abschließen.** Wählbar im Warenkorb (als Hinweis im Rest steht sie

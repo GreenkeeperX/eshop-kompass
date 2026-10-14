@@ -1,6 +1,7 @@
 import html
 import json
 import os
+import re
 import urllib.parse
 import sys
 import tempfile
@@ -3702,6 +3703,154 @@ class FetchRulesTest(unittest.TestCase):
         self.assertGreater(len(names), 10)
         missing = [n for n in names if not hasattr(sync, n) and not hasattr(sources, n)]
         self.assertEqual(missing, [])
+
+
+def ui_sample():
+    """Beispieldaten für die Oberflächentests: sample() mit langen Titeln, Angeboten in mehreren
+    Ländern und einer Sammlung mit fehlenden DLC, damit jede Ansicht etwas zeigt."""
+    data, settings = sample()
+    sale = {"start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
+    for i in range(6):
+        slug = f"long-{i}"
+        data["items"][slug] = {"title": f"Ein ausgesprochen langer Spieltitel Nummer {i}: Die vollständige Sammleredition",
+                               "parent": None, "active": True, "order": 10 + i, "ids": {"EU": ["1"]}, "ids_checked": {}}
+        data["prices"]["DE"][slug] = {"status": "onsale", "currency": "EUR", "regular": 29.99 + i}
+        data["prices"]["BR"][slug] = {"status": "onsale", "currency": "BRL", "regular": 99.0 + i, "discount": 19.8 + i, **sale}
+        data["prices"]["NO"][slug] = {"status": "onsale", "currency": "NOK", "regular": 299.0, "discount": 99.0 + 3 * i, **sale}
+    data["owned"] = ["vampire-survivors"]
+    data["rel"] = {"vampire-survivors": {"checked": NOW.timestamp(), "v": 1, "title": "Vampire Survivors", "parent": None,
+                                         "dlc": [["vs-foscari", "Tides of the Foscari"], ["vs-emergency-meeting", "Emergency Meeting"]],
+                                         "in": [], "has": []}}
+    data["last_sync"] = NOW.isoformat()
+    return data, settings
+
+
+class UiContractTest(unittest.TestCase):
+    """Oberflächentests ohne Zusatzpakete (0.67): Was die Oberfläche liest, liefert der Server, und
+    bei Handybreite scrollt keine Ansicht seitlich. Die Oberfläche selbst ist reines JavaScript;
+    diese Tests fangen umbenannte Felder und Überlauf, bevor sie jemand am Handy bemerkt."""
+    PAGE = os.path.join(os.path.dirname(__file__), "..", "app", "static", "index.html")
+
+    # Felder, die die Oberfläche je Struktur liest. Benennt der Server eines um oder lässt es weg,
+    # schlägt der Test fehl; liest die Oberfläche ein neues Feld, gehört es hier dazu.
+    CONTRACT = {
+        "radar": {"at", "cashback", "champ", "de", "diff", "dlc_of", "easy", "gap", "hard", "no_ids", "owned",
+                  "parent_owned", "reason", "rhythm", "shown", "slug", "target", "title", "typical", "verdict"},
+        "matrix.rows": {"best", "cells", "champ", "dlc_of", "no_ids", "owned", "parent_owned", "slug", "title", "typical"},
+        "matrix.cells": {"alone", "champ", "end", "est", "eur", "gap", "grade", "lang", "local", "low", "low_eur",
+                         "na", "nocard", "nsuid", "own", "pct", "sale"},
+        "matrix.cols": {"code", "currency", "name", "tier"},
+        "kaufplan": {"bought", "cost", "count", "dropped", "good_left", "held", "later", "lock", "packed",
+                     "s2_skip", "saving", "steps"},
+        "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
+                 "estimated", "family", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
+                 "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "rate", "ref_total", "rest", "rest_eur",
+                 "saving", "threshold", "tier", "total", "trims", "warnings", "worth"},
+        "plan.items": {"alt", "alt_code", "champ", "dlc_of", "end", "est", "eur", "lang", "local", "needs_parent",
+                       "over", "own", "owned", "parent_owned", "pct", "ref", "sale", "short", "slug", "title"},
+        "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},
+        "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
+        "nso": {"days_left", "due", "ids_known", "mine", "rows", "until", "variants"},
+        "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        from app import server
+        cls.server = server
+        cls.data, cls.settings = ui_sample()
+        store.save_data(cls.data)
+        store.save_settings(cls.settings)
+        with open(cls.PAGE, encoding="utf-8") as f:
+            cls.page = f.read()
+
+    def test_state_fields_exist(self):
+        state = self.server.state()
+        for name in sorted(set(re.findall(r"S\.state\.([A-Za-z_]\w*)", self.page))):
+            self.assertIn(name, state, f"Die Oberfläche liest S.state.{name}, der Server liefert es nicht")
+
+    def test_api_paths_exist(self):
+        with open(os.path.join(os.path.dirname(self.PAGE), "..", "server.py"), encoding="utf-8") as f:
+            routes = set(re.findall(r'"(/api/[a-z_/]+)"', f.read()))
+        used = set(re.findall(r'(?:api\(|href=)["`](/api/[a-z_/]+)', self.page))
+        self.assertTrue(used)
+        self.assertEqual(used - routes, set())
+
+    def test_structure_contract(self):
+        state = self.server.state()
+        kauf = planner.purchase_plan(store.load_data(), store.load_settings(), {}, include_good=True, bought=[], fill={})
+        plans = planner.plans(store.load_data(), store.load_settings(), now=NOW)
+        keys = lambda rows: set().union(*[set(r) for r in rows if isinstance(r, dict)])
+        steps = kauf["steps"] + plans
+        got = {
+            "radar": keys(state["radar"]),
+            "matrix.rows": keys(state["matrix"]["rows"]),
+            "matrix.cells": keys([c for r in state["matrix"]["rows"] for c in r["cells"].values()]),
+            "matrix.cols": keys(state["matrix"]["cols"]),
+            "kaufplan": set(kauf),
+            "plan": keys(steps),
+            "plan.items": keys([i for p in steps for i in p["items"]]),
+            "collection": set(state["collection"]),
+            "collection.games": keys(state["collection"]["games"]),
+            "nso": set(state["nso"]),
+            "pay": keys(state["pay"].values()),
+        }
+        used = set(re.findall(r"\.([a-z_][a-z0-9_]*)\b", self.page))
+        for name, fields in self.CONTRACT.items():
+            self.assertEqual(fields - got[name], set(), f"{name}: fehlt in der Antwort des Servers")
+            self.assertEqual(fields - used, set(), f"{name}: liest die Oberfläche nicht mehr, aus dem Vertrag nehmen")
+
+    def test_phone_width_without_overflow_or_errors(self):
+        # Braucht ein Chromium (in GitHub Actions vorhanden); ohne wird der Test übersprungen
+        import glob
+        import re as re_
+        import shutil
+        import subprocess
+        import threading
+        from http.server import ThreadingHTTPServer
+        browser = os.environ.get("CHROME_BIN") or next((shutil.which(n) for n in (
+            "chromium", "chromium-browser", "google-chrome", "google-chrome-stable") if shutil.which(n)), None) \
+            or next(iter(sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome"))), None)
+        if not browser:
+            self.skipTest("kein Chromium gefunden")
+        with open(os.path.join(os.path.dirname(__file__), "ui_selbsttest.html"), encoding="utf-8") as f:
+            probe_page = f.read().encode()
+        base = self.server.Handler
+
+        class Handler(base):
+            def do_GET(self):
+                if self.path == "/selbsttest":
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(probe_page)))
+                    self.end_headers()
+                    self.wfile.write(probe_page)
+                    return
+                return base.do_GET(self)
+
+            def log_message(self, *a):
+                pass
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            out = subprocess.run([browser, "--headless", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=30000",
+                                  "--window-size=800,900", "--dump-dom", f"http://127.0.0.1:{srv.server_port}/selbsttest"],
+                                 capture_output=True, text=True, timeout=120)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+        m = re_.search(r'<pre id="out">(.*?)</pre>', out.stdout, re_.S)
+        self.assertTrue(m, "Selbsttest lieferte kein Ergebnis: " + out.stderr[-300:])
+        res = json.loads(html.unescape(m.group(1)) or "null")
+        self.assertTrue(res, out.stdout[-500:])
+        self.assertEqual(res["errors"], [])
+        probe = res["tabs"].pop("probe")
+        self.assertTrue(probe["wide"], "Der Prüfer erkennt einen zu breiten Kasten nicht")
+        self.assertGreaterEqual(len(res["tabs"]), 8)
+        for name, t in res["tabs"].items():
+            self.assertLessEqual(t["width"], t["view"], f"{name} scrollt seitlich: {t['wide']}")
+            self.assertEqual(t["wide"], [], name)
+            self.assertGreater(t["chars"], 200, f"{name} zeigt fast nichts")
 
 
 class UiThemeTest(unittest.TestCase):

@@ -195,6 +195,13 @@ Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länd
 Reiter Länder (seit 0.53.6); Grün steht dort nur für „am Bestpreis“ in der Zeile Preis. Weniger Wichtiges wird über
 gedämpften Text gezeigt, nie über Transparenz der ganzen Kachel.
 
+## Prüfung
+
+Was die Oberfläche vom Server liest, steht als Vertrag in `tests/test_all.py`
+(`UiContractTest.CONTRACT`); wer ein neues Feld liest, trägt es dort ein. Jede Änderung an der
+Oberfläche muss den Selbsttest bei 390 px bestehen: keine Ansicht scrollt seitlich, kein
+Skriptfehler (`tests/ui_selbsttest.html`).
+
 ## Wortwahl
 
 - Namen bleiben stabil, keine Versionsnummern in sichtbaren Bezeichnungen.

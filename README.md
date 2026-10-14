@@ -659,6 +659,13 @@ Tool deshalb nicht.
 
     python3 -m unittest tests.test_all
 
+Dazu gehören Tests der Oberfläche ohne Zusatzpakete: Ein Vertragstest prüft, dass der Server jedes
+Feld liefert, das die Oberfläche liest (die Liste steht in `UiContractTest.CONTRACT`), und dass jede
+Adresse unter `/api/` existiert. Ist ein Chromium da (in GitHub Actions immer, sonst über
+`CHROME_BIN`), lädt ein weiterer Test die Seite mit Beispieldaten bei 390 px Breite, geht alle
+Reiter und beide Ansichten von Titel und Ländern durch und schlägt fehl, wenn eine Ansicht seitlich
+scrollt oder ein Skriptfehler auftritt. Ohne Chromium wird er übersprungen.
+
 ### Prüfumgebung
 
 `tools/replay.py` rechnet eine Momentaufnahme ohne Netz durch: Bewertung, Kaufplan, Sprachen
