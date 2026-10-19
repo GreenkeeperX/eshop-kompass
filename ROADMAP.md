@@ -67,7 +67,7 @@ Derzeit nichts offen.
   Ablaufdatum der Mitgliedschaft aus dem Kaufverlauf (dort steht keine Laufzeit, der Betrag passt
   wegen Punkten und Codes oft zu keiner Variante), ein Rückblick über die Ersparnis, weitere
   Bezugsquellen wie Händler-Codes und das Alter der Angaben direkt an der Rechnung (der Tooltip
-  genügt).
+  genügt). Ebenso Käufe mit anderer Programm-ID in Japan und Amerika; „zuweisen“ genügt.
 - **Gestrichen (Entscheidung 13.10.2026):** Das Tool bleibt ein privates Werkzeug auf dem
   eigenen Server. Damit entfallen:
   - die Sprache der Oberfläche,
@@ -79,5 +79,3 @@ Derzeit nichts offen.
 
 Neue Wünsche, noch nicht eingeordnet.
 
-- [ ] **Käufe mit anderer Programm-ID in Amerika:** Manche Spiele haben in Japan eine andere
-  Programm-ID als in den USA (anderer Verlag), dann fehlt der englische Name; bisher „zuweisen“.
