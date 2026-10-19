@@ -30,7 +30,7 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   Titel eines Schritts, weil der Plan jeden Titel einzeln verteilt und erst danach die Karten
   rechnet. Der Plan könnte jeden Schritt am Ende gegen die anderen Länder prüfen (Rechenregel,
   braucht eine Entscheidung).
-- [ ] **Handy zuerst für Jetzt und Korb.** Kaufplan als Karten, Korb mit Länder-Umschalter, Antippen
+- [ ] **Handy: Korb und Rechnung.** Korb mit Länder-Umschalter statt seitlichem Scrollen, Antippen
   eines Preises zeigt die Rechnung (statt Wissen nur im Tooltip; hilft auch bei Tastatur).
 - [ ] **„Heute“-Zeile.** Oben höchstens drei Aufgaben als Knöpfe mit Frist.
 - [ ] **Code aufteilen.** Die Oberfläche in mehrere Dateien ohne Build, der Planer in Bewertung,

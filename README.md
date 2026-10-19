@@ -254,6 +254,8 @@ lädt die Startseite neu.
 - **Kopfleiste:** Kopf und Reiter blenden sich beim Scrollen nach unten aus und beim
   Hochscrollen wieder ein. Auf dem Handy scrollt die Reiterleiste seitlich und blendet am Rand
   aus, solange weitere Reiter folgen.
+- **Handy:** Die Titel im Kaufplan und auf den Länderkarten stehen als kleine Karten
+  untereinander, der Einkaufspreis vorn; sortieren lassen sie sich dort nicht.
 - **Sortieren:** Ein Klick auf einen Spaltenkopf sortiert aufsteigend, der zweite absteigend,
   der dritte stellt die gewohnte Reihenfolge wieder her; leere Werte stehen am Ende. Das geht in
   Titel-Liste und -Tabelle, in den Warenkörben von Kaufplan, Korb und Ländern, im Verlauf, in

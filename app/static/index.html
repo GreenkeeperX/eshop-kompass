@@ -266,6 +266,20 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .matrix .tbtn{font-size:13px}
 .matrix .tl{display:flex;gap:6px;align-items:flex-start}
 .pc table.others{table-layout:auto;width:100%}
+/* Handy (0.75): Titel eines Schritts oder einer Länderkarte als kleine Karte statt Tabellenzeile:
+   oben der Name, darunter Einkaufspreis, Abstand zum Bestpreis, Angebotsende, Shop-Preis, sonst */
+@media (max-width:520px){
+  .pc .scroll:has(> table.it){overflow:visible}
+  .pc table.it,.pc table.it tbody{display:block;width:100%}
+  .pc table.it thead{display:none}
+  .pc table.it tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .pc table.it td{border:0;padding:0;width:auto!important;text-align:left;white-space:nowrap}
+  .pc table.it td.t{flex:1 0 100%;white-space:normal}
+  .pc table.it td.c-eur{order:1;font-weight:600}.pc table.it td.c-best{order:2}.pc table.it td.c-end{order:3}
+  .pc table.it td.c-loc{order:4}.pc table.it td.c-alt{order:5}
+  .pc table.it td.c-end:not([data-l]){display:none}
+  .pc table.it td[data-l]::before{content:attr(data-l) " ";color:var(--muted);font-size:11px;font-weight:400}
+}
 .mini-t.others .nw{white-space:nowrap}
 .mini-t.others td:nth-child(2){text-align:right;white-space:nowrap;padding-left:10px;vertical-align:top}
 .matrix .tl .kb{flex:none;margin-top:1px}
@@ -1655,9 +1669,10 @@ function planCard(p, step){
         const filled = step && (p.fill_slugs || []).includes(i.slug)
           ? ` <button class="link" data-act="planunfill" data-c="${p.code}" data-s="${esc(i.slug)}" title="Von dir dazugenommen. Klick nimmt ihn wieder heraus.">dazugenommen ×</button>` : "";
         const first = step || p.ro ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
-        return `<tr>${first}${wide ? `<td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
-          <td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
-          <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
+        // Klassen c-… ordnen die Zellen am Handy zu einer Karte je Titel (0.75)
+        return `<tr>${first}${wide ? `<td class="c-loc" data-l="Shop">${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td class="c-end"${i.sale ? ` data-l="bis"` : ""}>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
+          <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
+          <td class="c-best">${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
           ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
       }).join("") + `</tbody></table></div>`;
   } else {
@@ -1732,9 +1747,9 @@ function othersHtml(p, step){
   return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table></details>`;
 }
 function altCell(i){
-  if(i.alt === null || i.alt === undefined) return `<td class="mut">–</td>`;
+  if(i.alt === null || i.alt === undefined) return `<td class="mut c-alt">–</td>`;
   const tip = `Ohne diesen Wechsel: ${eur(i.alt)} in ${country(i.alt_code).name}` + (i.ref !== null && i.ref !== undefined ? ` · Deutschland ${eur(i.ref)}` : "");
-  return `<td title="${esc(tip)}" class="mut">${num(i.alt)} <small style="display:inline">${esc(i.alt_code)}</small></td>`;
+  return `<td title="${esc(tip)}" class="mut c-alt" data-l="sonst">${num(i.alt)} <small style="display:inline">${esc(i.alt_code)}</small></td>`;
 }
 function restHtml(p, bare){
   const pre = bare ? "" : "Rest ";

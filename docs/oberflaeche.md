@@ -210,6 +210,10 @@ Reihenfolge merkt sich der Browser (`ek.view`, ab 0.65 auch für Länder), nie d
 Handy (ab 0.65): Die Reiterleiste scrollt seitlich und blendet am Rand weich aus, solange rechts
 noch Reiter folgen (`nav.more`). Formulare, Vorschläge „Passt in den Rest“ und die Tabellen der
 Mitgliedschaft brechen um oder scrollen in sich; die Seite selbst scrollt nie seitlich (geprüft bei 390 px).
+Ab 0.75 sind die Titel eines Schritts und einer Länderkarte unter 520 px kleine Karten statt
+Tabellenzeilen (`.pc table.it` mit `display:flex`): oben der Name, darunter fett der Einkaufspreis,
+der Abstand zum Bestpreis, dann grau beschriftet „bis“, „Shop“ und „sonst“ (`td[data-l]`).
+Ohne Angebot fällt „normal“ weg; die Spaltenköpfe und damit das Sortieren gibt es dort nicht.
 
 „Zu erledigen“ (Jetzt): je Eintrag ein fetter Kern („7 fehlende DLC kostenlos holen“), Einzelheiten
 klein dahinter, lange Listen eingeklappt („welche“). Die Legende erklärt jedes Zeichen, das die
