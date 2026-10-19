@@ -60,7 +60,7 @@ Klick = ja), „keiner“ und „anderer …“ (ab 0.76 eine eigene Zeile unter
 seitlich verschiebt: Suchfeld, Treffer als Knöpfe beim Tippen über `hits()`, ohne Akzente, höchstens
 zwölf; oder DekuDeals-Link mit Knopf „zuordnen“; der Link heißt dann „schließen“). „Bei DekuDeals nachtragen“:
 sortierbare Tabelle Kauf, Zählt als (Link), Woher, „stimmt nicht“ oder „zurücknehmen“. „Alle Käufe“
-eingeklappt, Zusammenfassung je Gruppe; Spalte Einordnung in denselben Farben wie die Zahlenzeile
+eingeklappt, Zusammenfassung je Gruppe; Spalte Einordnung in denselben Farben wie die Zahlenzeile, sortiert nach Dringlichkeit statt Alphabet (ab 0.81.2: nicht in der Sammlung, nachtragen, offen, Sammlung, Mitgliedschaft, erstattet)
 (`ESHOP_CLS`, ab 0.78); dort heißt „anderer …“ „zuweisen“, bei Käufen, die einem Titel
 der Sammlung zugeordnet sind, „neu zuweisen“ (ab 0.77); Zeilen „in der Sammlung“, „Mitgliedschaft oder Gutschein“
 und „erstattet“ grau (`tr.mutr`). Ein englischer Name aus titledb steht grau in Klammern hinter dem
@@ -183,7 +183,7 @@ Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü 
 - ? (violett): zählt nicht, weil Sprache ungeprüft oder ohne Guthabenkarte.
 - "ca." vor Beträgen: aus anderen Angaben errechnet (etwa Pass-Preis).
 - Nicht zählende Zeilen sind blass (`opacity`), nicht farbig.
-- Gepunktete Unterstreichung: Angabe aus titledb, nicht von Nintendo.
+- Violett: Angabe aus titledb, nicht von Nintendo (bis 0.81.1 zusätzlich gepunktet unterstrichen).
 - „am Bestpreis“ (grün) an einem Schritt oder Land steht nur, wenn jeder Titel darin am
   Bestpreis ist; sonst der rote Betrag darüber (ab 0.65). So widersprechen sich Kopfzeile und
   rotes „+x“ einer Zeile nie.
@@ -269,8 +269,7 @@ Sammlung: Der Filter ignoriert Akzente, Satzzeichen und Leerzeichen („pokemon�
 und klappt „Ohne offene DLC“ und „Ohne Zusatzinhalte“ mit Treffern auf.
 Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen, 6 laut titledb, 2 von dir bestätigt“, Zahlen von
 Nintendo und von dir grün, laut titledb violett (ab 0.81; vorher „von dir“ violett). Dieselben Farben
-in der Spalte der Tabelle darunter: „Deutsch ✓“ grün von Nintendo oder dir, violett mit gepunkteter
-Linie laut titledb, „ohne Deutsch“ rot (bis 0.80 immer gold). Der Browser-Helfer für Japan zählt
+in der Spalte der Tabelle darunter: „Deutsch ✓“ grün von Nintendo oder dir, violett laut titledb (ohne Punktlinie ab 0.81.2), „ohne Deutsch“ rot (bis 0.80 immer gold). Der Browser-Helfer für Japan zählt
 Einträge und Seiten („6 Einträge ohne Angabe von Nintendo auf 2 Seiten“): DLC ohne eigene Seite
 lesen die Seite ihres Spiels mit, die Liste nennt je Seite alle Titel. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
 Korb-Tabelle: Erklärung zugeklappt („So liest du den Korb“, ab 0.62.1), Spalte Bestpreis,

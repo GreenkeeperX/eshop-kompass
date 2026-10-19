@@ -630,7 +630,7 @@ und „Deutsch ja“/„nein“. Wo die Fassung gerade günstiger wäre, steht �
 oben; was dort gerade nicht kaufbar ist, steht unten. Aufgeklappt folgen die geprüften,
 gruppiert nach Quelle (von Nintendo gelesen, laut titledb, von dir bestätigt). Die Spalte zeigt
 „✓ Deutsch“ oder „– ohne Deutsch“, der Tooltip nennt Quelle und gelesene Sprachen; „Deutsch“ ist
-grün, wenn Nintendo oder du es bestätigt habt, violett und gepunktet unterstrichen, wenn es nur
+grün, wenn Nintendo oder du es bestätigt habt, violett, wenn es nur
 laut titledb gilt. ✎ überschreibt eine gelesene Angabe, ↺ stellt sie wieder
 her. Von Hand gilt dauerhaft und geht der Angabe von Nintendo vor. Steht ein Titel weder auf
 der Wishlist noch in der Sammlung, löscht der Abgleich seine Angaben wieder.

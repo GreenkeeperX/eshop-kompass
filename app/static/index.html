@@ -101,7 +101,6 @@ th small.bc{display:inline;margin-left:3px;font-weight:400;color:var(--muted)}
 tr.part td:first-child{padding-left:16px}
 td.lc{white-space:nowrap;text-align:left}
 .lg{cursor:help}
-.lg.tdb{text-decoration:underline dotted;text-underline-offset:3px}
 button.ico{border:0;background:none;padding:0 2px 0 8px;color:var(--muted);cursor:pointer;font-size:13px}
 button.ico:hover{color:var(--ink)}
 .dlc.need{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
@@ -1968,7 +1967,7 @@ function openLegend(){
     <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b class="bad">lohnt nicht</b> ist rot.</div>
     <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> Guthabenkarten, ein Wechsel mit Guthaben geht nur über den Support.</div>
     <div><span class="pct">−60 %</span> Rabatt im Shop (blau). <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
-    <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch · <span class="lg tdb">Deutsch</span> gepunktet: laut titledb, nicht von Nintendo.</div>
+    <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch · <span class="lg warnc">Deutsch</span> violett: laut titledb, nicht von Nintendo.</div>
     <div><b>Wechsel</b> am Schritt: <b>✓ lohnt</b> oder <b class="bad">lohnt nicht</b>. Chips: <span class="chip">Konto</span> dein Konto steht dort, <span class="chip">im Plan</span> der Kaufplan kauft dort, <span class="chip">Switch-2-Upgrade</span> Upgrade-Paket. <b>ca.</b> vor einem Preis heißt geschätzt.</div>
     <div>Marken: <span class="dlc">DLC</span> Zusatzinhalt · <span class="dlc need">DLC</span> braucht das Spiel aus dieser Region · <span class="dlc open">DLC?</span> Fassung ungeprüft · <span class="dlc ownm">Amazon</span> eigenes Angebot, mit Kreditkarte bezahlt. In der Sammlung: <span class="warnc">fehlt</span> noch nicht in deiner Sammlung.</div>
     <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">violett</span> heißt prüfen, <span class="bad">rot</span> heißt nein oder teurer, etwa der Betrag über dem Bestpreis. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
@@ -2375,8 +2374,9 @@ function langCell(t){
   }
   if(t.state !== null){
     const src = t.src === "titledb" ? "Laut titledb (offene Titelliste, nicht von Nintendo)" : "Von Nintendo gelesen";
-    // Farben wie in der Zahlenzeile (0.81): grün von Nintendo oder dir, violett nur laut titledb
-    return `<span class="lg ${t.state ? (t.src === "titledb" ? "warnc" : "gn") : "bad"}${t.src === "titledb" ? " tdb" : ""}" title="${src}: ${esc(langDe(t.text) || "–")}">${what}</span>` +
+    // Farben wie in der Zahlenzeile (0.81): grün von Nintendo oder dir, violett nur laut titledb; ohne
+    // Punktlinie, das Violett sagt es schon (0.81.2)
+    return `<span class="lg ${t.state ? (t.src === "titledb" ? "warnc" : "gn") : "bad"}" title="${src}: ${esc(langDe(t.text) || "–")}">${what}</span>` +
       act(t.state ? 0 : 1, "✎", `Stimmt nicht? Klick setzt „${t.state ? "ohne Deutsch" : "Deutsch"}“, gilt dauerhaft und geht der gelesenen Angabe vor`);
   }
   return `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`;
@@ -2545,7 +2545,9 @@ function eshopBox(){
       `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
   // Alle Käufe zum Nachsehen, nach Gruppe; „zuweisen“ ordnet jeden von Hand zu, „neu zuweisen“, wenn das
   // Tool ihn schon einem Titel der Sammlung zugeordnet hat (0.77, vorher „anderer …“)
-  const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_GROUP[r.group] || "", name: r => r.name || r.coll_name || "", date: r => r.date || ""});
+  // Einordnung nach Dringlichkeit, nicht nach Alphabet (0.81.2): Offenes oben, Erledigtes unten
+  const ESHOP_RANK = ["unknown", "plan", "ask", "coll", "ticket", "void"];
+  const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_RANK.indexOf(r.group), name: r => r.name || r.coll_name || "", date: r => r.date || ""});
   h += `<details class="fold eqf" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary>Alle Käufe: ${N(rows.length)} <span class="mut">(zum Nachsehen und Zuweisen)</span></summary>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshopall", "kauf", "Kauf", "", "l")}${sth("eshopall", "group", "Einordnung", "", "l")}${sth("eshopall", "name", "Titel", "", "l")}${sth("eshopall", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${allRows.map(r =>
       `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small class="${ESHOP_CLS[r.group] || ""}">${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r, "zuweisen")}` : r.group === "void" || r.group === "ticket" ? "" : own(r, r.coll ? "neu zuweisen" : "zuweisen")}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
