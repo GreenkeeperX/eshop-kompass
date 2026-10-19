@@ -287,6 +287,8 @@ dunkel-/hellgrün nach Urteil, gold umrandet am Bestpreis. Landeswährung, Zahlw
 Die Zelle ist die Preiszelle (siehe unten), dieselbe wie in der Tabelle.
 Der Stern im Korb gilt dem Preis im Korb, nicht dem Einzelpreis (ab 0.65; in Ländern ohne
 eigenen Shop können beide abweichen).
+Links zu DekuDeals: ohne Land (Titelnamen, Sammlung, Käufe) ohne `?country=`, dann gilt die bei DekuDeals
+eingestellte Länderansicht; an einem Preis einer Länderspalte mit dem Land dieses Shops (ab 0.82.3).
 Der Preis öffnet den eShop, bei DLC den Verlauf bei DekuDeals (kein fester eShop-Link für DLC).
 Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Menü Hell/Dunkel liegt
 über der Sprungleiste der Einstellungen (Kopfleiste `z-index` 7).
