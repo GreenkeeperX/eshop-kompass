@@ -299,7 +299,7 @@ und steht deshalb nicht zur Wahl.
   (vermerkter Kauf oder größere DekuDeals-Sammlung),
 - Käufe zuordnen, die einem Wishlist-Titel oder fehlenden DLC nur ähneln, und gekaufte Titel, die
   bei DekuDeals noch nachzutragen sind (siehe Einstellungen, Käufe aus dem eShop),
-- 30 Tage vor Ablauf die Verlängerung der Online-Mitgliedschaft mit dem günstigsten Land.
+- 30 Tage vor Ablauf die Verlängerung der Online-Mitgliedschaft mit dem günstigsten Land; „zur Mitgliedschaft ↓“ springt zum Kasten.
 
 **Kaufplan:** ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst. Kandidaten
 sind die Titel mit dem Urteil „kaufen“, per Schalter auch „gut“. Jeder Titel geht ins Land, wo

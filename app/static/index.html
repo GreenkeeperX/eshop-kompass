@@ -314,6 +314,7 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:8}
 @media (max-width:420px){.grid{grid-template-columns:1fr}}
 @media (max-width:520px){.sugg button{flex-wrap:wrap}.sugg small{white-space:normal}#nsobox .mini-t{display:block;overflow-x:auto}}
+#nsobox{scroll-margin-top:12px}
 @media (max-width:640px){.cmp td:first-child,.cmp th:first-child{min-width:130px;max-width:150px}}
 @media (max-width:640px){.list .pc .c-t,.list .pc col.c-t{display:none}.list .pc col.c-l{width:100px}
   .list .pc col.c-b{width:50px}.list .pc col.c-e{width:56px}.list .pc col.c-d{width:56px}}
@@ -1854,7 +1855,7 @@ function todos(){
   const nso = S.state.nso;
   if(nso && nso.due){
     const b = (nso.rows || []).find(r => r.counts);
-    out.push([`<b>Online-Mitgliedschaft ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}</b>${b ? ` <small>am günstigsten in ${esc(b.name)} für ${eur(b.eur)}</small>` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
+    out.push([`<b>Online-Mitgliedschaft ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}</b>${b ? ` <small>am günstigsten in ${esc(b.name)} für ${eur(b.eur)}</small>` : ""}`, `<button class="link" data-act="gonso">zur Mitgliedschaft ↓</button>`]);
   }
   for(const [code, c] of Object.entries(s.countries)){
     if(c.enabled && c.cards && c.cards_checked && Date.now() - new Date(c.cards_checked) > 30 * 86400000)
@@ -2769,7 +2770,7 @@ document.addEventListener("click", async e => {
       const list = (S.state.settings.nso_extra || []).filter((x, i) => i !== +d.i);
       await api("/api/settings", {nso_extra: list}); S.folds.nso = 1; await refresh(); toast("Angebot entfernt");
     }
-    else if(a === "gonso"){ S.folds.nso = 1; saveView(); go("jetzt", false); const t = $("nsobox"); if(t){ t.open = true; t.scrollIntoView(); } }
+    else if(a === "gonso"){ S.folds.nso = 1; saveView(); go("jetzt", false); const t = $("nsobox"); if(t){ t.open = true; t.scrollIntoView({block:"start", behavior:"smooth"}); } }
     else if(a === "gokaeufe"){ if(d.v === "how") S.folds.eshophow = 1; go("settings", false); const t = $("set-kaeufe"); if(t) t.scrollIntoView(); }
     else if(a === "gosprachen"){ go("settings", false); const t = $("sprachen"); if(t) t.scrollIntoView(); }
     else if(a === "dlcmark"){
