@@ -1547,6 +1547,21 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(first["balance_lost"], round(1000 / 177.3267 * 1.0175, 2), places=2)
         self.assertAlmostEqual(plan["rest_lost"], first["balance_lost"])
 
+    def test_disabled_country_is_left_out_everywhere(self):
+        # „Aktiv“ aus: kein Land in Tabelle, Plan und Bestpreis, die Einstellung bleibt gespeichert
+        saved = store.save_settings({"countries": {"NO": {"enabled": False}}})
+        self.assertFalse(saved["countries"]["NO"]["enabled"])
+        self.assertFalse(store.load_settings()["countries"]["NO"]["enabled"])
+        store.save_settings({"countries": {"NO": {"enabled": True}}})
+        self.settings["countries"]["NO"]["enabled"] = False
+        codes = {p["code"] for p in planner.plans(self.data, self.settings, now=NOW)}
+        self.assertNotIn("NO", codes)
+        self.assertIn("BR", codes)
+        for r in planner.radar(self.data, self.settings, now=NOW):
+            self.assertNotEqual((r["at"] or {}).get("code"), "NO")
+        steps = planner.purchase_plan(self.data, self.settings, now=NOW)["steps"]
+        self.assertNotIn("NO", [p["code"] for p in steps])
+
     def test_verdict_same_rule_in_every_country(self):
         # Echter Fall: ein DLC in Brasilien wenige Cent über dem Bestpreis war "warten", weil schwere
         # Länder nur genau am Bestpreis zählten. Jetzt gilt dieselbe Grenze überall
