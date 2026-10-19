@@ -1689,6 +1689,17 @@ class SafetyTest(unittest.TestCase):
                 c.close()
                 self.assertEqual(r.status, 200, path)
                 self.assertIsInstance(body, dict)
+            # Unerwartete Fehler (0.82): an den Browser nur die Art, keine Pfade oder Innereien
+            boom = mock.patch.object(planner, "case_export", side_effect=KeyError("/geheimer/pfad"))
+            with boom, mock.patch.object(server.traceback, "print_exception"), mock.patch("builtins.print"):
+                c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+                c.request("GET", "/api/fall?slug=x")
+                r = c.getresponse()
+                body = json.loads(r.read())
+                c.close()
+            self.assertEqual(r.status, 500)
+            self.assertIn("KeyError", body["error"])
+            self.assertNotIn("geheimer", body["error"])
         finally:
             srv.shutdown()
             srv.server_close()
@@ -2270,6 +2281,21 @@ class EshopHistoryTest(unittest.TestCase):
         row = planner.eshop_matches(data)["rows"][0]
         self.assertEqual((row["slug"], row["group"], row["how"]), ("cat-journey-2-the-arena", "plan", "eng"))
         self.assertIn("cat-journey-2-the-arena", planner.owned_set(data))
+
+    def test_only_public_targets_are_fetched(self):
+        # 0.82: Eigene Links (Karten, Angebote) und Weiterleitungen dürfen weder den Server selbst
+        # noch Geräte im Heimnetz ansprechen
+        for url in ("http://127.0.0.1:8787/api/settings", "http://localhost/", "http://10.0.0.1/",
+                    "http://169.254.169.254/latest/meta-data", "http://[::1]/", "ftp://example.org/x",
+                    "https://user:pw@example.org/"):
+            self.assertTrue(sources.blocked_target(url), url)
+        with mock.patch.object(sources.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 443))]):
+            self.assertEqual(sources.blocked_target("https://shop.example/karte"), "")
+        with mock.patch.object(sources.socket, "getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("10.1.2.3", 443))]):
+            self.assertEqual(sources.blocked_target("https://shop.example/karte"), "Adresse nicht öffentlich")
+            self.assertEqual(sources.request("https://shop.example/karte")["error"], "Adresse nicht öffentlich")
+        with self.assertRaises(urllib.error.URLError):
+            sources._SafeRedirect().redirect_request(None, None, 302, "", {}, "http://127.0.0.1/")
 
     def test_names_compare_without_accents(self):
         # 0.76: „Pokemon“ im Kaufverlauf ist „Pokémon“; japanische Zeichen bleiben verschieden
@@ -4143,6 +4169,10 @@ class UiContractTest(unittest.TestCase):
             "chromium", "chromium-browser", "google-chrome", "google-chrome-stable") if shutil.which(n)), None) \
             or next(iter(sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome"))), None)
         if not browser:
+            # In GitHub Actions (CI=true) zählt ein fehlender Browser als Fehler, sonst wäre der
+            # Lauf grün, ohne dass die Oberfläche geprüft wurde (0.82)
+            if os.environ.get("CI"):
+                self.fail("kein Chromium gefunden, Oberflächentest in CI nicht übersprungen")
             self.skipTest("kein Chromium gefunden")
         with open(os.path.join(os.path.dirname(__file__), "ui_selbsttest.html"), encoding="utf-8") as f:
             probe_page = f.read().encode()

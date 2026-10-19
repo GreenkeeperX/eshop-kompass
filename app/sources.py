@@ -7,15 +7,17 @@ import codecs
 import gzip
 import html
 import http.cookiejar
+import ipaddress
 import json
 import re
+import socket
 import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.81.3"
+VERSION = "0.82.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -26,8 +28,43 @@ NINTENDO_PRICE_URL = "https://api.ec.nintendo.com/v1/price"
 FX_URL = "https://open.er-api.com/v6/latest/EUR"
 FX_FALLBACK_URL = "https://api.frankfurter.dev/v1/latest?from=EUR"
 
+def blocked_target(url):
+    """Grund, warum das Tool eine Adresse nicht abruft, sonst "" (0.82). Abgerufen wird nur das
+    öffentliche Internet: Eigene Links (Karten, Angebote) könnten sonst Geräte im Heimnetz oder
+    den Server selbst ansprechen. Geprüft wird jede Adresse, die der Name ergibt; lässt er sich
+    hier nicht auflösen (etwa hinter einem Proxy), entscheidet der Abruf selbst."""
+    p = urllib.parse.urlsplit(str(url or ""))
+    if p.scheme not in ("http", "https"):
+        return "nur http und https"
+    if p.username or p.password:
+        return "Adresse mit Zugangsdaten"
+    try:
+        port = p.port or (443 if p.scheme == "https" else 80)
+        infos = socket.getaddrinfo(p.hostname or "", port, proto=socket.IPPROTO_TCP)
+    except (OSError, ValueError, UnicodeError):
+        return ""
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(str(info[4][0]).split("%")[0])
+        except ValueError:
+            continue
+        if not ip.is_global:
+            return "Adresse nicht öffentlich"
+    return ""
+
+
+class _SafeRedirect(urllib.request.HTTPRedirectHandler):
+    """Weiterleitungen nur ins öffentliche Internet (0.82)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        why = blocked_target(newurl)
+        if why:
+            raise urllib.error.URLError(f"Weiterleitung abgelehnt: {why}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 _opener = urllib.request.build_opener(
-    urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()), _SafeRedirect)
 
 
 class FetchError(Exception):
@@ -62,6 +99,9 @@ def request(url, ua=None, timeout=25, encoding="gzip, deflate"):
         headers["Cookie"] = f"i18n-prefs={cur}"
     req = urllib.request.Request(url, headers=headers)
     out = {"url": url, "status": 0, "text": "", "enc": "", "server": "", "error": ""}
+    out["error"] = blocked_target(url)
+    if out["error"]:
+        return out
     try:
         try:
             resp = _opener.open(req, timeout=timeout)
@@ -84,6 +124,9 @@ def request(url, ua=None, timeout=25, encoding="gzip, deflate"):
 def head(url, timeout=20):
     """Nur die Kopfdaten (HEAD), für Proben großer Dateien: Status, Größe, Stand."""
     req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+    why = blocked_target(url)
+    if why:
+        return {"status": 0, "error": why, "size": None, "modified": None, "etag": None}
     try:
         try:
             resp = _opener.open(req, timeout=timeout)
@@ -723,6 +766,8 @@ def titledb_scan(chunks, wanted, apps=()):
 def _stream(url, timeout=60):
     """Großen Text in Stücken laden, gzip unterwegs entpacken."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"})
+    if blocked_target(url):
+        raise FetchError(url, 0, blocked_target(url))
     try:
         resp = _opener.open(req, timeout=timeout)
     except urllib.error.HTTPError as e:

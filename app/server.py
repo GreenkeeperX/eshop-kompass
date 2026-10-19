@@ -2,7 +2,9 @@
 import json
 import re
 import os
+import sys
 import threading
+import traceback
 import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -139,7 +141,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._send(404, {"error": "nicht gefunden"})
         except Exception as e:
-            self._send(500, {"error": str(e)})
+            self._fail(path, e)
 
     def do_POST(self):
         path = self.path.split("?")[0]
@@ -200,8 +202,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"started": sync.start_sync(by_hand=True)})
             else:
                 self._send(404, {"error": "nicht gefunden"})
+        except ValueError as e:
+            self._send(400, {"error": str(e)})      # Eingabefehler: Text für dich gedacht
         except Exception as e:
-            self._send(400, {"error": str(e)})
+            self._fail(path, e)
+
+    def _fail(self, path, e):
+        """Unerwarteter Fehler (0.82): Einzelheiten ins Protokoll des Containers, an den Browser
+        nur die Art des Fehlers, keine Pfade oder Innereien des Servers."""
+        print(f"Fehler bei {path}:", file=sys.stderr)
+        traceback.print_exception(e, file=sys.stderr)
+        self._send(500, {"error": f"Interner Fehler ({type(e).__name__}), Einzelheiten im Protokoll des Containers"})
 
 
 def main():

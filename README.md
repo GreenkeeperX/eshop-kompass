@@ -752,6 +752,8 @@ Die Oberfläche nimmt Änderungen nur als JSON an; eine fremde Webseite kann so 
 Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen freigeben solltest du das
 Tool deshalb nicht.
 
+Eigene Links (Kartenpreise, eigene Angebote) holt der Server nur von öffentlichen Adressen. Zeigt ein Link oder eine Weiterleitung auf eine private, lokale oder Loopback-Adresse, steht im Protokoll „Adresse nicht öffentlich“, und nichts wird abgerufen. Unerwartete Fehler zeigt die Oberfläche nur mit ihrer Art an, die Einzelheiten stehen im Protokoll des Containers (`docker logs`).
+
 ### Tests
 
     python3 -m unittest tests.test_all

@@ -10,6 +10,7 @@ Commit an. Stand: 0.68.0. Maßgeblich bleibt der Code; Konstanten stehen in `app
   (`eshop-kompass/<Version> (privates Wishlist-Tool)`). Seiten laufen über `sources.request`
   (gzip, 25 s Zeitlimit, ein Cookie-Speicher je Prozess), titledb gestreamt mit 60 s, Proben
   des Verbindungstests mit 20 s, Kopfdaten über `sources.head`.
+- **Nur öffentliche Ziele:** `sources.blocked_target` lässt nur http und https ohne Zugangsdaten in der Adresse zu und nur Hosts, deren Adressen alle öffentlich sind. Weiterleitungen prüft `_SafeRedirect` genauso. Sonst heißt der Fehler „Adresse nicht öffentlich“.
 - **Sperren:** HTTP 403 und 429 beenden den betroffenen Schritt sofort, nie den ganzen
   Abgleich, auch nicht bei der Wishlist: Dann gilt die zuletzt gelesene. Sperrt DekuDeals, fragt
   kein späterer Schritt desselben Abgleichs DekuDeals noch einmal (`sources.deku_blocked`), und
