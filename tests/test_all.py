@@ -1354,6 +1354,23 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(planner.purchase_plan(self.data, self.settings, include_good=True,
                                                now=NOW)["count"], 3)
 
+    def test_package_check_moves_a_step_to_a_cheaper_country(self):
+        # 0.83: Kosten die Titel eines Schritts zusammen in einem Land gleicher oder leichterer
+        # Stufe weniger, kommt der Schritt dorthin; nie in ein Land, das schon ein Schritt ist,
+        # und nie zweimal dieselbe Verschiebung
+        ctx = planner._context(self.data, self.settings, NOW)
+        codes = [c for c, x in ctx.countries.items() if x["unit"] is not None]
+        jp = planner.plan_country(ctx, "JP", basket=["hades"], allowed=codes, fillers=False)
+        jp["games_cost"] = 10.0                         # teurer als Norwegen (9,50 €) als Paket
+        tried = set()
+        self.assertEqual(planner._package_moves(ctx, [jp], codes, "", tried), {"NO": ["hades"]})
+        self.assertEqual(planner._package_moves(ctx, [jp], codes, "", tried), {})
+        no = planner.plan_country(ctx, "NO", basket=["spiritfarer"], allowed=codes, fillers=False)
+        self.assertNotIn("NO", planner._package_moves(ctx, [jp, no], codes, "", set()))
+        # Brasilien (Stufe schwer) zählt für einen Schritt der Stufe mittel nicht
+        jp["games_cost"] = 8.03
+        self.assertEqual(planner._package_moves(ctx, [jp], codes, "", set()), {})
+
     def test_purchase_plan_counts_rest_before_a_switch(self):
         # Konto steht in Japan (Stufe mittel): Japan kommt zuerst, danach Deutschland. Der Rest
         # in Japan verfällt beim Wechsel und zählt deshalb als Kosten

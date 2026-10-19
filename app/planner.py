@@ -2463,7 +2463,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         wartet er besser: Das Angebot lohnte nur in einem Land, dessen Wechsel sich nicht rechnet."""
         groups, nowhere, later = {}, [], []
         for slug in wanted:
-            best = cheapest_in(slug, allowed)
+            best = cheapest_in(slug, [pin[slug]] if pin.get(slug) in allowed else allowed)
             if not best:
                 nowhere.append(slug)
             elif fits(slug, best[0]):
@@ -2509,61 +2509,81 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         held = [s for s in wanted if everywhere[s] and everywhere[s][1] != cur_code
                 and fits(s, everywhere[s][0])]
 
-    while True:
-        groups, nowhere, later = assign()
-        if locked:
-            later = [s for s in later if s not in held]
-            nowhere = [s for s in nowhere if s not in held]
-        plans_by = {code: plan_country(ctx, code, basket=slugs, allowed=allowed)
-                    for code, slugs in groups.items()}
-        steps = sorted(plans_by.values(), key=order)
-        for p in steps:
-            if p["current"] and steps[0] is not p:
-                # Das Kontoland kommt nach einem anderen Schritt: Dahin geht es zurück,
-                # das ist ein Wechsel wie jeder andere
-                p["current"] = False
-                p["worth"] = p["home"] or p["gain"] >= p.get("threshold", 0)
-        for p in steps[:-1]:
-            # Danach wechselt das Konto: Der Rest verfällt und zählt als Kosten. Im
-            # Kontoland verfällt auch das Guthaben, das der Kauf übrig lässt
-            lost = p.get("rest_value") or 0.0
-            if p["code"] == cur_code and cur_unit is not None:
-                lost += max(0, cur_balance - round(p["total"] * 100)) * cur_unit
-            if lost >= 0.005 and p.get("games_cost") is not None:
-                p["rest_lost"] = _r(lost)
+    pin, tried = {}, set()
+    for _round in range(4):
+        while True:
+            groups, nowhere, later = assign()
+            if locked:
+                later = [s for s in later if s not in held]
+                nowhere = [s for s in nowhere if s not in held]
+            plans_by = {code: plan_country(ctx, code, basket=slugs, allowed=allowed)
+                        for code, slugs in groups.items()}
+            for p in plans_by.values():
+                _package_gain(ctx, p, allowed, current)
+            steps = sorted(plans_by.values(), key=order)
+            for p in steps:
+                if p["current"] and steps[0] is not p:
+                    # Das Kontoland kommt nach einem anderen Schritt: Dahin geht es zurück,
+                    # das ist ein Wechsel wie jeder andere
+                    p["current"] = False
+                    p["worth"] = p["home"] or p["gain"] >= p.get("threshold", 0)
+            for p in steps[:-1]:
+                # Danach wechselt das Konto: Der Rest verfällt und zählt als Kosten. Im
+                # Kontoland verfällt auch das Guthaben, das der Kauf übrig lässt
+                lost = p.get("rest_value") or 0.0
+                if p["code"] == cur_code and cur_unit is not None:
+                    lost += max(0, cur_balance - round(p["total"] * 100)) * cur_unit
+                if lost >= 0.005 and p.get("games_cost") is not None:
+                    p["rest_lost"] = _r(lost)
+                    p["games_cost"] = _r(p["games_cost"] + lost)
+                    p["gain"] = _r(p["gain"] - lost)
+                    p["saving"] = _r(p["saving"] - lost)
+                    p["worth"] = p["home"] or p["current"] or p["gain"] >= p.get("threshold", 0)
+            if steps and cur_balance > 0 and steps[0]["code"] != cur_code and cur_unit is not None:
+                # Der Plan verlässt das Kontoland, ohne dort zu kaufen: Das Guthaben verfällt
+                p = steps[0]
+                lost = cur_balance * cur_unit
+                p["balance_lost"] = _r(lost)
+                p["games_paid"] = _r(p["games_paid"] + lost)   # verfällt durch diesen Kauf
+                p["rest_lost"] = _r((p.get("rest_lost") or 0) + lost)
                 p["games_cost"] = _r(p["games_cost"] + lost)
                 p["gain"] = _r(p["gain"] - lost)
                 p["saving"] = _r(p["saving"] - lost)
                 p["worth"] = p["home"] or p["current"] or p["gain"] >= p.get("threshold", 0)
-        if steps and cur_balance > 0 and steps[0]["code"] != cur_code and cur_unit is not None:
-            # Der Plan verlässt das Kontoland, ohne dort zu kaufen: Das Guthaben verfällt
-            p = steps[0]
-            lost = cur_balance * cur_unit
-            p["balance_lost"] = _r(lost)
-            p["games_paid"] = _r(p["games_paid"] + lost)   # verfällt durch diesen Kauf
-            p["rest_lost"] = _r((p.get("rest_lost") or 0) + lost)
-            p["games_cost"] = _r(p["games_cost"] + lost)
-            p["gain"] = _r(p["gain"] - lost)
-            p["saving"] = _r(p["saving"] - lost)
-            p["worth"] = p["home"] or p["current"] or p["gain"] >= p.get("threshold", 0)
-        weak = [(p["gain"] - p.get("threshold", 0), code) for code, p in plans_by.items()
-                if not p["home"] and not p["current"] and not p.get("worth")]
-        # Zwei Länder mit blockierendem Rest gehen nicht nacheinander: Das schwächere fällt heraus
-        stuck_steps = [p for p in steps if stuck(p)]
-        if not weak and len(stuck_steps) > 1:
-            p = min(stuck_steps, key=lambda p: (p["gain"] - p.get("threshold", 0), p["code"]))
-            weak = [(None, p["code"])]
-            p["blocked_by"] = [x["name"] for x in stuck_steps if x is not p]
-        if not weak:
+            # Ein Land aus der Paket-Nachprüfung ist günstiger als ein Schritt, der sich schon
+            # lohnte: Es fällt nicht an der Schwelle heraus
+            moved_to = set(pin.values())
+            weak = [(p["gain"] - p.get("threshold", 0), code) for code, p in plans_by.items()
+                    if not p["home"] and not p["current"] and not p.get("worth") and code not in moved_to]
+            # Zwei Länder mit blockierendem Rest gehen nicht nacheinander: Das schwächere fällt heraus
+            stuck_steps = [p for p in steps if stuck(p)]
+            if not weak and len(stuck_steps) > 1:
+                p = min(stuck_steps, key=lambda p: (p["gain"] - p.get("threshold", 0), p["code"]))
+                weak = [(None, p["code"])]
+                p["blocked_by"] = [x["name"] for x in stuck_steps if x is not p]
+            if not weak:
+                break
+            _, code = min(weak, key=lambda w: (w[0] is not None, w[0] or 0, w[1]))
+            p = plans_by[code]
+            dropped.append({"code": code, "name": p["name"], "tier_name": p["tier_name"],
+                            "titles": [i["short"] for i in p["items"]],
+                            "slugs": [i["slug"] for i in p["items"]],
+                            "saving": p["saving"], "gain": p["gain"], "alt_codes": p.get("alt_codes", []),
+                            "threshold": p.get("threshold"), "blocked_by": p.get("blocked_by")})
+            allowed.remove(code)
+        # Paket-Nachprüfung (0.83): Gibt es für alle Titel eines Schritts ein Land gleicher oder
+        # leichterer Stufe, in dem sie zusammen günstiger sind, kommen sie dorthin. Sonst konnten
+        # sich gleich teure Länder gegenseitig aus dem Plan werfen (jedes schaffte gegen das
+        # nächste die Schwelle nicht), bis ein teureres übrig blieb
+        moved = _package_moves(ctx, steps, every, current, tried) if _round < 3 else {}
+        if not moved:
             break
-        _, code = min(weak, key=lambda w: (w[0] is not None, w[0] or 0, w[1]))
-        p = plans_by[code]
-        dropped.append({"code": code, "name": p["name"], "tier_name": p["tier_name"],
-                        "titles": [i["short"] for i in p["items"]],
-                        "slugs": [i["slug"] for i in p["items"]],
-                        "saving": p["saving"], "gain": p["gain"], "alt_codes": p.get("alt_codes", []),
-                        "threshold": p.get("threshold"), "blocked_by": p.get("blocked_by")})
-        allowed.remove(code)
+        for code, slugs in moved.items():
+            for s in slugs:
+                pin[s] = code
+            if code not in allowed:
+                allowed.append(code)
+            dropped[:] = [d for d in dropped if d["code"] != code]
 
     # Jeder Titel steht nur einmal unter "Nicht im Plan", mit dem Grund, der zählt: Fiel
     # sein günstigstes Land heraus und kam er nirgends sonst in den Plan, dort; sonst
@@ -2645,6 +2665,71 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "bought_saving": _r(sum((b.get("de") or 0) - _paid(b) for b in (bought or [])
                                     if b.get("de") is not None and _paid(b) is not None)),
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
+
+
+def _package_gain(ctx, p, allowed, current):
+    """Wechselgewinn gegen das beste Paket (0.83, Entscheidung 19.10.2026): Was dieselben Titel
+    zusammen in einem anderen Land kosten, mit Karten, Gebühr und Rest wie „Andere Länder“.
+    Die Einzelschätzung je Titel kannte keine Karten; so hielt der Plan einen Wechsel für
+    lohnend, der als Paket teurer war als ein anderes Land. Es zählen dieselben Länder wie
+    bei der Einzelschätzung (gleiche oder leichtere Stufe oder das Kontoland) und nur, wo
+    alle Titel zu haben sind; sonst bleibt die Einzelschätzung."""
+    if p.get("current") or p.get("home") or p.get("games_cost") is None or not p["items"]:
+        return
+    c = ctx.countries[p["code"]]
+    slugs = [i["slug"] for i in p["items"]]
+    best = None
+    for code in allowed:
+        o = ctx.countries[code]
+        if code == p["code"] or o["unit"] is None or o["meta"]["shop"] == c["meta"]["shop"]:
+            continue
+        if o["tier"] > c["tier"] and o["meta"]["shop"] != current:
+            continue
+        q = plan_country(ctx, code, basket=slugs, allowed=allowed, fillers=False)
+        if q.get("games_cost") is None or {i["slug"] for i in q["items"]} != set(slugs):
+            continue
+        if best is None or q["games_cost"] < best[0] - 0.005:
+            best = (q["games_cost"], code)
+    # Nur, wenn das Paket günstiger ist als die Einzelschätzung: Ein Wechsel muss sich gegen
+    # beide Rechnungen lohnen, die Paket-Prüfung macht keinen Wechsel erst lohnend
+    if best is None or best[0] >= (p.get("alt_total") or 0) - 0.005:
+        return
+    p["alt_total"] = _r(best[0])
+    p["alt_codes"] = [best[1]]
+    p["alt_package"] = True
+    p["gain"] = _r(best[0] - p["games_cost"])
+    p["worth"] = p["gain"] >= p.get("threshold", 0)
+
+
+def _package_moves(ctx, steps, codes, current, tried):
+    """Schritte, deren Titel zusammen in einem anderen Land gleicher oder leichterer Stufe
+    günstiger sind (wie „Andere Länder“ rechnet): {Land: [Titel]}. Nur in ein Land, das noch
+    kein Schritt ist, und jeder Schritt höchstens einmal je Land (`tried`), damit nichts kreist."""
+    planned = {p["code"] for p in steps}
+    out = {}
+    for p in steps:
+        if p.get("current") or p.get("home") or p.get("games_cost") is None or not p["items"]:
+            continue
+        c = ctx.countries[p["code"]]
+        slugs = [i["slug"] for i in p["items"]]
+        own = p["games_cost"] - (p.get("rest_lost") or 0)
+        best = None
+        for code in codes:
+            o = ctx.countries[code]
+            if code in planned or code in out or (p["code"], code) in tried or o["unit"] is None \
+                    or o["meta"]["shop"] == c["meta"]["shop"]:
+                continue
+            if o["tier"] > c["tier"] and o["meta"]["shop"] != current:
+                continue
+            q = plan_country(ctx, code, basket=slugs, allowed=codes, fillers=False)
+            if q.get("games_cost") is None or {i["slug"] for i in q["items"]} != set(slugs):
+                continue
+            if q["games_cost"] < own - 0.005 and (best is None or q["games_cost"] < best[0] - 0.005):
+                best = (q["games_cost"], code)
+        if best:
+            tried.add((p["code"], best[1]))
+            out[best[1]] = slugs
+    return out
 
 
 def _other_countries(ctx, step, codes):

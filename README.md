@@ -128,6 +128,12 @@ Mindestersparnis seiner Stufe schafft (Einstellungen, Regeln). Das gilt auch fü
 zurück nach Deutschland, wenn dein Konto woanders steht. Ohne eingetragenes Kontoland gilt
 Deutschland als Konto.
 
+„Sonst“ rechnet der Plan auf zwei Arten und nimmt die günstigere: je Titel geschätzt und als
+ganzes Paket mit Karten, Gebühr und Rest in einem anderen Land, wie „Andere Länder“ unter dem
+Schritt. Ist ein Schritt als Paket in einem Land gleicher oder leichterer Stufe günstiger, das
+noch kein Schritt ist, kommen seine Titel dorthin. So werfen sich fast gleich teure Länder nicht
+gegenseitig aus dem Plan, bis ein teureres übrig bleibt.
+
 ### Rest
 
 Ein Rest ist kein Verlust, solange du im Land bleibst. Folgt im Plan noch ein Wechsel,

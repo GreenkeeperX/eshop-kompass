@@ -26,10 +26,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 ## Horizont 2: Überall nutzbar und wartbar
 
-- [ ] **Schritte als Paket prüfen.** „Andere Länder“ zeigt manchmal ein günstigeres Land für alle
-  Titel eines Schritts, weil der Plan jeden Titel einzeln verteilt und erst danach die Karten
-  rechnet. Der Plan könnte jeden Schritt am Ende gegen die anderen Länder prüfen (Rechenregel,
-  braucht eine Entscheidung).
 - [ ] **Handy: Korb und Rechnung.** Korb mit Länder-Umschalter statt seitlichem Scrollen, Antippen
   eines Preises zeigt die Rechnung (statt Wissen nur im Tooltip; hilft auch bei Tastatur).
 - [ ] **Code aufteilen.** Die Oberfläche in mehrere Dateien ohne Build, der Planer in Bewertung,
