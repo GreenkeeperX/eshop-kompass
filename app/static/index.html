@@ -12,20 +12,20 @@
   --bg:#f4f2ec; --card:#fffdf8; --ink:#1d2320; --muted:#667069; --line:#dcd8cc;
   --accent:#2f3b35; --warn:#7a3e9d; --warn-bg:#f1e5f7;
   --sale:#b3261e; --best:#ebe8de; --chip:#ece9df; --gold:#c28800; --gold-ink:#2b2000;
-  --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690; --brand:#e60012;
+  --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --go-mark:var(--card); --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690; --brand:#e60012;
 }
 /* Ansicht: data-theme am html-Element (hell/dunkel), ohne Angabe wie das Gerät */
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]){
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
-  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
+  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --go-mark:transparent; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
 }}
 :root[data-theme=dark]{color-scheme:dark;
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
-  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
+  --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --go-mark:transparent; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
 }
 :root[data-theme=light]{color-scheme:light}
 *{box-sizing:border-box}
@@ -216,7 +216,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .cmp tbody td:not(:first-child){white-space:nowrap}
 /* Auf dunkelgrüner Zelle bleiben Aufpreis rot und Rabatt blau, auf kleinem hellem Grund (0.81.1;
    0.81.0 färbte sie in der Schrift der Zelle und brach damit die Farbregel) */
-.cmp td.c-buy .abv.gap,.matrix td.c-buy .abv.gap,.cmp td.c-buy .pct,.matrix td.c-buy .pct{background:var(--card);border-radius:3px;padding:0 3px;font-weight:600}
+.cmp td.c-buy .abv.gap,.matrix td.c-buy .abv.gap,.cmp td.c-buy .pct,.matrix td.c-buy .pct{background:var(--go-mark);border-radius:3px;padding:0 3px;font-weight:400}
 .cmp .gap,.matrix .gap{font-size:11px}
 .kc{display:grid;grid-template-columns:1fr 1fr;column-gap:6px;align-items:baseline}
 .kp{text-align:right}

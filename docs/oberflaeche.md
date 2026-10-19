@@ -170,7 +170,7 @@ Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü 
 | Bedeutung | Token | Klassen | Wofür, Beispiele |
 |---|---|---|---|
 | Bestpreis | `--gold`, `--gold-ink` | `.ok`, `.star` (★), `td.champ` (Umrandung), `.pct.m-best` | nur der Bestpreis: ★ am Bestpreis, goldene Umrandung des Bestpreis-Landes, "Bestpreis" in Texten. Nie für anderes Lob |
-| Urteil und positiv | `--go`, `--go-bg`, `--go-fill`, `--on-go` | `.vd.buy`/`td.c-buy` (Füllung "kaufen"), `.vd.good`/`td.c-good` (hell "gut"), `.g-buy` (fett), `.g-good` (normal), `.gn` | Urteil "kaufen"/"gut", Ersparnis, vollständig, gute Kartenbewertung (Top, gut, günstiger). „am Bestpreis“ bei Körben: fett, wenn jeder Titel „kaufen“ ist, normal, wenn die Summe am Bestpreis liegt, aber ein Titel nur „gut“ ist |
+| Urteil und positiv | `--go`, `--go-bg`, `--go-fill`, `--on-go`, `--go-mark` | `.vd.buy`/`td.c-buy` (Füllung "kaufen"), `.vd.good`/`td.c-good` (hell "gut"), `.g-buy` (fett), `.g-good` (normal), `.gn` | Urteil "kaufen"/"gut", Ersparnis, vollständig, gute Kartenbewertung (Top, gut, günstiger). „am Bestpreis“ bei Körben: fett, wenn jeder Titel „kaufen“ ist, normal, wenn die Summe am Bestpreis liegt, aber ein Titel nur „gut“ ist |
 | Rabatt | `--deal` | `.pct` | Rabatt im Shop (−x %), immer dezent blau, auch in Tabellen |
 | Prüfen, Hinweis (violett; bis 0.57 Bernstein, kaum vom Gold zu unterscheiden) | `--warn`, `--warn-bg` | `.warnc`, `.chip.w`, `.q` (?), `.approx` (≈), `.soon`, `.today`, `.dlc.need` | Sprache ungeprüft, zählt nicht, Schätzung, endet bald, DLC ohne Hauptspiel, Kartenbewertung "teuer" |
 | Nein, teurer | `--stop`, `--stop-bg`, `--sale` | `.bad`, `.abv`, `.over`, `.lgt.no`, `.save.neg` | ohne Deutsch, Wechsel lohnt nicht, über dem Bestpreis (+x €), ignorierte Anzahl, Guthabenkarte teurer als Kreditkarte (Faktor und Bewertung) |
@@ -294,9 +294,11 @@ Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Men
 Preiszelle (Tabelle und Korb, `twoLine`, `cellMarks`; ab 0.81 auch in der Tabelle, die bis dahin eine
 Zeile ohne Abstand zum Bestpreis hatte): oben ★/≈/? und Preis | kleines rotes „+x“ über dem Bestpreis,
 die Fuge mittig in der Spalte; darunter mittig blauer Rabatt „−60 %“ (mit Leerzeichen wie überall),
-Händler-, DLC- und Sprachmarke. Auf dunkelgrüner Zelle („kaufen“) bleiben „+x“ rot und Rabatt blau, auf
-kleinem hellem Grund (`--card`), damit sie lesbar sind (ab 0.81.1; 0.81.0 nahm die weiße Schrift der
-Zelle und brach damit die Farbregel). Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
+Händler-, DLC- und Sprachmarke. Auf dunkelgrüner Zelle („kaufen“) bleiben „+x“ rot und Rabatt blau, nicht fett.
+Im hellen Thema stehen sie auf kleinem hellem Grund (`--go-mark` = `--card`), weil Rot und Blau auf
+dem dunklen Grün sonst nicht lesbar sind; im dunklen Thema ist die Füllung hell genug, dort ohne
+Grund (`--go-mark` transparent, ab 0.82.1). 0.81.0 nahm die weiße Schrift der Zelle und brach damit
+die Farbregel. Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
 breit, in beiden Ansichten gleich. Eine Zeile mit Grund statt Zellen („noch nicht erschienen“) steht
 links (bis 0.80 rechtsbündig und damit außerhalb des Bildes). Wo nur ein Land gezeigt wird (Plan-Schritt,
 Länderkarte), stehen dieselben Angaben in eigenen Spalten (Einkaufspreis mit Rabatt, „über Bestpreis“), in
