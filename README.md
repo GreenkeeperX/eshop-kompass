@@ -307,7 +307,8 @@ fehlen. Ein Klick nimmt den Titel in den Schritt, „dazugenommen ×“ nimmt ih
 DLC deiner Spiele erscheinen dort als Link zu DekuDeals; übernehmen lassen sie sich, sobald sie
 auf der Wishlist stehen. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
 steht sie dort als Hinweis, mit ihrem eShop-Preis. Jeden anderen Wishlist-Titel, den es dort
-gibt, nimmt „Wishlist-Titel dazunehmen …“ unter der Karte in den Schritt; „als Korb
+gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt, ebenso jede Variante der
+Online-Mitgliedschaft; „als Korb
 vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
 dazugenommenen Titel dieses Landes vergessen.
 
@@ -321,13 +322,16 @@ vergleichen“ übernimmt die Titel in den gemeinsamen Korb.
 **Online-Mitgliedschaft** (unter dem Kaufplan, zugeklappt; 30 Tage vor Ablauf offen): sechs
 Varianten, 1 Monat, 3 Monate, 12 Monate, Erweiterungspaket, Familie und Erweiterungspaket
 Familie (die beiden Familien nur zum Vergleich, kaufen kann, wer die Gruppe verwaltet). Oben
-je Variante das beste Land; ein Klick wählt eine Variante aus, sie gilt für Kopfzeile
-(„ausgewählt“), Erinnerung und Länderliste. Darunter je aktivem Land der Einkaufspreis mit deinem Zahlweg wie
+je Variante das beste Land mit Einkaufspreis, Preis je Monat und Shop-Preis; ein Klick wählt
+eine Variante aus, sie gilt für Kopfzeile („ausgewählt“), Erinnerung und Länderliste. Die
+Länderliste („Alle Länder für …“) ist zugeklappt: je aktivem Land der Einkaufspreis mit deinem Zahlweg wie
 bei Spielen, je Monat, der Shop-Preis, Angebote und ob das Land dein Konto ist oder im
 Kaufplan steht. Zeichen wie bei Titeln: ★ am Bestpreis der letzten 24 Monate, Preis grün nach
 Urteil, Abstand zum Bestpreis rot; der Preis führt in den eShop des Landes, „DekuDeals“ zum
 Preisverlauf. Das Ablaufdatum trägst du im Kasten ein, ebenso weitere Angebote („Weiteres
-Angebot eintragen“, siehe [Eigene Angebote](#eigene-angebote-codes)).
+Angebot eintragen“, siehe [Eigene Angebote](#eigene-angebote-codes)). In den Korb oder in einen
+Kaufplan-Schritt kommt eine Variante über „Titel dazunehmen …“; von selbst nimmt der Plan sie
+nie auf.
 
 ### Titel
 
@@ -384,7 +388,8 @@ darunter Einkaufspreis, Preis, Wechsel und Rest wie auf den Länderkarten. Das g
 ist hervorgehoben, aber nur unter Ländern, die den ganzen Korb anbieten. „+“ in der Titelliste
 legt einen Titel in den Korb, „als Korb vergleichen“ auf einer Länderkarte übernimmt deren
 Titel (der Kaufplan kauft in mehreren Ländern nacheinander und ist deshalb kein Korb).
-„Korb leeren“ löst nur den gemeinsamen Korb auf.
+„Korb leeren“ löst nur den gemeinsamen Korb auf. Die Länder stehen von leicht nach schwer,
+darin vorn, wer mehr Titel anbietet und günstiger ist.
 
 Die Tabelle ist fensterhoch mit fester Kopfzeile wie die Titel-Tabelle: Spalte Bestpreis,
 eine Zeile je Zelle (Preis, Rabatt, Abstand zum Bestpreis), Preise grün nach Urteil, rot nur
@@ -463,15 +468,17 @@ Betrag. Abgeglichen wird deshalb in Stufen:
 - Passt der Titel genau auf einen Wishlist-Titel oder fehlenden DLC (bei DLC auch als
   „Spiel: DLC“), zählt er als Besitz und fällt aus dem Kaufplan, auch ohne Eintrag bei
   DekuDeals.
-- Ist er nur ähnlich, schlägt das Tool bis zu drei Titel vor, die erst nach deiner
-  Bestätigung zählen. Neben dem Kauf stehen Art, Plattform und Betrag, neben jedem Vorschlag
-  sein Spiel; der Name führt zu DekuDeals. „ja“ zählt ihn als Besitz, „nein, keiner davon“
-  legt ihn zu den übrigen Käufen. Beides gilt für diesen einen Kauf, gefragt wird nicht wieder.
+- Ist er nur ähnlich, fragt das Tool „Welcher Titel ist das?“ mit bis zu drei Kandidaten, die
+  erst nach deiner Bestätigung zählen. Beim Kauf stehen Art, Plattform und Betrag, bei jedem
+  Kandidaten sein Spiel; der Name führt zu DekuDeals. „ja“ zählt ihn als Besitz, „keiner
+  davon“ legt ihn zu den übrigen Käufen. Beides gilt für diesen einen Kauf, gefragt wird
+  nicht wieder. Passt keiner, ordnet „anderer Titel …“ den Kauf mit einem DekuDeals-Link zu,
+  auch bei den übrigen Käufen.
 - Der Rest, meist längst Besessenes, steht eingeklappt darunter. Erstattete Käufe zählen
   nicht.
 
-Was du zugeordnet hast, steht mit „von dir zugeordnet“ unter „Zählen als Besitz“;
-„zurücknehmen“ macht es wieder zum Vorschlag. Automatisch Zugeordnetes nimmt „stimmt nicht“
+„Zählen als Besitz“ ist eine sortierbare Tabelle mit dem Kauf, dem Spiel, dem Titel, der zählt,
+und woher die Zuordnung kommt. „zurücknehmen“ macht deine Zuordnung sofort wieder zum Vorschlag. Automatisch Zugeordnetes nimmt „stimmt nicht“
 heraus, ein „nein“ nimmt „zurücknehmen“ bei den übrigen Käufen zurück. Zuordnungen bleiben und
 stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
 Stand des letzten lückenlosen Laufs mit; das Lesezeichen liest dann bis dorthin und zur
@@ -559,7 +566,8 @@ der Wishlist noch in der Sammlung, löscht der Abgleich seine Angaben wieder.
 mit JavaScript. Das Tool erkennt den Warteraum, hört auf und fragt die nächsten sieben Tage
 nicht mehr an. Die Sprachen kommen stattdessen aus titledb (siehe [Abrufe](#abrufe)) und vom
 Browser-Helfer „JP-Sprachen lesen“: einem Lesezeichen, das in deinem Browser die Shopseiten der
-offenen Titel liest (eine alle 2,5 Sekunden; die IDs bekommt es über den Link zu store-jp im
+offenen Titel und der Titel mit Angabe aus titledb (zur Bestätigung) liest, die Liste steht
+im Kasten (eine Seite alle 2,5 Sekunden; die IDs bekommt es über den Link zu store-jp im
 Tool oder, wenn der Store sie unterwegs verliert, über ein kleines Fenster des Tools) und das
 Ergebnis ans Tool gibt. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des Spiels, auf
 die sie verweist. Angaben von Nintendo gehen titledb vor. Findet der Helfer unter einer ID keine

@@ -33,10 +33,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   Karten und Plan.
 - [ ] **Notbetrieb.** Festlegen und zeigen, was läuft, wenn DekuDeals sperrt oder seine Seiten
   ändert.
-- [ ] **Online-Mitgliedschaft abschließen.** Wählbar im Warenkorb und unter „Wishlist-Titel
-  dazunehmen“ (als Hinweis im Rest steht sie schon); die Ländertabelle einklappbar, wenn die
-  Variantentabelle Links und Rechnung trägt. Dann gilt das Thema als fertig. Tiefstpreise für 1 Monat und Erweiterungspaket Familie
-  und weitere Bezugsquellen nur nach Leitsatz 3.
 
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 
@@ -45,6 +41,7 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   auf Wunsch, wenn sich die Zuordnung verbessert hat.
 - [ ] **Kleinteile zusammenfassen** (Kostüme, Packs), nach Erfahrung mit den gruppierten Pässen.
 - [ ] **Weitere Bezugsquellen** wie Händler-Codes, nur wenn sie regelmäßig günstiger sind.
+- [ ] **Mitgliedschaft:** Tiefstpreise für 1 Monat und Erweiterungspaket Familie.
 - [ ] **Rückblick:** Was hat der Kompass im Jahr gespart, welche Länder haben sich gelohnt?
 
 ## Risiken

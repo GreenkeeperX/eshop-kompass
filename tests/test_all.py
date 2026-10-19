@@ -2026,6 +2026,24 @@ class EshopHistoryTest(unittest.TestCase):
         with open(os.path.join(store.DATA_DIR, "data.json"), encoding="utf-8") as f:
             self.assertNotIn("_eshop", json.load(f))
 
+    def test_pick_any_known_title_shows_name_and_game(self):
+        # Ab 0.69: eigene Zuordnung per DekuDeals-Link; Name und Spiel auch für DLC, die nicht
+        # mehr unter den fehlenden stehen, sonst ein lesbarer Ersatz statt des Slugs
+        self.imp([{"id": "", "title": "Radikale Reptilien", "date": "2026-10-01"},
+                  {"id": "", "title": "Etwas", "date": "2026-09-01"}])
+        data = store.load_data()
+        data["rel"] = {"shell-game": {"title": "Shell Game", "dlc": [["shell-game-radical-reptiles", "Radical Reptiles"]]}}
+        store.save_data(data)
+        key = {e["title"]: e["key"] for e in store.load_eshop_history()["entries"]}
+        store.pick_eshop_history(key["Radikale Reptilien"], "shell-game-radical-reptiles")
+        store.pick_eshop_history(key["Etwas"], "some-other-game-70010000012345")
+        with self.assertRaises(ValueError):
+            store.pick_eshop_history(key["Etwas"], "https://www.dekudeals.com/items/x")
+        rows = {r["title"]: r for r in planner.eshop_matches(store.load_data())["rows"]}
+        self.assertEqual((rows["Radikale Reptilien"]["name"], rows["Radikale Reptilien"]["game"]), ("Radical Reptiles", "Shell Game"))
+        self.assertEqual(rows["Etwas"]["name"], "Some Other Game")
+        self.assertEqual(rows["Etwas"]["how"], "pick")
+
     def test_same_entries_not_added_twice_and_picks(self):
         e = [{"id": "", "title": "Algo desconhecido", "date": "2026-10-01"}]
         self.imp(e)
@@ -3516,6 +3534,29 @@ class MembershipExtraTest(unittest.TestCase):
         jp = next(r for r in next(v for v in planner.membership(data, s, now=datetime(2026, 10, 14, tzinfo=timezone.utc))["variants"]
                                   if v["key"] == "m12")["rows"] if r.get("src"))
         self.assertEqual(jp["local"], 2970)
+
+    def test_membership_in_basket_and_plan(self):
+        # Ab 0.69 lässt sich die Mitgliedschaft in Korb und Kaufplan dazunehmen; Urteil und Plan
+        # nehmen sie nie von selbst
+        data, settings = sample()
+        data["nso_prices"] = {"DE": {"m12": {"status": "onsale", "currency": "EUR", "regular": 19.99}},
+                              "BR": {"m12": {"status": "onsale", "currency": "BRL", "regular": 109.9}}}
+        self.assertEqual([x["slug"] for x in planner.nso_items(data)], ["nso-m12"])
+        self.assertNotIn("nso-m12", {r["slug"] for r in planner.radar(data, settings, now=NOW)})
+        res, _ = planner.plans(data, settings, basket=["nso-m12", "hades"], now=NOW, with_mix=True)
+        de = next(p for p in res if p["code"] == "DE")
+        self.assertEqual({i["slug"] for i in de["items"]}, {"nso-m12", "hades"})
+        self.assertIn("Online-Mitgliedschaft 12 Monate", [i["title"] for i in de["items"]])
+        self.assertNotIn("nso-m12", data["items"])            # die Daten bleiben unverändert
+        self.assertFalse(next(i for i in de["items"] if i["slug"] == "nso-m12").get("lang"))   # keine Sprachmarke
+        plan = planner.purchase_plan(data, settings, now=NOW, include_good=True)
+        self.assertFalse(any(i["slug"].startswith("nso-") for p in plan["steps"] for i in p["items"]))
+        code = plan["steps"][0]["code"]
+        plan = planner.purchase_plan(data, settings, now=NOW, include_good=True, fill={code: ["nso-m12"]},
+                                     bought=[{"slugs": ["nso-m12"], "code": code}])
+        step = next(p for p in plan["steps"] if p["code"] == code)
+        self.assertIn(code, ("DE", "BR"))
+        self.assertIn("nso-m12", {i["slug"] for i in step["items"]})   # ein früherer Kauf hält nicht ab
 
     def test_amazon_price(self):
         whole = ('<div id="corePrice_feature_div"><span class="a-price"><span class="a-price-symbol">￥</span>'

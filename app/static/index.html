@@ -179,6 +179,15 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .pc .nm small.gm,.nm small.gm{display:inline;color:var(--muted);font-size:.85em}
 #eshophist small.gm{color:var(--muted);font-size:.85em}
 #eshophist .mini-t button.sm{margin:2px 0 2px 6px}
+#eshophist .eqs{display:grid;gap:8px;margin:6px 0 10px}
+#eshophist .eq{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+#eshophist .eqc{list-style:none;margin:6px 0 0;padding:0}
+#eshophist .eqc li{margin:3px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+#eshophist .eqc button.sm{margin:0;min-width:3.2em}
+#eshophist .eqown{display:inline-block;margin:0}
+#eshophist .eqown summary{display:inline;cursor:pointer}
+#eshophist .eqin{display:inline-flex;gap:6px;margin-left:6px}
+#eshophist .eqin input{width:min(260px,60vw)}
 .list .pc col.c-l{width:140px}.list .pc col.c-b{width:70px}.list .pc col.c-e{width:80px}.list .pc col.c-d{width:80px}
 .list .pc .c-t{display:table-cell}
 .list .pc col.c-t{display:table-column;width:110px}
@@ -802,7 +811,7 @@ async function refresh(){
   S.lastSync = S.state.last_sync;
   migrateLocal();
   if(S.ui.basket){   // Titel, die nicht mehr auf der Wishlist stehen, fallen aus dem Korb
-    const known = new Set(S.state.matrix.rows.map(r => r.slug));
+    const known = new Set(S.state.matrix.rows.map(r => r.slug).concat((S.state.nso_items || []).map(x => x.slug)));
     S.ui.basket = S.ui.basket.filter(s => known.has(s));
     if(!S.ui.basket.length) S.ui.basket = null;
   }
@@ -948,7 +957,7 @@ function navFade(){
   if(n) n.classList.toggle("more", n.scrollLeft + n.clientWidth < n.scrollWidth - 2);
 }
 addEventListener("resize", navFade);
-const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || {title:slug, slug};
+const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || (S.state.nso_items || []).map(x => Object.assign({nso: true}, x)).find(r => r.slug === slug) || {title:slug, slug};
 const inBasket = slug => (S.ui.basket || []).includes(slug);
 
 /* ---------- Signale: ein Urteil, ein Wechsel, feste Farben ---------- */
@@ -1064,7 +1073,9 @@ function collGame(g){
 }
 function viewCollection(){
   const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
-  const hit = t => !q || t.toLowerCase().includes(q);
+  // Ohne Akzente, Satzzeichen und doppelte Leerzeichen: „pokemon“ findet „Pokémon“, „luigis“ „Luigi’s“ (0.69)
+  const fold1 = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const nq = fold1(q).replace(/ /g, ""), hit = t => !nq || fold1(t).replace(/ /g, "").includes(nq);
   const found = c.games.filter(g => hit(g.title) || g.dlc.some(d => hit(d.title)));
   const done = found.filter(g => !g.missing).sort((a, b) => a.title.localeCompare(b.title, "de"));
   const games = sortRows("sammlung", found.filter(g => g.missing),
@@ -1469,15 +1480,24 @@ function restLine(p, last){
     (fits.length ? ` · passt hinein: ${fits.map(f => esc(f.shorts[0])).join(", ")}` : "");
 }
 /* DLC, deren Hauptspiel nicht im Korb liegt und aus dieser Region kommen muss (Europa passt zum deutschen Konto) */
-/* Auswahl „Wishlist-Titel dazunehmen“ (0.60): nach Urteil gruppiert, darin nach Namen, damit man findet,
+/* Auswahl „Titel dazunehmen“ (0.60, bis 0.68 „Wishlist-Titel dazunehmen“): nach Urteil gruppiert, darin nach Namen, damit man findet,
    was man sucht; Tippen springt im geöffneten Feld zum Titel */
-function wishOpts(rows, label){
+function wishOpts(rows, label, nso){
   const vd = slug => (S.state.radar.find(x => x.slug === slug) || {}).verdict || "none";
   const groups = [["buy", "kaufen"], ["good", "gut"], ["wait", "warten"], ["none", "ohne Urteil"]];
   return groups.map(([v, l]) => {
     const g = rows.filter(r => vd(r.slug) === v).sort((a, b) => a.title.localeCompare(b.title, "de"));
     return g.length ? `<optgroup label="${l}">${g.map(r => `<option value="${esc(r.slug)}">${esc(r.title)}${(r.dlc_of || rowOf(r.slug).dlc_of) ? " (DLC)" : ""}${label ? " · " + label(r) : ""}</option>`).join("")}</optgroup>` : "";
+  }).join("") + (nso ? nsoOpts(nso.code, nso.skip) : "");
+}
+/* Online-Mitgliedschaft unter „Titel dazunehmen“ (0.69): jede Variante mit Preis, im Land mit dem Preis dort */
+function nsoOpts(code, skip){
+  const o = ((S.state.nso || {}).variants || []).filter(v => !skip.has("nso-" + v.key)).map(v => {
+    const rows = (v.rows || []).filter(r => !code || r.code === code);
+    const r = code ? rows.find(x => !x.src) || rows[0] : v.best;
+    return r ? `<option value="nso-${v.key}">${esc(v.label)} · ${code ? money(r.local, r.currency) : eur(r.eur)}</option>` : "";
   }).join("");
+  return o ? `<optgroup label="Online-Mitgliedschaft">${o}</optgroup>` : "";
 }
 /* DLC außerhalb Europas (ab 0.61): Ob er zum Spiel aus Europa passt, sagt die Programm-ID in titledb.
    "need": eigene Fassung in dieser Region, braucht das Hauptspiel von dort; "open": noch ungeprüft; "" passt */
@@ -1591,7 +1611,7 @@ function planCard(p, step){
     if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.dense ? 3 : 99).join("")}</div>`;
   } else if((p.fill || []).length || (p.fill_nso || []).length){
     // Mitgliedschaft passt in den Rest: nur ein Hinweis, gekauft wird sie über ihren Kasten (0.57.1)
-    const nsoFit = (p.fill_nso || []).map(f => `<button class="sm" data-act="gonso" title="Online-Mitgliedschaft ${esc(f.label)} für ${esc(money(f.local, cur))}${f.at_best ? ", am Bestpreis" : ""}. Danach bleiben ${esc(money(f.left, cur))}. Sie verlängert deine laufende Mitgliedschaft. Klick zeigt den Kasten Online-Mitgliedschaft.">${f.at_best ? `<span class="star">★</span>` : ""}Mitgliedschaft ${esc(f.label)} <small style="display:inline">${money(f.local, cur)}</small></button>`);
+    const nsoFit = (p.fill_nso || []).map(f => `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="nso-${esc(f.key)}" title="Online-Mitgliedschaft ${esc(f.label)} für ${esc(money(f.local, cur))}${f.at_best ? ", am Bestpreis" : ""}. Danach bleiben ${esc(money(f.left, cur))}. Sie verlängert deine laufende Mitgliedschaft. Klick nimmt sie in diesen Schritt.">${f.at_best ? `<span class="star">★</span>` : ""}Mitgliedschaft ${esc(f.label)} <small style="display:inline">${money(f.local, cur)}</small></button>`);
     h += `<div class="fillrow"><span class="mut">Passt in den Rest:</span> ` + nsoFit.join(" ") + (nsoFit.length && (p.fill || []).length ? " " : "") + (p.fill || []).map(f => f.extra
       ? `<a class="btn sm" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Er steht nicht auf der Wishlist: Setz ihn bei DekuDeals darauf, dann lässt er sich hier übernehmen. DLC gelten nur in der Region des Hauptspiels.">${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></a>`
       : `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`).join(" ") +
@@ -1605,11 +1625,11 @@ function planCard(p, step){
   if(p.rate && !step){
     const inPlan = new Set(p.items.map(i => i.slug));
     const opts = p.is_ref ? "" : wishOpts(S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug)),
-      r => num(r.cells[p.code].local, cur));
+      r => num(r.cells[p.code].local, cur), {code: p.code, skip: inPlan});
     const ov = S.ui.overrides[p.code];
     const changed = ov && ((ov.add||[]).length || (ov.remove||[]).length);
     foot += (has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb als Korb übernehmen und in allen Ländern vergleichen (Reiter Korb)">als Korb vergleichen</button>` : "") +
-      (opts ? `<select data-act="pick" data-c="${p.code}" title="Deine Wishlist-Titel, die es hier zu kaufen gibt und die noch nicht im Korb dieses Landes sind. Andere Titel kennt das Tool nicht: Preise holt es nur für die Wishlist."><option value="">Wishlist-Titel dazunehmen …</option>${opts}</select>` : "") +
+      (opts ? `<select data-act="pick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht im Korb dieses Landes sind. Andere Titel kennt das Tool nicht: Preise holt es nur für die Wishlist."><option value="">Titel dazunehmen …</option>${opts}</select>` : "") +
       (changed ? `<button class="link" data-act="reset" data-c="${p.code}">zurücksetzen</button>` : "");
   }
   if(p.rate && step){
@@ -1617,9 +1637,9 @@ function planCard(p, step){
     // kommt als Füllartikel in diesen Schritt (S.ui.plan_fill), der Plan rechnet neu.
     const inPlan = new Set(p.items.map(i => i.slug));
     const opts = wishOpts(S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug) && !r.cells[p.code].own),
-      r => num(r.cells[p.code].local, cur));
+      r => num(r.cells[p.code].local, cur), {code: p.code, skip: inPlan});
     foot += (has ? `<button data-act="share" data-c="${p.code}" data-step="1" title="Die Titel dieses Schritts als Korb übernehmen und in allen Ländern vergleichen (Reiter Korb)">als Korb vergleichen</button>` : "") +
-      (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel, die es hier zu kaufen gibt und die noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu."><option value="">Wishlist-Titel dazunehmen …</option>${opts}</select>` : "");
+      (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu."><option value="">Titel dazunehmen …</option>${opts}</select>` : "");
   }
   if(foot) h += `<div class="foot">${foot}</div>`;
   return h + `</article>`;
@@ -1698,6 +1718,23 @@ function viewJetzt(){
 /* Online-Mitgliedschaft (ab 0.57): oben die Varianten im Vergleich, je im besten Land; ein Klick wählt,
    welche Variante die Ländertabelle darunter zeigt. „deine“ stellst du darüber ein, sie bestimmt
    Kopfzeile und Erinnerung. Farben wie bei Titeln: ★ gold am Bestpreis, grün fürs Urteil, rot der Betrag darüber. */
+/* Bausteine einer Zeile der Mitgliedschaft, oben je Variante wie unten je Land (0.69) */
+function nsoPrice(r, v){
+  const g = r.grade === "buy" ? "g-buy" : r.grade === "good" ? "g-good" : "";
+  const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}` : "kein Tiefstpreis bekannt"}${v.champ ? ` · Bestpreis ${eur(v.champ)} in ${r.champ_name || ""}` : ""}`;
+  const price = `<span class="${g}" title="${esc(tip)}">${r.est ? "ca. " : ""}${eur(r.eur)}</span>`;
+  return r.url ? `<a class="pl" href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(tip)} · Klick öffnet ${r.src ? esc(r.src) : `den eShop ${esc(r.name)}`}">${price}</a>` : price;
+}
+function nsoTags(r, planned){
+  return [r.src ? ` <span class="chip" title="Bezahlt mit Kreditkarte zum Kurs plus Gebühr; den Code löst du im Konto dieses Landes ein.">${esc(r.src)}-Code</span>` : "",
+    r.current ? ` <span class="chip" title="Dein Konto steht gerade in diesem Land: Hier kaufst du ohne Wechsel">Konto</span>` : "",
+    planned.has(r.code) ? ` <span class="chip" title="Der Kaufplan kauft gerade in diesem Land: Die Mitgliedschaft ließe sich im selben Schritt mitkaufen">im Plan</span>` : ""].join("");
+}
+function nsoChips(r, v){
+  return [r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
+    !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis: ${eur(v.champ)} in ${esc(r.champ_name || "")}">+${eur(r.over)}</span>` : "",
+    v.slug && !r.src ? `<a class="tl" href="${esc(deku(v.slug, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>` : ""].filter(Boolean).join(" ");
+}
 function nsoBox(){
   const m = S.state.nso;
   if(!m) return "";
@@ -1719,7 +1756,7 @@ function nsoBox(){
   const priced = vs.filter(v => v.best);
   if(priced.length > 1){
     const cheapest = Math.min(...priced.filter(v => !v.family).map(v => v.best.per_account));   // Familie kaufst du nicht selbst
-    h += `<table class="mini-t nsov"><tr>${sth("nsov", "label", "Variante", "", "l")}${sth("nsov", "land", "bestes Land", "", "l")}${sth("nsov", "eur", "Einkaufspreis", "", "num")}${sth("nsov", "month", "je Monat", "Bei der Familie je Konto", "num")}<th class="l"></th></tr>` + sortRows("nsov", vs, {
+    h += `<table class="mini-t nsov"><tr>${sth("nsov", "label", "Variante", "", "l")}${sth("nsov", "land", "bestes Land", "", "l")}${sth("nsov", "eur", "Einkaufspreis", "", "num")}${sth("nsov", "month", "je Monat", "Bei der Familie je Konto", "num")}<th class="num">im Shop</th><th class="l"></th></tr>` + sortRows("nsov", vs, {
       label: v => v.label, land: v => v.best ? v.best.name : null, eur: v => v.best ? v.best.eur : null, month: v => v.best ? v.best.per_account : null}).map(v => {
       const b = v.best;
       // Nur der Name ist Link, die Laufzeit in Klammern steht grau daneben (0.58)
@@ -1727,32 +1764,33 @@ function nsoBox(){
       const name = v.key === sel.key ? `<b title="Deine Mitgliedschaft: Kopfzeile, Erinnerung und Länder unten gelten ihr">${esc(main)}</b>${paren ? ` <span class="mut">(${esc(paren)}</span>` : ""}`
         : `<button class="link" data-act="nsov" data-v="${v.key}" title="Als deine Mitgliedschaft wählen und ihre Länder zeigen">${esc(main)}</button>${paren ? ` <span class="mut">(${esc(paren)}</span>` : ""}`;
       const tags = [v.family ? `<span class="chip" title="Kaufen kann nur, wer die Familiengruppe verwaltet; der Preis gilt für bis zu ${v.accounts} Konten">kauft der Verwalter</span>` : ""].filter(Boolean).join(" ");
-      if(!b) return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l mut" colspan="4">noch kein Preis</td></tr>`;
+      if(!b) return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l mut" colspan="5">noch kein Preis</td></tr>`;
       const month = v.family ? `<span title="${eur(b.month)} je Monat für die ganze Gruppe">${eur(b.per_account)} je Konto</span>` : eur(b.month);
-      return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l">${esc(b.name)}${b.src ? ` <small class="mut">${esc(b.src)}</small>` : ""}</td><td class="num">${starOf(b)}<span class="${grade(b)}">${b.est ? "ca. " : ""}${eur(b.eur)}</span></td><td class="num">${!v.family && b.per_account <= cheapest + 0.005 ? `<b>${month}</b>` : month}</td><td class="l mut">${b.pct ? `<span class="pct">−${b.pct} %</span>` : ""}</td></tr>`;
+      // Wie die Ländertabelle (0.69): Preis führt in den Shop, Tooltip mit Tiefst- und Bestpreis, Shop-Preis,
+      // Chips; so reicht die obere Tabelle, die Länder darunter sind zugeklappt
+      return `<tr class="${v.key === sel.key ? "on" : ""}"><td class="l">${name} ${tags}</td><td class="l">${esc(b.name)}${nsoTags(b, planned)}</td><td class="num">${starOf(b)}${nsoPrice(b, v)}</td><td class="num">${!v.family && b.per_account <= cheapest + 0.005 ? `<b>${month}</b>` : month}</td><td class="num mut">${money(b.local, b.currency)}</td><td class="l">${nsoChips(b, v)}</td></tr>`;
     }).join("") + `</table>`;
   }
+  // Alle Länder der ausgewählten Variante zugeklappt (0.69): Die obere Tabelle trägt Link, Tooltip und Chips
+  const landOpen = S.folds.nsoland || priced.length <= 1;
   if(vs.length){
     const atBestNow = rows.some(r => r.at_best);
-    h += `<p class="hint" style="margin:8px 0 2px">Länder für <b>${esc(sel.label)}</b>${sel.champ ? ` · Bestpreis der letzten 24 Monate ${eur(sel.champ)} in ${esc((rows[0] || {}).champ_name || "")}${atBestNow ? "" : ", gerade nirgends zu haben"}` : ""}:</p>`;
+    h += `<details class="fold" data-k="nsoland" ${landOpen ? "open" : ""}><summary class="hint" style="margin:8px 0 2px">Alle Länder für <b>${esc(sel.label)}</b>${rows.length ? ` (${rows.length})` : ""}${sel.champ ? ` · Bestpreis der letzten 24 Monate ${eur(sel.champ)} in ${esc((rows[0] || {}).champ_name || "")}${atBestNow ? "" : ", gerade nirgends zu haben"}` : ""}</summary>`;
   }
   if(rows.length){
     h += `<table class="mini-t"><tr>${sth("nso", "name", "Land", "", "l")}${sth("nso", "tier", "Wechsel", "Wie mühsam der Wechsel des Kontos dorthin ist", "l")}${sth("nso", "eur", "Einkaufspreis", "", "num")}${sth("nso", "month", "je Monat", "", "num")}<th class="num">im Shop</th><th class="l"></th></tr>` + sortRows("nso", rows, {
       name: r => r.name, tier: r => r.tier, eur: r => r.eur, month: r => r.month}).map(r => {
-      const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}` : "kein Tiefstpreis bekannt"}${sel.champ ? ` · Bestpreis ${eur(sel.champ)} in ${esc(r.champ_name || "")}` : ""}`;
-      let price = `<span class="${grade(r)}" title="${esc(tip)}">${r.est ? "ca. " : ""}${eur(r.eur)}</span>`;
-      if(r.url) price = `<a class="pl" href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(tip)} · Klick öffnet den eShop ${esc(r.name)}">${price}</a>`;
+      const price = nsoPrice(r, sel);
       // Eigene Angebote: Preis vom Link gelesen (ab 0.61) oder wie eingetragen
       const xstate = !r.src ? "" : r.url ? offerNote(r.url, r.currency) : `<small class="mut">eingetragen${r.date ? " " + esc(dmy(r.date)) : ""}</small>`;
       const tags = [r.src ? `<span class="chip" title="Bezahlt mit Kreditkarte zum Kurs plus Gebühr; den Code löst du im Konto dieses Landes ein.">${esc(r.src)}-Code</span> ${xstate} <button class="x" data-act="nsoxdel" data-i="${r.extra}" title="Angebot entfernen">×</button>` : "",
         r.current ? `<span class="chip" title="Dein Konto steht gerade in diesem Land: Hier kaufst du ohne Wechsel">Konto</span>` : "",
         planned.has(r.code) ? `<span class="chip" title="Der Kaufplan kauft gerade in diesem Land: Die Mitgliedschaft ließe sich im selben Schritt mitkaufen">im Plan</span>` : ""].filter(Boolean).join(" ");
-      const chips = [r.sale && r.pct ? `<span class="pct">−${r.pct} %</span>${r.end ? " " + endCell(r.end, "bis ") : ""}` : "",
-        !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis: ${eur(sel.champ)} in ${esc(r.champ_name || "")}">+${eur(r.over)}</span>` : "",
-        sel.slug && !r.src ? `<a class="tl" href="${esc(deku(sel.slug, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>` : ""].filter(Boolean).join(" ");
+      const chips = nsoChips(r, sel);
       return `<tr class="${r.counts ? "" : "nc"}"><td class="l">${r === best ? `<b>${esc(r.name)}</b>` : esc(r.name)} ${tags}</td><td class="l">${tierTag(r.tier)}</td><td class="num">${starOf(r)}${price}</td><td class="num mut">${eur(r.month)}</td><td class="num mut">${money(r.local, r.currency)}</td><td class="l">${chips}</td></tr>`;
     }).join("") + `</table>`;
   } else if(vs.length) h += `<p class="hint">Für ${esc(sel.label)} gibt es noch keine Preise. Die eShop-IDs liest der nächste Abgleich von Nintendos Mitgliedschaftsseite und von DekuDeals.</p>`;
+  if(vs.length) h += `</details>`;
   // Weitere Angebote von Hand, etwa Codes bei Amazon Japan (0.60)
   const act = S.state.countries.filter(c => (S.state.settings.countries[c.code] || {}).enabled && c.shop === c.code);
   h += `<details class="fold" data-k="nsox" ${S.folds.nsox ? "open" : ""}><summary class="hint">Weiteres Angebot eintragen, etwa einen Code bei Amazon Japan</summary>
@@ -1789,10 +1827,13 @@ function openLegend(){
 /* ---------- Länder: gemeinsamer Korb als Vergleichstabelle ---------- */
 function viewCompare(){
   const inB = new Set(S.ui.basket);
-  const opts = wishOpts(S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids));
+  const opts = wishOpts(S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids), null, {code: null, skip: inB});
   const shown = S.bplans.filter(p => p.is_ref || !S.ui.hidden.includes(p.code));
   const usable = shown.filter(p => p.rate && p.items.length);
-  const cols = usable.filter(p => p.is_ref).concat(usable.filter(p => !p.is_ref));
+  // Spalten von leicht nach schwer, innerhalb einer Stufe die günstigeren zuerst (0.69; vorher in der
+  // Reihenfolge des Servers, nach fehlenden Titeln und Ersparnis, das wirkte willkürlich)
+  const cols = usable.filter(p => p.is_ref).concat(usable.filter(p => !p.is_ref)
+    .sort((a, b) => a.tier - b.tier || (a.missing.length - b.missing.length) || (a.cost ?? 1e9) - (b.cost ?? 1e9)));
   const none = shown.filter(p => !usable.includes(p));
   const complete = cols.filter(p => !p.missing.length && p.cost !== null);
   const win = complete.length > 1 ? complete.reduce((a, b) => b.cost < a.cost ? b : a) : null;
@@ -1810,7 +1851,7 @@ function viewCompare(){
     verdict = `<span class="hint">Nur ${esc(complete[0].name)} bietet den ganzen Korb.</span>`;
   }
   // Werkzeugzeile wie in den anderen Reitern: links dazunehmen, rechts Korb leeren; das Ergebnis darunter (0.60)
-  let h = `<div class="tools"><select data-act="bpick" title="Deine Wishlist-Titel, die noch nicht im Korb sind"><option value="">Wishlist-Titel dazunehmen …</option>${opts}</select>
+  let h = `<div class="tools"><select data-act="bpick" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit noch nicht im Korb"><option value="">Titel dazunehmen …</option>${opts}</select>
     <button class="sm" style="margin-left:auto" data-act="unshare" title="Korb leeren; die Länder behalten ihre eigenen Körbe">Korb leeren</button></div>
     <div class="bar on">${verdict}</div>
     <details class="fold" data-k="korbhow" ${S.folds.korbhow ? "open" : ""}><summary class="hint">So liest du den Korb</summary><p class="hint" style="margin:2px 0 8px">Was genau diese Titel in jedem Land kosten, mit Guthabenkarten und Rest wie auf den Länderkarten. Zellfarbe wie in der Titel-Tabelle: dunkelgrün „kaufen“, hellgrün „gut“, gold umrandet der Bestpreis; rot nur der Betrag darüber. Ein Klick auf den Preis öffnet die Seite im eShop, bei DLC den Verlauf bei DekuDeals (für DLC gibt es keinen festen eShop-Link); ein Klick auf den Ländernamen sortiert.</p></details>`;
@@ -1828,7 +1869,7 @@ function viewCompare(){
   for(const slug of order){
     const r = rowOf(slug);
     const cells = cols.map(p => itemIn(p, slug));
-    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${esc(r.title)}</a></td>` +
+    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft unter Jetzt">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>`}</td>` +
       `<td class="bp">${r.champ ? `${ax(r.champ)}<b title="Bestpreis in ${esc(country(r.champ.code).name)}">${eur(r.champ.eur)}</b> <small class="inl">${r.champ.code}</small>` : `<span class="mut">–</span>`}</td>` +
       cols.map((p, k) => {
         const i = cells[k];
@@ -2240,7 +2281,7 @@ box.append(p,go,ta,c,b);
    ein Link zum Ziehen und „Code kopieren“ für ein von Hand angelegtes Lesezeichen (auch am Handy).
    v: Stand des Codes, need: ab welchem Stand ein altes Lesezeichen noch genügt. Ältere melden
    sich beim Übernehmen, damit niemand unbemerkt mit einem alten Lesezeichen weiterarbeitet. */
-const HELPERS = {eshop: {v: 3, need: 1, label: "Käufe lesen"}, jp: {v: 7, need: 6, label: "JP-Sprachen lesen"}};
+const HELPERS = {eshop: {v: 3, need: 1, label: "Käufe lesen"}, jp: {v: 7, need: 7, label: "JP-Sprachen lesen"}};
 const BM_CODE = {};
 function helpersOld(){ try{ return JSON.parse(localStorage.getItem("ek.helpers") || "{}") || {}; }catch(e){ return {}; } }
 function helperSeen(k, hv){
@@ -2295,15 +2336,23 @@ function eshopBox(){
     <details class="fold" data-k="eshopfb" ${S.folds.eshopfb ? "open" : ""}><summary class="hint">Geht das nicht? Text von Hand einfügen</summary>
       <p class="hint">Kopiere im Fenster des Lesezeichens den Text und füge ihn hier ein: <textarea id="eshopimport" rows="2" style="width:100%"></textarea> <button data-act="eshopimport">Übernehmen</button></p>
     </details>`;
-  if(sug.length) h += `<h4>Vorschläge: Ist das derselbe Titel?</h4><p class="hint">„ja“ zählt den Kauf als Besitz, „nein“ legt ihn zu den übrigen Käufen. Beides merkt sich das Tool für diesen Kauf und fragt nicht wieder; zurücknehmen geht jederzeit darunter. Der Name führt zu DekuDeals.</p><table class="mini-t">${sug.map(r => line(r, r.suggest.map(x =>
-      `${named(x.slug, x.title, x.game)} <button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist dieser Titel: zählt als Besitz">ja</button>`).join("<br>") +
-      `<br><button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zu den übrigen Käufen">nein, keiner davon</button>`)).join("")}</table>`;
-  if(sure.length) h += `<h4>Zählen als Besitz</h4><table class="mini-t">${sure.map(r => line(r,
-      `${named(r.slug, r.name, r.game)} <small class="mut">${how[r.how] || ""}</small> · ` + (r.how === "pick"
-        ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Deine Zuordnung zurücknehmen: Der Kauf steht wieder bei den Vorschlägen">zurücknehmen</button>`
-        : `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Falsch zugeordnet: zählt nicht, steht dann bei den übrigen Käufen">stimmt nicht</button>`))).join("")}</table>`;
-  if(rest.length) h += `<details class="fold" data-k="eshoprest" ${S.folds.eshoprest ? "open" : ""}><summary class="hint">${rest.length} weitere Käufe, kein Wishlist-Titel und kein fehlender DLC</summary><table class="mini-t">${rest.map(r => line(r,
-      r.how === "none" ? `<span class="mut">von dir: kein Wunschtitel</span> · <button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen: Passt ein Titel, steht der Kauf wieder bei den Vorschlägen oder zählt">zurücknehmen</button>` : "")).join("")}</table></details>`;
+  // Eigene Zuordnung: DekuDeals-Link oder dessen letzter Teil (0.69)
+  const own = r => `<details class="fold eqown"><summary class="hint">anderer Titel …</summary><span class="eqin"><input type="text" placeholder="DekuDeals-Link, z. B. …/items/hades" aria-label="DekuDeals-Link des gekauften Titels"> <button class="sm" data-act="eshopown" data-k="${esc(r.key)}">zuordnen</button></span></details>`;
+  const head = r => `<div class="eqh"><b>${esc(r.title)}</b> <small class="mut">${[r.date ? dmy(r.date) : "", what(r)].filter(Boolean).join(" · ")}</small></div>`;
+  // Vorschläge als Frage (0.69): links der Kauf, darunter die Kandidaten mit je einem „ja“
+  if(sug.length) h += `<h4>Vorschläge: Welcher Titel ist das?</h4><p class="hint">„ja“ zählt den Kauf als Besitz, „keiner davon“ legt ihn zu den übrigen Käufen. Das Tool merkt sich deine Antwort. Zurücknehmen wirkt sofort, der Kauf steht dann wieder hier. Die Namen führen zu DekuDeals.</p>
+    <div class="eqs">${sug.map(r => `<div class="eq">${head(r)}<ul class="eqc">${r.suggest.map(x =>
+      `<li><button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist dieser Titel: zählt als Besitz">ja</button> ${named(x.slug, x.title, x.game)}</li>`).join("")}
+      <li><button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zu den übrigen Käufen">keiner davon</button> ${own(r)}</li></ul></div>`).join("")}</div>`;
+  // Zählen als Besitz als sortierbare Tabelle mit dem Spiel (0.69)
+  const gameOf = r => r.game || (r.item === "APPLICATION" || r.item === "BUNDLE" ? r.name : "") || "";
+  if(sure.length) h += `<h4>Zählen als Besitz</h4><div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshop", "kauf", "Kauf", "", "l")}${sth("eshop", "game", "Spiel", "Das Spiel, zu dem der Titel gehört", "l")}${sth("eshop", "name", "Zählt als", "", "l")}${sth("eshop", "how", "Woher", "", "l")}${sth("eshop", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${sortRows("eshop", sure, {
+      kauf: r => r.title || "", game: r => gameOf(r), name: r => r.name || "", how: r => how[r.how] || "", date: r => r.date || ""}).map(r =>
+      `<tr><td class="l">${esc(r.title)}${what(r) ? `<br><small class="mut">${what(r)}</small>` : ""}</td><td class="l">${esc(gameOf(r))}</td><td class="l">${named(r.slug, r.name)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td>${r.how === "pick"
+        ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Deine Zuordnung zurücknehmen: Der Kauf steht sofort wieder bei den Vorschlägen oder den übrigen Käufen">zurücknehmen</button>`
+        : `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Falsch zugeordnet: zählt nicht, steht dann bei den übrigen Käufen">stimmt nicht</button>`}</td></tr>`).join("")}</tbody></table></div>`;
+  if(rest.length) h += `<details class="fold" data-k="eshoprest" ${S.folds.eshoprest ? "open" : ""}><summary class="hint">${rest.length === 1 ? "Ein weiterer Kauf" : `${rest.length} weitere Käufe`}, kein Wishlist-Titel und kein fehlender DLC</summary><p class="hint">Passt einer doch zu einem Titel, ordne ihn über „anderer Titel …“ mit dem DekuDeals-Link zu.</p><table class="mini-t">${rest.map(r => line(r,
+      (r.how === "none" ? `<span class="mut">von dir als „keiner davon“ markiert</span> · <button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen: Passt ein Titel, steht der Kauf sofort wieder bei den Vorschlägen oder zählt">zurücknehmen</button>` : "") + own(r))).join("")}</table></details>`;
   if(voids.length) h += `<p class="hint">${voids.length === 1 ? "Ein erstatteter Kauf zählt" : `${voids.length} erstattete Käufe zählen`} nicht.</p>`;
   return h + `</details>`;
 }
@@ -2348,14 +2397,19 @@ c.onclick=async()=>{ta.select();try{await navigator.clipboard.writeText(txt)}cat
 const b=look(document.createElement("button"));b.textContent="Schließen";b.onclick=()=>box.remove();
 box.append(p,go,ta,c,b);
 })();`; }
-// Japan-IDs, die der Browser-Helfer lesen soll: ohne Angabe von Nintendo und nicht von dir festgelegt
-const jpOpenIds = (todo = S.state.lang_todo || []) =>
-  [...new Set(todo.filter(t => t.family === "JP" && !t.manual && (t.state === null || t.src === "titledb") && (t.here || t.doubt)).map(t => t.nsuid))];
+// Japan-Titel, die der Browser-Helfer lesen soll: ohne Angabe von Nintendo und nicht von dir festgelegt.
+// Angaben aus titledb immer (zur Bestätigung), offene Titel nur mit Preis in Japan oder Zweifel an der ID.
+const jpOpenRows = (todo = S.state.lang_todo || []) =>
+  todo.filter(t => t.family === "JP" && t.nsuid && !t.manual && (t.src === "titledb" || (t.state === null && (t.here || t.doubt))));
+const jpOpenIds = (todo = S.state.lang_todo || []) => [...new Set(jpOpenRows(todo).map(t => t.nsuid))];
 function jpHelper(todo){
   const jp = todo.filter(t => t.family === "JP");
   if(!jp.length) return "";
-  const ids = jpOpenIds(todo);
+  const ids = jpOpenIds(todo), rows = jpOpenRows(todo);
+  const names = [...new Map(rows.map(t => [t.nsuid, t])).values()]
+    .map(t => `<li>${esc(t.title)} <span class="mut">${t.src === "titledb" ? "laut titledb, zur Bestätigung" : "ohne Angabe"} · ${t.nsuid}</span></li>`).join("");
   return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
+    ${names ? `<p class="hint">Das Lesezeichen liest:</p><ul class="hint">${names}</ul>` : ""}
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>
       <li>Öffne <a href="https://store-jp.nintendo.com/${ids.length ? `?ek-ids=${ids.join("+")}#ek-ids=${ids.join("+")}` : ""}" target="_blank" rel="noopener" data-act="jpopen">store-jp.nintendo.com</a> über diesen Link und klick das Lesezeichen an. Es liest ${ids.length ? "die offenen Titel" : "die Titel"}, eine Seite alle 2,5 Sekunden.${ids.length ? " Der Link gibt die IDs mit. Verliert der Store sie unterwegs, holt das Lesezeichen sie über ein kleines Fenster des Tools, das sich danach selbst schließt." : ""}</li>
@@ -2515,6 +2569,14 @@ document.addEventListener("click", async e => {
       await api("/api/eshop_history/pick", {key: d.k, slug: d.v});
       await refresh();
       toast(d.v === "-" ? "Zählt nicht als Besitz" : d.v ? "Zugeordnet, zählt als Besitz" : "Zurückgenommen");
+    }
+    else if(a === "eshopown"){
+      const v = (el.parentElement.querySelector("input").value || "").trim().toLowerCase();
+      const slug = (v.match(/\/items\/([a-z0-9-]+)/) || [])[1] || v.replace(/[?#].*$/, "");
+      if(!/^[a-z0-9][a-z0-9-]*$/.test(slug)){ toast("Bitte einen DekuDeals-Link einfügen, etwa https://www.dekudeals.com/items/hades"); return; }
+      await api("/api/eshop_history/pick", {key: d.k, slug});
+      await refresh();
+      toast("Zugeordnet, zählt als Besitz");
     }
     else if(a === "jpimport"){ await jpImport($("jpimport").value); }
     else if(a === "bmcopy"){

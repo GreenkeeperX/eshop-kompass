@@ -377,6 +377,9 @@ def remember_eshop_matches(found):
 def pick_eshop_history(key, slug):
     """Eintrag von Hand zuordnen (Titel), als „kein Wunschtitel“ markieren ("-") oder
     die Zuordnung zurücknehmen (leer)."""
+    slug = str(slug or "").strip()
+    if slug and slug != "-" and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,199}", slug):
+        raise ValueError("Bitte einen DekuDeals-Link oder dessen letzten Teil angeben")
     with lock:
         h = load_eshop_history()
         if slug:

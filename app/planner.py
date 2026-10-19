@@ -62,6 +62,34 @@ def _tnorm(title):
 _ESHOP_VOID = re.compile(r"REFUND|CANCEL|REVOK|VOID|CHARGEBACK", re.I)
 
 
+def slug_names(data):
+    """Name und Spiel zu jeder Kennung, die das Tool kennt, auch zu längst gekauften DLC, die
+    nicht mehr unter den fehlenden stehen: {slug: (Titel, Spiel oder None)}. Quellen sind die
+    Titel, die fehlenden DLC und die Verbindungen der DekuDeals-Seiten (DLC, Pakete)."""
+    out = {}
+    for s, r in (data.get("rel") or {}).items():
+        if r.get("title"):
+            out.setdefault(s, (r["title"], None))
+        for k in ("dlc", "in", "has"):
+            for pair in r.get(k) or []:
+                if isinstance(pair, (list, tuple)) and len(pair) >= 2 and pair[1]:
+                    out.setdefault(pair[0], (pair[1], r.get("title") if k == "dlc" else None))
+    for s, e in (data.get("extra") or {}).items():
+        if e.get("title"):
+            game = e.get("parent_title") or (out.get(e.get("parent")) or (None,))[0]
+            out[s] = (e["title"], game)
+    for s, it in (data.get("items") or {}).items():
+        if it.get("title"):
+            out[s] = (it["title"], (out.get(s) or (None, None))[1])
+    return out
+
+
+def pretty_slug(slug):
+    """Lesbarer Ersatz, wenn zu einer Kennung kein Name bekannt ist."""
+    words = [w for w in str(slug or "").split("-") if w and not re.fullmatch(r"\d{8,}", w)]
+    return " ".join(w[:1].upper() + w[1:] for w in words)
+
+
 def eshop_matches(data):
     """Kaufverlauf aus dem eShop mit Wishlist und fehlenden DLC abgleichen. Zuerst über die
     Nintendo-ID, sonst über den Titel, wenn genau ein Titel passt (bei DLC auch mit dem Namen
@@ -92,6 +120,7 @@ def eshop_matches(data):
                 by_title.setdefault(n, set()).add(s)
         toks[s] = set(" ".join(names).split())
     rows, owned = [], set()
+    known = slug_names(data)
     for e in entries:
         key, slug, how, suggest = e.get("key"), None, None, []
         pick = picks.get(key)
@@ -122,8 +151,9 @@ def eshop_matches(data):
         rows.append({"key": key, "title": e.get("title"), "date": e.get("date"),
                      "type": e.get("type"), "slug": slug, "how": how, "suggest": suggest,
                      "item": e.get("item") or "", "plat": e.get("plat") or "", "amount": e.get("amount") or "",
-                     "game": games.get(slug) if slug else None,
-                     "name": (cands.get(slug) or items.get(slug) or {}).get("title") if slug else None})
+                     "game": (games.get(slug) or known.get(slug, (None, None))[1]) if slug else None,
+                     "name": ((cands.get(slug) or items.get(slug) or {}).get("title")
+                              or known.get(slug, (None,))[0] or pretty_slug(slug)) if slug else None})
     return {"rows": rows, "owned": owned}
 
 
@@ -703,8 +733,8 @@ class Context:
             fam = c["meta"]["family"]
             for slug in list(c["offers"]):
                 it = self.items[slug]
-                if self.german(it, "EU", slug) is not True:
-                    continue
+                if it.get("nso") or self.german(it, "EU", slug) is not True:
+                    continue            # Mitgliedschaft: keine Sprachfassung (0.69)
                 if fam == "EU":
                     # dasselbe Produkt wie im deutschen eShop
                     c["offers"][slug]["lang"] = "same"
@@ -1278,6 +1308,8 @@ def mix(ctx, basket):
 
 
 def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_mix=False):
+    data, settings = with_nso(data, settings, list(basket or []) + list(must or []) +
+                              [s for o in (overrides or {}).values() for s in (o or {}).get("add") or []])
     ctx = Context(data, settings, now)
     overrides = overrides or {}
     must = [s for s in must if s in ctx.items]
@@ -1365,6 +1397,8 @@ def radar(data, settings, targets=None, now=None):
     targets = targets or {}
     rows = []
     for slug in ctx.order:
+        if ctx.items[slug].get("nso"):
+            continue                 # Mitgliedschaft nur, wenn du sie dazunimmst (0.69)
         best = {"easy": None, "hard": None}
         unsure, nocard = [], []
         for code, c in ctx.countries.items():
@@ -2121,6 +2155,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     Wishlist-Titel, die hineinpassen, möglichst nahe am Rest, egal welches Urteil.
     Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt.
     """
+    data, settings = with_nso(data, settings, [s for slugs in (fill or {}).values() for s in slugs])
     ctx = Context(data, settings, now)
     fill = {code: [s for s in slugs if s in ctx.items] for code, slugs in (fill or {}).items()}
     ok_grades = ("buy", "good") if include_good else ("buy",)
@@ -2198,7 +2233,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 continue
             offers = ctx.countries[code]["offers"]
             for s in slugs:
-                if s not in taken and s not in done and s in offers and ctx.decides(offers[s]) \
+                # Die Mitgliedschaft kaufst du immer wieder: ein früherer Kauf hält sie nicht ab (0.69)
+                if s not in taken and (s not in done or s.startswith(NSO_PREFIX)) and s in offers and ctx.decides(offers[s]) \
                         and offers[s].get("direct") is None:
                     groups[code].append(s)
                     taken.add(s)
@@ -2331,7 +2367,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         for v in ms["variants"]:
             # Nur der eShop zahlt aus dem Guthaben; eigene Angebote (Codes) zahlt die Kreditkarte (0.63)
             r = next((r for r in v["rows"] if r["code"] == p["code"] and r["counts"] and not r.get("src")), None)
-            if v.get("family") or not r or rest <= 0 or p.get("is_ref") or round(r["local"] * 100) > rest:
+            if v.get("family") or not r or rest <= 0 or p.get("is_ref") or round(r["local"] * 100) > rest \
+                    or NSO_PREFIX + v["key"] in {i["slug"] for i in p["items"]}:
                 continue
             fits.append({"key": v["key"], "label": v["label"], "local": r["local"], "eur": r["eur"],
                          "left": (rest - round(r["local"] * 100)) / 100, "at_best": r.get("at_best", False)})
@@ -2521,6 +2558,42 @@ def nso_variants(data):
     if "ids" in nso and "m12" not in v:
         v["m12"] = {k: nso.get(k) or {} for k in ("ids", "checked", "lows", "urls")}
     return v
+
+
+NSO_PREFIX = "nso-"
+
+
+def nso_items(data):
+    """Die Varianten als wählbare Einträge für Korb und Kaufplan (ab 0.69): [{slug, title, key}]."""
+    have = {k for t in (data.get("nso_prices") or {}).values() for k in NSO_KEYS if nso_price(t, k)}
+    return [{"slug": NSO_PREFIX + v["key"], "title": f"{NSO_TITLE} {v['label']}", "key": v["key"],
+             "family": bool(v.get("family"))} for v in NSO_VARIANTS if v["key"] in have]
+
+
+def with_nso(data, settings, wanted):
+    """Daten und Einstellungen mit den gewünschten Varianten der Mitgliedschaft als Titel (ab 0.69):
+    Preise je Land aus nso_prices, Deutsch in jeder Region (die Sprachregel gilt nicht), eigene
+    Angebote der Variante (etwa Amazon-Codes) wie eigene Angebote eines Titels. Nur für Korb und
+    Kaufplan, wenn du sie ausdrücklich dazunimmst; Urteil und Wishlist kennen sie nicht."""
+    keys = [s[len(NSO_PREFIX):] for s in dict.fromkeys(wanted or []) if str(s).startswith(NSO_PREFIX)
+            and s[len(NSO_PREFIX):] in NSO_KEYS]
+    if not keys:
+        return data, settings
+    items = dict(data.get("items") or {})
+    prices = {shop: dict(t) for shop, t in (data.get("prices") or {}).items()}
+    own = list(settings.get("own_offers") or [])
+    for key in keys:
+        v = next(x for x in NSO_VARIANTS if x["key"] == key)
+        slug = NSO_PREFIX + key
+        items[slug] = {"title": f"{NSO_TITLE} {v['label']}", "active": True, "order": 10 ** 6, "ids": {},
+                       "langs": {f: "german" for f in countries.FAMILIES}, "nso": key}
+        for shop, t in (data.get("nso_prices") or {}).items():
+            p = nso_price(t, key)
+            if p:
+                prices.setdefault(shop, {})[slug] = p
+        own += [dict({k: x[k] for k in x if k != "key"}, slug=slug)
+                for x in settings.get("nso_extra") or [] if x.get("key") == key]
+    return dict(data, items=items, prices=prices), dict(settings, own_offers=own)
 
 
 def nso_price(table, key):

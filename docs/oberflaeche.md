@@ -23,17 +23,21 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 
 ## Kaufplan (Jetzt)
 
-Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Wishlist-Titel
-dazunehmen …“ (ab 0.68). Dazugenommenes ist ein Füllartikel des Schritts und trägt „dazugenommen ×“
+Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Titel
+dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedschaft“ bietet alle Varianten an). Dazugenommenes ist ein Füllartikel des Schritts und trägt „dazugenommen ×“
 (vorher „Füller ×“). Weglassen-Vorschläge gibt es im Plan nicht: Der Plan nimmt nur, was dort
 kaufen heißt und dessen Wechsel sich rechnet.
 
 ## Käufe aus dem eShop
 
-Vorschläge stehen je Kauf mit Art, Plattform und Betrag (grau); jeder Vorschlag ist ein Link zu
-DekuDeals mit dem Spiel klein davor (`small.gm`), daneben der Knopf „ja“, darunter „nein, keiner davon“.
-Unter „Zählen als Besitz“: von dir Zugeordnetes mit „zurücknehmen“ (zurück zu den Vorschlägen),
-automatisch Zugeordnetes mit „stimmt nicht“.
+Vorschläge als Frage (ab 0.69, „Welcher Titel ist das?“): je Kauf ein Kasten (`.eq`), oben fett der
+Kauf mit Datum, Art, Plattform und Betrag (grau), darunter je Kandidat eine Zeile „ja“ + Name (Link zu
+DekuDeals, Spiel klein davor, `small.gm`), zuletzt „keiner davon“ und „anderer Titel …“ (aufklappbar:
+Feld für einen DekuDeals-Link, Knopf „zuordnen“). „Zählen als Besitz“ ist eine sortierbare Tabelle:
+Kauf (Titel aus dem Kaufverlauf, auch japanisch), Spiel, Zählt als (Link), Woher, Datum, dann
+„zurücknehmen“ (von dir Zugeordnetes, wirkt sofort) oder „stimmt nicht“ (automatisch Zugeordnetes).
+Namen kommen aus allen bekannten Titeln und DLC-Listen, nie als roher Slug (sonst lesbar gemacht).
+Bei den übrigen Käufen: „von dir als ‚keiner davon‘ markiert“ und „anderer Titel …“.
 
 ## Online-Mitgliedschaft
 
@@ -51,7 +55,8 @@ neu: Alle Varianten kommen mit dem Stand, die Oberfläche schaltet sofort um und
 Variantentabelle ist nur der Name der Link, die Klammer steht grau daneben. Tabellenköpfe mit
 Klasse `l` stehen linksbündig über ihrer Spalte. Beide Tabellen
 sind sortierbar wie alle anderen; die Ländertabelle hat die Wechselstufe als eigene Spalte nach
-dem Land, damit die Chips „Konto“ und „im Plan“ allein am Namen stehen. Über der Ländertabelle
+dem Land, damit die Chips „Konto“ und „im Plan“ allein am Namen stehen. Die Variantentabelle trägt Links, Tooltip, Chips und die Spalte „im Shop“ (ab 0.69); die
+Ländertabelle darunter ist zugeklappt („Alle Länder für …“). Über der Ländertabelle
 und im Tooltip steht, in welchem Land der Bestpreis war, auch wenn er gerade nirgends zu haben
 ist. Passt eine Variante in den Rest eines Kaufplan-Schritts, steht sie dort unter „Passt in den
 Rest“ als Hinweis, der zum Kasten führt. Oben steht je Variante das beste Land; der günstigste Preis je Monat ist fett, die
@@ -186,11 +191,15 @@ grau „zählt nicht: der eShop ist dort günstiger“, mit Link dahinter der Pr
 
 Werkzeugzeile, Reihenfolge in jedem Reiter: Suche, Sortierung, Filter; das Suchfeld hat ein eigenes
 graues × (ab 0.62.1, `searchBox`, das × des Browsers ist ausgeblendet), Esc leert ebenso; rechts die Ansicht oder eine
-Aktion (Korb leeren). Auswahlfelder „Wishlist-Titel dazunehmen“ gruppieren nach Urteil, darin A–Z.
+Aktion (Korb leeren). Auswahlfelder „Titel dazunehmen …“ gruppieren nach Urteil, darin A–Z, zuletzt
+die Online-Mitgliedschaft mit allen Varianten (ab 0.69; im Korb als Zeile mit Link zum Kasten, ohne Sprachmarke).
+Sammlung: Der Filter ignoriert Akzente, Satzzeichen und Leerzeichen („pokemon“ findet „Pokémon“, ab 0.69)
+und klappt „Ohne offene DLC“ und „Ohne Zusatzinhalte“ mit Treffern auf.
 Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen“, Zahl von Nintendo grün, andere Quellen
 (titledb, von dir) violett. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
 Korb-Tabelle: Erklärung zugeklappt („So liest du den Korb“, ab 0.62.1), Spalte Bestpreis,
-Spaltenköpfe sortieren, Kopfzeile bleibt stehen und ist deckend: Länder ohne den ganzen Korb haben
+Länder von leicht über mittel bis schwer, darin nach fehlenden Titeln und Preis (ab 0.69, vorher
+nur nach Preis), Vergleichsland vorn; Spaltenköpfe sortieren, Kopfzeile bleibt stehen und ist deckend: Länder ohne den ganzen Korb haben
 grauen Kopftext, nur ihre Zellen sind blass (bis 0.62 schien die Tabelle durch den Kopf); grün hinterlegte Zellen
 nicht, sonst trübt die Deckkraft ihre weiße Schrift (ab 0.68). Eine Zeile je
 Zelle wie in der Titel-Tabelle: Preis, blauer Rabatt, kleines rotes „+x“ über dem Bestpreis (`.abv.gap`, bis 0.62 grau); Zelle
