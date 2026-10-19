@@ -26,8 +26,7 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 ## Horizont 2: Überall nutzbar und wartbar
 
-- [ ] **Code aufteilen.** Die Oberfläche in mehrere Dateien ohne Build, der Planer in Bewertung,
-  Karten und Plan.
+Derzeit nichts offen.
 
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 

@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ["DATA_DIR"] = tempfile.mkdtemp()
 
-from app import countries, planner, sources, store, sync  # noqa: E402
+from app import countries, kaufplan, planner, sources, store, sync  # noqa: E402
 
 NOW = datetime(2026, 10, 11, 17, 0, tzinfo=timezone.utc)
 
@@ -2413,7 +2413,7 @@ class PurchaseLogTest(unittest.TestCase):
         self.assertIn("hades", planned)
         def skip_hades(data, rows, wanted, settings=None):
             return [s for s in wanted if s != "hades"], [{"slug": "hades", "reason": "Grund"}]
-        with mock.patch.object(planner, "_switch2_choice", skip_hades):
+        with mock.patch.object(kaufplan, "_switch2_choice", skip_hades):   # der Kaufplan liegt seit 0.86 in kaufplan.py
             plan = planner.purchase_plan(data, settings, now=NOW)
         self.assertNotIn("hades", [i["slug"] for p in plan["steps"] for i in p["items"]])
         self.assertEqual([(x["slug"], x["reason"]) for x in plan["s2_skip"]], [("hades", "Grund")])
@@ -4111,6 +4111,19 @@ def ui_sample():
     return data, settings
 
 
+def ui_source():
+    """Die ganze Oberfläche als ein Text (seit 0.86 index.html, style.css und js/*.js in der
+    Reihenfolge, in der index.html sie lädt)."""
+    static = os.path.join(os.path.dirname(__file__), "..", "app", "static")
+    with open(os.path.join(static, "index.html"), encoding="utf-8") as f:
+        page = f.read()
+    parts = [page]
+    for ref in re.findall(r'<(?:link rel="stylesheet" href|script src)="([^"]+)"', page):
+        with open(os.path.join(static, ref), encoding="utf-8") as f:
+            parts.append(f.read())
+    return "\n".join(parts)
+
+
 class UiContractTest(unittest.TestCase):
     """Oberflächentests ohne Zusatzpakete (0.67): Was die Oberfläche liest, liefert der Server, und
     bei Handybreite scrollt keine Ansicht seitlich. Die Oberfläche selbst ist reines JavaScript;
@@ -4150,8 +4163,7 @@ class UiContractTest(unittest.TestCase):
         cls.data, cls.settings = ui_sample()
         store.save_data(cls.data)
         store.save_settings(cls.settings)
-        with open(cls.PAGE, encoding="utf-8") as f:
-            cls.page = f.read()
+        cls.page = ui_source()
 
     def test_state_fields_exist(self):
         state = self.server.state()
@@ -4164,6 +4176,35 @@ class UiContractTest(unittest.TestCase):
         used = set(re.findall(r'(?:api\(|href=)["`](/api/[a-z_/]+)', self.page))
         self.assertTrue(used)
         self.assertEqual(used - routes, set())
+
+    def test_ui_files_served(self):
+        # 0.86: Was index.html lädt, liefert der Server mit passendem Typ; andere Pfade nicht
+        import http.client
+        import threading
+        from http.server import ThreadingHTTPServer
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), self.server.Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+
+        def get(path):
+            c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=10)
+            c.request("GET", path)
+            r = c.getresponse()
+            out = (r.status, r.getheader("Content-Type"), r.read())
+            c.close()
+            return out
+        try:
+            refs = re.findall(r'<(?:link rel="stylesheet" href|script src)="([^"]+)"', get("/")[2].decode())
+            self.assertEqual(len(refs), 1 + len(os.listdir(os.path.join(os.path.dirname(self.PAGE), "js"))))
+            for ref in refs:
+                status, ctype, body = get("/" + ref)
+                self.assertEqual(status, 200, ref)
+                self.assertTrue(ctype.startswith("text/css" if ref.endswith(".css") else "text/javascript"), ctype)
+                self.assertTrue(body)
+            for bad in ("/js/../server.py", "/js/fehlt.js", "/js/%2e%2e/server.py", "/server.py", "/js/"):
+                self.assertEqual(get(bad)[0], 404, bad)
+        finally:
+            srv.shutdown()
+            srv.server_close()
 
     def test_structure_contract(self):
         state = self.server.state()
@@ -4250,13 +4291,11 @@ class UiContractTest(unittest.TestCase):
 
 
 class UiThemeTest(unittest.TestCase):
-    """Hell, dunkel, System (0.55): Die dunklen Farben stehen zweimal in index.html, für
+    """Hell, dunkel, System (0.55): Die dunklen Farben stehen zweimal in style.css, für
     „wie das Gerät“ und für die Wahl „Dunkel“. Beide Blöcke müssen gleich bleiben."""
     def test_dark_tokens_match(self):
         import re
-        path = os.path.join(os.path.dirname(__file__), "..", "app", "static", "index.html")
-        with open(path, encoding="utf-8") as f:
-            page = f.read()
+        page = ui_source()
         auto = re.search(r"@media \(prefers-color-scheme: dark\)\{:root:not\(\[data-theme=light\]\)\{([^}]*)\}\}", page)
         chosen = re.search(r":root\[data-theme=dark\]\{color-scheme:dark;([^}]*)\}", page)
         self.assertTrue(auto and chosen)

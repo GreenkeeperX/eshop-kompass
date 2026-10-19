@@ -786,6 +786,13 @@ Adresse unter `/api/` existiert. Ist ein Chromium da (in GitHub Actions immer, s
 Reiter und alle Ansichten von Wishlist und Ländern durch und schlägt fehl, wenn eine Ansicht seitlich
 scrollt oder ein Skriptfehler auftritt. Ohne Chromium wird er übersprungen.
 
+### Aufbau des Codes
+
+Der Server (`app/server.py`) liefert die Oberfläche aus `app/static/`: `index.html`, `style.css`
+und die Teile in `js/`, reines JavaScript ohne Build. Gerechnet wird in `app/planner.py` mit
+`cards.py` (Guthabenkarten), `titles.py` (Namen, Käufe, Besitz), `kaufplan.py` und
+`membership.py`; der Abgleich steht in `app/sync.py`, die Quellen in `app/sources.py`.
+
 ### Prüfumgebung
 
 `tools/replay.py` rechnet eine Momentaufnahme ohne Netz durch: Bewertung, Kaufplan, Sprachen

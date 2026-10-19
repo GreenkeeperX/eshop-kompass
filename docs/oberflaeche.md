@@ -1,6 +1,6 @@
 # Oberfläche: Farben, Marken, Wortwahl
 
-Verbindliche Regeln für `app/static/index.html`. Wer dort Farben, Marken oder
+Verbindliche Regeln für die Oberfläche in `app/static/` (`index.html`, `style.css`, `js/*.js`). Wer dort Farben, Marken oder
 Bezeichnungen ändert, passt diese Datei im selben Commit an. Die Legende in der
 Oberfläche (das "?" oben rechts) und die README beschreiben dasselbe für Nutzer und
 folgen dieser Datei.
@@ -336,7 +336,7 @@ gedämpften Text gezeigt, nie über Transparenz der ganzen Kachel.
 
 Dieselbe Angabe steht in der Oberfläche oft an mehreren Stellen. Wer sie an einer Stelle ändert
 oder ergänzt, geht diese Liste durch und ändert die anderen Stellen mit oder schreibt hierher,
-warum eine Stelle anders bleibt. Funktionen in `app/static/index.html`.
+warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 
 | Was | Wo es vorkommt |
 |---|---|

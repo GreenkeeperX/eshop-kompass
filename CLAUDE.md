@@ -34,10 +34,18 @@ Zweck, Bedienung und Rechenregeln stehen in `README.md`, Geplantes in `ROADMAP.m
 - `app/countries.py`: Länder, Regionen, Wechselstufen
 - `app/sources.py`: Abruf und Parser der Quellen, `VERSION`
 - `app/store.py`: Einstellungen und JSON-Dateien im Datenordner
-- `app/planner.py`: Kartenrechner, Körbe, Bestpreise, Urteile, Kaufplan
+- `app/planner.py`: Angebote, Bewertung (`Context`), Körbe je Land, Bestpreise, Urteile, Sammlung,
+  Sprachen; reicht die Namen der folgenden vier weiter, `planner.X` gilt überall
+- `app/cards.py`: Guthabenkarten (Kartenkombination, Kartenliste, Faktor)
+- `app/titles.py`: Namen vergleichen, eShop-Käufe zuordnen, Pakete und Besitz
+- `app/kaufplan.py`: Kaufplan; `app/membership.py`: Online-Mitgliedschaft. Beide laden `planner`;
+  wer in Tests eine Funktion für den Kaufplan ersetzt, ersetzt sie in `kaufplan`
 - `app/sync.py`: Abgleich, Zeitplan, Verbindungstest
 - `app/server.py`: Webserver und JSON-Schnittstelle
-- `app/static/index.html`: gesamte Oberfläche, reines JavaScript ohne Build
+- `app/static/`: Oberfläche, reines JavaScript ohne Build: `index.html` (Gerüst und Ladereihenfolge),
+  `style.css`, `js/*.js` (Teile nach Reitern, gemeinsame Namen; Code oben in einer Datei darf nur
+  nutzen, was in derselben oder einer früher geladenen Datei steht). Der Server liefert nur
+  `style.css` und `js/<name>.js`
 - `docs/oberflaeche.md`: Farben, Marken und Wortwahl der Oberfläche; bei jeder Änderung daran
   im selben Commit mitpflegen. Vor einer Änderung an Darstellung oder Angaben dort die Liste
   „Eine Sache, mehrere Orte“ durchgehen und alle genannten Stellen prüfen
@@ -62,7 +70,7 @@ etwa in Cloud-Sitzungen, normal mit Lesen und Suchen arbeiten.
   klar umrissene Änderungen ist keine Abfrage nötig.
 - Der Graph ist unvollständig. Fehlende Knoten oder Kanten belegen nie, dass etwas
   nicht existiert oder nicht aufgerufen wird. Maßgeblich ist der Code.
-- Nicht im Graphen: die Oberfläche `app/static/index.html` und der Datenfluss über
+- Nicht im Graphen: die Oberfläche `app/static/` und der Datenfluss über
   die JSON-Dateien (`sync.py` schreibt `data.json`, `server.py` liest sie). Beides
   bei Bedarf direkt im Code prüfen.
 - Bei Änderungen an Rechenlogik, Datenfluss oder Darstellung die betroffenen Stellen

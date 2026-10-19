@@ -100,6 +100,11 @@ class Handler(BaseHTTPRequestHandler):
             if path in ("/", "/index.html"):
                 with open(os.path.join(STATIC, "index.html"), "rb") as f:
                     self._send(200, f.read(), "text/html; charset=utf-8")
+            elif re.fullmatch(r"/(style\.css|js/[a-z-]+\.js)", path) and os.path.isfile(os.path.join(STATIC, path[1:])):
+                # Teile der Oberfläche (0.86): nur diese Namen, kein Pfad aus der Anfrage sonst
+                with open(os.path.join(STATIC, path[1:]), "rb") as f:
+                    self._send(200, f.read(), "text/css; charset=utf-8" if path.endswith(".css")
+                               else "text/javascript; charset=utf-8")
             elif path == "/api/state":
                 self._send(200, state())
             elif path == "/api/status":
