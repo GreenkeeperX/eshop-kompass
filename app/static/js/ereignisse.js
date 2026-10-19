@@ -65,7 +65,10 @@ document.addEventListener("click", async e => {
       else if(cur.dir > 0) cur.dir = -1;
       else delete S.sorts[d.t];
       saveView();
+      const kb = document.activeElement && document.activeElement.matches("th[data-act]");
       if(d.t === "verlauf") drawVerlauf(); else render();
+      // Mit der Tastatur sortiert (0.89): Fokus bleibt auf dem Spaltenkopf
+      if(kb){ const t = document.querySelector(`th[data-act="tsort"][data-t="${CSS.escape(d.t)}"][data-k="${CSS.escape(d.k)}"]`); if(t) t.focus(); }
     }
     else if(a === "topen"){ S.openTitle = S.openTitle === d.s ? null : d.s; render(); }
     else if(a === "gotitle"){
@@ -377,6 +380,16 @@ document.addEventListener("toggle", e => {
   set(false);
 })();
 document.addEventListener("keydown", e => { if(e.key === "Escape") themeMenu(false); });
+// Tastatur und Bildschirmleser (0.89): Spaltenköpfe zum Sortieren reagieren auf Enter und Leertaste,
+// Knöpfe nur mit Zeichen (+, ✓, ×, ↺, ✎, Symbol) bekommen ihren Tooltip als Namen
+document.addEventListener("keydown", e => {
+  if((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("th[data-act]")){ e.preventDefault(); e.target.click(); }
+});
+function nameButtons(){
+  for(const b of document.querySelectorAll("button[title]:not([aria-label])"))
+    if(!/\p{L}/u.test(b.textContent)) b.setAttribute("aria-label", b.title.split(" · ")[0]);
+}
+new MutationObserver(nameButtons).observe(document.body, {childList: true, subtree: true});
 document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });
 
 async function eshopImport(text){

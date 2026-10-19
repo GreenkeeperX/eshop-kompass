@@ -81,5 +81,3 @@ Neue Wünsche, noch nicht eingeordnet.
 
 - [ ] **Käufe mit anderer Programm-ID in Amerika:** Manche Spiele haben in Japan eine andere
   Programm-ID als in den USA (anderer Verlag), dann fehlt der englische Name; bisher „zuweisen“.
-- [ ] **Tastatur und Bildschirmleser:** Symbolknöpfe (+, ✓, ×, ↺, ✎) mit zugänglichem Namen, Fokus im
-  Verlaufsdialog.

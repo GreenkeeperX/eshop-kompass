@@ -15,6 +15,7 @@ function renderTheme(){
   const cur = THEMES.find(x => x[0] === themeNow()), b = $("thmBtn");
   b.innerHTML = cur[1];
   b.title = `Ansicht: ${cur[2]}${cur[3] ? ` (${cur[3]})` : ""}. Klick zum Ändern`;
+  b.setAttribute("aria-label", b.title);
   $("thmMenu").innerHTML = THEMES.map(([k, ic, l, h]) =>
     `<button role="menuitemradio" aria-checked="${k === cur[0]}" class="${k === cur[0] ? "on" : ""}" data-act="thmset" data-v="${k}"><span class="ic">${ic}</span>${l}${h ? ` <small class="mut">${h}</small>` : ""}</button>`).join("");
 }
@@ -47,7 +48,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
    zweiter absteigend, dritter zurück zur gewohnten Reihenfolge. Leere Werte stehen immer am Ende. */
 function sth(t, k, label, title = "", cls = ""){
   const s = S.sorts[t], on = !!(s && s.k === k);
-  return `<th class="sth ${on ? "on" : ""} ${cls}" data-act="tsort" data-t="${t}" data-k="${esc(k)}" title="${esc(title ? title + " · " : "")}Klick sortiert"${on ? ` aria-sort="${s.dir > 0 ? "ascending" : "descending"}"` : ""}>${label}<span class="sa">${on ? (s.dir > 0 ? "▲" : "▼") : ""}</span></th>`;
+  return `<th class="sth ${on ? "on" : ""} ${cls}" tabindex="0" data-act="tsort" data-t="${t}" data-k="${esc(k)}" title="${esc(title ? title + " · " : "")}Klick sortiert"${on ? ` aria-sort="${s.dir > 0 ? "ascending" : "descending"}"` : ""}>${label}<span class="sa">${on ? (s.dir > 0 ? "▲" : "▼") : ""}</span></th>`;
 }
 function sortRows(t, arr, keys){
   const s = S.sorts[t], f = s && keys[s.k];

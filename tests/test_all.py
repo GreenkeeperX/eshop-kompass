@@ -4345,6 +4345,7 @@ class UiContractTest(unittest.TestCase):
         for name, t in res["tabs"].items():
             self.assertLessEqual(t["width"], t["view"], f"{name} scrollt seitlich: {t['wide']}")
             self.assertEqual(t["wide"], [], name)
+            self.assertEqual(t.get("unnamed", []), [], f"{name}: Knopf ohne Namen")
             self.assertGreater(t["chars"], 200, f"{name} zeigt fast nichts")
 
 

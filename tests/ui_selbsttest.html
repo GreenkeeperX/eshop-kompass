@@ -30,7 +30,9 @@ f.addEventListener("load", () => {
         const clipped = e => { for(let a = e.parentElement; a; a = a.parentElement){ if(w.getComputedStyle(a).overflowX !== "visible") return true; } return false; };
         const wide = [...d.querySelectorAll("body *")].filter(e => e.getBoundingClientRect().right > vw + 1 && !clipped(e))
           .slice(0, 3).map(e => e.tagName.toLowerCase() + (e.className ? "." + String(e.className).split(" ")[0] : "") + " " + (e.textContent || "").trim().slice(0, 40));
-        res.tabs[name] = {width: d.documentElement.scrollWidth, view: vw, wide, chars: d.body.innerText.length};
+        // Knöpfe und Links ohne Wort brauchen einen Namen für Bildschirmleser (0.89)
+        const unnamed = [...d.querySelectorAll("button,a")].filter(b => !/[\p{L}\p{N}]/u.test(b.textContent) && !b.getAttribute("aria-label")).slice(0, 3).map(b => b.outerHTML.slice(0, 60));
+        res.tabs[name] = {width: d.documentElement.scrollWidth, view: vw, wide, unnamed, chars: d.body.innerText.length};
         if(name === "probe") probe.remove();
       }
     }catch(e){ res.errors.push(String(e)); }

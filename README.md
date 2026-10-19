@@ -273,6 +273,9 @@ lädt die Startseite neu.
   Titel-Liste und -Tabelle, in den Warenkörben von Kaufplan, Korb und Ländern, im Verlauf, in
   der Länderliste der Einstellungen, in der Sprachliste und bei der Online-Mitgliedschaft.
   Neu zeichnen lässt jede Tabelle dort stehen, wohin du gescrollt hast.
+- **Tastatur:** Spaltenköpfe erreichst du mit Tab und sortierst mit Enter oder Leertaste. Legende
+  und Preisverlauf öffnen mit dem Fokus auf „Schließen“, Esc schließt sie. Knöpfe, die nur ein
+  Zeichen zeigen (+, ✓, ×, ↺, ✎), lesen Bildschirmleser mit ihrem Tooltip vor.
 - **Suchen:** Jedes Suchfeld hat ein ×, Esc leert es ebenso. Gesucht wird ohne Akzente und
   Satzzeichen: „pokemon“ findet „Pokémon“.
 - **Merken:** Die Ansicht (Reiter, Liste, Tabelle oder Korb, Raster oder Liste der Länder und deren

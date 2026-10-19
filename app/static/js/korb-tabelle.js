@@ -38,7 +38,7 @@ function viewCompare(){
 
   const cls = p => (win && p.code === win.code ? "win " : "") + (p.missing.length ? "incomplete " : "");
   const ks = S.sorts.korb, arrow = k => ks && ks.k === k ? `<span class="sa">${ks.dir > 0 ? "▲" : "▼"}</span>` : "";
-  const sortTh = (k, cls2, inner, tip) => `<th class="sth ${ks && ks.k === k ? "on" : ""} ${cls2}" data-act="tsort" data-t="korb" data-k="${esc(k)}" title="${esc(tip)} · Klick sortiert">${inner}${arrow(k)}</th>`;
+  const sortTh = (k, cls2, inner, tip) => `<th class="sth ${ks && ks.k === k ? "on" : ""} ${cls2}" tabindex="0" data-act="tsort" data-t="korb" data-k="${esc(k)}" title="${esc(tip)} · Klick sortiert">${inner}${arrow(k)}</th>`;
   h += `<div class="cmp fitbox"><table><thead><tr>${sortTh("title", "", `${S.ui.basket.length} Titel`, "nach Titel")}${sortTh("best", "", "Bestpreis<small>24 Monate, alle Länder</small>", "Niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden Länder")}` + cols.map(p =>
     sortTh(p.code, cls(p), `${win && p.code === win.code ? `<span class="tagwin">günstigstes</span><br>` : ""}${esc(p.name)}
       <small>${p.is_ref ? "Vergleichsbasis" : TIER[p.tier] || ""}${p.current ? " · Konto hier" : ""}${p.missing.length ? ` · ${p.items.length} von ${S.ui.basket.length}` : ""}</small>`, `nach dem Preis in ${p.name}`)).join("") + `</tr></thead><tbody>`;
@@ -235,7 +235,7 @@ async function openVerlauf(slug){
 function drawVerlauf(){
   const v = S.vl.data, d = $("verlauf");
   const color = code => code === "DE" ? "var(--ink)" : LINE_COLORS[v.countries.findIndex(c => c.code === code) % LINE_COLORS.length];
-  let h = `<header><h2>${esc(v.title)}</h2><a class="mini" href="/api/fall?slug=${encodeURIComponent(v.slug)}" download="fall-${esc(v.slug)}.json" title="Alle Daten dieses Titels als Datei (Preise, Tiefstwerte, Verlauf, Karten, Kurse, Einstellungen ohne Wishlist-Link). Schickst du sie mir, kann ich deinen Fall genau nachrechnen.">Fall exportieren</a><button data-act="vlclose">Schließen</button></header>`;
+  let h = `<header><h2>${esc(v.title)}</h2><a class="mini" href="/api/fall?slug=${encodeURIComponent(v.slug)}" download="fall-${esc(v.slug)}.json" title="Alle Daten dieses Titels als Datei (Preise, Tiefstwerte, Verlauf, Karten, Kurse, Einstellungen ohne Wishlist-Link). Schickst du sie mir, kann ich deinen Fall genau nachrechnen.">Fall exportieren</a><button data-act="vlclose" autofocus>Schließen</button></header>`;
   if(!v.countries.length){
     d.innerHTML = h + `<p class="hint">Noch keine Aufzeichnung für diesen Titel. Jeder Abgleich hält fest, wenn sich ein Preis ändert.</p>`;
     return;

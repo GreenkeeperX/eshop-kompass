@@ -359,6 +359,15 @@ Was die Oberfläche vom Server liest, steht als Vertrag in `tests/test_all.py`
 Oberfläche muss den Selbsttest bei 390 px bestehen: keine Ansicht scrollt seitlich, kein
 Skriptfehler (`tests/ui_selbsttest.html`).
 
+## Tastatur und Bildschirmleser
+
+Ab 0.89: Sortierbare Spaltenköpfe haben `tabindex="0"` (in `sth()` und im Korb), Enter und
+Leertaste sortieren, der Fokus bleibt danach auf dem Kopf. Knöpfe ohne Wort (nur Zeichen oder
+Symbol) bekommen ihren Tooltip als `aria-label` (`nameButtons`, über einen MutationObserver für
+alles, was gezeichnet wird); neue Zeichenknöpfe brauchen deshalb immer ein `title`. Dialoge
+öffnen mit `autofocus` auf „Schließen“. Der Selbsttest bei 390 px schlägt fehl, wenn ein Knopf
+oder Link ohne Wort keinen Namen hat.
+
 ## Wortwahl
 
 - Namen bleiben stabil, keine Versionsnummern in sichtbaren Bezeichnungen.

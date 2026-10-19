@@ -160,7 +160,7 @@ function nsoBox(){
 /* ---------- Legende: eine für alle Ansichten ---------- */
 function openLegend(){
   const d = $("legend");
-  d.innerHTML = `<header><h2>Legende</h2><button data-act="lgclose">Schließen</button></header><div class="lgd">
+  d.innerHTML = `<header><h2>Legende</h2><button data-act="lgclose" autofocus>Schließen</button></header><div class="lgd">
     <div><span class="vd buy">kaufen</span> Einkaufspreis höchstens ${eur(S.state.settings.deal_eur.buy)} oder 2 % über dem Bestpreis, oder dein Zielpreis ist erreicht.</div>
     <div><span class="vd good">gut</span> höchstens ${eur(S.state.settings.deal_eur.good)} oder 15 % über dem Bestpreis.</div>
     <div><span class="vd wait">warten</span> weiter weg vom Bestpreis. Das Urteil gilt dem günstigsten Preis jetzt, mit oder ohne Rabatt: Ein dauerhaft günstiger Normalpreis am Bestpreis ist „kaufen“.</div>
