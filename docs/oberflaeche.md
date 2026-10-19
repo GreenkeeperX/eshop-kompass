@@ -193,10 +193,12 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 
 ## Flächen
 
-Reiter (ab 0.61, „Titel“ heißt ab 0.72 „Wishlist“, intern weiter `titel`): Jetzt, Wishlist, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
-Einkaufen, dann was du hast. Am Reiter Korb steht grau die Zahl
-seiner Titel (ab 0.59). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
-der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste). Ansicht und
+Reiter (ab 0.61, „Titel“ heißt ab 0.72 „Wishlist“, intern weiter `titel`): Jetzt, Wishlist, Länder, Sammlung, Einstellungen, erst was ansteht, dann
+Einkaufen, dann was du hast. Der Korb ist ab 0.73 kein Reiter mehr, sondern die dritte Ansicht der
+Wishlist (`S.tview = "korb"`, `goKorb()`; ein gemerkter Reiter `korb` wird dorthin umgeleitet).
+Am Knopf Korb steht grau die Zahl seiner Titel. In der Tabelle steht vor jedem Titel „+“ bzw. „✓“
+(`.kb`, in den Korb oder heraus). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
+der Ansichtsschalter (`.tools .seg`, Wishlist: Liste | Tabelle | Korb, Länder: Raster | Liste). Ansicht und
 Reihenfolge merkt sich der Browser (`ek.view`, ab 0.65 auch für Länder), nie der Server.
 
 Handy (ab 0.65): Die Reiterleiste scrollt seitlich und blendet am Rand weich aus, solange rechts

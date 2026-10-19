@@ -264,6 +264,8 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .matrix thead tr:nth-child(2) th{top:calc(var(--grp,21px) - 1px)}
 .matrix.compact td{padding:2px 6px}
 .matrix .tbtn{font-size:13px}
+.matrix .tl{display:flex;gap:6px;align-items:flex-start}
+.matrix .tl .kb{flex:none;margin-top:1px}
 .matrix td.na{color:var(--muted)}
 .matrix td small{display:block;color:var(--muted);font-size:10.5px;line-height:1.2}
 .star{color:var(--gold);margin-right:2px}
@@ -547,11 +549,13 @@ function setTheme(k){
   renderTheme(); themeMenu(false);
 }
 /* Reihenfolge (0.61): erst was zu tun ist, dann Wunschliste, Korb und Länder (Einkauf), dann was du hast */
-const TABS = [["jetzt","Jetzt"],["titel","Wishlist"],["korb","Korb"],["laender","Länder"],["sammlung","Sammlung"],["settings","Einstellungen"]];
+// Der Korb ist ab 0.73 eine Ansicht der Wishlist (Liste | Tabelle | Korb), kein eigener Reiter mehr
+const TABS = [["jetzt","Jetzt"],["titel","Wishlist"],["laender","Länder"],["sammlung","Sammlung"],["settings","Einstellungen"]];
 const V0 = loadView();
+if(V0.tab === "korb"){ V0.tab = "titel"; V0.tview = "korb"; }
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
 const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? V0.tab : "jetzt",
-           onlySale:false, collMissing:false, rq:"", vf:V0.vf || "all", tview:V0.tview === "table" ? "table" : "list",
+           onlySale:false, collMissing:false, rq:"", vf:V0.vf || "all", tview:["table", "korb"].includes(V0.tview) ? V0.tview : "list",
            openTitle:null, folds:V0.folds || {}, mDetails:!!V0.mDetails,
            sorts:V0.sorts && typeof V0.sorts === "object" ? V0.sorts : {}, colOrder:V0.colOrder || "tierbest",
            // Ansicht und Sortierung der Länder merkt sich der Browser (0.65), früher der Server
@@ -807,7 +811,7 @@ function migrateLocal(){   // frühere Versionen merkten sich den Korb im Browse
   }catch(e){}
 }
 async function loadPlans(){
-  // Länder zeigen immer die Körbe je Land; der gemeinsame Korb (Reiter Korb) rechnet extra (0.59)
+  // Länder zeigen immer die Körbe je Land; der gemeinsame Korb (Wishlist, Ansicht Korb) rechnet extra (0.59)
   const r = await api("/api/plans", planBody());
   S.plans = r.plans;
   const b = S.ui.basket ? await api("/api/plans", planBody(S.ui.basket)) : null;
@@ -904,7 +908,7 @@ function renderHead(){
   }
   $("syncBtn").disabled = st.running;
   $("nav").innerHTML = TABS.map(([k,l]) =>
-    `<button data-act="tab" data-tab="${k}" class="${S.tab===k?"on":""}">${l}${k === "korb" && S.ui && S.ui.basket ? ` <small class="mut">${S.ui.basket.length}</small>` : ""}</button>`).join("");
+    `<button data-act="tab" data-tab="${k}" class="${S.tab===k?"on":""}">${l}</button>`).join("");
 }
 function banners(){
   let h = "";
@@ -948,13 +952,12 @@ function render(){
   S.drawnTab = S.tab;
   m.className = S.tab === "settings" ? "narrow" : "";
   if(S.tab === "jetzt") m.innerHTML = banners() + viewJetzt();
-  else if(S.tab === "titel") m.innerHTML = banners() + (S.tview === "table" ? viewMatrix() : viewTitles());
+  else if(S.tab === "titel") m.innerHTML = banners() + (S.tview === "table" ? viewMatrix() : S.tview === "korb" ? (S.ui.basket ? viewCompare() : viewKorbEmpty()) : viewTitles());
   else if(S.tab === "sammlung") m.innerHTML = banners() + viewCollection();
   else if(S.tab === "laender") m.innerHTML = banners() + viewCards();
-  else if(S.tab === "korb") m.innerHTML = banners() + (S.ui.basket ? viewCompare() : viewKorbEmpty());
   else { m.innerHTML = viewSettings(); showLog(S.state.status.log); }
   // Tabellen mit eigenem Scrollkasten, fensterhoch: Titel-Tabelle und Korb (0.61)
-  document.body.classList.toggle("fit", (S.tab === "titel" && S.tview === "table" || S.tab === "korb" && !!document.querySelector(".fitbox")) && innerWidth > 700);
+  document.body.classList.toggle("fit", (S.tab === "titel" && (S.tview === "table" || S.tview === "korb" && !!document.querySelector(".fitbox"))) && innerWidth > 700);
   if(!document.body.classList.contains("fit")) showStick();
   fitMatrix();
   m.querySelectorAll(".scroll,.fitbox").forEach((e, k) => { if(keep[k]){ e.scrollLeft = keep[k][0]; e.scrollTop = keep[k][1]; } });
@@ -1136,7 +1139,7 @@ function viewTitles(){
   h += titleGroups(rows).join("");
   if(!rows.length) h += `<tr><td colspan="6" class="mut">Kein Titel passt zum Filter.</td></tr>`;
   h += `</tbody></table></div>`;
-  if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="tab" data-tab="korb">Korb in allen Ländern vergleichen</button></p>`;
+  if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="gokorb">Korb in allen Ländern vergleichen</button></p>`;
   return h;
 }
 /* DLC beim Spiel (0.72): Steht das Spiel auf der Wishlist, folgen seine DLC direkt darunter; mehrere DLC
@@ -1459,10 +1462,10 @@ function viewCards(){
       `${esc(p.name)} <small>(${p.rate ? p.available + " kaufbar" : "noch keine Preise"})</small>`).join(" · ") + `</p>`;
   return h + hiddenLine();
 }
-/* Reiter Korb ohne Korb: wie man einen anlegt (0.59) */
+/* Ansicht Korb ohne Korb: wie man einen anlegt (0.59) */
 function viewKorbEmpty(){
-  return `<div class="box"><p><b>Noch kein Korb.</b> Ein Korb ist deine eigene Auswahl an Titeln, verglichen in allen Ländern: Was kostet genau das hier, dort und aufgeteilt?</p>
-    <p class="hint">So legst du einen an: „+“ in der Spalte Korb im Reiter Wishlist oder „als Korb vergleichen“ auf einer Länderkarte. Der Kaufplan unter „Jetzt“ kauft dagegen in mehreren Ländern nacheinander, das ist kein Korb.</p>
+  return `<div class="tools"><span class="sp"></span>${viewSeg()}</div><div class="box"><p><b>Noch kein Korb.</b> Ein Korb ist deine eigene Auswahl an Titeln, verglichen in allen Ländern: Was kostet genau das hier, dort und aufgeteilt?</p>
+    <p class="hint">So legst du einen an: „+“ in der Spalte Korb der Liste oder vor dem Titel in der Tabelle, „Titel dazunehmen …“ oder „als Korb vergleichen“ an einem Schritt des Kaufplans. Der Kaufplan unter „Jetzt“ kauft dagegen in mehreren Ländern nacheinander, das ist kein Korb.</p>
     </div>`;
 }
 function cardsHtml(p){
@@ -1683,7 +1686,7 @@ function planCard(p, step){
       r => money(r.cells[p.code].local, cur), {code: p.code, skip: inPlan});
     const ov = S.ui.overrides[p.code];
     const changed = ov && ((ov.add||[]).length || (ov.remove||[]).length);
-    foot += (has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb als Korb übernehmen und in allen Ländern vergleichen (Reiter Korb)">als Korb vergleichen</button>` : "") +
+    foot += (has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb als Korb übernehmen und in allen Ländern vergleichen (Wishlist, Ansicht Korb)">als Korb vergleichen</button>` : "") +
       (opts ? `<select data-act="pick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht im Korb dieses Landes sind. Andere Titel kennt das Tool nicht: Preise holt es nur für die Wishlist."><option value="">Titel dazunehmen …</option>${opts}</select>` : "") +
       (changed ? `<button class="link" data-act="reset" data-c="${p.code}">zurücksetzen</button>` : "");
   }
@@ -1693,7 +1696,7 @@ function planCard(p, step){
     const inPlan = new Set(p.items.map(i => i.slug));
     const opts = wishOpts(S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug) && !r.cells[p.code].own),
       r => money(r.cells[p.code].local, cur), {code: p.code, skip: inPlan});
-    foot += (has ? `<button data-act="share" data-c="${p.code}" data-step="1" title="Die Titel dieses Schritts als Korb übernehmen und in allen Ländern vergleichen (Reiter Korb)">als Korb vergleichen</button>` : "") +
+    foot += (has ? `<button data-act="share" data-c="${p.code}" data-step="1" title="Die Titel dieses Schritts als Korb übernehmen und in allen Ländern vergleichen (Wishlist, Ansicht Korb)">als Korb vergleichen</button>` : "") +
       (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu."><option value="">Titel dazunehmen …</option>${opts}</select>` : "");
   }
   if(foot) h += `<div class="foot">${foot}</div>`;
@@ -1911,7 +1914,7 @@ function viewCompare(){
   }
   // Werkzeugzeile wie in den anderen Reitern: links dazunehmen, rechts Korb leeren; das Ergebnis darunter (0.60)
   let h = `<div class="tools"><select data-act="bpick" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit noch nicht im Korb"><option value="">Titel dazunehmen …</option>${opts}</select>
-    <button class="sm" style="margin-left:auto" data-act="unshare" title="Korb leeren; die Länder behalten ihre eigenen Körbe">Korb leeren</button></div>
+    <button class="sm" data-act="unshare" title="Korb leeren; die Länder behalten ihre eigenen Körbe">Korb leeren</button>${viewSeg()}</div>
     <div class="bar on">${verdict}</div>
     <details class="fold" data-k="korbhow" ${S.folds.korbhow ? "open" : ""}><summary class="hint">So liest du den Korb</summary><p class="hint" style="margin:2px 0 8px">Was genau diese Titel in jedem Land kosten, mit Guthabenkarten und Rest wie auf den Länderkarten. Zellfarbe wie in der Titel-Tabelle: dunkelgrün „kaufen“, hellgrün „gut“, gold umrandet der Bestpreis; rot nur der Betrag darüber. Ein Klick auf den Preis öffnet die Seite im eShop, bei DLC den Verlauf bei DekuDeals (für DLC gibt es keinen festen eShop-Link); ein Klick auf den Ländernamen sortiert.</p></details>`;
   if(!cols.length) return h + `<p class="restline">Kein Titel aus dem Korb ist in einem aktiven Land kaufbar.</p>` + hiddenLine();
@@ -2021,7 +2024,7 @@ function viewMatrix(){
     <label title="Landestief, Angebotsende und Sprache in jeder Zelle"><input type="checkbox" data-act="mdet" ${det ? "checked" : ""}> Details</label>${viewSeg()}</div>
     <div class="matrix scroll fitbox ${det ? "" : "compact"}"><table><thead><tr class="grp"><th></th><th></th>${groups.map(([g, n]) => `<th colspan="${n}">${g}</th>`).join("")}</tr>
     <tr>${sth("matrix", "title", "Titel")}${sth("matrix", "best", "Bestpreis", "Niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden Länder. Das Land ist in der Zeile gold umrandet.")}${cols.map(c => sth("matrix", c.code, `${c.code}${bests[c.code] ? `<small class="bc">${bests[c.code]}★</small>` : ""}`, `${c.name} · ${bests[c.code] === 1 ? "1 Bestpreis" : `${bests[c.code]} Bestpreise`} in den gezeigten Titeln`)).join("")}</tr></thead><tbody>`;
-  h += rows.map(r => `<tr><td><button class="tbtn" data-act="gotitle" data-s="${esc(r.slug)}" title="Einzelheiten in der Liste">${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r.title)}</button>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
+  h += rows.map(r => `<tr><td><div class="tl"><button class="kb sm ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="${inBasket(r.slug) ? "aus dem Korb nehmen" : "in den Korb"}">${inBasket(r.slug) ? "✓" : "+"}</button><button class="tbtn" data-act="gotitle" data-s="${esc(r.slug)}" title="Einzelheiten in der Liste">${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r.title)}</button></div>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     ((() => {
       // Zeilen ohne Unterschied (0.65): kostenlos überall oder nirgends ein Preis, dann eine Zeile mit Grund statt lauter gleicher Zellen
       const cs = cols.map(c => r.cells[c.code]).filter(Boolean), priced = cs.filter(x => !x.na);
@@ -2046,7 +2049,9 @@ function viewMatrix(){
   return h + `</tbody></table></div><p class="hint" style="margin-top:6px">Zellfarbe für Angebote: dunkelgrün „kaufen“, hellgrün „gut“. Gold umrandet: hier gab es den Bestpreis. <span class="q">?</span> zählt nicht. Ein Klick auf den Preis öffnet den Verlauf bei DekuDeals, auf den Titel die Einzelheiten.</p>`;
 }
 function viewSeg(){
-  return `<span class="seg"><button data-act="tview" data-v="list" class="${S.tview === "table" ? "" : "on"}">Liste</button><button data-act="tview" data-v="table" class="${S.tview === "table" ? "on" : ""}">Tabelle</button></span>`;
+  const b = (v, l, tip) => `<button data-act="tview" data-v="${v}" class="${S.tview === v ? "on" : ""}" title="${tip}">${l}</button>`;
+  const n = S.ui && S.ui.basket ? S.ui.basket.length : 0;
+  return `<span class="seg">${b("list", "Liste", "Eine Zeile je Titel mit Urteil und bestem Angebot")}${b("table", "Tabelle", "Alle Titel in allen Ländern")}${b("korb", `Korb${n ? ` <small>${n}</small>` : ""}`, "Deine Auswahl in allen Ländern, mit Summen, Karten und Rest")}</span>`;
 }
 
 /* ---------- Preisverlauf aus der eigenen Aufzeichnung ---------- */
@@ -2509,6 +2514,7 @@ async function saveSettings(form, rerender){
 }
 
 /* ---------- Ereignisse ---------- */
+function goKorb(){ S.tview = "korb"; go("titel"); }
 function go(tab, top = true){ S.tab = tab; saveView(); if(top) window.scrollTo(0, 0); render(); if(top) window.scrollTo(0, 0); }   // erst nach oben, sonst misst fitMatrix die alte Lage
 /* Länderkarten: Steht ein Land im Kaufplan, zeigt seine Karte den Korb des Plans, damit
    Preise und Summen mit „Jetzt“ übereinstimmen (die Kartenkosten hängen am ganzen Korb).
@@ -2579,13 +2585,14 @@ document.addEventListener("click", async e => {
       S.openTitle = d.s; S.tview = "list"; S.vf = "all"; S.rq = ""; go("titel", false);
       const r = document.querySelector(`tr[data-s="${CSS.escape(d.s)}"]`); if(r) r.scrollIntoView({block:"center"});
     }
+    else if(a === "gokorb"){ goKorb(); }
     else if(a === "gobasket"){
       if(!S.ui.basket){
         const p = S.plans.find(x => !x.is_ref && x.items.length);
         if(!p){ toast("Noch kein Titel im Angebot, den du vergleichen könntest"); return; }
         await change("Korb übernommen", () => { S.ui.basket = p.items.map(i => i.slug); });
       }
-      go("korb");
+      goKorb();
     }
     else if(a === "gocards"){
       S.folds["cards:" + d.c] = 1;
@@ -2698,7 +2705,7 @@ document.addEventListener("click", async e => {
     else if(a === "share"){
       const slugs = (d.step ? S.kauf.steps : cardPlans()).find(p => p.code === d.c).items.map(i => i.slug);
       await change(`Korb von ${country(d.c).name} übernommen`, () => { S.ui.basket = slugs; });
-      go("korb");
+      goKorb();
     }
     else if(a === "rqclear"){ S.rq = ""; render(); $("rq").focus(); }
     else if(a === "unshare"){ await change("Korb geleert", () => { S.ui.basket = null; }); }
@@ -2711,7 +2718,7 @@ document.addEventListener("click", async e => {
     else if(a === "plan2basket"){
       const slugs = S.kauf.steps.flatMap(p => p.items.map(i => i.slug));
       await change("Kaufplan als Korb übernommen", () => { S.ui.basket = slugs; });
-      go("korb");
+      goKorb();
     }
     else if(a === "pickfile"){ $("impFile").click(); }
     else if(a === "copy"){

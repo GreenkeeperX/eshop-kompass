@@ -26,6 +26,8 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 ## Horizont 2: Überall nutzbar und wartbar
 
+- [ ] **Weniger Reiter.** „Andere Länder“ an jedem Schritt des Kaufplans, danach entfällt der
+  Reiter Länder; die Länderkarten bleiben über Links aus Plan und Tabellenkopf erreichbar.
 - [ ] **Handy zuerst für Jetzt und Korb.** Kaufplan als Karten, Korb mit Länder-Umschalter, Antippen
   eines Preises zeigt die Rechnung (statt Wissen nur im Tooltip; hilft auch bei Tastatur).
 - [ ] **„Heute“-Zeile.** Oben höchstens drei Aufgaben als Knöpfe mit Frist.

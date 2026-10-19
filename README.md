@@ -52,8 +52,8 @@ vor weniger als 30 Minuten, entfällt der beim Start.
 3. Kaufen und am Land **„gekauft“** drücken. Das Tool stellt danach Konto und Guthaben selbst
    um und nimmt die Titel aus dem Plan.
 
-Alles Weitere ist Nachschlagen: Titel für Einzelheiten und Verlauf, Korb und Länder zum
-Durchspielen eigener Zusammenstellungen, Sammlung für fehlende DLC.
+Alles Weitere ist Nachschlagen: die Wishlist für Einzelheiten und Verlauf, ihr Korb und die
+Länder zum Durchspielen eigener Zusammenstellungen, Sammlung für fehlende DLC.
 
 ## Begriffe und Regeln
 
@@ -243,8 +243,9 @@ Regeln für die Oberfläche stehen in [`docs/oberflaeche.md`](docs/oberflaeche.m
 
 ### Allgemein
 
-Sechs Reiter: Jetzt, Wishlist, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
-Wishlist, Korb und Länder zum Einkaufen, dann was du hast. Ein Klick auf den Namen oben links
+Fünf Reiter: Jetzt, Wishlist, Länder, Sammlung, Einstellungen, erst was ansteht, dann
+Wishlist und Länder zum Einkaufen, dann was du hast. Die Wishlist hat drei Ansichten: Liste,
+Tabelle und Korb. Ein Klick auf den Namen oben links
 lädt die Startseite neu.
 
 - **Hell oder dunkel:** Der runde Knopf rechts vom „?“ zeigt die aktuelle Ansicht (System,
@@ -258,7 +259,7 @@ lädt die Startseite neu.
   der Länderliste der Einstellungen, in der Sprachliste und bei der Online-Mitgliedschaft.
   Neu zeichnen lässt jede Tabelle dort stehen, wohin du gescrollt hast.
 - **Suchen:** Jedes Suchfeld hat ein ×, Esc leert es ebenso.
-- **Merken:** Die Ansicht (Reiter, Liste oder Tabelle, Raster oder Liste der Länder und deren
+- **Merken:** Die Ansicht (Reiter, Liste, Tabelle oder Korb, Raster oder Liste der Länder und deren
   Reihenfolge, Filter, aufgeklappte Kästen, Hell oder Dunkel) merkt sich der Browser. Korb,
   Auswahl, Zielpreise und Einstellungen speichert der Server.
 - **Zahlen eingeben:** Beträge und Prozente nehmen Komma und Punkt.
@@ -391,10 +392,11 @@ verlinkt den Verlauf bei DekuDeals, der Europreis die eShop-Seite des Landes.
 
 ### Korb
 
-Ein gemeinsamer Korb, verglichen in allen Ländern: Titel als Zeilen, Länder als Spalten,
+Der Korb ist eine Ansicht der Wishlist, neben Liste und Tabelle; die Zahl am Knopf „Korb“ nennt
+seine Titel. Ein gemeinsamer Korb, verglichen in allen Ländern: Titel als Zeilen, Länder als Spalten,
 darunter Einkaufspreis, Preis, Wechsel und Rest wie auf den Länderkarten. Das günstigste Land
-ist hervorgehoben, aber nur unter Ländern, die den ganzen Korb anbieten. „+“ in der Titelliste
-legt einen Titel in den Korb, „als Korb vergleichen“ auf einer Länderkarte übernimmt deren
+ist hervorgehoben, aber nur unter Ländern, die den ganzen Korb anbieten. „+“ in der Liste oder
+vor dem Titel in der Tabelle legt einen Titel in den Korb, „✓“ nimmt ihn wieder heraus, „als Korb vergleichen“ auf einer Länderkarte übernimmt deren
 Titel (der Kaufplan kauft in mehreren Ländern nacheinander und ist deshalb kein Korb).
 „Korb leeren“ löst nur den gemeinsamen Korb auf. Die Länder stehen von leicht nach schwer,
 darin vorn, wer mehr Titel anbietet und günstiger ist.
@@ -700,7 +702,7 @@ Dazu gehören Tests der Oberfläche ohne Zusatzpakete: Ein Vertragstest prüft, 
 Feld liefert, das die Oberfläche liest (die Liste steht in `UiContractTest.CONTRACT`), und dass jede
 Adresse unter `/api/` existiert. Ist ein Chromium da (in GitHub Actions immer, sonst über
 `CHROME_BIN`), lädt ein weiterer Test die Seite mit Beispieldaten bei 390 px Breite, geht alle
-Reiter und beide Ansichten von Titel und Ländern durch und schlägt fehl, wenn eine Ansicht seitlich
+Reiter und alle Ansichten von Wishlist und Ländern durch und schlägt fehl, wenn eine Ansicht seitlich
 scrollt oder ein Skriptfehler auftritt. Ohne Chromium wird er übersprungen.
 
 ### Prüfumgebung
