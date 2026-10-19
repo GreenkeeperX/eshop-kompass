@@ -308,7 +308,7 @@ und steht deshalb nicht zur Wahl.
   (vermerkter Kauf oder größere DekuDeals-Sammlung),
 - Käufe zuordnen, die einem Wishlist-Titel oder fehlenden DLC nur ähneln, und gekaufte Titel, die
   bei DekuDeals noch nachzutragen sind (siehe Einstellungen, Käufe aus dem eShop),
-- 30 Tage vor Ablauf die Verlängerung der Online-Mitgliedschaft mit dem günstigsten Land; Land und Preis sowie „ansehen“ springen zum Kasten. Nach einem vermerkten Kauf mit Mitgliedschaft steht dort stattdessen das neue Ablaufdatum zum Übernehmen.
+- 30 Tage vor Ablauf die Verlängerung der Online-Mitgliedschaft mit dem günstigsten Land; „Online-Mitgliedschaft“ und „ansehen“ springen zum Kasten. Nach einem vermerkten Kauf mit Mitgliedschaft steht dort stattdessen das neue Ablaufdatum zum Übernehmen.
 
 **Kaufplan:** ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst. Kandidaten
 sind die Titel mit dem Urteil „kaufen“, per Schalter auch „gut“. Jeder Titel geht ins Land, wo
@@ -498,7 +498,8 @@ Sammlung bei DekuDeals; was sie nicht kennt, etwa einen DLC aus einem Paket, hak
 die dich nicht interessieren: Sie zählen nicht als fehlend und stehen eingeklappt unter dem
 Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der Sicherung. Fehlende DLC, die
 weder auf der Wishlist stehen noch ignoriert sind, tragen einen violetten Rand und den Hinweis
-„nicht auf der Wishlist“: Über sie hast du noch nicht entschieden.
+„nicht auf der Wishlist“: Über sie hast du noch nicht entschieden. Jeder DLC-Name führt zu
+DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
 
 - **Aufbau:** Spiele mit fehlenden DLC stehen oben, je eines in einem Kasten. Darunter
   zugeklappt „Ohne offene DLC“ (alle DLC da, ignoriert oder nicht mehr erhältlich, je eine
@@ -514,7 +515,8 @@ weder auf der Wishlist stehen noch ignoriert sind, tragen einen violetten Rand u
   als fehlend, enthaltene als „hast du, im Paket …“. Liegt DekuDeals bei einem Teil falsch,
   schaltet „stimmt nicht“ ihn wieder auf „fehlt“ (gilt auch für alles, was darin steckt). Ein
   fehlender Pass steht mit seinen Teilen eingerückt darunter („enthält 3 DLC, 1 schon da“) und
-  vergleicht „einzeln … · als Pass …“ für die noch fehlenden Teile. „fehlen“ zählt Inhalte,
+  vergleicht „einzeln … · als Pass …“ für die noch fehlenden Teile; ist ein Teil einzeln nicht
+  kaufbar oder noch ohne Preis, steht dort „einzeln nicht alle kaufbar“. „fehlen“ zählt Inhalte,
   nicht Kaufwege; in die Summe geht der günstigere Weg. Stehen ein Pass und seine Teile zum
   Kauf an, kauft der Kaufplan den Pass, die Teile stehen unter „Nicht im Plan“ („steckt in …“).
 - **Nicht mehr erhältlich:** Findet die ID-Suche einen fehlenden DLC in keiner gesuchten

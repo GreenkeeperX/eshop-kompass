@@ -49,7 +49,7 @@ function todos(){
   if(nso && nso.suggest) out.push([nsoSuggest(nso), ""]);
   else if(nso && nso.due){
     const b = (nso.rows || []).find(r => r.counts);
-    out.push([`<b>Online-Mitgliedschaft ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}</b>${b ? ` <small>am günstigsten <button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft">in ${esc(b.name)} für ${eur(b.eur)}</button></small>` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
+    out.push([`<b><button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft">Online-Mitgliedschaft</button> ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}</b>${b ? ` <small>am günstigsten in ${esc(b.name)} für ${eur(b.eur)}</small>` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
   }
   for(const [code, c] of Object.entries(s.countries)){
     if(c.enabled && c.cards && c.cards_checked && Date.now() - new Date(c.cards_checked) > 30 * 86400000)

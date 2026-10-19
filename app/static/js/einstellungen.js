@@ -296,7 +296,7 @@ function eshopBox(){
   const head = rows.length ? `${rows.length} Käufe${at ? `, gelesen am ${esc(dmy(new Date(at * 1000).toISOString()))}` : ""}` : "noch keine Käufe gelesen";
   let h = `<h3 class="sec" id="set-kaeufe">Käufe aus dem eShop <span class="mut">${head}</span></h3>
     <p class="hint">Deine Sammlung pflegst du bei DekuDeals. Der Kaufverlauf von Nintendo sorgt nur dafür, dass der Plan nichts vorschlägt, was du schon gekauft hast, und zeigt Käufe, die bei DekuDeals noch fehlen. Was schon in der Sammlung steht, ordnet das Tool selbst ein; fragen muss es nur, wenn die Antwort den Plan ändert.</p>
-    <details class="box" data-k="eshophow" ${S.folds.eshophow || !rows.length ? "open" : ""}><summary><b>So liest du deine Käufe</b> <span class="mut">Lesezeichen für deine Kaufhistorie bei Nintendo</span></summary>
+    <details class="box" data-k="eshophow" ${S.folds.eshophow || !rows.length ? "open" : ""}><summary><b>So liest du deine Käufe aus:</b> <span class="mut">Lesezeichen für deine Kaufhistorie bei Nintendo</span></summary>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("eshop", eshopHelper(location.origin))}</li>
       <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? ` Es liest nur, was seit dem letzten vollständigen Lesen dazugekommen ist; <a href="https://ec.nintendo.com/my/transactions/1" target="_blank" rel="noopener" title="Liest den ganzen Kaufverlauf noch einmal. Deine Zuordnungen bleiben, ältere Einträge bekommen fehlende Angaben.">alles neu lesen</a>.` : ""}</li>
@@ -390,7 +390,7 @@ function jpHelper(todo){
   const pages = new Map();
   rows.forEach(t => pages.set(t.nsuid, (pages.get(t.nsuid) || []).concat(t)));
   const names = [...pages.entries()].map(([id, ts]) => `<li>${[...new Set(ts.map(t => t.title))].map(esc).join(", ")} <span class="mut">${ts.some(t => t.src !== "titledb") ? "ohne Angabe" : "laut titledb, zur Bestätigung"} · ${id}</span></li>`).join("");
-  return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${rows.length} ${rows.length === 1 ? "Eintrag" : "Einträge"} ohne Angabe von Nintendo auf ${ids.length} ${ids.length === 1 ? "Seite" : "Seiten"}` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
+  return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan:</b> <span class="mut">${ids.length ? `${rows.length} ${rows.length === 1 ? "Eintrag" : "Einträge"} ohne Angabe von Nintendo auf ${ids.length} ${ids.length === 1 ? "Seite" : "Seiten"}` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     ${names ? `<p class="hint">Das Lesezeichen liest:</p><ul class="hint">${names}</ul>` : ""}
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>

@@ -31,13 +31,15 @@ function collDlc(d){
   else if(d.ignored) state = `<span class="mut">ignoriert</span>${d.mark === "ignore" ? " · " + mk("", "zurücksetzen", "Wieder als fehlend zählen") : ""}`;
   else if(d.gone) state = `<span class="mut" title="Die ID-Suche fand ihn in keiner Region, mehrmals: meist nur im Spiel erhältlich oder aus dem eShop verschwunden">nicht mehr erhältlich</span> · ${mk("have", "habe ich", "Hast du schon")}`;
   else {
-    if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `${d.est ? "ca. " : ""}${eur(d.eur)} in ${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
-    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.eur < 0.005 ? "kostenlos" : `${dlcPrice(d)} in ${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}`}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""} · <a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="Bei DekuDeals auf die Wishlist setzen, dann rechnet das Tool auch Urteil und Bestpreis">bei DekuDeals ansehen</a>`;
+    if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `<a class="pl" href="${esc(deku(d.slug, d.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals für ${esc(d.name || "")}">${d.est ? "ca. " : ""}${eur(d.eur)}</a> in ${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
+    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.eur < 0.005 ? "kostenlos" : `<a class="pl" href="${esc(deku(d.slug, d.code))}" target="_blank" rel="noopener">${dlcPrice(d)}</a> in ${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}`}${d.end ? ` <small class="mut">Angebot bis ${esc(dmy(d.end))}</small>` : ""}` : ""}`;
     const p = d.pack;
     if(p && p.open && p.single !== null && d.eur !== null && d.eur !== undefined){
       const b = (on, t) => on ? `<b>${t}</b>` : t;
       state += ` · <span title="Was die ${p.open} fehlenden Teile einzeln kosten, gegen den Pass. In die Summe geht der günstigere Weg.">${b(p.cheaper === "single", `einzeln ${eur(p.single)}`)} · ${b(p.cheaper === "pass", `als Pass ${eur(d.eur)}`)}</span>`;
     }
+    else if(p && p.open && d.eur !== null && d.eur !== undefined)
+      state += ` · <span class="mut" title="Mindestens ein fehlender Teil ist einzeln nicht kaufbar oder hat noch keinen Preis; dann gibt es ihn nur über den Pass">einzeln nicht alle kaufbar</span>`;
     if(d.not_in_pack) state += ` · <span class="mut">laut dir nicht im Paket</span> ${mk("", "zurücksetzen", "Wieder als im Paket enthalten zählen")}`;
     state += ` · ${mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht")} · ${mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend")}`;
   }
@@ -45,7 +47,7 @@ function collDlc(d){
   // Noch unentschieden (0.72): fehlt, steht nicht auf der Wishlist und ist nicht ignoriert. Violetter Rand links
   // und Hinweis am Namen, damit diese DLC zwischen den entschiedenen auffallen
   const undec = !d.owned && !d.by_hand && !d.ignored && !d.gone && !d.wish;
-  return `<tr class="${d.ignored ? "ign" : ""}${d.in_pack ? " part" : ""}${undec ? " undec" : ""}"><td class="l"${d.in_pack ? ` title="steckt in ${esc(d.in_pack)}"` : ""}>${d.in_pack ? "↳ " : ""}${esc(d.title)}${tag}${inner}${undec ? ` <span class="chip und" title="Fehlt, steht nicht auf deiner Wishlist und ist nicht ignoriert. Auf die Wishlist setzen, mit „habe ich“ abhaken oder ignorieren; in den Korb geht er auch über „Titel dazunehmen …“">nicht auf der Wishlist</span>` : ""}</td><td class="l">${state}</td></tr>`;
+  return `<tr class="${d.ignored ? "ign" : ""}${d.in_pack ? " part" : ""}${undec ? " undec" : ""}"><td class="l"${d.in_pack ? ` title="steckt in ${esc(d.in_pack)}"` : ""}>${d.in_pack ? "↳ " : ""}<a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="${d.wish || d.owned || d.by_hand || d.ignored ? "Bei DekuDeals ansehen" : "Bei DekuDeals ansehen; auf die Wishlist gesetzt rechnet das Tool auch Urteil und Bestpreis"}">${esc(d.title)}</a>${tag}${inner}${undec ? ` <span class="chip und" title="Fehlt, steht nicht auf deiner Wishlist und ist nicht ignoriert. Auf die Wishlist setzen, mit „habe ich“ abhaken oder ignorieren; in den Korb geht er auch über „Titel dazunehmen …“">nicht auf der Wishlist</span>` : ""}</td><td class="l">${state}</td></tr>`;
 }
 /* Preis eines fehlenden DLC wie in der Titelliste: Stern am Bestpreis, grün bei „kaufen“
    und „gut“, Rabatt blau (0.53.3). Ein Urteil gibt es nur auf der Wishlist. */

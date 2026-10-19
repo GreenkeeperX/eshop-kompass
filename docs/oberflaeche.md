@@ -44,7 +44,7 @@ kaufen heißt und dessen Wechsel sich rechnet.
 Ab 0.71 eine eigene Karte in den Einstellungen (`#eshophist`, Sprungleiste „Käufe“), nicht mehr im
 Reiter Sammlung. Kopf: Zahl der Käufe, Lesedatum. Erklärung als
 Satz, Anleitung zum Lesezeichen als eingeklappter Kasten wie der Browser-Helfer für Japan
-(`details.box`, „**So liest du deine Käufe** Lesezeichen für deine Kaufhistorie bei Nintendo“, offen
+(`details.box`, „**So liest du deine Käufe aus:** Lesezeichen für deine Kaufhistorie bei Nintendo“, ebenso „**Browser-Helfer für Japan:**“, Doppelpunkt ab 0.90, offen
 ohne Käufe, ab 0.78).
 Ab 0.76 darunter eine Zahlenzeile wie „Geprüft“ bei den Sprachen („**12 Käufe:** **3** offen, **2** bei
 DekuDeals nachtragen, **54** in der Sammlung …“; „12 Käufe:“ fett in Textfarbe, offen und nachtragen
@@ -73,7 +73,7 @@ Kauftitel; bei Pässen ohne eigenen Namen „Spiel: Upgrade Pack“ (ab 0.79). N
 ## Online-Mitgliedschaft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
-Ablauf offen und eine Zeile unter „Zu erledigen“; Land und Preis darin und „ansehen“ springen zum Kasten). Eine einzige Auswahl (ab 0.61): Die
+Ablauf offen und eine Zeile unter „Zu erledigen“; das Wort „Online-Mitgliedschaft“ darin und „ansehen“ springen zum Kasten, Land und Preis sind ab 0.90 kein Link mehr). Eine einzige Auswahl (ab 0.61): Die
 markierte Variante (fett, Zeile hinterlegt; der Chip „deine“ fiel 0.62.1 weg) ist deine; ein Klick auf eine andere macht
 sie zu deiner und zeigt ihre Länder. Nach einem vermerkten Kauf mit Mitgliedschaft (ab 0.88, `nsoSuggest`) steht unter „Zu erledigen“ statt der Erinnerung und im Kasten hinter dem Datumsfeld „Mitgliedschaft gekauft · läuft damit bis TT.MM.JJJJ (Variante am TT.MM.JJJJ) übernehmen · verwerfen“; beides setzt den Stand `nso_until_set`. Der Tooltip am Preis nennt den Tiefstpreis der letzten 24 Monate; bei 1 Monat und Erweiterungspaket Familie kommt er aus der eigenen Aufzeichnung und trägt „(eigene Aufzeichnung seit TT.MM.JJJJ)“ (ab 0.87, `nsoPrice`). Angebote von Hand (etwa Amazon-Codes) stehen als eigene Zeile
 mit Chip „Amazon-Code“ und dem Prüfstand des Links (ab 0.62.1, `offerNote`, überall gleich): grau
@@ -115,7 +115,8 @@ danach gleichzeitig und zeichnet noch einmal. Der Server rechnet die Länder je 
 
 Fehlt ein DLC, steht er nicht auf der Wishlist und ist nicht ignoriert (ab 0.72): violetter Rand links
 an der Zeile (`tr.undec`) und Chip „nicht auf der Wishlist“ (`.chip.und`, violett auf `--warn-bg`).
-„Titel dazunehmen …“ bietet diese DLC in der Gruppe „Fehlende DLC deiner Spiele“ an („Spiel: DLC ·
+Ein fehlender Pass, dessen Teile nicht alle einzeln einen Preis haben, zeigt statt „einzeln … · als Pass …“ grau
+„einzeln nicht alle kaufbar“ (ab 0.90). „Titel dazunehmen …“ bietet diese DLC in der Gruppe „Fehlende DLC deiner Spiele“ an („Spiel: DLC ·
 Preis“), im Korb mit dem Spiel grau vor dem Namen.
 
 ## Rest füllen (Kaufplan)
@@ -300,7 +301,9 @@ Der Stern im Korb gilt dem Preis im Korb, nicht dem Einzelpreis (ab 0.65; in Lä
 eigenen Shop können beide abweichen).
 Links zu DekuDeals: ohne Land (Titelnamen, Sammlung, Käufe) ohne `?country=`, dann gilt die bei DekuDeals
 eingestellte Länderansicht; an einem Preis einer Länderspalte mit dem Land dieses Shops (ab 0.82.3).
-Der Preis öffnet den eShop, bei DLC den Verlauf bei DekuDeals (kein fester eShop-Link für DLC).
+Der Preis öffnet den eShop, bei DLC den Verlauf bei DekuDeals (kein fester eShop-Link für DLC). In der
+Sammlung (ab 0.90) führt jeder DLC-Name zu DekuDeals ohne Land und der Preis „x € in Land“ zu DekuDeals für
+dieses Land; der eigene Link „bei DekuDeals ansehen“ fiel weg.
 Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Menü Hell/Dunkel liegt
 über der Sprungleiste der Einstellungen (Kopfleiste `z-index` 7).
 
