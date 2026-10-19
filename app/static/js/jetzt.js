@@ -45,7 +45,9 @@ function todos(){
   if(add.length) out.push([`<b>${add.length === 1 ? "Einen Kauf" : `${add.length} Käufe`} bei DekuDeals nachtragen</b> <small>${add.slice(0, 3).map(r => esc(r.name || r.title)).join(", ")}${add.length > 3 ? " …" : ""}; ${add.length === 1 ? "zählt" : "zählen"} schon als Besitz</small>`, `<button class="link" data-act="gokaeufe">ansehen</button>`]);
   // Online-Mitgliedschaft: 30 Tage vor Ablauf (0.56)
   const nso = S.state.nso;
-  if(nso && nso.due){
+  // Nach einem vermerkten Kauf mit Mitgliedschaft (0.88): neues Ablaufdatum vorschlagen, statt zu erinnern
+  if(nso && nso.suggest) out.push([nsoSuggest(nso), ""]);
+  else if(nso && nso.due){
     const b = (nso.rows || []).find(r => r.counts);
     out.push([`<b>Online-Mitgliedschaft ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}</b>${b ? ` <small>am günstigsten <button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft">in ${esc(b.name)} für ${eur(b.eur)}</button></small>` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
   }
@@ -81,6 +83,11 @@ function nsoChips(r, v){
     !r.counts ? `<span class="warnc">ohne Guthabenkarte, zählt nicht</span>` : !r.at_best && r.over > 0.005 ? `<span class="abv" title="über dem Bestpreis: ${eur(v.champ)} in ${esc(r.champ_name || "")}">+${eur(r.over)}</span>` : "",
     v.slug && !r.src ? `<a class="tl" href="${esc(deku(v.slug, r.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals">DekuDeals</a>` : ""].filter(Boolean).join(" ");
 }
+function nsoSuggest(m){
+  const s = m.suggest, by = s.from.map(f => `${esc(f.label)} am ${esc(dmy(f.date))}`).join(", ");
+  return `<b>Mitgliedschaft gekauft</b> <small>läuft damit bis ${esc(dmy(s.until))} (${by})</small> ` +
+    `<button class="link" data-act="nsotake" data-v="${esc(s.until)}" title="Gerechnet ab Ablauf, sonst ab dem Kauftag; 1 Monat zählt 30 Tage, 3 Monate 90, 12 Monate 365">übernehmen</button> · <button class="link" data-act="nsotake" data-v="${esc(m.until)}" title="Das eingetragene Datum bleibt">verwerfen</button>`;
+}
 function nsoBox(){
   const m = S.state.nso;
   if(!m) return "";
@@ -97,7 +104,7 @@ function nsoBox(){
   const head = myBest ? `am günstigsten ${esc(myBest.name)} ${starOf(myBest)}${myBest.est ? "ca. " : ""}<b class="${grade(myBest)}">${eur(myBest.eur)}</b> (${eur(myBest.month)} je Monat)`
     : m.ids_known ? "Preise kommen mit dem nächsten Abgleich" : "die eShop-IDs sucht der nächste Abgleich";
   let h = `<details class="box" id="nsobox" data-k="nso" ${S.folds.nso || m.due ? "open" : ""}><summary><b>Online-Mitgliedschaft</b> <span class="mut">ausgewählt: ${esc(myLabel)} · ${head} · ${until}</span></summary>
-    <p class="hint">Deine Mitgliedschaft (die markierte Variante, ein Klick wählt eine andere) läuft bis <input type="date" data-act="nsountil" value="${esc(m.until)}"> · 30 Tage vorher erinnert dich der Kasten „Zu erledigen“ oben im Reiter Jetzt an die Verlängerung (er erscheint nur, wenn etwas ansteht). Bezahlt wie bei Spielen: Kreditkarte oder deine Guthabenkarten. Kaufen kannst du nur im Land, in dem dein Konto gerade steht.</p>`;
+    <p class="hint">Deine Mitgliedschaft (die markierte Variante, ein Klick wählt eine andere) läuft bis <input type="date" data-act="nsountil" value="${esc(m.until)}">${m.suggest ? ` · ${nsoSuggest(m)}` : ""} · 30 Tage vorher erinnert dich der Kasten „Zu erledigen“ oben im Reiter Jetzt an die Verlängerung (er erscheint nur, wenn etwas ansteht). Bezahlt wie bei Spielen: Kreditkarte oder deine Guthabenkarten. Kaufen kannst du nur im Land, in dem dein Konto gerade steht.</p>`;
   // Vergleich der Varianten: günstigster Preis je Monat (bei Familie je Konto) fett
   const priced = vs.filter(v => v.best);
   if(priced.length > 1){

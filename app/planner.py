@@ -2093,7 +2093,7 @@ def dlc_fit(data):
 _LATER = {
     "kaufplan": ("_paid", "purchase_plan", "_package_gain", "_package_moves", "_other_countries", "_rest_fill",
                  "_rest_pairs"),
-    "membership": ("NSO_REMIND_DAYS", "membership", "_membership_rows"),
+    "membership": ("NSO_REMIND_DAYS", "NSO_DAYS", "until_suggest", "membership", "_membership_rows"),
 }
 
 

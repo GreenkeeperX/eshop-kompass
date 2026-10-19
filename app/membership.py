@@ -1,16 +1,43 @@
 """Online-Mitgliedschaft: Preis je Variante und Land, günstigstes Land, Erinnerung vor Ablauf."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from . import countries
 from .cards import cents
-from .planner import (_context, _r, BEST_TOLERANCE, NSO_KEYS, nso_price, NSO_TITLE, NSO_VARIANTS,
+from .planner import (_context, _r, BEST_TOLERANCE, NSO_KEYS, NSO_PREFIX, nso_price, NSO_TITLE, NSO_VARIANTS,
     nso_variants, read_offer)
 
 
 NSO_REMIND_DAYS = 30      # so lange vor Ablauf erscheint die Verlängerung unter „Zu erledigen“
+NSO_DAYS = {1: 30, 3: 90, 12: 365}   # Laufzeit in Tagen je Monate, wie Nintendo sie rechnet
 
 
-def membership(data, settings, now=None):
+def until_suggest(settings, bought):
+    """Ablaufdatum nach einem vermerkten Kauf (0.88): Steht in einem Kauf, den du nach dem letzten
+    Setzen des Datums als „gekauft“ vermerkt hast, eine Variante der Mitgliedschaft, verlängert sie
+    das Datum ab Ablauf, oder ab dem Kauftag, wenn sie schon abgelaufen war. Nur ein Vorschlag:
+    Übernehmen oder Verwerfen setzt das Datum und damit den Stand neu. None ohne solchen Kauf."""
+    set_at = settings.get("nso_until_set") or ""
+    try:
+        cur = datetime.strptime(settings.get("nso_until") or "", "%Y-%m-%d").date()
+    except ValueError:
+        cur = None
+    start, used = cur, []
+    for b in bought or []:
+        if not b.get("at") or b["at"] <= set_at:
+            continue
+        day = datetime.fromisoformat(b["at"]).date()
+        for slug in b.get("slugs") or []:
+            v = next((x for x in NSO_VARIANTS if NSO_PREFIX + x["key"] == slug), None)
+            if v:
+                cur = max(cur, day) if cur else day
+                cur += timedelta(days=NSO_DAYS[v["months"]])
+                used.append({"label": v["label"], "date": day.isoformat(), "code": b.get("code")})
+    if not used or cur == start:
+        return None
+    return {"until": cur.isoformat(), "from": used}
+
+
+def membership(data, settings, now=None, bought=None):
     """Online-Mitgliedschaft in allen Varianten (ab 0.57): je Variante der Einkaufspreis je aktivem
     Land mit demselben Zahlweg wie bei Spielen (Kreditkarte oder Guthabenkarten), Bestpreis, Güte
     und ★ wie bei Titeln. Die Sprachregel gilt hier nicht. Dazu deine Variante und Ablaufdatum aus
@@ -26,6 +53,7 @@ def membership(data, settings, now=None):
             days = None
     var_data = nso_variants(data)
     out = {"title": NSO_TITLE, "until": until, "days_left": days, "rows": [], "mine": mine, "variants": [],
+           "suggest": until_suggest(settings, bought),
            "due": days is not None and days <= NSO_REMIND_DAYS,
            "ids_known": any((e or {}).get("ids") for e in var_data.values())}
     prices = data.get("nso_prices") or {}

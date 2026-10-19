@@ -3837,6 +3837,28 @@ class MembershipTest(unittest.TestCase):
         self.assertEqual(m["rows"], [])
         self.assertFalse(m["due"])
 
+    def test_until_suggested_after_marked_purchase(self):
+        # 0.88: Ein vermerkter Kauf mit Mitgliedschaft schlägt das neue Ablaufdatum vor, ab Ablauf
+        # oder ab dem Kauftag, wenn sie schon abgelaufen war; Käufe vor dem letzten Setzen zählen nicht
+        s = {"nso_until": "2026-11-01", "nso_until_set": "2026-10-20T10:00:00+00:00"}
+        buy = lambda at, *slugs: {"at": at, "code": "BR", "slugs": list(slugs)}
+        self.assertIsNone(planner.until_suggest(s, [buy("2026-10-21T08:00:00+00:00", "hades")]))
+        self.assertIsNone(planner.until_suggest(s, [buy("2026-10-19T08:00:00+00:00", "nso-m12")]))
+        got = planner.until_suggest(s, [buy("2026-10-21T08:00:00+00:00", "hades", "nso-m12")])
+        self.assertEqual(got, {"until": "2027-11-01", "from": [{"label": "12 Monate", "date": "2026-10-21", "code": "BR"}]})
+        # Abgelaufen: ab dem Kauftag; zwei Käufe nacheinander zählen zusammen
+        s["nso_until"] = "2026-09-01"
+        got = planner.until_suggest(s, [buy("2026-10-21T08:00:00+00:00", "nso-m1"), buy("2026-10-22T08:00:00+00:00", "nso-m3")])
+        self.assertEqual(got["until"], "2027-02-18")         # 21.10. + 30 Tage + 90 Tage
+        # Ohne Datum: ab dem Kauftag
+        self.assertEqual(planner.until_suggest({"nso_until": ""}, [buy("2026-10-21T08:00:00+00:00", "nso-fam")])["until"], "2027-10-21")
+        # Speichern oder Bestätigen des Datums setzt den Stand neu, der Vorschlag verschwindet
+        saved = store.save_settings({"nso_until": "2027-11-01"})
+        self.assertGreater(saved["nso_until_set"], "2026-10-19")
+        self.assertIsNone(planner.until_suggest(saved, [buy(saved["nso_until_set"], "nso-m12")]))
+        # Alte Einstellungen ohne Stand: Käufe vor 0.88 zählen nicht
+        self.assertEqual(store.DEFAULT_SETTINGS["nso_until_set"], "2026-10-19T22:00:00+00:00")
+
 
 class MembershipExtraTest(unittest.TestCase):
     """Angebote der Mitgliedschaft von Hand (0.60), etwa Codes bei Amazon Japan."""
@@ -4186,7 +4208,7 @@ class UiContractTest(unittest.TestCase):
         "plan.others": {"code", "current", "diff", "estimated", "games_cost", "is_ref", "missing", "name", "tier"},
         "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
-        "nso": {"days_left", "due", "ids_known", "mine", "rows", "until", "variants"},
+        "nso": {"days_left", "due", "ids_known", "mine", "rows", "suggest", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
         "eshop": {"amount", "coll", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
                   "plat", "slug", "suggest", "title"},

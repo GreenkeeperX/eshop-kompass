@@ -3,7 +3,7 @@ import json
 import re
 import os
 import threading
-from datetime import date
+from datetime import date, datetime, timezone
 
 from . import countries
 
@@ -31,6 +31,9 @@ DEFAULT_SETTINGS = {
     "refresh_hours": 6,
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
     "nso_until": "",          # Online-Mitgliedschaft läuft bis (JJJJ-MM-TT), leer = unbekannt
+    # Wann du das Ablaufdatum zuletzt gesetzt oder bestätigt hast (ab 0.88); nur Käufe danach
+    # verlängern es. Ohne Angabe gilt das Erscheinen von 0.88: ältere Käufe sind schon eingetragen
+    "nso_until_set": "2026-10-19T22:00:00+00:00",
     "nso_variant": "m12",     # deine Mitgliedschaft: m1, m3, m12, ep, fam, epfam (planner.NSO_VARIANTS)
     # Weitere Angebote der Mitgliedschaft von Hand, etwa Codes bei Amazon Japan (ab 0.60):
     # [{"key": "m12", "code": "JP", "price": 2970, "src": "Amazon", "url": "…", "date": "JJJJ-MM-TT"}]
@@ -177,6 +180,8 @@ def save_settings(new):
             s["current_country"] = countries.BY_CODE[new["current_country"]]["shop"] if new["current_country"] else ""
         if isinstance(new.get("nso_until"), str) and re.fullmatch(r"(\d{4}-\d{2}-\d{2})?", new["nso_until"]):
             s["nso_until"] = new["nso_until"]
+            # Käufe danach verlängern es (Vorschlag in planner.membership)
+            s["nso_until_set"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         if new.get("nso_variant") in NSO_KEYS:
             s["nso_variant"] = new["nso_variant"]
         if isinstance(new.get("nso_extra"), list):

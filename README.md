@@ -305,7 +305,7 @@ und steht deshalb nicht zur Wahl.
   (vermerkter Kauf oder größere DekuDeals-Sammlung),
 - Käufe zuordnen, die einem Wishlist-Titel oder fehlenden DLC nur ähneln, und gekaufte Titel, die
   bei DekuDeals noch nachzutragen sind (siehe Einstellungen, Käufe aus dem eShop),
-- 30 Tage vor Ablauf die Verlängerung der Online-Mitgliedschaft mit dem günstigsten Land; Land und Preis sowie „ansehen“ springen zum Kasten.
+- 30 Tage vor Ablauf die Verlängerung der Online-Mitgliedschaft mit dem günstigsten Land; Land und Preis sowie „ansehen“ springen zum Kasten. Nach einem vermerkten Kauf mit Mitgliedschaft steht dort stattdessen das neue Ablaufdatum zum Übernehmen.
 
 **Kaufplan:** ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst. Kandidaten
 sind die Titel mit dem Urteil „kaufen“, per Schalter auch „gut“. Jeder Titel geht ins Land, wo
@@ -371,7 +371,11 @@ bei Spielen, je Monat, der Shop-Preis, Angebote und ob das Land dein Konto ist o
 Kaufplan steht. Zeichen wie bei Titeln: ★ am Bestpreis der letzten 24 Monate, Preis grün nach
 Urteil, Abstand zum Bestpreis rot; der Preis führt in den eShop des Landes, „DekuDeals“ zum
 Preisverlauf. 1 Monat und Erweiterungspaket Familie führt DekuDeals nicht; ihren Tiefstpreis
-zeichnet das Tool selbst auf, der Tooltip nennt, seit wann. Das Ablaufdatum trägst du im Kasten ein, ebenso weitere Angebote („Weiteres
+zeichnet das Tool selbst auf, der Tooltip nennt, seit wann. Das Ablaufdatum trägst du im Kasten
+ein. Vermerkst du einen Kaufplan-Schritt mit einer Variante als „gekauft“, schlägt „Zu erledigen“
+das neue Datum vor (ab Ablauf, sonst ab dem Kauftag; 1 Monat zählt 30 Tage, 3 Monate 90,
+12 Monate 365): „übernehmen“ oder „verwerfen“. Käufe aus dem eShop-Kaufverlauf zählen dafür
+nicht, dort steht keine Laufzeit. Im Kasten trägst du auch weitere Angebote ein („Weiteres
 Angebot eintragen“, siehe [Eigene Angebote](#eigene-angebote-codes)). In den Korb oder in einen
 Kaufplan-Schritt kommt eine Variante über „Titel dazunehmen …“; von selbst nimmt der Plan sie
 nie auf.

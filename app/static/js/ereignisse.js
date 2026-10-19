@@ -132,6 +132,7 @@ document.addEventListener("click", async e => {
       const list = (S.state.settings.nso_extra || []).filter((x, i) => i !== +d.i);
       await api("/api/settings", {nso_extra: list}); S.folds.nso = 1; await refresh(); toast("Angebot entfernt");
     }
+    else if(a === "nsotake"){ await api("/api/settings", {nso_until: el.dataset.v}); toast(el.dataset.v === (S.state.nso || {}).until ? "Ablaufdatum bleibt" : "Ablaufdatum übernommen"); await refresh(); }
     else if(a === "gonso"){ S.folds.nso = 1; saveView(); go("jetzt", false); const t = $("nsobox"); if(t){ t.open = true; t.scrollIntoView({block:"start", behavior:"smooth"}); } }
     else if(a === "gokaeufe"){ if(d.v === "how") S.folds.eshophow = 1; go("settings", false); const t = $("set-kaeufe"); if(t) t.scrollIntoView(); }
     else if(a === "gosprachen"){ go("settings", false); const t = $("sprachen"); if(t) t.scrollIntoView(); }
