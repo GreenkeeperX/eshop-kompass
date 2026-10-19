@@ -2532,9 +2532,13 @@ function eshopBox(){
   // Zahlen wie bei „Geprüft“ in den Sprachen: violett, was dich braucht, grün, was erledigt ist (0.76)
   const N = (n, cls) => `<b class="${cls || "ink"}">${n}</b>`;
   // Nicht in der Sammlung rot: Diese Käufe kennt das Tool nicht, der Plan könnte sie vorschlagen (0.77)
-  const counts = ["ask", "plan", "coll", "unknown", "ticket", "void"]
+  const counts = ["unknown", "plan", "ask", "coll", "ticket", "void"]
     .map(g => [g, ESHOP_CLS[g], by(g).length]).filter(x => x[2]).map(([g, cls, n]) => `${N(n, cls)} ${ESHOP_GROUP[g]}`).join(", ");
   h += `<p class="hint eqsum"><b class="ink">${rows.length} Käufe:</b> ${counts}</p>`;
+  // Nicht in der Sammlung (0.81.3): eigene Klappzeile ganz oben, damit alles Offene über „Alle Käufe“ steht
+  const unk = by("unknown");
+  if(unk.length) h += `<details class="fold eqf" data-kc="eshopunk" ${S.folds.eshopunk ? "" : "open"}><summary>Nicht in der Sammlung: ${N(unk.length, "bad")}</summary><p class="hint">Diese Käufe kann das Tool keinem Titel zuordnen. Sie zählen nicht als Besitz, der Plan könnte sie also vorschlagen. „zuweisen“ ordnet einen Kauf von Hand zu.</p>
+    <div class="scroll"><table class="mini-t eqt"><tbody>${unk.map(r => `<tr><td class="l">${kauf(r)}</td><td class="l">${r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r, "zuweisen")}` : own(r, "zuweisen")}</td></tr>${ownRow(r, 2)}`).join("")}</tbody></table></div></details>`;
   if(ask.length) h += `<details class="fold eqf" data-kc="eshopask" ${S.folds.eshopask ? "" : "open"}><summary>Welcher Titel ist das? ${N(ask.length, "warnc")}</summary><p class="hint">Diese Käufe ähneln einem Titel deiner Wishlist oder einem fehlenden DLC. Ein Klick auf einen Namen ordnet den Kauf zu, er fällt dann aus dem Plan. „keiner“ lässt ihn im Plan.</p>
     <div class="scroll"><table class="mini-t eqt"><tbody>${ask.map(r => `<tr><td class="l">${kauf(r)}</td><td class="l eqa">${r.suggest.map(x =>
       `<button class="sm cand" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist ${esc(x.title)}: zählt als Besitz">${x.game && !String(x.title || "").toLowerCase().startsWith(x.game.toLowerCase()) ? `<span class="gm">${esc(x.game)}:</span> <b>${esc(x.title)}</b>` : esc(x.title)}</button>`).join("")}<button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zählt nicht als Besitz">keiner</button>${own(r)}</td></tr>${ownRow(r, 2)}`).join("")}</tbody></table></div></details>`;

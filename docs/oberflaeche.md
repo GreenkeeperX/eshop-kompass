@@ -53,7 +53,10 @@ die drei Abschnitte als Klappzeilen (`details.eqf`, 13 px, kleiner als die Karte
 normalem, grauem Namen und fetter Zahl (ab 0.78; vorher alles fett; grau ab 0.81, nur die Zahl trägt Farbe, bei „Alle Käufe“ Textfarbe) („Welcher Titel ist das? **3**“, „Bei DekuDeals nachtragen: **2**“, „Alle Käufe:
 **122** (zum Nachsehen und Zuweisen)“): „Welcher Titel ist
 das?“ und „Bei DekuDeals nachtragen“ von Haus aus offen (gemerkt wird das Zuklappen, `data-kc`),
-„Alle Käufe“ zu.
+„Alle Käufe“ zu. Ab 0.81.3 steht ganz oben „Nicht in der Sammlung: **3**“ (Zahl rot, offen von Haus aus,
+`data-kc` eshopunk) mit „zuweisen“ bzw. „zurücknehmen · zuweisen“, damit alles Offene über „Alle
+Käufe“ steht; die Zahlenzeile nennt die Gruppen in derselben Reihenfolge (nicht in der Sammlung,
+nachtragen, offen, Sammlung, Mitgliedschaft, erstattet).
 „Welcher Titel ist das?“: eine Tabellenzeile je offenem Kauf, links Kauf mit grauer Zeile (Datum,
 Art, Plattform, Betrag), rechts die Kandidaten als kleine Knöpfe (`button.cand`, Spiel grau, DLC fett;
 Klick = ja), „keiner“ und „anderer …“ (ab 0.76 eine eigene Zeile unter dem Kauf, `tr.eqrow`, damit sich nichts

@@ -187,6 +187,16 @@ def _eshop_matches(data):
         dlc_of.setdefault(_s2base(g), []).append((_tnorm(cands[s].get("title")), s))
     rows, owned = [], set()
     known = slug_names(data)
+    # Alle bekannten Titel und DLC als Rückfall für genaue Namen (0.81.3): Ein gekaufter DLC fällt
+    # aus den fehlenden DLC (extra), sobald er als Besitz zählt; ohne diesen Rückfall wäre er beim
+    # nächsten Abgleich wieder unbekannt gewesen und hätte zwischen beiden Zuständen gewechselt
+    by_known = {}
+    coll = set(data.get("owned") or [])
+    for s, (t, game) in known.items():
+        if s in cands or s in coll:      # die Sammlung ordnet in_coll ein
+            continue
+        for n in {_tnorm(t), _tnorm(f"{game} {t}") if game else ""} - {""}:
+            by_known.setdefault(n, set()).add(s)
     # DekuDeals-Sammlung (0.71): Was dort steht, ordnet das Tool selbst ein und fragt nicht
     coll = set(data.get("owned") or [])
     coll_title, coll_toks = {}, {}
@@ -268,6 +278,10 @@ def _eshop_matches(data):
             slug, how = next(iter(by_title[norm])), "title"
         elif len(by_title.get(enorm, ())) == 1:
             slug, how = next(iter(by_title[enorm])), "eng"         # über den englischen Namen (0.72)
+        elif len(by_known.get(norm, ())) == 1:
+            slug, how = next(iter(by_known[norm])), "title"
+        elif len(by_known.get(enorm, ())) == 1:
+            slug, how = next(iter(by_known[enorm])), "eng"
         elif str((more.get(e.get("title")) or {}).get("ns") or "") in by_id:
             slug, how = by_id[str(more[e["title"]]["ns"])], "id"   # Shop-ID aus titledb (0.79)
         elif pass_dlc(more.get(e.get("title")) or {}):

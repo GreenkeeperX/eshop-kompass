@@ -548,8 +548,11 @@ Sammlung zählt auch, wenn titledb ihn „Spiel: DLC“ nennt und die Sammlung n
 dann, wenn das Tool zu einem Eintrag der Sammlung keinen Namen kennt (dann aus der Kennung bei
 DekuDeals). Die Zeile über den
 Abschnitten zählt die Käufe je Gruppe, „nicht in der Sammlung“ rot: Diese Käufe kennt das Tool
-nicht, der Plan könnte sie vorschlagen. „Welcher Titel ist das?“ und „Bei DekuDeals nachtragen“
-sind offen und lassen sich zuklappen, „Alle Käufe“ ist zu.
+nicht, der Plan könnte sie vorschlagen; sie stehen ganz oben unter „Nicht in der Sammlung“ zum
+Zuweisen. „Nicht in der Sammlung“, „Welcher Titel ist das?“ und „Bei DekuDeals nachtragen“ sind
+offen und lassen sich zuklappen, „Alle Käufe“ ist zu und sortiert die Einordnung nach
+Dringlichkeit. Ein gekaufter DLC bleibt zugeordnet, auch wenn er nicht mehr unter den fehlenden
+DLC steht: Das Tool vergleicht genaue Namen auch mit den DLC-Listen deiner Spiele.
 
 „anderer …“ (in „Alle Käufe“: „zuweisen“, bei einem Kauf, den das Tool schon einem Titel der
 Sammlung zugeordnet hat, „neu zuweisen“) öffnet unter dem Kauf eine Zeile mit Suchfeld: Treffer aus allen bekannten Titeln und

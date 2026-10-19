@@ -2258,6 +2258,19 @@ class EshopHistoryTest(unittest.TestCase):
         sync.sync_eshop_names(data, fake, now=2e9 + 60)       # gefunden: kein neuer Abruf
         self.assertEqual(len(calls), n)
 
+    def test_bought_dlc_stays_matched_after_leaving_missing_list(self):
+        # 0.81.3: Ein gekaufter DLC fällt aus den fehlenden DLC, sobald er als Besitz zählt. Er bleibt
+        # trotzdem zugeordnet (über die DLC-Liste seines Spiels), statt wieder unbekannt zu werden
+        self.imp([{"id": "", "title": "Katzenreise 2 – Kampfarena", "date": "2026-10-05"}], region="DE")
+        data = store.load_data()
+        data["owned"] = ["cat-journey-2"]
+        data["rel"] = {"cat-journey-2": {"title": "Cat Journey 2",
+                                         "dlc": [["cat-journey-2-the-arena", "The Arena"]]}}
+        data["eshop_names"] = {"Katzenreise 2 – Kampfarena": ["Cat Journey 2 - The Arena", 2e9, "DE.de"]}
+        row = planner.eshop_matches(data)["rows"][0]
+        self.assertEqual((row["slug"], row["group"], row["how"]), ("cat-journey-2-the-arena", "plan", "eng"))
+        self.assertIn("cat-journey-2-the-arena", planner.owned_set(data))
+
     def test_names_compare_without_accents(self):
         # 0.76: „Pokemon“ im Kaufverlauf ist „Pokémon“; japanische Zeichen bleiben verschieden
         self.assertEqual(planner._tnorm("Pokémon Pokopia"), planner._tnorm("Pokemon Pokopia"))
