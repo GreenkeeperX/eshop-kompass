@@ -286,6 +286,8 @@ und steht deshalb nicht zur Wahl.
   Teile),
 - „Käufe lesen“, wenn der letzte Lauf älter als 30 Tage ist und du seitdem gekauft hast
   (vermerkter Kauf oder größere DekuDeals-Sammlung),
+- Käufe zuordnen, die einem Wishlist-Titel oder fehlenden DLC nur ähneln, und gekaufte Titel, die
+  bei DekuDeals noch nachzutragen sind (siehe Einstellungen, Käufe aus dem eShop),
 - 30 Tage vor Ablauf die Verlängerung der Online-Mitgliedschaft mit dem günstigsten Land.
 
 **Kaufplan:** ein Gesamtvorschlag, welche Titel du jetzt in welchem Land kaufst. Kandidaten
@@ -460,40 +462,47 @@ Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der Sicherung.
   nicht als fehlend und steht eingeklappt unter „nicht mehr erhältlich“. Was in einer Region
   gerade nicht kaufbar ist, zählt dort ebenfalls nicht als offen.
 
-**Käufe aus dem eShop** (oben im Reiter): Das Lesezeichen „Käufe lesen“ liest in deinem
-Browser, angemeldet bei Nintendo, deinen Kaufverlauf (laut Nintendo zwei Jahre) auf dieselbe
-Weise wie die Seite selbst, mit kurzen Pausen. „Im eShop-Kompass übernehmen“ öffnet das Tool
-und gibt die Liste im Adressteil hinter # weiter (geht nicht übers Netz); ersatzweise Text
-kopieren und einfügen. Der Kaufverlauf nennt keine Nintendo-ID, nur Titel, Datum, Art und
-Betrag. Abgeglichen wird deshalb in Stufen:
-
-- Passt der Titel genau auf einen Wishlist-Titel oder fehlenden DLC (bei DLC auch als
-  „Spiel: DLC“), zählt er als Besitz und fällt aus dem Kaufplan, auch ohne Eintrag bei
-  DekuDeals.
-- Ist er nur ähnlich, fragt das Tool „Welcher Titel ist das?“ mit bis zu drei Kandidaten, die
-  erst nach deiner Bestätigung zählen. Beim Kauf stehen Art, Plattform und Betrag, bei jedem
-  Kandidaten sein Spiel; der Name führt zu DekuDeals. „ja“ zählt ihn als Besitz, „keiner
-  davon“ legt ihn zu den übrigen Käufen. Beides gilt für diesen einen Kauf, gefragt wird
-  nicht wieder. Passt keiner, ordnet „anderer Titel …“ den Kauf mit einem DekuDeals-Link zu,
-  auch bei den übrigen Käufen.
-- Der Rest, meist längst Besessenes, steht eingeklappt darunter. Erstattete Käufe zählen
-  nicht.
-
-„Zählen als Besitz“ ist eine sortierbare Tabelle mit dem Kauf, dem Spiel, dem Titel, der zählt,
-und woher die Zuordnung kommt. „zurücknehmen“ macht deine Zuordnung sofort wieder zum Vorschlag. Automatisch Zugeordnetes nimmt „stimmt nicht“
-heraus, ein „nein“ nimmt „zurücknehmen“ bei den übrigen Käufen zurück. Zuordnungen bleiben und
-stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
-Stand des letzten lückenlosen Laufs mit; das Lesezeichen liest dann bis dorthin und zur
-Sicherheit eine ganze Seite bereits bekannter Käufe weiter. Bricht ein Lauf ab, übernimmt das
-Tool das Gelesene, behält aber den alten Stand, und der nächste Lauf liest wieder ab dort.
-„alles neu lesen“ daneben liest den ganzen Verlauf noch einmal: Bekannte Käufe bekommen nur
-fehlende Angaben (etwa die Plattform), deine Zuordnungen bleiben. Der Abgleich der Titel läuft
-ohnehin bei jedem Öffnen über alle gespeicherten Käufe, bessere Regeln gelten also auch für alte.
-
 ### Einstellungen
 
 Jede Änderung wird sofort gespeichert. Jeder Bereich ist eine eigene Karte, eine Leiste oben
-springt zu Länder, Regeln, Gebühren, Sprachen, Quellen sowie Sicherung und Protokoll.
+springt zu Länder, Regeln, Gebühren, Sprachen, Käufe, Quellen sowie Sicherung und Protokoll.
+
+**Käufe aus dem eShop** (eigene Karte): Deine Sammlung pflegst du bei DekuDeals. Der
+Kaufverlauf von Nintendo sorgt nur dafür, dass der Plan nichts vorschlägt, was du schon gekauft
+hast, und zeigt Käufe, die bei DekuDeals noch fehlen. Das Lesezeichen „Käufe lesen“ liest in
+deinem Browser, angemeldet bei Nintendo, deinen Kaufverlauf (laut Nintendo zwei Jahre) auf
+dieselbe Weise wie die Seite selbst, mit kurzen Pausen. „Im eShop-Kompass übernehmen“ öffnet das
+Tool und gibt die Liste im Adressteil hinter # weiter (geht nicht übers Netz); ersatzweise Text
+kopieren und einfügen. Der Kaufverlauf nennt keine Nintendo-ID, nur Titel, Datum, Art und
+Betrag. Jeder Kauf landet von selbst in einer Gruppe:
+
+- **Erstattet** und **Mitgliedschaft oder Gutschein** zählen nicht.
+- **Bei DekuDeals nachtragen:** Der Titel passt genau auf einen Wishlist-Titel oder fehlenden
+  DLC (bei DLC auch als „Spiel: DLC“). Er zählt als Besitz, fällt aus dem Kaufplan und steht
+  unter „Zu erledigen“, bis du ihn bei DekuDeals eingetragen hast.
+- **In der Sammlung:** Der Titel passt auf ein Spiel oder einen DLC deiner DekuDeals-Sammlung
+  (genau oder sehr ähnlich). Nichts zu tun.
+- **Offen:** Der Titel ähnelt einem Wishlist-Titel oder fehlenden DLC. Unter „Welcher Titel ist
+  das?“ steht je Kauf eine Zeile mit bis zu drei Kandidaten; ein Klick auf einen Namen ordnet ihn
+  zu, „keiner“ lässt ihn im Plan. „Zu erledigen“ zeigt, wie viele offen sind.
+- **Nicht in der Sammlung:** Nichts passt. Meist kennt DekuDeals den Titel nicht.
+
+Kauftitel aus Japan und anderen Ländern stehen in der Sprache des Shops. Für Käufe, die offen
+oder unbekannt bleiben, sucht der Abgleich in titledb den Namen in der Liste des Konto-Landes,
+nimmt dessen Programm-ID und daraus den englischen Namen aus der US-Liste (höchstens einmal die
+Woche, je Kauf frühestens nach 30 Tagen wieder). Mit dem englischen Namen gleicht er dann wie
+oben ab; er steht grau hinter dem Kauftitel.
+
+„anderer …“ ordnet jeden Kauf von Hand zu: Name aus der Liste aller bekannten Titel und DLC
+wählen oder einen DekuDeals-Link einfügen. „zurücknehmen“ hebt deine Zuordnung sofort auf,
+„stimmt nicht“ eine automatische. „Alle Käufe“ zeigt jeden Kauf mit seiner Gruppe, sortierbar.
+Zuordnungen bleiben und stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
+Stand des letzten lückenlosen Laufs mit; das Lesezeichen liest dann bis dorthin und zur
+Sicherheit eine ganze Seite bereits bekannter Käufe weiter. Bricht ein Lauf ab, übernimmt das
+Tool das Gelesene, behält aber den alten Stand, und der nächste Lauf liest wieder ab dort.
+„alles neu lesen“ liest den ganzen Verlauf noch einmal: Bekannte Käufe bekommen nur fehlende
+Angaben, deine Zuordnungen bleiben, kein Eintrag verschwindet. Der Abgleich läuft bei jedem
+Öffnen über alle gespeicherten Käufe, bessere Regeln gelten also auch für alte.
 
 - **Länder:** Die aktiven Länder stehen oben, eingeklappt mit Zahlweg, Steuer, Guthaben und
   Guthabenkarten; das Kontoland steht darüber. Die übrigen stehen unter „weitere Länder“, mit

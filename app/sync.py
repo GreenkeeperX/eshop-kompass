@@ -905,6 +905,58 @@ def game_ids(data, fam):
     return out
 
 
+# Kauftitel in der Sprache des Shops (0.72): titledb-Liste je Konto-Land, englische Namen aus der US-Liste
+ESHOP_NAME_FILES = {"JP": "JP.ja", "BR": "BR.pt", "MX": "MX.es", "DE": "DE.de", "AT": "DE.de", "CH": "DE.de",
+                    "FR": "FR.fr", "ES": "ES.es", "IT": "IT.it", "NL": "NL.nl", "PT": "PT.pt"}
+ESHOP_NAME_RECHECK = 30 * 86400       # ein Kauftitel ohne Treffer: frühestens nach 30 Tagen wieder
+ESHOP_NAME_SECONDS = 7 * 24 * 3600    # die Listen höchstens einmal die Woche laden
+
+
+def sync_eshop_names(data, fetch, now=None):
+    """Englische Namen für Käufe, die das Tool nicht zuordnen kann (Gruppe unbekannt oder offen):
+    Name → Programm-ID in der Liste des Konto-Landes, Programm-ID → Name in der US-Liste. Lädt
+    nur, wenn es neue solche Käufe gibt, und höchstens einmal die Woche. Ablage
+    data.eshop_names {Kauftitel: [englischer Name oder None, Zeitpunkt]}."""
+    now = now or time.time()
+    entries = {e.get("key"): e for e in (data.get("_eshop") or {}).get("entries") or []}
+    if not entries:
+        return
+    names = data.setdefault("eshop_names", {})
+    want = {}
+    for r in planner.eshop_matches(data)["rows"]:
+        e, t = entries.get(r["key"]) or {}, r.get("title")
+        f = ESHOP_NAME_FILES.get(str(e.get("region") or "").upper())
+        old = names.get(t)
+        if r["group"] not in ("unknown", "ask") or not f or not t or \
+                (old and (old[0] or now - old[1] < ESHOP_NAME_RECHECK)):
+            continue
+        want.setdefault(f, set()).add(t)
+    if not want:
+        return
+    if now - data.get("titledb_fail_at", 0) < TITLEDB_FAIL_WAIT or now - data.get("eshop_names_at", 0) < ESHOP_NAME_SECONDS:
+        _log("Englische Namen gekaufter Titel: " + str(sum(map(len, want.values()))) + " offen, titledb wieder ab "
+             + datetime.fromtimestamp(max(data.get("eshop_names_at", 0) + ESHOP_NAME_SECONDS,
+                                          data.get("titledb_fail_at", 0) + TITLEDB_FAIL_WAIT)).strftime("%d.%m."))
+        return
+    _step("Englische Namen gekaufter Titel aus titledb")
+    try:
+        apps = {}
+        for f, titles in sorted(want.items()):
+            by_name, _ = sources.fetch_titledb_names(f, names=titles, fetch=fetch)
+            apps.update({t: by_name.get(sources.name_key(t)) for t in titles})
+        found = {a for a in apps.values() if a}
+        eng = sources.fetch_titledb_names("US.en", apps=found, fetch=fetch)[1] if found else {}
+    except Exception as e:
+        _log(f"titledb nicht abrufbar ({e})")
+        data["titledb_fail_at"] = now
+        return
+    data["eshop_names_at"] = now
+    for t, a in apps.items():
+        names[t] = [eng.get(a) if a else None, now]
+    _log(f"Englische Namen gekaufter Titel aus titledb: {sum(1 for t in apps if names[t][0])} von {len(apps)} "
+         f"({', '.join(sorted(want))})")
+
+
 def sync_titledb(data, settings, fetch, now=None):
     """Japan über titledb: Sprachen für Titel ohne Angabe und ein Abgleich der Japan-ID.
     titledb nennt zu jeder ID die Programm-ID, die in allen Regionen gleich ist. Weicht sie
@@ -1847,6 +1899,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
         sync_related(data, settings, fetch, sleep)
         sync_extra_ids(data, settings, fetch, sleep, report=False)
         sync_titledb(data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
+        sync_eshop_names(data, fetch)           # Kauftitel aus Japan und anderen Ländern zuordnen (0.72)
         # Stand der ID-Suche erst jetzt, mit den IDs aus titledb (0.48.1)
         _log_extra_ids(data.get("extra") or {}, data.get("glangs") or {}, needed_families(settings), time.time())
         sync_langs(data, settings, fetch, sleep, budget=langs_budget, report_idle=False)    # Sprachen der neu gefundenen DLC

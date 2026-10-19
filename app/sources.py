@@ -9,12 +9,13 @@ import html
 import http.cookiejar
 import json
 import re
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.70.0"
+VERSION = "0.71.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -738,6 +739,79 @@ def _stream(url, timeout=60):
                 break
             yield text.decode(unzip.decompress(raw) if unzip else raw)
         yield text.decode(unzip.flush() if unzip else b"", final=True)
+
+
+def name_key(title):
+    """Name zum Vergleichen (Kauftitel und titledb): ohne ™ ®, Satzzeichen, Groß-/Kleinschreibung."""
+    t = unicodedata.normalize("NFKC", re.sub(r"[™®©]", "", str(title or ""))).casefold()
+    return " ".join(re.sub(r"[^\w]+", " ", t).split())
+
+
+def titledb_names(chunks, names=(), apps=()):
+    """Namen in einer titledb-Liste (0.72): {Name: Programm-ID} für die gesuchten Namen (ohne Demos)
+    und {Programm-ID: Name} für die gesuchten Programm-IDs. Liest die Datei Stück für Stück wie
+    titledb_scan; behalten wird nur, was gesucht war."""
+    names = {name_key(n) for n in names} - {""}
+    apps = {str(a).upper() for a in apps}
+    by_name, by_app = {}, {}
+    for key, val in _titledb_items(chunks):
+        if not isinstance(val, dict) or val.get("isDemo"):
+            continue
+        app = str(val.get("id") or "").upper()
+        n = name_key(val.get("name"))
+        if n in names and app and n not in by_name:
+            by_name[n] = app
+        if app in apps and app not in by_app and val.get("name"):
+            by_app[app] = str(val["name"])
+    return by_name, by_app
+
+
+def _titledb_items(chunks):
+    """(Schlüssel, Eintrag) einer titledb-Liste, Stück für Stück gelesen."""
+    dec, buf, pos = json.JSONDecoder(), "", 0
+    chunks = iter(chunks)
+
+    def more():
+        nonlocal buf, pos
+        c = next(chunks, None)
+        if c is None:
+            return False
+        buf, pos = buf[pos:] + c, 0
+        return True
+    while "{" not in buf[pos:]:
+        if not more():
+            return
+    pos = buf.index("{", pos) + 1
+    while True:
+        while pos < len(buf) and buf[pos] in " \t\r\n,":
+            pos += 1
+        if pos >= len(buf):
+            if not more():
+                return
+            continue
+        if buf[pos] == "}":
+            return
+        try:
+            key, end = dec.raw_decode(buf, pos)
+            colon = buf.index(":", end)
+            start = colon + 1
+            while start < len(buf) and buf[start] in " \t\r\n":
+                start += 1
+            val, end = dec.raw_decode(buf, start)
+        except ValueError:
+            if len(buf) - pos > 5_000_000:
+                raise ValueError("titledb: Eintrag nicht lesbar")
+            if not more():
+                raise ValueError("titledb: Datei endet mitten in einem Eintrag")
+            continue
+        pos = end
+        yield key, val
+
+
+def fetch_titledb_names(region, names=(), apps=(), fetch=fetch):
+    url = TITLEDB_URL.format(region)
+    chunks = _stream(url) if fetch is _plain_fetch else [fetch(url)]
+    return titledb_names(chunks, names, apps)
 
 
 def fetch_titledb(nsuids, fetch=fetch, region="JP.ja", apps=None):

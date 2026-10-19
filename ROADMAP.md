@@ -36,9 +36,7 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 
-- [ ] **Kaufverlauf und Sammlung abgleichen:** Slug-Stufe, „Bei DekuDeals nachtragen“, eine Zeile in
-  „Zu erledigen“, nur für neue Spiele. Dazu ein vollständiger Lauf des Lesezeichens „Käufe lesen“
-  auf Wunsch, wenn sich die Zuordnung verbessert hat.
+- [ ] **Käufe:** Ablaufdatum der Online-Mitgliedschaft aus dem letzten Kauf vorschlagen (nie von selbst).
 - [ ] **Kleinteile zusammenfassen** (Kostüme, Packs), nach Erfahrung mit den gruppierten Pässen.
 - [ ] **Weitere Bezugsquellen** wie Händler-Codes, nur wenn sie regelmäßig günstiger sind.
 - [ ] **Mitgliedschaft:** Tiefstpreise für 1 Monat und Erweiterungspaket Familie.

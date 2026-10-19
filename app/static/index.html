@@ -180,11 +180,10 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .pc .nm small.gm,.nm small.gm{display:inline;color:var(--muted);font-size:.85em}
 #eshophist .gm{color:var(--muted)}
 #eshophist .mini-t button.sm{margin:2px 0 2px 6px}
-#eshophist .eqs{display:grid;gap:8px;margin:6px 0 10px}
-#eshophist .eq{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-#eshophist .eqc{list-style:none;margin:6px 0 0;padding:0}
-#eshophist .eqc li{margin:3px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-#eshophist .eqc button.sm{margin:0;min-width:3.2em}
+#eshophist .eqa{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
+#eshophist .eqa button.sm{margin:0}
+#eshophist button.cand{font-weight:400}
+#eshophist tr.mutr td{color:var(--muted)}
 #eshophist .eqown{display:inline-block;margin:0}
 #eshophist .eqown summary{display:inline;cursor:pointer}
 #eshophist .eqin{display:inline-flex;gap:6px;margin-left:6px}
@@ -1096,7 +1095,7 @@ function viewCollection(){
   // Filter und Reihenfolge direkt über den Spielen, unter Zahlen und Erklärung (0.58)
   const tools = `<div class="tools">${searchBox("Spiel oder DLC filtern")}
     <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
-  let h = eshopBox();
+  let h = "";
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)
   const nDone = c.games.filter(g => !g.missing).length;
@@ -1713,7 +1712,11 @@ function todos(){
   if(at && Date.now() / 1000 - at > 30 * 86400 &&
      ((S.state.eshop_owned_n !== null && S.state.eshop_owned_n !== undefined && S.state.owned_count > S.state.eshop_owned_n) ||
       (k && (k.bought || []).some(b => new Date(b.at) / 1000 > at))))
-    out.push([`<b>Käufe lesen</b> <small>zuletzt am ${esc(dmy(new Date(at * 1000).toISOString()))}, seitdem hast du gekauft</small>`, `<button class="link" data-act="gokaeufe">Käufe lesen</button>`]);
+    out.push([`<b>Käufe lesen</b> <small>zuletzt am ${esc(dmy(new Date(at * 1000).toISOString()))}, seitdem hast du gekauft</small>`, `<button class="link" data-act="gokaeufe" data-v="how">Käufe lesen</button>`]);
+  // Käufe (0.71): nur, was den Plan ändert oder bei DekuDeals fehlt
+  const er = S.state.eshop || [], ask = er.filter(r => r.group === "ask"), add = er.filter(r => r.group === "plan");
+  if(ask.length) out.push([`<b>${ask.length === 1 ? "Einen Kauf" : `${ask.length} Käufe`} zuordnen</b> <small>ähnlich zu ${ask.slice(0, 3).map(r => esc(r.suggest[0].title)).join(", ")}${ask.length > 3 ? " …" : ""}</small>`, `<button class="link" data-act="gokaeufe">zuordnen</button>`]);
+  if(add.length) out.push([`<b>${add.length === 1 ? "Einen Kauf" : `${add.length} Käufe`} bei DekuDeals nachtragen</b> <small>${add.slice(0, 3).map(r => esc(r.name || r.title)).join(", ")}${add.length > 3 ? " …" : ""}; ${add.length === 1 ? "zählt" : "zählen"} schon als Besitz</small>`, `<button class="link" data-act="gokaeufe">ansehen</button>`]);
   // Online-Mitgliedschaft: 30 Tage vor Ablauf (0.56)
   const nso = S.state.nso;
   if(nso && nso.due){
@@ -2131,7 +2134,7 @@ function viewSettings(){
     level: c => c.code === "DE" ? 0 : lv[c.code] ? lv[c.code].level : null}).map(c => row(c) + cardRow(c)).join("")}</tbody></table></div>`;
   const act = S.state.countries.filter(on), off = S.state.countries.filter(c => !on(c));
   const t = s.tier_min_saving, de = s.deal_eur;
-  const jump = [["set-laender", "Länder"], ["set-regeln", "Regeln"], ["set-gebuehren", "Gebühren"], ["sprachen", "Sprachen"], ["set-quellen", "Quellen"], ["set-sicherung", "Sicherung und Protokoll"]];
+  const jump = [["set-laender", "Länder"], ["set-regeln", "Regeln"], ["set-gebuehren", "Gebühren"], ["sprachen", "Sprachen"], ["set-kaeufe", "Käufe"], ["set-quellen", "Quellen"], ["set-sicherung", "Sicherung und Protokoll"]];
   let h = `<div class="jump">${jump.map(([id, l]) => `<a href="#${id}">${l}</a>`).join("")}<span class="saved" id="saved"></span></div>
     <form class="set" id="setForm">
     <section class="setc"><h3 class="sec" id="set-laender">Länder</h3>
@@ -2157,6 +2160,7 @@ function viewSettings(){
     <p class="hint" style="margin-top:10px">Euro-Guthaben (Deutschland mit Guthaben) bewertet das Tool nach festen Stufen für den Faktor: bis zu diesem Wert Top, gut, okay, darüber teuer. Andere Länder misst es an der Kreditkarte oder am besten Faktor der Karte in 90 Tagen.</p>
     <div class="fields" style="max-width:640px;grid-template-columns:repeat(3,1fr)"><label class="f">Top bis Faktor<input name="eur_top" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.top)}"></label><label class="f">gut bis<input name="eur_good" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.good)}"></label><label class="f">okay bis<input name="eur_ok" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.ok)}"></label></div></details>
     </section></form><section class="setc wide">` + langSection() + `</section>
+    <section class="setc" id="eshophist">` + eshopBox() + `</section>
     <section class="setc"><h3 class="sec" id="set-quellen">Quellen</h3>
     <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist und Preise neu geholt werden. Wechselkurse nur, wenn die Quelle neue hat (einmal am Tag); was sonst wie oft geholt wird, steht in docs/abrufe.md.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
     <p class="hint" style="margin-top:8px">Wechselkurse vom ${esc(fxStamp())}. Die Quelle erneuert sie einmal am Tag, das Tool holt sie im ersten Abgleich danach ·
@@ -2331,51 +2335,63 @@ async function jpImport(text){
   toast(`${r.read} Titel übernommen` + (r.empty ? `, ${r.empty} ohne Sprachangabe` : "") + (r.unknown ? `, ${r.unknown} unbekannte IDs` : "") + (r.gone ? `, bei ${r.gone} ohne Seite sucht der nächste Abgleich die ID neu` : ""));
   if(fresh) setTimeout(() => toast("Dein Lesezeichen „JP-Sprachen lesen“ ist veraltet. Bitte neu anlegen, siehe Browser-Helfer für Japan"), 4000);
 }
-/* Käufe aus dem eShop: drei Stufen. Sicher Zugeordnetes zählt als Besitz, Vorschläge erst
-   nach Bestätigung, der Rest (meist längst Besessenes) steht eingeklappt darunter. */
+/* Käufe aus dem eShop (Einstellungen, ab 0.71): Die DekuDeals-Sammlung bleibt die eine Wahrheit. Der Kaufverlauf
+   hilft nur, wo er den Plan ändert (Gekauftes auf der Wishlist oder unter den fehlenden DLC) oder wo DekuDeals
+   einen Kauf nicht kennt. Alles andere ordnet das Tool selbst ein; gefragt wird nur, was den Plan ändert. */
+const ESHOP_GROUP = {ask: "offen", plan: "bei DekuDeals nachtragen", coll: "in der Sammlung",
+  unknown: "nicht in der Sammlung", ticket: "Mitgliedschaft oder Gutschein", void: "erstattet"};
+function eshopKnown(){
+  // Suchtreffer für „anderer …“: Name, bei DLC mit Spiel davor; die Zuordnung zum Slug merkt sich S.eshopKnown
+  const list = S.state.eshop_known || [], map = {};
+  for(const x of list) map[x.game ? `${x.game}: ${x.title}` : x.title] = x.slug;
+  S.eshopKnown = map;
+  return `<datalist id="eshopknown">${Object.keys(map).map(k => `<option value="${esc(k)}"></option>`).join("")}</datalist>`;
+}
 function eshopBox(){
-  const rows = S.state.eshop || [];
-  const sure = rows.filter(r => r.slug), sug = rows.filter(r => !r.slug && r.how === null && r.suggest.length),
-        rest = rows.filter(r => !r.slug && !(r.how === null && r.suggest.length) && r.how !== "void"), voids = rows.filter(r => r.how === "void");
-  const when = r => r.date ? `<small class="mut">${esc(dmy(r.date))}</small>` : "";
-  const how = {id: "über die Nintendo-ID", title: "Titel passt genau", pick: "von dir zugeordnet"};
+  const rows = S.state.eshop || [], by = g => rows.filter(r => r.group === g);
+  const ask = by("ask"), plan = by("plan");
+  const how = {id: "über die Nintendo-ID", title: "Titel passt genau", eng: "englischer Name passt genau", pick: "von dir zugeordnet"};
   // Neuester bekannter Vorgang: Der Link zur Kaufhistorie gibt ihn mit, das Lesezeichen hört dort auf
-  const seit = S.state.eshop_seit || 0;
-  // Zum Prüfen (0.68): Art, Plattform und Betrag des Kaufs, beim Vorschlag das Spiel und ein Link zu DekuDeals
+  const seit = S.state.eshop_seit || 0, at = S.state.eshop_at || 0;
   const KIND = {APPLICATION: "Spiel", DLC: "DLC", BUNDLE: "Paket", TICKET: "Mitgliedschaft", CATALOG_TICKET: "Spielegutschein"};
   const PLAT = {HAC: "Switch", BEE: "Switch 2"};
-  const what = r => [KIND[r.item] || "", PLAT[r.plat] || "", r.amount || ""].filter(Boolean).map(esc).join(" · ");
+  const what = r => [r.date ? dmy(r.date) : "", KIND[r.item] || "", PLAT[r.plat] || "", r.amount || ""].filter(Boolean).map(esc).join(" · ");
   const named = (slug, title, game) => `<a href="${esc(deku(slug))}" target="_blank" rel="noopener" title="Bei DekuDeals ansehen">${game && !String(title || "").toLowerCase().startsWith(game.toLowerCase()) ? `<span class="gm">${esc(game)}:</span> <b>${esc(title || slug)}</b>` : esc(title || slug)}</a>`;
-  const line = (r, extra) => `<tr><td class="l">${esc(r.title)} ${when(r)}${what(r) ? ` <small class="mut">${what(r)}</small>` : ""}</td><td class="l">${extra}</td></tr>`;
-  let h = `<details class="box" id="eshophist" data-k="eshophist" ${S.folds.eshophist || !rows.length ? "open" : ""}><summary><b>Käufe aus dem eShop</b> <span class="mut">${rows.length ? `${rows.length} Käufe übernommen, ${sure.length} zählen als Besitz${sug.length ? `, ${sug.length} ${sug.length === 1 ? "Vorschlag" : "Vorschläge"} offen` : ""}` : "noch keine Käufe übernommen"}</span></summary>
-    <p class="hint">Was du bei Nintendo gekauft hast, fällt aus dem Kaufplan, auch ohne Eintrag bei DekuDeals. Der Kaufverlauf reicht laut Nintendo zwei Jahre zurück.</p>
+  const kauf = r => `${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}<br><small class="mut">${what(r)}</small>`;
+  const own = (r, label = "anderer …") => `<details class="fold eqown"><summary class="hint">${label}</summary><span class="eqin"><input type="text" list="eshopknown" placeholder="Name suchen oder DekuDeals-Link" aria-label="Gekauften Titel suchen oder DekuDeals-Link einfügen"> <button class="sm" data-act="eshopown" data-k="${esc(r.key)}">zuordnen</button></span></details>`;
+  const undo = r => r.how === "pick"
+    ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Deine Zuordnung zurücknehmen, wirkt sofort">zurücknehmen</button>`
+    : `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Falsch zugeordnet: zählt dann nicht als Besitz">stimmt nicht</button>`;
+  const head = rows.length ? `${rows.length} Käufe${at ? `, gelesen am ${esc(dmy(new Date(at * 1000).toISOString()))}` : ""}${ask.length ? ` · <b class="warnc">${ask.length} offen</b>` : ""}${plan.length ? ` · ${plan.length} nachtragen` : ""}` : "noch keine Käufe gelesen";
+  let h = `<h3 class="sec" id="set-kaeufe">Käufe aus dem eShop <span class="mut">${head}</span></h3>
+    <p class="hint">Deine Sammlung pflegst du bei DekuDeals. Der Kaufverlauf von Nintendo sorgt nur dafür, dass der Plan nichts vorschlägt, was du schon gekauft hast, und zeigt Käufe, die bei DekuDeals noch fehlen. Was schon in der Sammlung steht, ordnet das Tool selbst ein; fragen muss es nur, wenn die Antwort den Plan ändert.</p>
+    <details class="fold" data-k="eshophow" ${S.folds.eshophow || !rows.length ? "open" : ""}><summary class="hint">So liest du deine Käufe</summary>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("eshop", eshopHelper(location.origin))}</li>
-      <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? ` Über den Link liest es nur, was seit dem letzten vollständigen Lesen dazugekommen ist; <a href="https://ec.nintendo.com/my/transactions/1" target="_blank" rel="noopener" title="Liest den ganzen Kaufverlauf noch einmal. Deine Zuordnungen bleiben, ältere Einträge bekommen fehlende Angaben wie die Plattform.">alles neu lesen</a>.` : ""}</li>
+      <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? ` Es liest nur, was seit dem letzten vollständigen Lesen dazugekommen ist; <a href="https://ec.nintendo.com/my/transactions/1" target="_blank" rel="noopener" title="Liest den ganzen Kaufverlauf noch einmal. Deine Zuordnungen bleiben, ältere Einträge bekommen fehlende Angaben.">alles neu lesen</a>.` : ""}</li>
       <li>Klick dort auf „Im eShop-Kompass übernehmen“.</li>
     </ol>
     <details class="fold" data-k="eshopfb" ${S.folds.eshopfb ? "open" : ""}><summary class="hint">Geht das nicht? Text von Hand einfügen</summary>
       <p class="hint">Kopiere im Fenster des Lesezeichens den Text und füge ihn hier ein: <textarea id="eshopimport" rows="2" style="width:100%"></textarea> <button data-act="eshopimport">Übernehmen</button></p>
-    </details>`;
-  // Eigene Zuordnung: DekuDeals-Link oder dessen letzter Teil (0.69)
-  const own = r => `<details class="fold eqown"><summary class="hint">anderer Titel …</summary><span class="eqin"><input type="text" placeholder="DekuDeals-Link, z. B. …/items/hades" aria-label="DekuDeals-Link des gekauften Titels"> <button class="sm" data-act="eshopown" data-k="${esc(r.key)}">zuordnen</button></span></details>`;
-  const head = r => `<div class="eqh"><b>${esc(r.title)}</b> <small class="mut">${[r.date ? dmy(r.date) : "", what(r)].filter(Boolean).join(" · ")}</small></div>`;
-  // Vorschläge als Frage (0.69): links der Kauf, darunter die Kandidaten mit je einem „ja“
-  if(sug.length) h += `<h4>Vorschläge: Welcher Titel ist das?</h4><p class="hint">„ja“ zählt den Kauf als Besitz, „keiner davon“ legt ihn zu den übrigen Käufen. Das Tool merkt sich deine Antwort. Zurücknehmen wirkt sofort, der Kauf steht dann wieder hier. Die Namen führen zu DekuDeals.</p>
-    <div class="eqs">${sug.map(r => `<div class="eq">${head(r)}<ul class="eqc">${r.suggest.map(x =>
-      `<li><button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist dieser Titel: zählt als Besitz">ja</button> ${named(x.slug, x.title, x.game)}</li>`).join("")}
-      <li><button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zu den übrigen Käufen">keiner davon</button> ${own(r)}</li></ul></div>`).join("")}</div>`;
-  // Zählen als Besitz als sortierbare Tabelle mit dem Spiel (0.69)
-  const gameOf = r => r.game || (r.item === "APPLICATION" || r.item === "BUNDLE" ? r.name : "") || "";
-  if(sure.length) h += `<h4>Zählen als Besitz</h4><div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshop", "kauf", "Kauf", "", "l")}${sth("eshop", "game", "Spiel", "Das Spiel, zu dem der Titel gehört", "l")}${sth("eshop", "name", "Zählt als", "", "l")}${sth("eshop", "how", "Woher", "", "l")}${sth("eshop", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${sortRows("eshop", sure, {
-      kauf: r => r.title || "", game: r => gameOf(r), name: r => r.name || "", how: r => how[r.how] || "", date: r => r.date || ""}).map(r =>
-      `<tr><td class="l">${esc(r.title)}${what(r) ? `<br><small class="mut">${what(r)}</small>` : ""}</td><td class="l">${esc(gameOf(r))}</td><td class="l">${named(r.slug, r.name)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td>${r.how === "pick"
-        ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Deine Zuordnung zurücknehmen: Der Kauf steht sofort wieder bei den Vorschlägen oder den übrigen Käufen">zurücknehmen</button>`
-        : `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Falsch zugeordnet: zählt nicht, steht dann bei den übrigen Käufen">stimmt nicht</button>`}</td></tr>`).join("")}</tbody></table></div>`;
-  if(rest.length) h += `<details class="fold" data-k="eshoprest" ${S.folds.eshoprest ? "open" : ""}><summary class="hint">${rest.length === 1 ? "Ein weiterer Kauf" : `${rest.length} weitere Käufe`}, kein Wishlist-Titel und kein fehlender DLC</summary><p class="hint">Passt einer doch zu einem Titel, ordne ihn über „anderer Titel …“ mit dem DekuDeals-Link zu.</p><table class="mini-t">${rest.map(r => line(r,
-      (r.how === "none" ? `<span class="mut">von dir als „keiner davon“ markiert</span> · <button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen: Passt ein Titel, steht der Kauf sofort wieder bei den Vorschlägen oder zählt">zurücknehmen</button> · ` : "") + own(r))).join("")}</table></details>`;
-  if(voids.length) h += `<p class="hint">${voids.length === 1 ? "Ein erstatteter Kauf zählt" : `${voids.length} erstattete Käufe zählen`} nicht.</p>`;
-  return h + `</details>`;
+    </details></details>`;
+  if(!rows.length) return h;
+  h += eshopKnown();
+  // Offen: eine Zeile je Kauf, die Kandidaten als Knöpfe; ein Klick heißt „ja, dieser“
+  if(ask.length) h += `<h4>Welcher Titel ist das? <span class="mut">${ask.length}</span></h4><p class="hint">Diese Käufe ähneln einem Titel deiner Wishlist oder einem fehlenden DLC. Ein Klick auf einen Namen ordnet den Kauf zu, er fällt dann aus dem Plan. „keiner“ lässt ihn im Plan.</p>
+    <div class="scroll"><table class="mini-t eqt"><tbody>${ask.map(r => `<tr><td class="l">${kauf(r)}</td><td class="l eqa">${r.suggest.map(x =>
+      `<button class="sm cand" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist ${esc(x.title)}: zählt als Besitz">${x.game && !String(x.title || "").toLowerCase().startsWith(x.game.toLowerCase()) ? `<span class="gm">${esc(x.game)}:</span> <b>${esc(x.title)}</b>` : esc(x.title)}</button>`).join("")}<button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zählt nicht als Besitz">keiner</button>${own(r)}</td></tr>`).join("")}</tbody></table></div>`;
+  // Gekauft, aber bei DekuDeals noch nicht in der Sammlung: zählt als Besitz, nachtragen
+  if(plan.length) h += `<h4>Bei DekuDeals nachtragen <span class="mut">${plan.length}</span></h4><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
+    <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshop", "kauf", "Kauf", "", "l")}${sth("eshop", "name", "Zählt als", "", "l")}${sth("eshop", "how", "Woher", "", "l")}<th></th></tr></thead><tbody>${sortRows("eshop", plan, {
+      kauf: r => r.title || "", name: r => (r.game ? r.game + " " : "") + (r.name || ""), how: r => how[r.how] || "", date: r => r.date || ""}).map(r =>
+      `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div>`;
+  // Alle Käufe zum Nachsehen, nach Gruppe; „anderer …“ ordnet jeden von Hand zu
+  const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_GROUP[r.group] || "", name: r => r.name || r.coll_name || "", date: r => r.date || ""});
+  const counts = Object.keys(ESHOP_GROUP).map(g => [g, by(g).length]).filter(x => x[1]).map(([g, n]) => `${n} ${ESHOP_GROUP[g]}`).join(" · ");
+  h += `<details class="fold" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary class="hint">Alle Käufe <span class="mut">${counts}</span></summary>
+    <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshopall", "kauf", "Kauf", "", "l")}${sth("eshopall", "group", "Einordnung", "", "l")}${sth("eshopall", "name", "Titel", "", "l")}${sth("eshopall", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${allRows.map(r =>
+      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small>${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r)}` : r.group === "void" || r.group === "ticket" ? "" : own(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
+  return h;
 }
 /* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch
    den Warteraum von store-jp kommt, und gibt die Sprachen als Text zum Einfügen zurück. */
@@ -2572,7 +2588,7 @@ document.addEventListener("click", async e => {
       await api("/api/settings", {nso_extra: list}); S.folds.nso = 1; await refresh(); toast("Angebot entfernt");
     }
     else if(a === "gonso"){ S.folds.nso = 1; saveView(); go("jetzt", false); const t = $("nsobox"); if(t){ t.open = true; t.scrollIntoView(); } }
-    else if(a === "gokaeufe"){ S.folds.eshophist = 1; go("sammlung", false); const t = $("eshophist"); if(t){ t.open = true; t.scrollIntoView(); } }
+    else if(a === "gokaeufe"){ if(d.v === "how") S.folds.eshophow = 1; go("settings", false); const t = $("set-kaeufe"); if(t) t.scrollIntoView(); }
     else if(a === "gosprachen"){ go("settings", false); const t = $("sprachen"); if(t) t.scrollIntoView(); }
     else if(a === "dlcmark"){
       await api("/api/settings", {dlc_marks: {[d.s]: d.v || null}});
@@ -2592,9 +2608,9 @@ document.addEventListener("click", async e => {
       toast(d.v === "-" ? "Zählt nicht als Besitz" : d.v ? "Zugeordnet, zählt als Besitz" : "Zurückgenommen");
     }
     else if(a === "eshopown"){
-      const v = (el.parentElement.querySelector("input").value || "").trim().toLowerCase();
-      const slug = (v.match(/\/items\/([a-z0-9-]+)/) || [])[1] || v.replace(/[?#].*$/, "");
-      if(!/^[a-z0-9][a-z0-9-]*$/.test(slug)){ toast("Bitte einen DekuDeals-Link einfügen, etwa https://www.dekudeals.com/items/hades"); return; }
+      const raw = (el.parentElement.querySelector("input").value || "").trim(), v = raw.toLowerCase();
+      const slug = (S.eshopKnown || {})[raw] || (v.match(/\/items\/([a-z0-9-]+)/) || [])[1] || v.replace(/[?#].*$/, "");
+      if(!/^[a-z0-9][a-z0-9-]*$/.test(slug)){ toast("Bitte einen Namen aus der Liste wählen oder einen DekuDeals-Link einfügen"); return; }
       await api("/api/eshop_history/pick", {key: d.k, slug});
       await refresh();
       toast("Zugeordnet, zählt als Besitz");

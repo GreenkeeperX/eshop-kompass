@@ -84,6 +84,13 @@ def slug_names(data):
     return out
 
 
+def known_titles(data):
+    """Alle bekannten Titel und DLC für die Suche „anderer …“ bei den Käufen (0.71):
+    [{slug, title, game}], nach Spiel und Titel."""
+    return sorted(({"slug": s, "title": t, "game": g} for s, (t, g) in slug_names(data).items()),
+                  key=lambda x: ((x["game"] or x["title"]).casefold(), x["game"] is not None, x["title"].casefold()))
+
+
 def pretty_slug(slug):
     """Lesbarer Ersatz, wenn zu einer Kennung kein Name bekannt ist."""
     words = [w for w in str(slug or "").split("-") if w and not re.fullmatch(r"\d{8,}", w)]
@@ -96,7 +103,7 @@ def eshop_matches(data):
     des Spiels davor); von Hand Zugeordnetes gilt immer. Passt nichts genau, schlägt das Tool
     ähnliche Titel vor, die zählen erst nach deiner Bestätigung.
     {"rows": [{key, title, date, type, slug, how, name, suggest}], "owned": {Titel}}.
-    how: "id", "title", "pick", "none" (kein Wunschtitel), "void" (erstattet) oder None (offen)."""
+    how: "id", "title", "eng" (englischer Name aus titledb), "pick", "none" (kein Wunschtitel), "void" (erstattet) oder None (offen)."""
     h = data.get("_eshop") or {}
     entries, picks = h.get("entries") or [], h.get("picks") or {}
     items = data.get("items") or {}
@@ -121,10 +128,38 @@ def eshop_matches(data):
         toks[s] = set(" ".join(names).split())
     rows, owned = [], set()
     known = slug_names(data)
+    # DekuDeals-Sammlung (0.71): Was dort steht, ordnet das Tool selbst ein und fragt nicht
+    coll = set(data.get("owned") or [])
+    coll_title, coll_toks = {}, {}
+    for s in coll:
+        t, game = known.get(s, (None, None))
+        names = {_tnorm(t)} | ({_tnorm(f"{game} {t}")} if game else set())
+        names.discard("")
+        for n in names:
+            coll_title.setdefault(n, s)
+        if names:
+            coll_toks[s] = set(" ".join(names).split())
+    # Kauftitel → englischer Name aus titledb (0.72), {Titel: [Name oder None, Zeitpunkt]}
+    eng = {t: v[0] for t, v in (data.get("eshop_names") or {}).items() if isinstance(v, list) and v and v[0]}
+
+    def in_coll(title):
+        for t in (title, eng.get(title)):
+            n = _tnorm(t)
+            if n and n in coll_title:
+                return coll_title[n]
+        for t in (title, eng.get(title)):
+            w = set(_tnorm(t).split())
+            if not w:
+                continue
+            best = sorted((-len(w & k) / len(w | k), s) for s, k in coll_toks.items() if w & k)
+            if best and -best[0][0] >= 0.75 and (len(best) == 1 or best[1][0] > best[0][0]):
+                return best[0][1]
+        return None
     for e in entries:
         key, slug, how, suggest = e.get("key"), None, None, []
         pick = picks.get(key)
         norm = _tnorm(e.get("title"))
+        enorm = _tnorm(eng.get(e.get("title")))
         if pick == "-":
             how = "none"
         elif pick:
@@ -138,17 +173,39 @@ def eshop_matches(data):
             slug, how = by_id[str(e["id"])], "id"
         elif len(by_title.get(norm, ())) == 1:
             slug, how = next(iter(by_title[norm])), "title"
+        elif len(by_title.get(enorm, ())) == 1:
+            slug, how = next(iter(by_title[enorm])), "eng"         # über den englischen Namen (0.72)
         else:
-            words = set(norm.split())
+            words = set((enorm or norm).split())
             scored = []
             for s, t in toks.items():
                 common = len(words & t)
                 if common and common / len(words | t) >= 0.5:
                     scored.append((-common / len(words | t), cands[s].get("title") or s, s))
             suggest = [{"slug": s, "title": t, "game": games.get(s)} for _, t, s in sorted(scored)[:3]]
+        # Gruppe (0.71): void erstattet, ticket Mitgliedschaft oder Gutschein, plan zählt als Besitz
+        # (fehlt in der DekuDeals-Sammlung: nachtragen), coll steht schon in der Sammlung, ask
+        # Vorschläge, die den Plan ändern, unknown kennt das Tool nicht
+        in_c = None
+        if how == "void":
+            group = "void"
+        elif slug:
+            group = "plan" if slug not in coll else "coll"
+        elif (e.get("item") or "") in ("TICKET", "CATALOG_TICKET"):
+            group, suggest = "ticket", []
+        else:
+            in_c = in_coll(e.get("title"))
+            if in_c:
+                group, suggest = "coll", []
+            elif suggest and how is None:
+                group = "ask"
+            else:
+                group = "unknown"
         if slug:
             owned.add(slug)
-        rows.append({"key": key, "title": e.get("title"), "date": e.get("date"),
+        rows.append({"key": key, "title": e.get("title"), "date": e.get("date"), "group": group,
+                     "coll": in_c, "coll_name": known.get(in_c, (pretty_slug(in_c),))[0] if in_c else None,
+                     "eng": eng.get(e.get("title")),
                      "type": e.get("type"), "slug": slug, "how": how, "suggest": suggest,
                      "item": e.get("item") or "", "plat": e.get("plat") or "", "amount": e.get("amount") or "",
                      "game": (games.get(slug) or known.get(slug, (None, None))[1]) if slug else None,

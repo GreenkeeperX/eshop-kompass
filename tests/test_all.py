@@ -2044,6 +2044,45 @@ class EshopHistoryTest(unittest.TestCase):
         self.assertEqual(rows["Etwas"]["name"], "Some Other Game")
         self.assertEqual(rows["Etwas"]["how"], "pick")
 
+    def test_groups_collection_ticket_unknown(self):
+        # 0.71: Was in der DekuDeals-Sammlung steht, fragt das Tool nicht; Mitgliedschaften zählen nicht
+        self.imp([{"id": "", "title": "Vampire Survivors", "date": "2026-10-03"},
+                  {"id": "", "title": "Hades (pt)", "date": "2026-10-02"},
+                  {"id": "", "title": "12 meses", "date": "2026-10-01", "item": "TICKET"},
+                  {"id": "", "title": "Etwas ganz anderes", "date": "2026-09-01"},
+                  {"id": "70010000012345", "title": "Hades", "date": "2026-08-01"}])
+        data = store.load_data()
+        data["rel"] = {"vampire-survivors": {"title": "Vampire Survivors", "dlc": []}}
+        rows = {r["title"]: r for r in planner.eshop_matches(data)["rows"]}
+        self.assertEqual((rows["Vampire Survivors"]["group"], rows["Vampire Survivors"]["coll"]), ("coll", "vampire-survivors"))
+        self.assertEqual(rows["12 meses"]["group"], "ticket")
+        self.assertEqual(rows["Etwas ganz anderes"]["group"], "unknown")
+        self.assertEqual(rows["Hades"]["group"], "plan")            # gekauft, bei DekuDeals nachtragen
+        self.assertEqual(rows["Hades (pt)"]["group"], "ask")        # ähnlich zu einem Wishlist-Titel
+
+    def test_english_names_from_titledb(self):
+        # 0.72: Japanische Kauftitel bekommen über die Programm-ID den englischen Namen
+        self.imp([{"id": "", "title": "セレステ", "date": "2026-10-01"},
+                  {"id": "", "title": "ヴァンパイア サバイバーズ", "date": "2026-09-01"},
+                  {"id": "", "title": "知らない", "date": "2026-08-01"}], region="JP")
+        lists = {"JP.ja": {"1": {"id": "0100AAA0", "name": "セレステ"}, "2": {"id": "0100BBB0", "name": "ヴァンパイア・サバイバーズ"}},
+                 "US.en": {"3": {"id": "0100AAA0", "name": "Celeste"}, "4": {"id": "0100BBB0", "name": "Vampire Survivors"}}}
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return json.dumps(next(v for k, v in lists.items() if k in url), ensure_ascii=False)
+        data = store.load_data()
+        data["rel"] = {"vampire-survivors": {"title": "Vampire Survivors", "dlc": []}}
+        sync.sync_eshop_names(data, fake, now=2e9)
+        self.assertEqual(len(calls), 2)
+        rows = {r["title"]: r for r in planner.eshop_matches(data)["rows"]}
+        self.assertEqual((rows["セレステ"]["slug"], rows["セレステ"]["how"]), ("celeste", "eng"))
+        self.assertEqual((rows["ヴァンパイア サバイバーズ"]["group"], rows["ヴァンパイア サバイバーズ"]["eng"]), ("coll", "Vampire Survivors"))
+        self.assertEqual(rows["知らない"]["group"], "unknown")
+        sync.sync_eshop_names(data, fake, now=2e9 + 60)    # nichts Neues: kein Abruf
+        self.assertEqual(len(calls), 2)
+
     def test_same_entries_not_added_twice_and_picks(self):
         e = [{"id": "", "title": "Algo desconhecido", "date": "2026-10-01"}]
         self.imp(e)
@@ -3826,6 +3865,8 @@ class UiContractTest(unittest.TestCase):
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
+        "eshop": {"amount", "coll", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
+                  "plat", "slug", "suggest", "title"},
     }
 
     @classmethod
@@ -3868,6 +3909,8 @@ class UiContractTest(unittest.TestCase):
             "collection.games": keys(state["collection"]["games"]),
             "nso": set(state["nso"]),
             "pay": keys(state["pay"].values()),
+            "eshop": keys(planner.eshop_matches(dict(store.load_data(), _eshop={"picks": {}, "entries": [
+                {"key": "k1", "title": "Tides of the Foscari", "date": "2026-10-01", "item": "DLC"}]}))["rows"]),
         }
         used = set(re.findall(r"\.([a-z_][a-z0-9_]*)\b", self.page))
         for name, fields in self.CONTRACT.items():

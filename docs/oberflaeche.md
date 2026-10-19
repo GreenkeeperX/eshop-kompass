@@ -36,16 +36,18 @@ kaufen heißt und dessen Wechsel sich rechnet.
 
 ## Käufe aus dem eShop
 
-Vorschlagsnamen: Spiel grau in normaler Größe, DLC-Titel fett (ab 0.70, vorher Spiel klein).
-
-Vorschläge als Frage (ab 0.69, „Welcher Titel ist das?“): je Kauf ein Kasten (`.eq`), oben fett der
-Kauf mit Datum, Art, Plattform und Betrag (grau), darunter je Kandidat eine Zeile „ja“ + Name (Link zu
-DekuDeals, Spiel klein davor, `small.gm`), zuletzt „keiner davon“ und „anderer Titel …“ (aufklappbar:
-Feld für einen DekuDeals-Link, Knopf „zuordnen“). „Zählen als Besitz“ ist eine sortierbare Tabelle:
-Kauf (Titel aus dem Kaufverlauf, auch japanisch), Spiel, Zählt als (Link), Woher, Datum, dann
-„zurücknehmen“ (von dir Zugeordnetes, wirkt sofort) oder „stimmt nicht“ (automatisch Zugeordnetes).
-Namen kommen aus allen bekannten Titeln und DLC-Listen, nie als roher Slug (sonst lesbar gemacht).
-Bei den übrigen Käufen: „von dir als ‚keiner davon‘ markiert“ und „anderer Titel …“.
+Ab 0.71 eine eigene Karte in den Einstellungen (`#eshophist`, Sprungleiste „Käufe“), nicht mehr im
+Reiter Sammlung. Kopf: Zahl der Käufe, Lesedatum, violett „n offen“, „n nachtragen“. Erklärung als
+Satz, Anleitung zum Lesezeichen eingeklappt („So liest du deine Käufe“, offen ohne Käufe).
+„Welcher Titel ist das?“: eine Tabellenzeile je offenem Kauf, links Kauf mit grauer Zeile (Datum,
+Art, Plattform, Betrag), rechts die Kandidaten als kleine Knöpfe (`button.cand`, Spiel grau, DLC fett;
+Klick = ja), „keiner“ und „anderer …“ (aufklappbar: Feld mit Suchtreffern aus allen bekannten Titeln
+und DLC, `datalist#eshopknown`, oder DekuDeals-Link; Knopf „zuordnen“). „Bei DekuDeals nachtragen“:
+sortierbare Tabelle Kauf, Zählt als (Link), Woher, „stimmt nicht“ oder „zurücknehmen“. „Alle Käufe“
+eingeklappt, Zusammenfassung je Gruppe; Zeilen „in der Sammlung“, „Mitgliedschaft oder Gutschein“
+und „erstattet“ grau (`tr.mutr`). Ein englischer Name aus titledb steht grau in Klammern hinter dem
+Kauftitel. Namen nie als roher Slug (sonst lesbar gemacht). „Zu erledigen“: „n Käufe zuordnen“ und
+„n Käufe bei DekuDeals nachtragen“, beide springen zur Karte.
 
 ## Online-Mitgliedschaft
 
