@@ -2353,6 +2353,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         c = ctx.countries[p["code"]]
         p["fill_slugs"] = [i["slug"] for i in p["items"] if i["slug"] in fill.get(p["code"], [])]
         p["fill"] = _rest_fill(ctx, c, p, planned, skip, xctx=xctx)
+        p["fill_pairs"] = _rest_pairs(p["fill"], p.get("rest") or 0)
         p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
         # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
         # deutschen Schritt (dort ist die Ersparnis dann 0)
@@ -2400,10 +2401,11 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
 
 
-def _rest_fill(ctx, c, p, planned, skip, limit=3, xctx=None):
+def _rest_fill(ctx, c, p, planned, skip, limit=60, xctx=None):
     """Wishlist-Titel, die in den Rest dieses Schritts passen, der kleinste Abstand zuerst.
     Ein DLC nur, wenn sein Hauptspiel in der Sammlung oder im Plan steht. Dazu fehlende
-    DLC deiner Spiele (`xctx`), die nicht auf der Wishlist stehen."""
+    DLC deiner Spiele (`xctx`), die nicht auf der Wishlist stehen. Kostenloses füllt
+    keinen Rest und fehlt (0.70)."""
     rest = round((p.get("rest") or 0) * 100)
     if rest <= 0 or p.get("is_ref"):
         return []
@@ -2416,14 +2418,14 @@ def _rest_fill(ctx, c, p, planned, skip, limit=3, xctx=None):
         if parent and parent not in ctx.owned and parent not in planned:
             continue
         # Ein eigenes Angebot (Code, ab 0.62) zahlt die Kreditkarte, nicht das Guthaben: kein Füller (0.63)
-        if o["local"] > rest or o.get("direct") is not None:
+        if o["local"] > rest or o["local"] <= 0 or o.get("direct") is not None:
             continue
         out.append({"slug": s, "title": ctx.title(s), "short": ctx.short(s),
                     "local": o["local"] / 100, "eur": _r(o["local"] / 100 / c["rate"]) if c.get("rate") else None,
                     "left": (rest - o["local"]) / 100, "sale": bool(o.get("sale")), "dlc": bool(parent)})
     xc = xctx.countries.get(c["code"]) if xctx else None
     for s, o in (xc or {}).get("offers", {}).items():
-        if o["local"] > rest or s in planned or not xctx.decides(o):
+        if o["local"] > rest or o["local"] <= 0 or s in planned or not xctx.decides(o):
             continue
         it = xctx.items[s]
         game = ((ctx.items.get(it["dlc_of"]) or {}).get("title")
@@ -2433,6 +2435,21 @@ def _rest_fill(ctx, c, p, planned, skip, limit=3, xctx=None):
                     "left": (rest - o["local"]) / 100, "sale": bool(o.get("sale")), "dlc": True,
                     "extra": True, "game": game})
     return sorted(out, key=lambda f: (f["left"], f["title"]))[:limit]
+
+
+def _rest_pairs(fill, rest, limit=3):
+    """Zwei Titel, die zusammen in den Rest passen und weniger übrig lassen als jeder einzelne
+    (0.70). Nur übernehmbare Titel (Wishlist), kleinster Rest zuerst."""
+    cand = [f for f in fill if not f.get("extra")]
+    best = min((f["left"] for f in cand), default=rest)
+    out = []
+    for a, b in combinations(cand, 2):
+        left = round(rest - a["local"] - b["local"], 2)
+        if -0.005 < left < best - 0.005:
+            out.append({"slugs": [a["slug"], b["slug"]], "shorts": [a["short"], b["short"]],
+                        "titles": [a["title"], b["title"]], "local": _r(a["local"] + b["local"]),
+                        "left": max(left, 0.0)})
+    return sorted(out, key=lambda f: (f["left"], f["shorts"]))[:limit]
 
 
 def price_history(data, settings, history, slug, now=None):

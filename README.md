@@ -301,10 +301,12 @@ Jeder Schritt ist eine Karte wie im Reiter Länder (siehe dort) mit Preis, Wechs
 der Tabelle der Titel. DLC mit gekürztem Namen tragen das Hauptspiel klein davor.
 
 **Füllartikel:** Bleibt in einem Schritt ein Rest, stehen darunter Wishlist-Titel, die
-hineinpassen, der kleinste verbleibende Rest zuerst. Das Urteil zählt dabei nicht; Titel aus
-der Sammlung, gekaufte, DLC ohne Hauptspiel und eigene Angebote (die zahlt die Kreditkarte)
+hineinpassen, der kleinste verbleibende Rest zuerst, auch zwei Titel zusammen, wenn sie den
+Rest besser füllen als jeder einzelne. Alles andere, was passt, steht im Auswahlfeld „alles, was
+passt …“ mit dem, was danach bleibt. Das Urteil zählt dabei nicht; Titel aus der Sammlung,
+gekaufte, kostenlose, DLC ohne Hauptspiel und eigene Angebote (die zahlt die Kreditkarte)
 fehlen. Ein Klick nimmt den Titel in den Schritt, „dazugenommen ×“ nimmt ihn wieder heraus. Fehlende
-DLC deiner Spiele erscheinen dort als Link zu DekuDeals; übernehmen lassen sie sich, sobald sie
+DLC deiner Spiele erscheinen dahinter, die zwei kleinsten als Link zu DekuDeals; übernehmen lassen sie sich, sobald sie
 auf der Wishlist stehen. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
 steht sie dort als Hinweis, mit ihrem eShop-Preis. Jeden anderen Wishlist-Titel, den es dort
 gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt, ebenso jede Variante der
@@ -392,8 +394,8 @@ Titel (der Kaufplan kauft in mehreren Ländern nacheinander und ist deshalb kein
 darin vorn, wer mehr Titel anbietet und günstiger ist.
 
 Die Tabelle ist fensterhoch mit fester Kopfzeile wie die Titel-Tabelle: Spalte Bestpreis,
-eine Zeile je Zelle (Preis, Rabatt, Abstand zum Bestpreis), Preise grün nach Urteil, rot nur
-der Abstand. Der Stern gilt dem Preis im Korb, denn die Titel teilen sich die Karten.
+je Zelle oben Preis und Abstand zum Bestpreis, darunter Rabatt und Marken; Preise grün nach
+Urteil, rot nur der Abstand. Der Stern gilt dem Preis im Korb, denn die Titel teilen sich die Karten.
 Landeswährung, Zahlweg und Angebotsende stehen im Tooltip. Der Preis öffnet den eShop, bei DLC
 den Verlauf bei DekuDeals, weil es für DLC keinen festen eShop-Link gibt.
 

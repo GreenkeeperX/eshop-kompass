@@ -21,6 +21,12 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 - Die dunklen Tokens stehen zweimal (Gerät dunkel, Wahl dunkel) und müssen gleich bleiben;
   ein Test prüft das.
 
+## Favicon und Einstellungen
+
+Favicon (ab 0.70): rotes, fettes „e“ in Nintendo-Rot (`#e60012`, wie `--brand` hell) als SVG im Kopf
+der Seite. Einstellungen sind höchstens 1280 px breit; nur die Karte „Sprachen prüfen“ (`.setc.wide`)
+wächst mit ihrer Tabelle bis zur Fensterbreite, damit sie auf großen Bildschirmen nicht seitlich scrollt.
+
 ## Kaufplan (Jetzt)
 
 Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Titel
@@ -29,6 +35,8 @@ dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedsc
 kaufen heißt und dessen Wechsel sich rechnet.
 
 ## Käufe aus dem eShop
+
+Vorschlagsnamen: Spiel grau in normaler Größe, DLC-Titel fett (ab 0.70, vorher Spiel klein).
 
 Vorschläge als Frage (ab 0.69, „Welcher Titel ist das?“): je Kauf ein Kasten (`.eq`), oben fett der
 Kauf mit Datum, Art, Plattform und Betrag (grau), darunter je Kandidat eine Zeile „ja“ + Name (Link zu
@@ -68,6 +76,15 @@ Länder, 2 % Spielraum), Preis grün nach Urteil „kaufen“ oder „gut“, Ab
 Das günstigste zählende Land fett. Chips „Konto“ und „im Plan“ neutral und mit Tooltip direkt am
 Land, damit die Preise rechtsbündig untereinander stehen; Rabatt, Abstand und Link rechts daneben.
 Länder ohne Guthabenkarte blass mit violettem Grund.
+
+## Rest füllen (Kaufplan)
+
+„Passt in den Rest (Betrag):“ zeigt höchstens vier Knöpfe, der kleinste verbleibende Rest zuerst:
+einzelne Titel und Paare („+ A + B“, ein Klick nimmt beide), dazu die passende Mitgliedschaft.
+Alles Weitere von der Wishlist im Auswahlfeld „alles, was passt (n) …“ mit „bleiben x“. Fehlende DLC,
+die nicht auf der Wishlist stehen, folgen als höchstens zwei Links zu DekuDeals, dann grau „und n weitere
+fehlende DLC“ (Namen im Tooltip). Kostenloses
+fehlt (ab 0.70). Preise in Auswahlfeldern „Titel dazunehmen …“ immer mit Währungszeichen (ab 0.70).
 
 ## Kopfleiste
 
@@ -201,8 +218,10 @@ Korb-Tabelle: Erklärung zugeklappt („So liest du den Korb“, ab 0.62.1), Spa
 Länder von leicht über mittel bis schwer, darin nach fehlenden Titeln und Preis (ab 0.69, vorher
 nur nach Preis), Vergleichsland vorn; Spaltenköpfe sortieren, Kopfzeile bleibt stehen und ist deckend: Länder ohne den ganzen Korb haben
 grauen Kopftext, nur ihre Zellen sind blass (bis 0.62 schien die Tabelle durch den Kopf); grün hinterlegte Zellen
-nicht, sonst trübt die Deckkraft ihre weiße Schrift (ab 0.68). Eine Zeile je
-Zelle wie in der Titel-Tabelle: Preis, blauer Rabatt, kleines rotes „+x“ über dem Bestpreis (`.abv.gap`, bis 0.62 grau); Zelle
+nicht, sonst trübt die Deckkraft ihre weiße Schrift (ab 0.68). Zwei Zeilen je Zelle (ab 0.70, vorher
+eine): oben Preis | kleines rotes „+x“ über dem Bestpreis (`.kc`, Raster aus zwei gleichen Hälften, die
+Fuge mittig, damit Preise und Abstände untereinander stehen; `.abv.gap`), darunter mittig blauer Rabatt,
+Code-, DLC- und Sprachmarke (`.kl`); Zelle
 dunkel-/hellgrün nach Urteil, gold umrandet am Bestpreis. Landeswährung, Zahlweg und Ende im Tooltip.
 Der Stern im Korb gilt dem Preis im Korb, nicht dem Einzelpreis (ab 0.65; in Ländern ohne
 eigenen Shop können beide abweichen).

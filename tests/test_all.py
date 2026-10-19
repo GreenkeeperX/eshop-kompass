@@ -3944,5 +3944,16 @@ class UiThemeTest(unittest.TestCase):
         self.assertIn('localStorage.getItem("ek.theme")', page)   # vor dem ersten Zeichnen
 
 
+
+class RestPairsTest(unittest.TestCase):
+    def test_pairs_fill_rest_better(self):
+        # 0.70: zwei Titel zusammen, wenn sie weniger übrig lassen als jeder einzelne
+        fill = [{"slug": "a", "short": "A", "title": "A", "local": 6.0, "left": 4.0},
+                {"slug": "b", "short": "B", "title": "B", "local": 3.5, "left": 6.5},
+                {"slug": "c", "short": "C", "title": "C", "local": 4.0, "left": 6.0},
+                {"slug": "x", "short": "X", "title": "X", "local": 1.0, "left": 9.0, "extra": True}]
+        pairs = planner._rest_pairs(fill, 10.0)
+        self.assertEqual([(f["slugs"], f["left"]) for f in pairs], [(["a", "c"], 0.0), (["a", "b"], 0.5), (["b", "c"], 2.5)])
+
 if __name__ == "__main__":
     unittest.main()
