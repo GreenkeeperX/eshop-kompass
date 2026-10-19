@@ -3791,6 +3791,42 @@ class MembershipTest(unittest.TestCase):
                 self.assertAlmostEqual(r["over"], r["eur"] - m["champ"], places=2)
         self.assertTrue(any(r["at_best"] for r in m["rows"] if r["counts"]) or all(r["low_eur"] is not None for r in m["rows"] if r["counts"]))
 
+    def test_own_low_for_variants_without_dekudeals(self):
+        # 0.87: 1 Monat und Familie mit Erweiterungspaket führt DekuDeals nicht; ihr Tiefstpreis kommt
+        # aus der eigenen Aufzeichnung, 24 Monate zurück, mit Beginn der Aufzeichnung
+        data, history = {}, {}
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        days = lambda n: t0 + timedelta(days=n)
+        def track(n, m1, sale=None):
+            p = {"status": "onsale", "currency": "EUR", "regular": m1}
+            if sale:
+                p["discount"] = sale
+            sync._track_nso(data, history, "DE", {"m1": p, "m12": {"status": "onsale", "currency": "EUR", "regular": 19.99}},
+                            days(n).isoformat(timespec="seconds"), now=days(n))
+        track(0, 3.99)
+        track(1, 3.99, sale=2.99)
+        track(2, 3.99)
+        self.assertEqual(history["DE"]["nso-m1"], [[days(0).isoformat(timespec="seconds"), 3.99],
+                                                   [days(1).isoformat(timespec="seconds"), 2.99],
+                                                   [days(2).isoformat(timespec="seconds"), 3.99]])
+        self.assertNotIn("nso-m12", history["DE"])        # 12 Monate kommt von DekuDeals
+        e = data["nso"]["v"]["m1"]
+        self.assertEqual((e["lows"]["DE"], e["own_since"]["DE"]), (2.99, days(0).isoformat(timespec="seconds")))
+        # Nach 24 Monaten fällt das Angebot heraus; der Preis zu Beginn des Zeitraums zählt
+        track(800, 3.99)
+        self.assertEqual(e["lows"]["DE"], 3.99)
+        # In der Oberfläche: Tiefstpreis mit Beginn der Aufzeichnung, bei 12 Monaten ohne
+        data["nso_prices"] = {"DE": {"m1": {"status": "onsale", "currency": "EUR", "regular": 3.99},
+                                     "m12": {"status": "onsale", "currency": "EUR", "regular": 19.99}}}
+        data["fx"] = {"rates": {"EUR": 1.0}, "updated": ""}
+        data["items"] = {}
+        settings = store.load_settings()
+        m = planner.membership(data, settings, now=days(800))
+        v = {x["key"]: x for x in m["variants"]}
+        de = next(r for r in v["m1"]["rows"] if r["code"] == "DE")
+        self.assertEqual((de["low_eur"], de["low_since"]), (3.99, days(0).isoformat(timespec="seconds")))
+        self.assertNotIn("low_since", next(r for r in v["m12"]["rows"] if r["code"] == "DE"))
+
     def test_until_setting(self):
         self.assertEqual(store.save_settings({"nso_until": "2027-02-03"})["nso_until"], "2027-02-03")
         self.assertEqual(store.save_settings({"nso_until": "morgen"})["nso_until"], "2027-02-03")

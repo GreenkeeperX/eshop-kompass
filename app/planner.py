@@ -100,8 +100,6 @@ def offer_checks(data, settings, pay, now=None):
     return out
 
 
-
-
 def _context(data, settings, now=None, include_all=False):
     cache = getattr(_shared, "cache", None)
     if cache is None:

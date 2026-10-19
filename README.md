@@ -370,7 +370,8 @@ Länderliste („Alle Länder für …“) ist zugeklappt: je aktivem Land der E
 bei Spielen, je Monat, der Shop-Preis, Angebote und ob das Land dein Konto ist oder im
 Kaufplan steht. Zeichen wie bei Titeln: ★ am Bestpreis der letzten 24 Monate, Preis grün nach
 Urteil, Abstand zum Bestpreis rot; der Preis führt in den eShop des Landes, „DekuDeals“ zum
-Preisverlauf. Das Ablaufdatum trägst du im Kasten ein, ebenso weitere Angebote („Weiteres
+Preisverlauf. 1 Monat und Erweiterungspaket Familie führt DekuDeals nicht; ihren Tiefstpreis
+zeichnet das Tool selbst auf, der Tooltip nennt, seit wann. Das Ablaufdatum trägst du im Kasten ein, ebenso weitere Angebote („Weiteres
 Angebot eintragen“, siehe [Eigene Angebote](#eigene-angebote-codes)). In den Korb oder in einen
 Kaufplan-Schritt kommt eine Variante über „Titel dazunehmen …“; von selbst nimmt der Plan sie
 nie auf.

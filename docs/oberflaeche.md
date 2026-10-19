@@ -75,7 +75,7 @@ Kauftitel; bei Pässen ohne eigenen Namen „Spiel: Upgrade Pack“ (ab 0.79). N
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
 Ablauf offen und eine Zeile unter „Zu erledigen“; Land und Preis darin und „ansehen“ springen zum Kasten). Eine einzige Auswahl (ab 0.61): Die
 markierte Variante (fett, Zeile hinterlegt; der Chip „deine“ fiel 0.62.1 weg) ist deine; ein Klick auf eine andere macht
-sie zu deiner und zeigt ihre Länder. Angebote von Hand (etwa Amazon-Codes) stehen als eigene Zeile
+sie zu deiner und zeigt ihre Länder. Der Tooltip am Preis nennt den Tiefstpreis der letzten 24 Monate; bei 1 Monat und Erweiterungspaket Familie kommt er aus der eigenen Aufzeichnung und trägt „(eigene Aufzeichnung seit TT.MM.JJJJ)“ (ab 0.87, `nsoPrice`). Angebote von Hand (etwa Amazon-Codes) stehen als eigene Zeile
 mit Chip „Amazon-Code“ und dem Prüfstand des Links (ab 0.62.1, `offerNote`, überall gleich): grau
 „gelesen TT.MM.“ oder „wird gelesen“; violett „Link zeigt 45,66 €“ (andere Währung), „Link liest x,
 passt nicht“ (mehr als 40 % Abstand), „Link nicht lesbar“, „Link länger nicht gelesen“, jeweils mit

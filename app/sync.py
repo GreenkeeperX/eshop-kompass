@@ -54,6 +54,7 @@ EXTRA_PER_SYNC = 40                   # Artikelseiten je Abgleich für IDs fehle
 NSO_RECHECK = 30 * 24 * 3600          # eShop-IDs der Online-Mitgliedschaft: monatlich prüfen
 NSO_RETRY = 7 * 24 * 3600             # Land ohne ID auf der Seite: wöchentlich erneut
 NSO_PER_SYNC = 20                     # höchstens so viele Mitgliedschaftsseiten je Abgleich
+NSO_OWN_DAYS = 730                    # eigener Tiefstpreis der Mitgliedschaft: so viele Tage zurück
 # Nintendos Mitgliedschaftsseite je Region (ab 0.58): Land und Sprache der gelesenen Seite
 NSO_PAGES = {"EU": ("DE", "de"), "AM": ("US", "en"), "JP": ("JP", "ja")}
 
@@ -436,6 +437,32 @@ def sync_nso_pages(data, shops, fetch, sleep, now):
         _log("Mitgliedschaft, Nintendos Seite: " + ", ".join(notes))
 
 
+def _track_nso(data, history, code, table, stamp, now=None):
+    """Varianten der Mitgliedschaft, die DekuDeals nicht führt (1 Monat, Familie mit
+    Erweiterungspaket), bekommen ihren Tiefstpreis aus der eigenen Aufzeichnung (0.87): wie bei
+    Titeln der tiefste Preis der letzten 24 Monate, aufgezeichnet unter nso-<Variante> in history.json.
+    own_since sagt, seit wann aufgezeichnet wird."""
+    now = now or datetime.now(timezone.utc)
+    since = (now - timedelta(days=NSO_OWN_DAYS)).isoformat(timespec="seconds")
+    hist = history.setdefault(code, {})
+    var = data.setdefault("nso", {}).setdefault("v", {})
+    for v in planner.NSO_VARIANTS:
+        if v["slug"]:
+            continue
+        o = planner.offer(planner.nso_price(table, v["key"]), now)
+        if not o:
+            continue
+        cur = o["local"] / 100
+        series = hist.setdefault(planner.NSO_PREFIX + v["key"], [])
+        if not series or series[-1][1] != cur:
+            series.append([stamp, cur])
+        # Der Preis, der zu Beginn des Zeitraums galt, zählt mit
+        before = [x for d, x in series if d < since][-1:]
+        e = var.setdefault(v["key"], {})
+        e.setdefault("lows", {})[code] = min(before + [x for d, x in series if d >= since])
+        e.setdefault("own_since", {})[code] = series[0][0]
+
+
 def sync_prices(data, settings, fetch, sleep, history=None):
     # Abgeschaltete Länder laufen mit, solange die IDs ihrer Region bekannt sind:
     # ein Abruf je Land, dafür zeigt die Länderliste ihr Preisniveau.
@@ -504,6 +531,7 @@ def sync_prices(data, settings, fetch, sleep, history=None):
         data.setdefault("xprices", {})[code] = xtable     # fehlende DLC der Sammlung
         if nso_ids:
             data.setdefault("nso_prices", {})[code] = ntable  # Online-Mitgliedschaft
+            _track_nso(data, history, code, ntable, stamp)
         _track(data, history, code, table, stamp)
         buyable = sum(1 for p in table.values() if p["status"] == "onsale")
         if settings["countries"][code]["enabled"]:

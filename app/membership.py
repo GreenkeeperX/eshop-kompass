@@ -37,6 +37,9 @@ def membership(data, settings, now=None):
         vp = {code: {"nso": p} for code, t in prices.items() if (p := nso_price(t, v["key"]))}
         extra = [dict(x, idx=j) for j, x in enumerate(settings.get("nso_extra") or []) if x.get("key") == v["key"]]
         rows, champ = _membership_rows(data, settings, now, vp, e.get("lows") or {}, e.get("urls") or {}, current, v, extra)
+        if not v["slug"]:      # Tiefstpreis aus der eigenen Aufzeichnung (0.87): seit wann
+            for r in rows:
+                r["low_since"] = (e.get("own_since") or {}).get(countries.BY_CODE[r["code"]]["shop"]) if not r.get("src") else None
         out["variants"].append(dict({k: v[k] for k in ("key", "slug", "label", "months", "accounts")},
                                     family=bool(v.get("family")), rows=rows, champ=champ,
                                     best=next((r for r in rows if r["counts"]), None)))

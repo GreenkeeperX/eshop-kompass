@@ -67,7 +67,7 @@ function viewJetzt(){
 /* Bausteine einer Zeile der Mitgliedschaft, oben je Variante wie unten je Land (0.69) */
 function nsoPrice(r, v){
   const g = r.grade === "buy" ? "g-buy" : r.grade === "good" ? "g-good" : "";
-  const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}` : "kein Tiefstpreis bekannt"}${v.champ ? ` · Bestpreis ${eur(v.champ)} in ${r.champ_name || ""}` : ""}`;
+  const tip = `${r.est ? "geschätzt, ohne gelesenen Kartenpreis · " : ""}${r.low_eur !== null && r.low_eur !== undefined ? `Tiefstpreis 24 Monate hier ${eur(r.low_eur)}${r.low_since ? ` (eigene Aufzeichnung seit ${dmy(r.low_since)})` : ""}` : "kein Tiefstpreis bekannt"}${v.champ ? ` · Bestpreis ${eur(v.champ)} in ${r.champ_name || ""}` : ""}`;
   const price = `<span class="${g}" title="${esc(tip)}">${r.est ? "ca. " : ""}${eur(r.eur)}</span>`;
   return r.url ? `<a class="pl" href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(tip)} · Klick öffnet ${r.src ? esc(r.src) : `den eShop ${esc(r.name)}`}">${price}</a>` : price;
 }

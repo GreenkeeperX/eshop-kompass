@@ -30,10 +30,7 @@ Derzeit nichts offen.
 
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 
-- [ ] **Käufe:** Ablaufdatum der Online-Mitgliedschaft aus dem letzten Kauf vorschlagen (nie von selbst).
-- [ ] **Weitere Bezugsquellen** wie Händler-Codes, nur wenn sie regelmäßig günstiger sind.
-- [ ] **Mitgliedschaft:** Tiefstpreise für 1 Monat und Erweiterungspaket Familie.
-- [ ] **Rückblick:** Was hat der Kompass im Jahr gespart, welche Länder haben sich gelohnt?
+Derzeit nichts offen.
 
 ## Risiken
 
@@ -43,7 +40,7 @@ Derzeit nichts offen.
 - **Nintendos Preisschnittstelle** ist nicht offiziell.
 - **Shopseiten mit Prüfseiten** (Amazon) können jederzeit unlesbar werden; dann gilt der
   eingetragene Preis.
-- **Wartung:** Planer und Oberfläche haben je rund 3000 Zeilen, der Abgleich rund 2300; die Oberfläche prüfen nur
+- **Wartung:** Der Abgleich hat rund 2300 Zeilen in einer Datei; die Oberfläche prüfen nur
   Vertrags- und Breitentests, keine Abläufe.
 
 ## Ohne Arbeit für uns
@@ -66,7 +63,11 @@ Derzeit nichts offen.
   - ein Feld für den tatsächlich bezahlten Betrag,
   - gg.deals (Cloudflare sperrt jeden Abruf).
 - **Gestrichen (Entscheidung 19.10.2026):** Kleinteile wie Kostüme zusammenfassen; die Einzelteile
-  bleiben, wie sie sind. Ebenso die „Heute“-Zeile; „Zu erledigen“ deckt sie ab.
+  bleiben, wie sie sind. Ebenso die „Heute“-Zeile; „Zu erledigen“ deckt sie ab. Ebenso: das
+  Ablaufdatum der Mitgliedschaft aus dem Kaufverlauf (dort steht keine Laufzeit, der Betrag passt
+  wegen Punkten und Codes oft zu keiner Variante), ein Rückblick über die Ersparnis, weitere
+  Bezugsquellen wie Händler-Codes und das Alter der Angaben direkt an der Rechnung (der Tooltip
+  genügt).
 - **Gestrichen (Entscheidung 13.10.2026):** Das Tool bleibt ein privates Werkzeug auf dem
   eigenen Server. Damit entfallen:
   - die Sprache der Oberfläche,
@@ -80,7 +81,5 @@ Neue Wünsche, noch nicht eingeordnet.
 
 - [ ] **Käufe mit anderer Programm-ID in Amerika:** Manche Spiele haben in Japan eine andere
   Programm-ID als in den USA (anderer Verlag), dann fehlt der englische Name; bisher „zuweisen“.
-- [ ] **Alter der Angaben an der Rechnung:** Wechselkurs, Kartenpreis und Sprache mit Datum direkt
-  am Ergebnis (heute nur in der Selbstprüfung oben und in Tooltips).
 - [ ] **Tastatur und Bildschirmleser:** Symbolknöpfe (+, ✓, ×, ↺, ✎) mit zugänglichem Namen, Fokus im
   Verlaufsdialog.
