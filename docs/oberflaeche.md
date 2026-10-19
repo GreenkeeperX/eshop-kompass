@@ -150,6 +150,12 @@ Kopfzeile sitzt an der gemessenen Höhe der ersten (`--grp`), ohne Spalt.
 
 Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü abhebt.
 
+Hinweise über den Ansichten (`.banner`, `banners()`), in dieser Reihenfolge: fehlender
+Wishlist-Link oder noch kein Abgleich, „**Notbetrieb:**“ (ab 0.84, `S.state.fallback`: DekuDeals
+gesperrt bis Datum und Uhrzeit, nicht lesbar mit Fehler oder Wishlist länger als drei Tage nicht
+gelesen; nennt das Datum der Listen und dass Preise, Kurse und Kartenpreise aktuell sind),
+Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
+
 ## Lesezeichen
 
 - Ein Lesezeichen erscheint als Knopf zum Ziehen mit durchgezogenem Rahmen (⠿ Name) mit „Code kopieren“

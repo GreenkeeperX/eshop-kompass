@@ -30,8 +30,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   eines Preises zeigt die Rechnung (statt Wissen nur im Tooltip; hilft auch bei Tastatur).
 - [ ] **Code aufteilen.** Die Oberfläche in mehrere Dateien ohne Build, der Planer in Bewertung,
   Karten und Plan.
-- [ ] **Notbetrieb.** Festlegen und zeigen, was läuft, wenn DekuDeals sperrt oder seine Seiten
-  ändert.
 
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 
@@ -43,7 +41,8 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 ## Risiken
 
 - **DekuDeals** liefert Wishlist, Sammlung, IDs, Tiefstpreise, DLC und Pakete. Ändert es seine
-  Seiten oder sperrt es, bleiben nur die Preise (siehe Notbetrieb).
+  Seiten oder sperrt es, rechnet das Tool mit den zuletzt gelesenen Listen weiter und zeigt
+  „Notbetrieb“; neue Wishlist-Titel kommen dann nicht hinzu.
 - **Nintendos Preisschnittstelle** ist nicht offiziell.
 - **Shopseiten mit Prüfseiten** (Amazon) können jederzeit unlesbar werden; dann gilt der
   eingetragene Preis.

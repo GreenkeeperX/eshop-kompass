@@ -954,6 +954,15 @@ function banners(){
     h += `<div class="banner">Trage unter Einstellungen deinen DekuDeals-Wishlist-Link ein und klicke auf Aktualisieren.</div>`;
   else if(!S.state.last_sync && !st.running)
     h += `<div class="banner">Noch kein Abgleich. Der erste Lauf sucht die Titel-IDs und dauert einige Minuten.</div>`;
+  // Notbetrieb (0.84): DekuDeals gesperrt oder nicht lesbar, das Tool rechnet mit den zuletzt gelesenen Listen
+  const fb = S.state.fallback;
+  if(fb && !st.running){
+    const when = fb.wishlist_at ? `vom ${esc(dmy(fb.wishlist_at))}` : "vom letzten Lesen";
+    const why = fb.until ? `DekuDeals hat gesperrt und ruht bis ${esc(dmy(fb.until))}, ${esc(clock(new Date(fb.until)))}`
+      : fb.error ? `DekuDeals ist gerade nicht lesbar (${esc(fb.error)})` : `Die Wishlist wurde seit ${when.replace("vom ", "dem ")} nicht mehr gelesen`;
+    h += `<div class="banner"><b>Notbetrieb:</b> ${why}. Es gelten Wishlist und Sammlung ${when}, Tiefstpreise, DLC und Pakete vom letzten Lesen; Preise, Kurse und Kartenpreise sind aktuell.
+      <button class="link" data-act="showlog">Protokoll öffnen</button></div>`;
+  }
   const warn = ((S.state.checks || {}).warnings || []);
   if(warn.length && !st.running)
     h += `<div class="banner">Selbstprüfung nach dem letzten Abgleich: ${warn.map(esc).join(" · ")}.

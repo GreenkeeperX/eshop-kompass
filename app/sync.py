@@ -117,9 +117,13 @@ def sync_wishlist(data, settings, fetch, sleep):
         # Eine Quelle bricht nie den ganzen Abgleich ab (0.64): Preise und Kurse kommen
         # trotzdem, mit der zuletzt gelesenen Liste
         _log(f"Wishlist nicht lesbar (HTTP {e.status or 'Fehler'}), es gilt die zuletzt gelesene mit {known} Titeln")
+        data["wishlist_err"] = f"HTTP {e.status}" if e.status else "Seite nicht lesbar"
         return None
     if not slugs:
         raise RuntimeError("Wishlist ist leer")
+    # Notbetrieb (0.84): wann die Wishlist zuletzt gelesen wurde
+    data["wishlist_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    data.pop("wishlist_err", None)
     items = data["items"]
     for it in items.values():
         it["active"] = False
@@ -144,6 +148,7 @@ def sync_collection(data, settings, fetch, sleep):
         _log(f"Sammlung nicht lesbar ({str(e)[:80]})")
         return
     data["owned"] = owned
+    data["collection_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     both = [it["title"] for s, it in data["items"].items() if it.get("active") and s in set(owned)]
     _log(f"Sammlung: {len(owned)} Titel" +
          (f", davon noch auf der Wishlist: {', '.join(both[:8])}" if both else ""))
@@ -736,6 +741,29 @@ def _fx_age_days(updated, now):
             dt = dt.replace(tzinfo=timezone.utc)
         return (now - dt).total_seconds() / 86400
     return None
+
+
+FALLBACK_STALE_DAYS = 3      # so alt darf die gelesene Wishlist sein, bevor das Tool Notbetrieb meldet
+
+
+def fallback_state(data, now=None):
+    """Notbetrieb (0.84): Ist DekuDeals gesperrt oder nicht lesbar, rechnet das Tool mit der
+    zuletzt gelesenen Wishlist und Sammlung weiter; Preise, Kurse und Karten kommen wie
+    immer. None, solange alles normal läuft, sonst was die Oberfläche dazu sagt."""
+    now = now or time.time()
+    until = data.get("deku_wait") if (data.get("deku_wait") or 0) > now else None
+    err = data.get("wishlist_err")
+    at = data.get("wishlist_at")
+    stale = False
+    if at:
+        try:
+            stale = now - datetime.fromisoformat(at).timestamp() > FALLBACK_STALE_DAYS * 86400
+        except ValueError:
+            stale = False
+    if not (until or err or stale):
+        return None
+    return {"until": datetime.fromtimestamp(until, timezone.utc).isoformat(timespec="minutes") if until else None,
+            "error": err, "wishlist_at": at, "collection_at": data.get("collection_at")}
 
 
 def self_check(data, settings, now=None):

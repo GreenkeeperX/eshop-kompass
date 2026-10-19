@@ -753,6 +753,15 @@ Währungseinheit, der sich seit dem letzten Lauf um mehr als 15 % geändert hat,
 plötzlich weniger als die Hälfte der Titel kaufbar ist, und Wechselkurse, die älter als drei
 Tage sind. Auffälligkeiten stehen im Protokoll und als Hinweis über den Ansichten.
 
+### Notbetrieb
+
+Sperrt DekuDeals oder ist seine Wishlist nicht lesbar (etwa nach einem Umbau der Seiten), rechnet
+das Tool mit der zuletzt gelesenen Wishlist und Sammlung weiter, ebenso mit den bekannten
+Tiefstpreisen, DLC und Paketen. Preise, Wechselkurse und Kartenpreise kommen wie immer. Oben steht
+dann ein Hinweis „Notbetrieb“ mit dem Grund (Sperre bis wann, oder der Fehler) und dem Datum der
+Listen. Er erscheint auch, wenn die Wishlist länger als drei Tage nicht gelesen wurde, und
+verschwindet beim ersten Abgleich, der sie wieder liest.
+
 ### Sicherheit
 
 Die Oberfläche nimmt Änderungen nur als JSON an; eine fremde Webseite kann so keine

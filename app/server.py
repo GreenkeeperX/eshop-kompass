@@ -53,6 +53,7 @@ def _state():
         "version": sources.VERSION,
         "last_sync": data.get("last_sync"),
         "checks": data.get("checks"),
+        "fallback": sync.fallback_state(data),
         "fx_updated": data["fx"].get("updated"),
         "item_count": sum(1 for it in data["items"].values() if it.get("active")),
         "matrix": planner.matrix(data, settings),

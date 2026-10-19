@@ -4040,6 +4040,17 @@ class FetchRulesTest(unittest.TestCase):
         self.assertIn("zuletzt gelesene", sync.status["log"][-1])
         with self.assertRaises(RuntimeError):            # ohne bekannte Liste geht es nicht
             sync.sync_wishlist({"items": {}}, settings, blocked, lambda s: None)
+        # Notbetrieb (0.84): Die Oberfläche sagt, dass mit der alten Liste gerechnet wird
+        self.assertEqual(data["wishlist_err"], "HTTP 403")
+        self.assertEqual(sync.fallback_state(data)["error"], "HTTP 403")
+        ok = lambda url, ua=None: page1 if url.endswith("page=1") else (_ for _ in ()).throw(sources.FetchError(url, 404))
+        sync.sync_wishlist(data, settings, ok, lambda s: None)
+        self.assertNotIn("wishlist_err", data)
+        now = datetime.fromisoformat(data["wishlist_at"]).timestamp()
+        self.assertIsNone(sync.fallback_state(data, now=now + 86400))
+        self.assertIsNotNone(sync.fallback_state(data, now=now + 4 * 86400))       # zu lange nicht gelesen
+        data["deku_wait"] = now + 3600
+        self.assertTrue(sync.fallback_state(data, now=now)["until"])
 
     def test_missing_low_section_keeps_known_low(self):
         settings = store.load_settings()
