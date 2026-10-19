@@ -2128,7 +2128,7 @@ class EshopHistoryTest(unittest.TestCase):
         self.imp([{"id": "", "title": "セレステ", "date": "2026-01-26"},
                   {"id": "", "title": "Algo desconhecido", "date": "2026-01-20"}], region="BR")
         lists = {"JP.ja": {"1": {"id": "0100AAA0", "name": "セレステ"}},
-                 "BR.pt": {}, "US.en": {"3": {"id": "0100AAA0", "name": "Celeste"}}}
+                 "BR.pt": {}, "DE.de": {}, "US.en": {"3": {"id": "0100AAA0", "name": "Celeste"}}}
         calls = []
 
         def fake(url):
@@ -2223,6 +2223,40 @@ class EshopHistoryTest(unittest.TestCase):
         self.assertEqual(rows["ほしのたび + ほしのたび 2"]["group"], "coll")
         self.assertEqual(rows["貓咪大冒險"]["eng"], "Cat Adventure™")
         self.assertEqual(sync._name_file("貓咪大冒險", "DE"), "HK.zh")
+
+    def test_latin_titles_also_in_german_list_and_owned_dlc(self):
+        # 0.81: Ein deutscher Kauftitel, gelesen, als das Konto in Brasilien stand, findet sich in der
+        # deutschen Liste. Ein DLC der Sammlung ohne bekannten Namen zählt über seine Kennung, auch
+        # wenn titledb ihn „Spiel: DLC“ nennt
+        self.imp([{"id": "", "title": "Katzenreise 2 – Kampfarena", "date": "2026-10-05"},
+                  {"id": "", "title": "【ファイター】ねこ", "date": "2026-10-04"}], region="BR")
+        lists = {"BR.pt": {}, "DE.de": {"70050000000011": {"id": "0100EEE0001", "name": "Katzenreise 2 – Kampfarena"}},
+                 "JP.ja": {"70050000000012": {"id": "0100FFF0001", "name": "【ファイター】ねこ"}},
+                 "US.en": {"1": {"id": "0100EEE0001", "name": "Cat Journey 2 - The Arena (Challenge Level)"},
+                           "2": {"id": "0100FFF0001", "name": "Bunny Brawl™: Cat Standalone Fighter"}}}
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return json.dumps(next((v for k, v in lists.items() if k in url), {}), ensure_ascii=False)
+        data = store.load_data()
+        data["owned"] = ["cat-journey-2", "bunny-brawl", "cat-standalone-fighter"]
+        data["rel"] = {"cat-journey-2": {"title": "Cat Journey 2",
+                                         "dlc": [["cat-journey-2-the-arena-challenge-level", "The Arena (Challenge Level)"]]},
+                       "bunny-brawl": {"title": "Bunny Brawl", "dlc": []}}
+        data["extra"] = {"cat-journey-2-the-arena-challenge-level": {"title": "The Arena (Challenge Level)",
+                                                                     "parent": "cat-journey-2", "ids": {}}}
+        sync.sync_eshop_names(data, fake, now=2e9)
+        self.assertEqual(sync._name_files("Katzenreise 2", "BR"), ["BR.pt", "DE.de"])
+        self.assertEqual(sync._name_files("Katzenreise 2", "AT"), ["DE.de"])
+        self.assertEqual(data["eshop_names"]["Katzenreise 2 – Kampfarena"][2], "BR.pt,DE.de")
+        rows = {r["title"]: r for r in planner.eshop_matches(data)["rows"]}
+        arena = rows["Katzenreise 2 – Kampfarena"]
+        self.assertEqual((arena["slug"], arena["group"]), ("cat-journey-2-the-arena-challenge-level", "plan"))
+        self.assertEqual((rows["【ファイター】ねこ"]["group"], rows["【ファイター】ねこ"]["coll"]), ("coll", "cat-standalone-fighter"))
+        n = len(calls)
+        sync.sync_eshop_names(data, fake, now=2e9 + 60)       # gefunden: kein neuer Abruf
+        self.assertEqual(len(calls), n)
 
     def test_names_compare_without_accents(self):
         # 0.76: „Pokemon“ im Kaufverlauf ist „Pokémon“; japanische Zeichen bleiben verschieden

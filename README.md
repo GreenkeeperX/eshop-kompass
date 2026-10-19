@@ -414,7 +414,8 @@ Edition. Was wegfällt, steht unter „Nicht im Plan“.
 der Zahl der Bestpreise (im Spaltenkopf mit ★), wahlweise nur nach Bestpreisen oder nur nach
 Stufe; Deutschland bleibt vorn, Länder, in denen gerade nichts zählt, am Ende. Angebote mit
 dem Urteil „kaufen“ sind dunkelgrün hinterlegt, „gut“ hellgrün; gold umrandet ist das Land, in
-dem es den Bestpreis gab. „Details“ zeigt in jeder Zelle Landestief, Angebotsende und Sprache.
+dem es den Bestpreis gab. Jede Zelle hat zwei Zeilen wie im Korb: oben Preis und rot der
+Abstand zum Bestpreis, darunter Rabatt und Marken. „Details“ zeigt in jeder Zelle Landestief, Angebotsende und Sprache.
 Die Tabelle füllt das Fenster und scrollt in sich, Kopfzeile und Titelspalte bleiben stehen.
 „nur Angebote“ blendet auch Länder ohne Angebot aus. Ist ein Titel überall kostenlos oder
 nirgends zu haben, steht statt lauter gleicher Zellen eine Zeile mit dem Grund. Der Landespreis
@@ -530,7 +531,7 @@ Betrag. Jeder Kauf landet von selbst in einer Gruppe:
 Kauftitel aus Japan und anderen Ländern stehen in der Sprache des Shops. Für Käufe, die offen
 oder unbekannt bleiben, sucht der Abgleich in titledb den Namen in der Liste des Konto-Landes
 (Titel mit japanischen Schriftzeichen immer in der japanischen Liste, auch wenn das Konto beim
-Lesen woanders stand),
+Lesen woanders stand; Titel in lateinischer Schrift zusätzlich in der deutschen Liste),
 nimmt dessen Programm-ID und daraus den englischen Namen aus der US-Liste (jede Liste höchstens
 einmal die Woche, je Kauf frühestens nach 30 Tagen wieder). Mit dem englischen Namen gleicht er dann wie
 oben ab; er steht grau hinter dem Kauftitel. Titel nur aus chinesischen Schriftzeichen sucht er in
@@ -542,7 +543,10 @@ Anfang des Kauftitels und die Art des Passes: „Spiel: Upgrade Pack“ findet d
 Führt DekuDeals ein Spiel nur als „… – Nintendo Switch 2 Edition“, zählen Spiel und Upgrade-Pass
 als dieser Eintrag. Käufe „A + B“ bekommen den englischen Namen aus beiden Teilen.
 
-Namen gleichen ohne Akzente ab: „Pokemon“ im Kaufverlauf ist „Pokémon“. Die Zeile über den
+Namen gleichen ohne Akzente ab: „Pokemon“ im Kaufverlauf ist „Pokémon“. Ein DLC in deiner
+Sammlung zählt auch, wenn titledb ihn „Spiel: DLC“ nennt und die Sammlung nur „DLC“, und auch
+dann, wenn das Tool zu einem Eintrag der Sammlung keinen Namen kennt (dann aus der Kennung bei
+DekuDeals). Die Zeile über den
 Abschnitten zählt die Käufe je Gruppe, „nicht in der Sammlung“ rot: Diese Käufe kennt das Tool
 nicht, der Plan könnte sie vorschlagen. „Welcher Titel ist das?“ und „Bei DekuDeals nachtragen“
 sind offen und lassen sich zuklappen, „Alle Käufe“ ist zu.
@@ -625,8 +629,9 @@ Preis nennt dann den günstigsten fehlenden DLC, „fehlende DLC dort ab“), mi
 und „Deutsch ja“/„nein“. Wo die Fassung gerade günstiger wäre, steht „günstiger“ und der Titel
 oben; was dort gerade nicht kaufbar ist, steht unten. Aufgeklappt folgen die geprüften,
 gruppiert nach Quelle (von Nintendo gelesen, laut titledb, von dir bestätigt). Die Spalte zeigt
-„✓ Deutsch“ oder „– ohne Deutsch“, der Tooltip nennt Quelle und gelesene Sprachen; Angaben aus
-titledb sind gepunktet unterstrichen. ✎ überschreibt eine gelesene Angabe, ↺ stellt sie wieder
+„✓ Deutsch“ oder „– ohne Deutsch“, der Tooltip nennt Quelle und gelesene Sprachen; „Deutsch“ ist
+grün, wenn Nintendo oder du es bestätigt habt, violett und gepunktet unterstrichen, wenn es nur
+laut titledb gilt. ✎ überschreibt eine gelesene Angabe, ↺ stellt sie wieder
 her. Von Hand gilt dauerhaft und geht der Angabe von Nintendo vor. Steht ein Titel weder auf
 der Wishlist noch in der Sammlung, löscht der Abgleich seine Angaben wieder.
 
@@ -635,7 +640,8 @@ mit JavaScript. Das Tool erkennt den Warteraum, hört auf und fragt die nächste
 nicht mehr an. Die Sprachen kommen stattdessen aus titledb (siehe [Abrufe](#abrufe)) und vom
 Browser-Helfer „JP-Sprachen lesen“: einem Lesezeichen, das in deinem Browser die Shopseiten der
 offenen Titel und der Titel mit Angabe aus titledb (zur Bestätigung) liest, die Liste steht
-im Kasten (eine Seite alle 2,5 Sekunden; die IDs bekommt es über den Link zu store-jp im
+im Kasten, je Seite mit allen Titeln, die sie klärt (DLC ohne eigene Seite stehen auf der ihres
+Spiels; deshalb können sechs Einträge zwei Seiten sein; eine Seite alle 2,5 Sekunden; die IDs bekommt es über den Link zu store-jp im
 Tool oder, wenn der Store sie unterwegs verliert, über ein kleines Fenster des Tools) und das
 Ergebnis ans Tool gibt. Zeigt eine DLC-Seite keine Sprachen, liest es die Seite des Spiels, auf
 die sie verweist. Angaben von Nintendo gehen titledb vor. Findet der Helfer unter einer ID keine

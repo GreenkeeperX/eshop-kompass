@@ -192,6 +192,9 @@ def _eshop_matches(data):
     coll_title, coll_toks = {}, {}
     for s in coll:
         t, game = known.get(s, (None, None))
+        # Ohne bekannten Namen (etwa DLC, die keine DekuDeals-Seite des Abgleichs nennt) aus der
+        # Kennung (0.81; vorher blieb so ein Titel der Sammlung beim Zuordnen unsichtbar)
+        t = t or pretty_slug(s)
         names = {_tnorm(t)} | ({_tnorm(f"{game} {t}")} if game else set())
         names.discard("")
         for n in names:
@@ -222,11 +225,22 @@ def _eshop_matches(data):
         return hit[0] if len(hit) == 1 else None
 
     def in_coll(title):
-        for t in (title, eng.get(title)):
+        e = eng.get(title) or ""
+        # DLC heißen in titledb „Spiel: DLC“, in der Sammlung oft nur „DLC“ (0.81): auch den Teil
+        # hinter dem Spielnamen versuchen
+        for t in (title, e):
             n = _tnorm(t)
             if n and n in coll_title:
                 return coll_title[n]
-        for t in (title, eng.get(title)):
+        part = re.split(r":\s|\s[-–]\s", e, maxsplit=1)
+        if len(part) == 2:
+            s = coll_title.get(_tnorm(part[1]))
+            # nur, wenn die Sammlung den DLC demselben Spiel zuordnet oder (Spiel unbekannt) der Name
+            # lang genug und kein Pass ist, sonst träfe „Upgrade Pack“ jedes Spiel
+            g = known.get(s, (None, None))[1]
+            if s and (_tnorm(g) == _tnorm(part[0]) if g else len(_tnorm(part[1]).split()) >= 3 and not _pass_kind(part[1])):
+                return s
+        for t in (title, e):
             w = set(_tnorm(t).split())
             if not w:
                 continue

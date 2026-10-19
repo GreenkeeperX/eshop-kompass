@@ -191,9 +191,9 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 #eshophist .eqhits{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px}
 #eshophist .eqhits button.sm{margin:0;font-weight:400}
 #eshophist details.eqf{margin:10px 0 0}
-#eshophist details.eqf > summary{font-weight:400}
+#eshophist details.eqf > summary{font-weight:400;color:var(--muted)}   /* grau wie andere Klappzeilen, nur die Zahl trägt Farbe (0.81) */
 #eshophist details.eqf > summary{cursor:pointer;font-size:13px}
-#eshophist .eqsum b.ink{color:var(--ink)}
+#eshophist b.ink{color:var(--ink)}
 #eshophist .eqsum{margin:8px 0 0}
 .list .pc col.c-l{width:140px}.list .pc col.c-b{width:70px}.list .pc col.c-e{width:80px}.list .pc col.c-d{width:80px}
 .list .pc .c-t{display:table-cell}
@@ -215,13 +215,13 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .cmp td small{display:block;color:var(--muted);font-size:11px}
 .cmp td small.inl{display:inline}
 .cmp tbody td:not(:first-child){white-space:nowrap}
-.cmp td.c-buy .abv.gap{color:var(--on-go)}
-.cmp .gap{font-size:11px}
-.cmp .kc{display:grid;grid-template-columns:1fr 1fr;column-gap:6px;align-items:baseline}
-.cmp .kp{text-align:right}
-.cmp .kg{text-align:left}
-.cmp .kl{display:flex;justify-content:center;gap:4px;margin-top:1px;line-height:1.2}
-.cmp .kl .pct{margin:0}
+.cmp td.c-buy .abv.gap,.matrix td.c-buy .abv.gap,.cmp td.c-buy .pct,.matrix td.c-buy .pct{color:var(--on-go)}
+.cmp .gap,.matrix .gap{font-size:11px}
+.kc{display:grid;grid-template-columns:1fr 1fr;column-gap:6px;align-items:baseline}
+.kp{text-align:right}
+.kg{text-align:left}
+.kl{display:flex;justify-content:center;gap:4px;margin-top:1px;line-height:1.2}
+.kl .pct{margin:0}
 /* Korb wie die Titel-Tabelle: fensterhoch, Kopfzeile bleibt stehen (0.61) */
 .cmp.fitbox{overflow:auto;max-height:calc(100vh - 150px)}
 .cmp thead th{position:sticky;top:0;background:var(--card);z-index:2}
@@ -255,11 +255,12 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .sbox .sx:hover{color:var(--ink)}
 .matrix{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
 .matrix td,.matrix th{padding:3px 6px}
+.matrix tbody td{vertical-align:top}   /* wie der Korb: zweite Zeile einer Zelle hängt unten an (0.81) */
 .matrix.scroll{overflow:auto;max-height:calc(100vh - 150px)}
 .matrix th{z-index:2}.matrix th:first-child{z-index:3}.matrix td:first-child{z-index:1}
 .matrix td:not(:first-child){white-space:nowrap}
 .matrix th{position:sticky;top:0;background:var(--card)}
-.matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);min-width:150px;max-width:210px;white-space:normal;box-shadow:1px 0 0 var(--line)}
+.matrix td:first-child,.matrix th:first-child{position:sticky;left:0;background:var(--card);min-width:210px;max-width:260px;white-space:normal;box-shadow:1px 0 0 var(--line)}
 /* „kaufen“ als kräftiges, aber dunkles Grün: Stern und DE✓ bleiben darauf lesbar (0.53) */
 .matrix td.c-buy,.cmp td.c-buy{background:var(--go-fill);color:var(--on-go);font-weight:600}
 .matrix td.c-buy small{color:var(--on-go);opacity:.85}
@@ -270,6 +271,7 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .matrix tr.grp th:first-child,.matrix tr.grp th:nth-child(2){border-bottom:0}
 .matrix thead tr:nth-child(2) th{top:calc(var(--grp,21px) - 1px)}
 .matrix.compact td{padding:2px 6px}
+.matrix td.l{text-align:left}   /* Grund statt Zellen („noch nicht erschienen“) stand rechts außerhalb des Bildes (bis 0.80) */
 .matrix .tbtn{font-size:13px}
 .matrix .tl{display:flex;gap:6px;align-items:flex-start}
 .pc table.others{table-layout:auto;width:100%}
@@ -2038,14 +2040,12 @@ function viewCompare(){
           champHere ? "Hier gab es den Bestpreis" : "", need ? needTip(p.code, need) : "",
           i.own && i.own.url ? `Klick öffnet ${i.own.src}` : url ? `Klick öffnet den eShop ${country(p.code).name}` : "Klick öffnet den Verlauf bei DekuDeals"].filter(Boolean).join(" · ");
         const price = `<a class="pl" href="${url || deku(slug, p.code)}" target="_blank" rel="noopener">${num(i.eur)}</a>`;
-        const marks = [i.sale ? `<span class="pct">−${i.pct}%</span>` : "", i.own ? ownMark(i) : "", need ? needMark(p.code, need) : "", langTag(i, false)].filter(Boolean);
+        const marks = cellMarks(i, need ? needMark(p.code, need) : "");
         return `<td class="${cls(p)}${g} ${champHere ? "champ" : ""} ${counts ? "" : "nc"} ${need === "need" ? "needr" : ""}" title="${esc(tip)}">` +
           // ★ nach dem Preis im Korb, nicht dem eines Einzelkaufs: Guthabenkarten teilen sich hier auf (0.65)
           // Zwei Zeilen (0.70): oben Preis | Abstand, die Fuge mittig in der Spalte, damit Preise und
           // Abstände untereinander stehen; darunter Rabatt und Marken
-          `<span class="kc"><span class="kp">${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}${price}</span>` +
-          `<span class="kg">${gap > 0.005 ? `<span class="abv gap">+${num(gap)}</span>` : ""}</span></span>` +
-          `${marks.length ? `<span class="kl">${marks.join("")}</span>` : ""}</td>`;
+          twoLine(`${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}`, price, gap, marks) + `</td>`;
       }).join("") + `</tr>`;
   }
   const row = (label, fn, extra) => `<tr class="${extra || ""}"><td>${label}</td><td></td>${cols.map(p => `<td class="${cls(p)}">${fn(p)}</td>`).join("")}</tr>`;
@@ -2078,6 +2078,13 @@ function viewCompare(){
   return h + hiddenLine();
 }
 
+/* Preiszelle in Tabelle und Korb (0.81, im Korb seit 0.70): oben Preis | rotes „+x“ über dem Bestpreis,
+   die Fuge mittig, damit Preise und Abstände untereinander stehen; darunter Rabatt und Marken */
+function twoLine(lead, price, gap, marks){
+  return `<span class="kc"><span class="kp">${lead}${price}</span><span class="kg">${gap > 0.005 ? `<span class="abv gap">+${num(gap)}</span>` : ""}</span></span>` +
+    (marks.length ? `<span class="kl">${marks.join("")}</span>` : "");
+}
+const cellMarks = (x, need) => [x.sale ? `<span class="pct">−${x.pct} %</span>` : "", x.own ? ownMark(x) : "", need, langTag(x, false)].filter(Boolean);
 /* ---------- Titel als Tabelle (bisher Preisvergleich) ---------- */
 function viewMatrix(){
   const mx = S.state.matrix, q = S.rq.toLowerCase(), f = S.vf || "all";
@@ -2127,8 +2134,13 @@ function viewMatrix(){
       const g = counts && x.sale && x.grade && x.grade !== "wait" ? "c-" + x.grade : "";
       const tip = compose(c.code, x) + (champ ? " · Hier gab es den Bestpreis" : "") +
         (x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht" : "") + (x.nocard ? " · ohne Guthabenkarte mit Preis: zählt nicht" : "") +
-        (needsRegion(r.dlc_of, c.code, r.slug) ? " · " + needTip(c.code, needsRegion(r.dlc_of, c.code, r.slug)) : "") + (x.low_eur !== null && x.low_eur !== undefined ? ` · Landestief ${eur(x.low_eur)}` : "") + (x.sale && x.end ? ` · Angebot bis ${dm(x.end)}` : "");
-      return `<td class="${g} ${champ ? "champ" : ""} ${counts ? "" : "nc"} ${needsRegion(r.dlc_of, c.code, r.slug) === "need" ? "needr" : ""}" title="${esc(tip)}">${star(x)}${ax(x)}${counts ? "" : `<span class="q">?</span>`}${priceLink(r.slug, c.code, num(x.eur), x, c.currency)}${x.sale ? `<span class="pct">−${x.pct}%</span>` : ""}${x.own ? " " + ownMark(x) : ""}${langTag(x, false)}` +
+        (needsRegion(r.dlc_of, c.code, r.slug) ? " · " + needTip(c.code, needsRegion(r.dlc_of, c.code, r.slug)) : "") +
+        (r.champ && !atBest(x.eur, r.champ.eur) ? ` · ${eur(x.eur - r.champ.eur)} über dem Bestpreis ${eur(r.champ.eur)} in ${country(r.champ.code).name}` : "") + (x.low_eur !== null && x.low_eur !== undefined ? ` · Landestief ${eur(x.low_eur)}` : "") + (x.sale && x.end ? ` · Angebot bis ${dm(x.end)}` : "");
+      // Zwei Zeilen wie im Korb (0.81; vorher eine Zeile ohne Abstand zum Bestpreis): oben Preis | +x,
+      // darunter Rabatt und Marken
+      const need = needsRegion(r.dlc_of, c.code, r.slug), gap = r.champ && !atBest(x.eur, r.champ.eur) ? x.eur - r.champ.eur : 0;
+      return `<td class="${g} ${champ ? "champ" : ""} ${counts ? "" : "nc"} ${need === "need" ? "needr" : ""}" title="${esc(tip)}">` +
+        twoLine(`${star(x)}${ax(x)}${counts ? "" : `<span class="q">?</span>`}`, priceLink(r.slug, c.code, num(x.eur), x, c.currency), gap, cellMarks(x, "")) +
         (det ? `<small>Landestief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}</small>${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}${x.nocard ? `<small>ohne Karte</small>` : x.lang === "unknown" ? `<small><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">Sprache?</button></small>` : ""}` : "") + `</td>`;
     }).join("") + `</tr>`)).join("");
   if(!rows.length) h += `<tr><td colspan="${cols.length + 2}" class="mut">Kein Titel passt zum Filter.</td></tr>`;
@@ -2357,11 +2369,12 @@ function langCell(t){
   const what = t.state ? "Deutsch ✓" : "ohne Deutsch";
   if(t.manual){
     const nin = t.nintendo === null ? "Nintendo liefert keine Angabe" : `${t.src === "titledb" ? "titledb" : "Nintendo"} sagt: ${t.nintendo ? "mit" : "ohne"} Deutsch`;
-    return `<span class="lg hand ${t.state ? "ok" : "bad"}" title="Von dir festgelegt. ${nin}">${what}</span>${act("", "↺", "Zurücksetzen: wieder die gelesene Angabe nehmen")}`;
+    return `<span class="lg hand ${t.state ? "gn" : "bad"}" title="Von dir festgelegt. ${nin}">${what}</span>${act("", "↺", "Zurücksetzen: wieder die gelesene Angabe nehmen")}`;
   }
   if(t.state !== null){
     const src = t.src === "titledb" ? "Laut titledb (offene Titelliste, nicht von Nintendo)" : "Von Nintendo gelesen";
-    return `<span class="lg ${t.state ? "ok" : "bad"}${t.src === "titledb" ? " tdb" : ""}" title="${src}: ${esc(langDe(t.text) || "–")}">${what}</span>` +
+    // Farben wie in der Zahlenzeile (0.81): grün von Nintendo oder dir, violett nur laut titledb
+    return `<span class="lg ${t.state ? (t.src === "titledb" ? "warnc" : "gn") : "bad"}${t.src === "titledb" ? " tdb" : ""}" title="${src}: ${esc(langDe(t.text) || "–")}">${what}</span>` +
       act(t.state ? 0 : 1, "✎", `Stimmt nicht? Klick setzt „${t.state ? "ohne Deutsch" : "Deutsch"}“, gilt dauerhaft und geht der gelesenen Angabe vor`);
   }
   return `<button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="1">Deutsch ja</button> <button data-act="lang" data-s="${esc(t.slug)}" data-f="${t.family}" data-v="0">nein</button>`;
@@ -2395,7 +2408,7 @@ function langSection(){
   if(done.length || auto.length)
   {
     const tdb = auto.filter(t => t.src === "titledb"), nin = auto.filter(t => t.src !== "titledb");
-    h += `<details data-k="langdone" ${S.folds.langdone ? "open" : ""}><summary class="hint" title="Zusammen ${auto.length + done.length}">Geprüft: <b class="gn">${nin.length}</b> von Nintendo gelesen${tdb.length ? `, <b class="warnc">${tdb.length}</b> laut titledb` : ""}, <b class="warnc">${done.length}</b> von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(srt(done), "Von dir bestätigt")}${group(srt(nin), "Von Nintendo gelesen")}${group(srt(tdb), "Laut titledb (nicht von Nintendo)")}</tbody></table></div></details>`;
+    h += `<details data-k="langdone" ${S.folds.langdone ? "open" : ""}><summary class="hint" title="Zusammen ${auto.length + done.length}">Geprüft: <b class="gn">${nin.length}</b> von Nintendo gelesen${tdb.length ? `, <b class="warnc">${tdb.length}</b> laut titledb` : ""}, <b class="gn">${done.length}</b> von dir bestätigt</summary><div class="scroll"><table>${head}<tbody>${group(srt(done), "Von dir bestätigt")}${group(srt(nin), "Von Nintendo gelesen")}${group(srt(tdb), "Laut titledb (nicht von Nintendo)")}</tbody></table></div></details>`;
   }
   return h;
 }
@@ -2515,7 +2528,7 @@ function eshopBox(){
   h += eshopKnown();
   // Offen: eine Zeile je Kauf, die Kandidaten als Knöpfe; ein Klick heißt „ja, dieser“
   // Zahlen wie bei „Geprüft“ in den Sprachen: violett, was dich braucht, grün, was erledigt ist (0.76)
-  const N = (n, cls) => `<b class="${cls || ""}">${n}</b>`;
+  const N = (n, cls) => `<b class="${cls || "ink"}">${n}</b>`;
   // Nicht in der Sammlung rot: Diese Käufe kennt das Tool nicht, der Plan könnte sie vorschlagen (0.77)
   const counts = ["ask", "plan", "coll", "unknown", "ticket", "void"]
     .map(g => [g, ESHOP_CLS[g], by(g).length]).filter(x => x[2]).map(([g, cls, n]) => `${N(n, cls)} ${ESHOP_GROUP[g]}`).join(", ");
@@ -2586,9 +2599,11 @@ function jpHelper(todo){
   const jp = todo.filter(t => t.family === "JP");
   if(!jp.length) return "";
   const ids = jpOpenIds(todo), rows = jpOpenRows(todo);
-  const names = [...new Map(rows.map(t => [t.nsuid, t])).values()]
-    .map(t => `<li>${esc(t.title)} <span class="mut">${t.src === "titledb" ? "laut titledb, zur Bestätigung" : "ohne Angabe"} · ${t.nsuid}</span></li>`).join("");
-  return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${ids.length} Titel ohne Angabe von Nintendo` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
+  // Eine Seite je ID; DLC ohne eigene Seite lesen die ihres Spiels mit (0.81: alle Titel je Seite nennen)
+  const pages = new Map();
+  rows.forEach(t => pages.set(t.nsuid, (pages.get(t.nsuid) || []).concat(t)));
+  const names = [...pages.entries()].map(([id, ts]) => `<li>${[...new Set(ts.map(t => t.title))].map(esc).join(", ")} <span class="mut">${ts.some(t => t.src !== "titledb") ? "ohne Angabe" : "laut titledb, zur Bestätigung"} · ${id}</span></li>`).join("");
+  return `<details class="box" data-k="jphelper" ${S.folds.jphelper ? "open" : ""}><summary><b>Browser-Helfer für Japan</b> <span class="mut">${ids.length ? `${rows.length} ${rows.length === 1 ? "Eintrag" : "Einträge"} ohne Angabe von Nintendo auf ${ids.length} ${ids.length === 1 ? "Seite" : "Seiten"}` : "alle Japan-Titel haben eine Angabe von Nintendo"}</span></summary>
     ${names ? `<p class="hint">Das Lesezeichen liest:</p><ul class="hint">${names}</ul>` : ""}
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("jp", jpHelperCode(location.origin))}</li>

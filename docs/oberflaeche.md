@@ -50,7 +50,7 @@ Ab 0.76 darunter eine Zahlenzeile wie „Geprüft“ bei den Sprachen („**12 K
 DekuDeals nachtragen, **54** in der Sammlung …“; „12 Käufe:“ fett in Textfarbe, offen und nachtragen
 violett, Sammlung grün, nicht in der Sammlung rot `.bad`, Mitgliedschaft und erstattet grau, ab 0.77), dann
 die drei Abschnitte als Klappzeilen (`details.eqf`, 13 px, kleiner als die Kartenüberschrift, ab 0.77) mit
-normalem Namen und fetter Zahl (ab 0.78; vorher alles fett) („Welcher Titel ist das? **3**“, „Bei DekuDeals nachtragen: **2**“, „Alle Käufe:
+normalem, grauem Namen und fetter Zahl (ab 0.78; vorher alles fett; grau ab 0.81, nur die Zahl trägt Farbe, bei „Alle Käufe“ Textfarbe) („Welcher Titel ist das? **3**“, „Bei DekuDeals nachtragen: **2**“, „Alle Käufe:
 **122** (zum Nachsehen und Zuweisen)“): „Welcher Titel ist
 das?“ und „Bei DekuDeals nachtragen“ von Haus aus offen (gemerkt wird das Zuklappen, `data-kc`),
 „Alle Käufe“ zu.
@@ -267,8 +267,12 @@ Aktion (Korb leeren). Auswahlfelder „Titel dazunehmen …“ gruppieren nach U
 die Online-Mitgliedschaft mit allen Varianten (ab 0.69; im Korb als Zeile mit Link zum Kasten, ohne Sprachmarke).
 Sammlung: Der Filter ignoriert Akzente, Satzzeichen und Leerzeichen („pokemon“ findet „Pokémon“, ab 0.69)
 und klappt „Ohne offene DLC“ und „Ohne Zusatzinhalte“ mit Treffern auf.
-Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen“, Zahl von Nintendo grün, andere Quellen
-(titledb, von dir) violett. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
+Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen, 6 laut titledb, 2 von dir bestätigt“, Zahlen von
+Nintendo und von dir grün, laut titledb violett (ab 0.81; vorher „von dir“ violett). Dieselben Farben
+in der Spalte der Tabelle darunter: „Deutsch ✓“ grün von Nintendo oder dir, violett mit gepunkteter
+Linie laut titledb, „ohne Deutsch“ rot (bis 0.80 immer gold). Der Browser-Helfer für Japan zählt
+Einträge und Seiten („6 Einträge ohne Angabe von Nintendo auf 2 Seiten“): DLC ohne eigene Seite
+lesen die Seite ihres Spiels mit, die Liste nennt je Seite alle Titel. Dort gerade nicht Kaufbares steht eingeklappt und zählt nicht als offen.
 Korb-Tabelle: Erklärung zugeklappt („So liest du den Korb“, ab 0.62.1), Spalte Bestpreis,
 Länder von leicht über mittel bis schwer, darin nach fehlenden Titeln und Preis (ab 0.69, vorher
 nur nach Preis), Vergleichsland vorn; Spaltenköpfe sortieren, Kopfzeile bleibt stehen und ist deckend: Länder ohne den ganzen Korb haben
@@ -278,11 +282,22 @@ eine): oben Preis | kleines rotes „+x“ über dem Bestpreis (`.kc`, Raster au
 Fuge mittig, damit Preise und Abstände untereinander stehen; `.abv.gap`), darunter mittig blauer Rabatt,
 Code-, DLC- und Sprachmarke (`.kl`); Zelle
 dunkel-/hellgrün nach Urteil, gold umrandet am Bestpreis. Landeswährung, Zahlweg und Ende im Tooltip.
+Die Zelle ist die Preiszelle (siehe unten), dieselbe wie in der Tabelle.
 Der Stern im Korb gilt dem Preis im Korb, nicht dem Einzelpreis (ab 0.65; in Ländern ohne
 eigenen Shop können beide abweichen).
 Der Preis öffnet den eShop, bei DLC den Verlauf bei DekuDeals (kein fester eShop-Link für DLC).
 Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Menü Hell/Dunkel liegt
 über der Sprungleiste der Einstellungen (Kopfleiste `z-index` 7).
+
+Preiszelle (Tabelle und Korb, `twoLine`, `cellMarks`; ab 0.81 auch in der Tabelle, die bis dahin eine
+Zeile ohne Abstand zum Bestpreis hatte): oben ★/≈/? und Preis | kleines rotes „+x“ über dem Bestpreis,
+die Fuge mittig in der Spalte; darunter mittig blauer Rabatt „−60 %“ (mit Leerzeichen wie überall),
+Händler-, DLC- und Sprachmarke. Auf dunkelgrüner Zelle („kaufen“) sind „+x“ und Rabatt in der Schrift
+der Zelle, sonst ginge Blau auf Grün unter. Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
+breit, in beiden Ansichten gleich. Eine Zeile mit Grund statt Zellen („noch nicht erschienen“) steht
+links (bis 0.80 rechtsbündig und damit außerhalb des Bildes). Wo nur ein Land gezeigt wird (Plan-Schritt,
+Länderkarte), stehen dieselben Angaben in eigenen Spalten (Einkaufspreis mit Rabatt, „über Bestpreis“), in
+der Wishlist-Liste zweizeilig je Spalte.
 
 Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel hinzufügen“ stehen in einer Zeile, die
 „Rechnung“ darunter in eigener Zeile; Aufklappen schiebt so nichts zur Seite (ab 0.58).
@@ -308,7 +323,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/index.html`.
 | Was | Wo es vorkommt |
 |---|---|
 | Titelname mit DLC-Marke, Spiel grau davor (nicht in der Wishlist-Liste), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
-| Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle (Zellen in `viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
+| Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
 | Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt (`planpick`, `planfill`), Länderkarte (`pick`, `add`, `trim`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |

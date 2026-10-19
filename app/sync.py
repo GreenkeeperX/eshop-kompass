@@ -953,6 +953,16 @@ def _name_file(title, region):
     return ESHOP_NAME_FILES.get(str(region or "").upper())
 
 
+def _name_files(title, region):
+    """Alle Listen, in denen ein Kauftitel gesucht wird, in dieser Reihenfolge. Lateinische Titel
+    auch in der deutschen Liste (0.81): Ein deutscher Kauf, gelesen, als das Konto in Brasilien
+    stand, stand sonst nur in der brasilianischen Liste zur Wahl."""
+    f = _name_file(title, region)
+    if _KANA_KANJI.search(str(title or "")) or f == "DE.de":
+        return [f] if f else []
+    return [x for x in (f, "DE.de") if x]
+
+
 def sync_eshop_names(data, fetch, now=None):
     """Englische Namen für Käufe, die das Tool nicht zuordnen kann (Gruppe unbekannt oder offen):
     Name → Programm-ID in der Liste des Konto-Landes, Programm-ID → Name in der US-Liste. Lädt
@@ -971,17 +981,20 @@ def sync_eshop_names(data, fetch, now=None):
             names.pop(t)
         data["eshop_names_files"] = {}
         data["eshop_names_v"] = 1
-    want = {}
+    want, order = {}, {}
     for r in planner.eshop_matches(data)["rows"]:
         e, t = entries.get(r["key"]) or {}, r.get("title")
-        f = _name_file(t, e.get("region"))
+        fs = _name_files(t, e.get("region"))
         old = names.get(t)
-        # Ohne Treffer erst nach 30 Tagen wieder, außer die Liste ist eine andere als beim letzten
-        # Versuch (bis 0.75 nahm das Tool immer die Liste des Kontolands, auch für japanische Titel)
-        if r["group"] not in ("unknown", "ask") or not f or not t or \
-                (old and (old[0] or (len(old) > 2 and old[2] == f and now - old[1] < ESHOP_NAME_RECHECK))):
+        # Ohne Treffer erst nach 30 Tagen wieder, außer die Listen sind andere als beim letzten
+        # Versuch (bis 0.75 nahm das Tool immer die Liste des Kontolands, auch für japanische Titel;
+        # bis 0.80 lateinische Titel nur dort, ohne die deutsche Liste)
+        if r["group"] not in ("unknown", "ask") or not fs or not t or \
+                (old and (old[0] or (len(old) > 2 and old[2] == ",".join(fs) and now - old[1] < ESHOP_NAME_RECHECK))):
             continue
-        want.setdefault(f, set()).add(t)
+        order[t] = fs
+        for f in fs:
+            want.setdefault(f, set()).add(t)
     if not want:
         return
     # Die Woche Ruhe gilt je Liste: Eine Liste, die noch nicht geladen wurde (etwa Japan neben dem
@@ -1006,17 +1019,24 @@ def sync_eshop_names(data, fetch, now=None):
             return
     _step("Englische Namen gekaufter Titel aus titledb")
     try:
-        apps, used, hits = {}, {}, {}
+        found_in = {}
         for f, titles in sorted(want.items()):
             parts = {t: _PLUS.split(t) for t in titles if len(_PLUS.split(t)) > 1}
             look = sources.fetch_titledb_lookup(f, set(titles) | {x for p in parts.values() for x in p}, fetch=fetch)
             for t in titles:
-                hits[t] = look.get(sources.name_key(t)) or {}
-                apps[t] = hits[t].get("app")
-                used[t] = f
+                h = dict(look.get(sources.name_key(t)) or {})
                 ps = [(look.get(sources.name_key(x)) or {}).get("app") for x in parts.get(t, ())]
-                if not apps[t] and ps and all(ps):
-                    hits[t]["parts"] = ps          # „A + B“: beide einzeln, englisch wieder mit „ + “
+                if not h.get("app") and ps and all(ps):
+                    h["parts"] = ps                # „A + B“: beide einzeln, englisch wieder mit „ + “
+                found_in.setdefault(t, {})[f] = h
+        # Je Titel der erste Treffer in der Reihenfolge der Listen (Land beim Lesen vor Deutschland)
+        apps, used, hits = {}, {}, {}
+        for t, per in found_in.items():
+            fs = [f for f in order[t] if f in per]
+            hits[t] = next((per[f] for f in fs if per[f].get("app") or per[f].get("parts")),
+                           next((per[f] for f in fs if per[f]), {}))
+            apps[t] = hits[t].get("app")
+            used[t] = ",".join(order[t]) if len(fs) == len(order[t]) else ",".join(fs)
         found = {a for a in apps.values() if a} | {h["pre"][0] for h in hits.values() if h.get("pre")} | \
             {a for h in hits.values() for a in h.get("parts", ())}
         eng = sources.fetch_titledb_names("US.en", apps=found, fetch=fetch)[1] if found else {}
