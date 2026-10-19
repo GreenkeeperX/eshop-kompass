@@ -73,7 +73,7 @@ Kauftitel; bei Pässen ohne eigenen Namen „Spiel: Upgrade Pack“ (ab 0.79). N
 ## Online-Mitgliedschaft
 
 Kasten unter dem Kaufplan, zugeklappt, solange die Verlängerung nicht ansteht (30 Tage vor
-Ablauf offen und eine Zeile unter „Zu erledigen“ mit Sprung „zur Mitgliedschaft ↓“). Eine einzige Auswahl (ab 0.61): Die
+Ablauf offen und eine Zeile unter „Zu erledigen“ , Land und Preis darin und „ansehen“ springen zum Kasten). Eine einzige Auswahl (ab 0.61): Die
 markierte Variante (fett, Zeile hinterlegt; der Chip „deine“ fiel 0.62.1 weg) ist deine; ein Klick auf eine andere macht
 sie zu deiner und zeigt ihre Länder. Angebote von Hand (etwa Amazon-Codes) stehen als eigene Zeile
 mit Chip „Amazon-Code“ und dem Prüfstand des Links (ab 0.62.1, `offerNote`, überall gleich): grau
