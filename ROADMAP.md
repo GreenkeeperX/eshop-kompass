@@ -53,7 +53,7 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 - **Nintendos Preisschnittstelle** ist nicht offiziell.
 - **Shopseiten mit Prüfseiten** (Amazon) können jederzeit unlesbar werden; dann gilt der
   eingetragene Preis.
-- **Wartung:** Planer und Oberfläche haben je rund 2600 Zeilen; die Oberfläche prüfen nur
+- **Wartung:** Planer und Oberfläche haben je rund 3000 Zeilen, der Abgleich rund 2300; die Oberfläche prüfen nur
   Vertrags- und Breitentests, keine Abläufe.
 
 ## Ohne Arbeit für uns
@@ -88,3 +88,7 @@ Neue Wünsche, noch nicht eingeordnet.
 
 - [ ] **Käufe mit anderer Programm-ID in Amerika:** Manche Spiele haben in Japan eine andere
   Programm-ID als in den USA (anderer Verlag), dann fehlt der englische Name; bisher „zuweisen“.
+- [ ] **Alter der Angaben an der Rechnung:** Wechselkurs, Kartenpreis und Sprache mit Datum direkt
+  am Ergebnis (heute nur in der Selbstprüfung oben und in Tooltips).
+- [ ] **Tastatur und Bildschirmleser:** Symbolknöpfe (+, ✓, ×, ↺, ✎) mit zugänglichem Namen, Fokus im
+  Verlaufsdialog.
