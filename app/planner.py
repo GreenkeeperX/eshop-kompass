@@ -1348,7 +1348,10 @@ def _trims(ctx, c, chosen, total, base, pay, ref, must):
 
 def _fillers(ctx, c, chosen, total, base, pay, has_cards, ref):
     offers = c["offers"]
-    cand = [s for s in ctx.order if s in offers and s not in chosen and s in ref]
+    # Nur Titel, die hier höchstens „gut“ über ihrem Bestpreis liegen (0.77, Entscheidung 19.10.2026):
+    # Was heute spart, aber weit über dem Bestpreis liegt, wäre im nächsten Angebot günstiger
+    cand = [s for s in ctx.order if s in offers and s not in chosen and s in ref
+            and ctx.grade(ctx.oeur(c, offers[s]), s) in ("buy", "good", None)]
 
     def rate_combo(slugs):
         add = sum(offers[s]["local"] for s in slugs if offers[s].get("direct") is None)

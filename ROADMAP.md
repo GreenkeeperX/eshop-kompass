@@ -86,8 +86,5 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 Neue Wünsche, noch nicht eingeordnet.
 
-- [ ] **„Passt dazu“ am Bestpreis ausrichten?** Bisher zählt nur, was ein Titel heute spart; der
-  Abstand zum Bestpreis steht klein daneben. Offen, ob Vorschläge weit über dem Bestpreis wegfallen
-  oder nach unten rutschen sollen.
 - [ ] **Käufe ohne titledb-Namen:** Upgrade-Pässe für die Switch 2, Erweiterungspässe und Titel in
   chinesischer Schrift fehlen in den Listen; Ausweg bisher „zuweisen“ von Hand.

@@ -435,6 +435,18 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(first["slugs"], ["nidhogg-2"])
         self.assertAlmostEqual(first["extra"], 9.50 - 7.80)   # 50er statt 15+25
         self.assertAlmostEqual(first["rest"], 50 - 45.09)
+        self.assertIsNotNone(first["champ"])
+        # 0.77: Ein Füllartikel weit über seinem Bestpreis fällt weg, auch wenn er heute spart
+        real = planner.Context._champions
+
+        def cheap(ctx):
+            real(ctx)
+            e, code, est = ctx.champ_all["nidhogg-2"]
+            ctx.champ_all["nidhogg-2"] = (e / 3, code, est)
+        self.settings["deal_eur"] = {"buy": 0, "good": 0}   # sonst gilt der billige Titel bis 2 € darüber als gut
+        with mock.patch.object(planner.Context, "_champions", cheap):
+            br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
+        self.assertNotIn("nidhogg-2", [x for f in br["fillers"] for x in f["slugs"]])
 
     def test_override_and_balance(self):
         self.only_sales()

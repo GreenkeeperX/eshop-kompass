@@ -336,9 +336,10 @@ den Wishlist-Titel vor, der zusätzlich am meisten spart. „spart“ ist, was d
 Wechsel hierher kosten würde (im günstigsten zählenden Land gleicher oder leichterer Stufe oder im
 Kontoland), minus dem, was der Kauf hier mit ihm mehr kostet. Der Aufpreis ist oft kleiner als der
 Shop-Preis, weil die Guthabenkarten und der Rest einen Teil decken. Ein Klick nimmt ihn in den
-Schritt. „spart“ rechnet mit heutigen Preisen, nicht mit dem Bestpreis: Klein dahinter steht
-deshalb, ob der Titel hier gerade am Bestpreis ist oder wie viel darüber („+x € über Bestpreis“).
-Ein Vorschlag mit großem Abstand spart heute, wäre in einem späteren Angebot aber günstiger.
+Schritt. „spart“ rechnet mit heutigen Preisen. Vorgeschlagen werden nur Titel, die hier
+höchstens „gut“ über ihrem Bestpreis liegen (bis 15 % oder bis zur Grenze „gut“ unter Regeln);
+was heute spart, aber weit darüber liegt, wäre im nächsten Angebot günstiger. Klein hinter
+„spart“ steht, ob der Titel am Bestpreis ist oder wie viel darüber („+x € über Bestpreis“).
 
 **Gekauft:** „gekauft“ an einem Land vermerkt den Kauf im Kaufprotokoll
 (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort als Guthaben,
