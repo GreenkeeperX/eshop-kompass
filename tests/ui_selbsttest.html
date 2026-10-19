@@ -16,14 +16,14 @@ f.addEventListener("load", () => {
   const wait = () => { if(ready()) run(); else if(n++ < 100) setTimeout(wait, 100); else { res.errors.push("Zustand nicht geladen"); done(); } };
   const run = async () => {
     try{
-      // Jeder Reiter, dazu die Ansichten Tabelle und Korb der Wishlist und die Länderkarten (aus dem Kaufplan, ab 0.74 ohne Reiter)
+      // Jeder Reiter, dazu die Ansichten Tabelle und Korb (leer und mit Titeln) der Wishlist und die Länderkarten (aus dem Kaufplan, ab 0.74 ohne Reiter)
       const views = w.eval("TABS.map(x => x[0])").map(t => [t, t, ""])
-        .concat([["titel:tabelle", "titel", "S.tview = 'table'"], ["titel:korb", "titel", "S.tview = 'korb'"], ["laender", "laender", "S.landFocus = null; S.dense = true"], ["laender:liste", "laender", "S.dense = false"], ["laender:land", "laender", "S.landFocus = S.plans[0].code"]]);
+        .concat([["titel:tabelle", "titel", "S.tview = 'table'"], ["titel:korb", "titel", "S.tview = 'korb'"], ["titel:korb-voll", "titel", "S.ui.basket = [...S.state.matrix.rows].sort((a, b) => b.title.length - a.title.length).slice(0, 4).map(r => r.slug), loadPlans()"], ["laender", "laender", "S.landFocus = null; S.dense = true"], ["laender:liste", "laender", "S.dense = false"], ["laender:land", "laender", "S.landFocus = S.plans[0].code"]]);
       // Prüft erst den Prüfer: Ein absichtlich zu breiter Kasten muss auffallen
       const probe = w.document.createElement("div");
       probe.style.width = "700px"; probe.textContent = "Probe";
       for(const [name, t, before] of [["probe", "jetzt", ""]].concat(views)){
-        if(before) w.eval(before);
+        if(before) await w.eval(before);   // Korb mit Titeln (0.85): erst rechnen lassen
         w.go(t); await new Promise(r => setTimeout(r, 300));
         if(name === "probe") w.document.body.appendChild(probe);
         const d = w.document, vw = d.documentElement.clientWidth;

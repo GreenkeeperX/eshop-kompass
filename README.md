@@ -444,6 +444,11 @@ Urteil, rot nur der Abstand. Der Stern gilt dem Preis im Korb, denn die Titel te
 Landeswährung, Zahlweg und Angebotsende stehen im Tooltip. Der Preis öffnet den eShop, bei DLC
 den Verlauf bei DekuDeals, weil es für DLC keinen festen eShop-Link gibt.
 
+Am Handy (schmaler als 641 px) steht statt der breiten Tabelle ein Land nach dem anderen: oben die
+Auswahl des Landes mit seinem Einkaufspreis, vorgewählt das günstigste, darunter die Titel mit
+derselben Preiszelle und die Summen (Preis, Wechsel, Rest, Shop, Karten, Hinweise). Ein Tipp auf
+„Einkaufspreis“ klappt die Rechnung auf, die am Rechner im Tooltip steht.
+
 Unter dem Korb steht, was er kostet, wenn jeder Titel im günstigsten Land mit Kartenzahlung
 gekauft wird, sofern das günstiger ist als alles in einem Land. Dort kostet der Wechsel nichts,
 und es bleibt kein Rest.

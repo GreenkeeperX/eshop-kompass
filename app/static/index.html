@@ -238,7 +238,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 /* Länder ohne den ganzen Korb blass; farbige Zellen nicht, sonst trübt die Deckkraft ihre Schrift (0.68) */
 .cmp td.incomplete:not(.c-buy):not(.c-good){opacity:.6}
 .cmp thead th.incomplete{color:var(--muted)}  /* Kopf deckend: sonst scheint beim Scrollen die Tabelle durch */
-.cmp .x,.mini-t .x,.dg .x{border:0;background:none;padding:0 6px 0 0;color:var(--muted)}
+.cmp .x,.kpt .x,.mini-t .x,.dg .x{border:0;background:none;padding:0 6px 0 0;color:var(--muted)}
 .mini-t .x,.dg .x{padding:0 4px;font-size:13px}
 .cmp .fl{border:0;background:var(--bg);border-radius:6px;padding:1px 6px;font-size:11.5px;white-space:normal;text-align:right}
 .cmp .fl b{white-space:nowrap}
@@ -265,7 +265,7 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 /* „kaufen“ als kräftiges, aber dunkles Grün: Stern und DE✓ bleiben darauf lesbar (0.53) */
 .matrix td.c-buy,.cmp td.c-buy{background:var(--go-fill);color:var(--on-go);font-weight:600}
 .matrix td.c-buy small{color:var(--on-go);opacity:.85}
-.matrix td.c-buy .lgt.de,.cmp td.c-buy .lgt.de{color:var(--on-go);border-color:currentColor;opacity:.85}
+.matrix td.c-buy .lgt.de,.cmp td.c-buy .lgt.de,.kpt td.c-buy .lgt.de{color:var(--on-go);border-color:currentColor;opacity:.85}
 .matrix td.c-good,.cmp td.c-good{background:var(--go-bg)}
 .matrix td.nc,.cmp tbody td.nc{opacity:.6}
 .matrix tr.grp th{font-size:10px;padding:4px 6px 0;text-align:center;border-bottom:1px solid var(--line);top:0}
@@ -316,6 +316,15 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 @media (max-width:520px){.sugg button{flex-wrap:wrap}.sugg small{white-space:normal}#nsobox .mini-t{display:block;overflow-x:auto}}
 #nsobox{scroll-margin-top:12px}
 @media (max-width:640px){.cmp td:first-child,.cmp th:first-child{min-width:130px;max-width:150px}}
+/* Korb am Handy (0.85): ein Land nach dem anderen statt der breiten Tabelle */
+.kphone{display:none}
+@media (max-width:640px){.cmp.fitbox{display:none}.kphone{display:block}
+  .kphone select{max-width:100%}.kpt{width:100%;table-layout:fixed;border-collapse:collapse;margin:8px 0}
+  .kpt td:first-child{white-space:normal;overflow-wrap:anywhere}
+  .kpt td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}.kpt td+td{width:124px;text-align:center}
+  .kpt td.c-buy{background:var(--go-fill);color:var(--on-go);font-weight:600}.kpt td.c-good{background:var(--go-bg)}
+  .kpt td.c-buy .abv.gap,.kpt td.c-buy .pct{background:var(--go-mark);border-radius:3px;padding:0 3px;font-weight:400}
+  .kps>div,.kps>details{padding:4px 0;border-bottom:1px solid var(--line)}.kps .hint{margin:4px 0}}
 @media (max-width:640px){.list .pc .c-t,.list .pc col.c-t{display:none}.list .pc col.c-l{width:100px}
   .list .pc col.c-b{width:50px}.list .pc col.c-e{width:56px}.list .pc col.c-d{width:56px}}
 
@@ -1989,6 +1998,9 @@ function openLegend(){
 
 /* ---------- Länder: gemeinsamer Korb als Vergleichstabelle ---------- */
 function viewCompare(){
+  // Beim ersten Zeichnen sind die Körbe noch nicht gerechnet (0.85; vorher brach die Seite ab,
+  // wenn sie direkt in der Ansicht Korb geöffnet wurde)
+  if(!S.bplans) return `<p class="mut">Korb wird berechnet …</p>`;
   const inB = new Set(S.ui.basket);
   const opts = wishOpts(S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids), null, {code: null, skip: inB});
   const shown = S.bplans.filter(p => p.is_ref || !S.ui.hidden.includes(p.code));
@@ -2082,6 +2094,7 @@ function viewCompare(){
     }) +
     row("Hinweise", p => { const c = hurdles(p); return c.length ? c.join("<br>") : ""; }) +
     `</tfoot></table></div>`;
+  h += korbPhone(cols, win, order, rowOf, itemIn);
   if(mixWins)
     h += `<p class="restline"><b>Aufgeteilt auf Länder mit Kartenzahlung:</b> ${eur(S.mix.cost)}` +
       (single ? `, das sind ${eur(single.cost - S.mix.cost)} weniger als alles in ${esc(single.name)}` : "") + `. ` +
@@ -2089,6 +2102,44 @@ function viewCompare(){
   if(none.length)
     h += `<p class="restline">Korb dort nicht kaufbar: ` + none.map(p => esc(p.name)).join(" · ") + `</p>`;
   return h + hiddenLine();
+}
+
+/* Korb am Handy (0.85): statt der breiten Tabelle ein Land nach dem anderen. Oben die Auswahl mit
+   Preis je Land, darunter die Titel mit derselben Preiszelle und die Summenzeilen; die Rechnung
+   (sonst nur im Tooltip) klappt unter dem Einkaufspreis auf. Ab 641 px bleibt die Tabelle */
+function korbPhone(cols, win, order, rowOf, itemIn){
+  const n = S.ui.basket.length;
+  const pc = cols.find(p => p.code === S.korbLand) || win || cols[0];
+  const label = p => `${p.name} · ${p.missing.length ? `${p.items.length} von ${n}` : `${p.estimated ? "ca. " : ""}${eur(p.cost)}`}${win && p.code === win.code ? " · günstigstes" : ""}`;
+  let m = `<div class="kphone"><label class="f">Land <select data-act="korbland">${cols.map(p =>
+    `<option value="${p.code}" ${p === pc ? "selected" : ""}>${esc(label(p))}</option>`).join("")}</select></label><table class="kpt"><tbody>`;
+  for(const slug of order){
+    const r = rowOf(slug), i = itemIn(pc, slug);
+    let cell;
+    if(!i){
+      const miss = pc.missing.find(x => x.slug === slug);
+      cell = `<td class="na">${miss && miss.nolang ? "ohne DE" : "nicht kaufbar"}</td>`;
+    } else {
+      const ch = r.champ ? r.champ.eur : null, gap = ch !== null && !atBest(i.eur, ch) ? i.eur - ch : 0;
+      const counts = !i.nocard && i.lang !== "unknown";
+      const g = counts && i.sale && i.grade && i.grade !== "wait" ? "c-" + i.grade : "";
+      const need = i.needs_parent ? needsRegion(r.dlc_of, pc.code, slug) : "";
+      const url = i.own && i.own.url ? i.own.url : shopUrl(pc.code, i.nsuid);
+      cell = `<td class="${g} ${counts ? "" : "nc"}">` + twoLine(`${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}`,
+        `<a class="pl" href="${url || deku(slug, pc.code)}" target="_blank" rel="noopener">${num(i.eur)}</a>`, gap, cellMarks(i, need ? needMark(pc.code, need) : "")) + `</td>`;
+    }
+    m += `<tr><td><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>`}</td>${cell}</tr>`;
+  }
+  const line = (k, v) => v ? `<div><span class="mut">${k}</span> ${v}</div>` : "";
+  const gain = pc.is_ref ? `<span class="mut">Basis</span>` : pc.gain === null || pc.gain === undefined ? "" :
+    `${pc.current ? "Konto hier" : pc.worth ? "<b>✓ lohnt</b>" : `<b class="bad">lohnt nicht</b>`} <small>${pc.gain >= 0 ? "spart" : "kostet"} ${eur(Math.abs(pc.gain))}</small>`;
+  const hs = hurdles(pc);
+  m += `</tbody></table><div class="kps">` +
+    `<details><summary><b>Einkaufspreis ${pc.estimated ? "ca. " : ""}${eur(pc.cost)}</b> <span class="mut">Rechnung</span></summary><p class="hint">${esc(costTip(pc))}</p></details>` +
+    line("Preis", pc.opt_gap === null || pc.opt_gap === undefined ? "" : atBest(pc.optimum + pc.opt_gap, pc.optimum) ? `<span class="g-${pc.grade || "buy"}">am Bestpreis</span>` : `<span class="abv">+${eur(pc.opt_gap)}</span> <small>über der Bestpreis-Summe ${eur(pc.optimum)}</small>`) +
+    line("Wechsel", gain) + line("Rest", pc.is_ref ? "" : restHtml(pc, true)) + line("Shop", money(pc.total, pc.currency)) +
+    line("Karten", pc.cards.length ? cardsHtml(pc) : "") + line("Hinweise", hs.length ? hs.join("<br>") : "") + `</div></div>`;
+  return m;
 }
 
 /* Preiszelle in Tabelle und Korb (0.81, im Korb seit 0.70): oben Preis | rotes „+x“ über dem Bestpreis,
@@ -2917,6 +2968,7 @@ document.addEventListener("change", async e => {
       toast(`${nm} im Plan`);
     }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
+    else if(a === "korbland"){ S.korbLand = el.value; render(); }
     else if(a === "sort"){ S.lsort = el.value; saveView(); render(); }
     else if(a === "tsortsel"){ if(el.value){ const [k, dir] = el.value.split(":"); S.sorts[el.dataset.t] = {k, dir: +dir}; } else delete S.sorts[el.dataset.t]; saveView(); render(); }
     else if(a === "colorder"){ S.colOrder = el.value; saveView(); render(); }

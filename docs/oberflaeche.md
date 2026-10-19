@@ -251,6 +251,11 @@ Ab 0.75 sind die Titel eines Schritts und einer Länderkarte unter 520 px kleine
 Tabellenzeilen (`.pc table.it` mit `display:flex`): oben der Name, darunter fett der Einkaufspreis,
 der Abstand zum Bestpreis, dann grau beschriftet „bis“, „Shop“ und „sonst“ (`td[data-l]`).
 Ohne Angebot fällt „normal“ weg; die Spaltenköpfe und damit das Sortieren gibt es dort nicht.
+Ab 0.85 zeigt der Korb unter 641 px statt der Tabelle `korbPhone()` (`.kphone`, die Tabelle
+`.cmp.fitbox` ist dort ausgeblendet): Auswahl des Landes (`S.korbLand`, nicht gemerkt, sonst das
+günstigste), Titel mit „×“ und derselben Preiszelle `twoLine`/`cellMarks`, darunter die Summen als
+Zeilen; „Einkaufspreis“ ist eine Klappzeile mit der Rechnung aus `costTip()`, die sonst nur im
+Tooltip steht. Sortieren gibt es dort nicht.
 
 „Zu erledigen“ (Jetzt): je Eintrag ein fetter Kern („7 fehlende DLC kostenlos holen“), Einzelheiten
 klein dahinter, lange Listen eingeklappt („welche“). Die Legende erklärt jedes Zeichen, das die
@@ -335,9 +340,9 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/index.html`.
 
 | Was | Wo es vorkommt |
 |---|---|
-| Titelname mit DLC-Marke, Spiel grau davor (nicht in der Wishlist-Liste), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
-| Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
-| Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
+| Titelname mit DLC-Marke, Spiel grau davor (nicht in der Wishlist-Liste), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
+| Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
+| Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`, am Handy `korbPhone`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
 | Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt (`planpick`, `planfill`), Länderkarte (`pick`, `add`, `trim`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |

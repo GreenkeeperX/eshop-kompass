@@ -26,8 +26,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 ## Horizont 2: Überall nutzbar und wartbar
 
-- [ ] **Handy: Korb und Rechnung.** Korb mit Länder-Umschalter statt seitlichem Scrollen, Antippen
-  eines Preises zeigt die Rechnung (statt Wissen nur im Tooltip; hilft auch bei Tastatur).
 - [ ] **Code aufteilen.** Die Oberfläche in mehrere Dateien ohne Build, der Planer in Bewertung,
   Karten und Plan.
 
