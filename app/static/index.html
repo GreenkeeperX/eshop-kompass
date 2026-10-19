@@ -215,7 +215,9 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .cmp td small{display:block;color:var(--muted);font-size:11px}
 .cmp td small.inl{display:inline}
 .cmp tbody td:not(:first-child){white-space:nowrap}
-.cmp td.c-buy .abv.gap,.matrix td.c-buy .abv.gap,.cmp td.c-buy .pct,.matrix td.c-buy .pct{color:var(--on-go)}
+/* Auf dunkelgrüner Zelle bleiben Aufpreis rot und Rabatt blau, auf kleinem hellem Grund (0.81.1;
+   0.81.0 färbte sie in der Schrift der Zelle und brach damit die Farbregel) */
+.cmp td.c-buy .abv.gap,.matrix td.c-buy .abv.gap,.cmp td.c-buy .pct,.matrix td.c-buy .pct{background:var(--card);border-radius:3px;padding:0 3px;font-weight:600}
 .cmp .gap,.matrix .gap{font-size:11px}
 .kc{display:grid;grid-template-columns:1fr 1fr;column-gap:6px;align-items:baseline}
 .kp{text-align:right}

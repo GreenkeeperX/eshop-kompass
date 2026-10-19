@@ -292,8 +292,9 @@ Neu zeichnen (etwa Sortieren) lässt jede Tabelle an ihrer Scrollstelle. Das Men
 Preiszelle (Tabelle und Korb, `twoLine`, `cellMarks`; ab 0.81 auch in der Tabelle, die bis dahin eine
 Zeile ohne Abstand zum Bestpreis hatte): oben ★/≈/? und Preis | kleines rotes „+x“ über dem Bestpreis,
 die Fuge mittig in der Spalte; darunter mittig blauer Rabatt „−60 %“ (mit Leerzeichen wie überall),
-Händler-, DLC- und Sprachmarke. Auf dunkelgrüner Zelle („kaufen“) sind „+x“ und Rabatt in der Schrift
-der Zelle, sonst ginge Blau auf Grün unter. Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
+Händler-, DLC- und Sprachmarke. Auf dunkelgrüner Zelle („kaufen“) bleiben „+x“ rot und Rabatt blau, auf
+kleinem hellem Grund (`--card`), damit sie lesbar sind (ab 0.81.1; 0.81.0 nahm die weiße Schrift der
+Zelle und brach damit die Farbregel). Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
 breit, in beiden Ansichten gleich. Eine Zeile mit Grund statt Zellen („noch nicht erschienen“) steht
 links (bis 0.80 rechtsbündig und damit außerhalb des Bildes). Wo nur ein Land gezeigt wird (Plan-Schritt,
 Länderkarte), stehen dieselben Angaben in eigenen Spalten (Einkaufspreis mit Rabatt, „über Bestpreis“), in
