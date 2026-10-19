@@ -913,14 +913,18 @@ ESHOP_NAME_SECONDS = 7 * 24 * 3600    # die Listen höchstens einmal die Woche l
 
 
 _KANA_KANJI = re.compile("[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff66-\uff9f]")
+_KANA = re.compile("[\u3040-\u30ff\uff66-\uff9f]")
+# Spiele, die der eShop als ein Kauf „A + B“ führt und titledb nur einzeln kennt (0.79)
+_PLUS = re.compile(r"\s*[+＋]\s*")
 
 
 def _name_file(title, region):
     """Welche titledb-Liste den Kauftitel kennt: Kana oder Kanji im Namen heißt Japan, egal in
-    welchem Land das Konto beim Lesen stand (Käufe aus früheren Wechseln, 0.76); sonst das Land
-    beim Lesen."""
-    if _KANA_KANJI.search(str(title or "")):
-        return "JP.ja"
+    welchem Land das Konto beim Lesen stand (Käufe aus früheren Wechseln, 0.76); nur chinesische
+    Schriftzeichen ohne Kana heißt Hongkong (0.79); sonst das Land beim Lesen."""
+    t = str(title or "")
+    if _KANA_KANJI.search(t):
+        return "JP.ja" if _KANA.search(t) else "HK.zh"
     return ESHOP_NAME_FILES.get(str(region or "").upper())
 
 
@@ -928,12 +932,20 @@ def sync_eshop_names(data, fetch, now=None):
     """Englische Namen für Käufe, die das Tool nicht zuordnen kann (Gruppe unbekannt oder offen):
     Name → Programm-ID in der Liste des Konto-Landes, Programm-ID → Name in der US-Liste. Lädt
     nur, wenn es neue solche Käufe gibt, und jede Liste höchstens einmal die Woche. Ablage
-    data.eshop_names {Kauftitel: [englischer Name oder None, Zeitpunkt, Liste]}."""
+    data.eshop_names {Kauftitel: [englischer Name oder None, Zeitpunkt, Liste, Mehr]}. Mehr (ab 0.79,
+    nur wenn bekannt): {"ns": Shop-ID der Region, "game": englischer Name des Spiels, mit dessen
+    Namen der Kauf beginnt, "rest": der Rest des Kauftitels}, für Pässe ohne Programm-ID."""
     now = now or time.time()
     entries = {e.get("key"): e for e in (data.get("_eshop") or {}).get("entries") or []}
     if not entries:
         return
     names = data.setdefault("eshop_names", {})
+    if data.get("eshop_names_v", 0) < 1:
+        # 0.79 merkt sich auch Shop-ID und Spiel: Käufe ohne englischen Namen einmal neu nachschlagen
+        for t in [t for t, v in names.items() if not (isinstance(v, list) and v and v[0])]:
+            names.pop(t)
+        data["eshop_names_files"] = {}
+        data["eshop_names_v"] = 1
     want = {}
     for r in planner.eshop_matches(data)["rows"]:
         e, t = entries.get(r["key"]) or {}, r.get("title")
@@ -968,12 +980,19 @@ def sync_eshop_names(data, fetch, now=None):
             return
     _step("Englische Namen gekaufter Titel aus titledb")
     try:
-        apps, used = {}, {}
+        apps, used, hits = {}, {}, {}
         for f, titles in sorted(want.items()):
-            by_name, _ = sources.fetch_titledb_names(f, names=titles, fetch=fetch)
-            apps.update({t: by_name.get(sources.name_key(t)) for t in titles})
-            used.update({t: f for t in titles})
-        found = {a for a in apps.values() if a}
+            parts = {t: _PLUS.split(t) for t in titles if len(_PLUS.split(t)) > 1}
+            look = sources.fetch_titledb_lookup(f, set(titles) | {x for p in parts.values() for x in p}, fetch=fetch)
+            for t in titles:
+                hits[t] = look.get(sources.name_key(t)) or {}
+                apps[t] = hits[t].get("app")
+                used[t] = f
+                ps = [(look.get(sources.name_key(x)) or {}).get("app") for x in parts.get(t, ())]
+                if not apps[t] and ps and all(ps):
+                    hits[t]["parts"] = ps          # „A + B“: beide einzeln, englisch wieder mit „ + “
+        found = {a for a in apps.values() if a} | {h["pre"][0] for h in hits.values() if h.get("pre")} | \
+            {a for h in hits.values() for a in h.get("parts", ())}
         eng = sources.fetch_titledb_names("US.en", apps=found, fetch=fetch)[1] if found else {}
     except Exception as e:
         _log(f"titledb nicht abrufbar ({e})")
@@ -982,7 +1001,16 @@ def sync_eshop_names(data, fetch, now=None):
     data["eshop_names_at"] = now
     files.update({f: now for f in want})
     for t, a in apps.items():
-        names[t] = [eng.get(a) if a else None, now, used[t]]
+        h, more = hits[t], {}
+        both = " + ".join(eng.get(x) or "" for x in h.get("parts", ()))
+        names[t] = [eng.get(a) if a else (both if h.get("parts") and all(eng.get(x) for x in h["parts"]) else None),
+                    now, used[t]]
+        if h.get("ns"):
+            more["ns"] = h["ns"]
+        if h.get("pre") and eng.get(h["pre"][0]):
+            more.update(game=eng[h["pre"][0]], rest=h["pre"][1])
+        if more:
+            names[t].append(more)
     _log(f"Englische Namen gekaufter Titel aus titledb: {sum(1 for t in apps if names[t][0])} von {len(apps)} "
          f"({', '.join(sorted(want))})")
 

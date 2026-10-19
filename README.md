@@ -527,7 +527,14 @@ oder unbekannt bleiben, sucht der Abgleich in titledb den Namen in der Liste des
 Lesen woanders stand),
 nimmt dessen Programm-ID und daraus den englischen Namen aus der US-Liste (jede Liste höchstens
 einmal die Woche, je Kauf frühestens nach 30 Tagen wieder). Mit dem englischen Namen gleicht er dann wie
-oben ab; er steht grau hinter dem Kauftitel.
+oben ab; er steht grau hinter dem Kauftitel. Titel nur aus chinesischen Schriftzeichen sucht er in
+der Liste von Hongkong.
+
+Pässe (Upgrade-Pass für die Switch 2, Erweiterungs- und Kämpfer-Pass) führt titledb oft ohne
+Programm-ID. Dann zählt die Shop-ID, wenn ein fehlender DLC dieselbe hat, sonst der Spielname am
+Anfang des Kauftitels und die Art des Passes: „Spiel: Upgrade Pack“ findet den DLC dieses Spiels.
+Führt DekuDeals ein Spiel nur als „… – Nintendo Switch 2 Edition“, zählen Spiel und Upgrade-Pass
+als dieser Eintrag. Käufe „A + B“ bekommen den englischen Namen aus beiden Teilen.
 
 Namen gleichen ohne Akzente ab: „Pokemon“ im Kaufverlauf ist „Pokémon“. Die Zeile über den
 Abschnitten zählt die Käufe je Gruppe, „nicht in der Sammlung“ rot: Diese Käufe kennt das Tool

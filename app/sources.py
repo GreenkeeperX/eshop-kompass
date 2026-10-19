@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.78.0"
+VERSION = "0.79.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -765,6 +765,42 @@ def titledb_names(chunks, names=(), apps=()):
         if app in apps and app not in by_app and val.get("name"):
             by_app[app] = str(val["name"])
     return by_name, by_app
+
+
+def titledb_lookup(chunks, names):
+    """Kauftitel in einer titledb-Liste nachschlagen (0.79): {Name: {"app", "ns", "pre"}}.
+    app ist die Programm-ID, ns die Shop-ID dieser Region (auch bei Pässen und Paketen, die
+    titledb ohne Programm-ID führt). Ohne Programm-ID sucht pre das längste bekannte Spiel, mit
+    dessen Namen der Kauf beginnt: [Programm-ID, Rest des Namens], etwa „… アップグレードパス“."""
+    want = {name_key(n) for n in names} - {""}
+    found, games = {}, {}
+    for key, val in _titledb_items(chunks):
+        if not isinstance(val, dict) or val.get("isDemo"):
+            continue
+        n, app = name_key(val.get("name")), str(val.get("id") or "").upper()
+        if app and n and len(n) >= 3:
+            games.setdefault(n, app)
+        if n in want:
+            hit = found.setdefault(n, {"app": None, "ns": None})
+            hit["app"] = hit["app"] or app or None
+            hit["ns"] = hit["ns"] or str(val.get("nsuId") or key or "") or None
+    for n in want:
+        hit = found.setdefault(n, {"app": None, "ns": None})
+        if hit["app"]:
+            continue
+        words = n.split(" ")
+        for i in range(len(words) - 1, 0, -1):
+            head = " ".join(words[:i])
+            if head in games:
+                hit["pre"] = [games[head], " ".join(words[i:])]
+                break
+    return {n: h for n, h in found.items() if h["app"] or h["ns"] or h.get("pre")}
+
+
+def fetch_titledb_lookup(region, names, fetch=fetch):
+    url = TITLEDB_URL.format(region)
+    chunks = _stream(url) if fetch is _plain_fetch else [fetch(url)]
+    return titledb_lookup(chunks, names)
 
 
 def _titledb_items(chunks):

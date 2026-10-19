@@ -86,5 +86,5 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 Neue Wünsche, noch nicht eingeordnet.
 
-- [ ] **Käufe ohne titledb-Namen:** Upgrade-Pässe für die Switch 2, Erweiterungspässe und Titel in
-  chinesischer Schrift fehlen in den Listen; Ausweg bisher „zuweisen“ von Hand.
+- [ ] **Käufe mit anderer Programm-ID in Amerika:** Manche Spiele haben in Japan eine andere
+  Programm-ID als in den USA (anderer Verlag), dann fehlt der englische Name; bisher „zuweisen“.

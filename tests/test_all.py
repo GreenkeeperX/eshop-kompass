@@ -2135,7 +2135,7 @@ class EshopHistoryTest(unittest.TestCase):
             calls.append(url)
             return json.dumps(next(v for k, v in lists.items() if k in url), ensure_ascii=False)
         data = store.load_data()
-        data["eshop_names_at"] = 2e9 - 86400
+        data["eshop_names_at"], data["eshop_names_v"] = 2e9 - 86400, 1
         data["eshop_names"] = {"セレステ": [None, 2e9 - 86400, "BR.pt"], "Algo desconhecido": [None, 2e9 - 86400, "BR.pt"]}
         sync.sync_eshop_names(data, fake, now=2e9)
         self.assertTrue(any("JP.ja" in u for u in calls))
@@ -2146,6 +2146,59 @@ class EshopHistoryTest(unittest.TestCase):
         data["eshop_names"]["セレステ"] = [None, 2e9, "JP.ja"]      # nach dem Laden: Woche Ruhe
         sync.sync_eshop_names(data, fake, now=2e9 + 60)
         self.assertEqual(calls, [])
+
+    def test_old_name_misses_looked_up_again_once(self):
+        # 0.79: Käufe ohne englischen Namen aus älteren Versionen werden einmal neu nachgeschlagen
+        data = {"_eshop": {"entries": [{"key": "a", "title": "x"}]},
+                "eshop_names": {"Celeste (pt)": ["Celeste", 1, "BR.pt"], "Algo": [None, 1, "BR.pt"]},
+                "eshop_names_files": {"BR.pt": 2e9}}
+        with mock.patch.object(planner, "eshop_matches", lambda d: {"rows": []}):
+            sync.sync_eshop_names(data, lambda u: "{}", now=2e9)
+        self.assertEqual((list(data["eshop_names"]), data["eshop_names_files"], data["eshop_names_v"]),
+                         (["Celeste (pt)"], {}, 1))
+
+    def test_passes_editions_and_pairs(self):
+        # 0.79: Pässe ohne Programm-ID (Spielname + Pass oder Shop-ID), Spiele, die DekuDeals nur als
+        # Switch 2 Edition führt, Käufe „A + B“ und chinesische Titel (Hongkong)
+        self.imp([{"id": "", "title": "ねこのぼうけん", "date": "2026-10-05"},
+                  {"id": "", "title": "ねこのぼうけん Nintendo Switch 2 Edition アップグレードパス", "date": "2026-10-04"},
+                  {"id": "", "title": "うさぎファイト ファイターパス", "date": "2026-10-03"},
+                  {"id": "", "title": "うさぎファイト エキスパンション・パス", "date": "2026-10-02"},
+                  {"id": "", "title": "ほしのたび + ほしのたび 2", "date": "2026-10-01"},
+                  {"id": "", "title": "貓咪大冒險", "date": "2026-09-30"}], region="DE")
+        lists = {"JP.ja": {"70010000000001": {"id": "0100AAA0", "name": "ねこのぼうけん"},
+                           "70010000000002": {"id": "0100BBB0", "name": "うさぎファイト"},
+                           "70050000000003": {"id": None, "name": "ねこのぼうけん Nintendo Switch 2 Edition アップグレードパス"},
+                           "70070000000077": {"id": None, "name": "うさぎファイト　エキスパンション・パス"},
+                           "70010000000004": {"id": "0100CCC0", "name": "ほしのたび"},
+                           "70010000000005": {"id": "0100DDD0", "name": "ほしのたび ２"}},
+                 "HK.zh": {"70010000000006": {"id": "0100AAA0", "name": "貓咪大冒險"}},
+                 "US.en": {"1": {"id": "0100AAA0", "name": "Cat Adventure™"}, "2": {"id": "0100BBB0", "name": "Bunny Fight"},
+                           "3": {"id": "0100CCC0", "name": "Star Trip"}, "4": {"id": "0100DDD0", "name": "Star Trip 2"}}}
+
+        def fake(url):
+            return json.dumps(next((v for k, v in lists.items() if k in url), {}), ensure_ascii=False)
+        data = store.load_data()
+        data["owned"] = ["cat-adventure-switch-2", "bunny-fight", "star-trip-and-star-trip-2"]
+        data["rel"] = {"cat-adventure-switch-2": {"title": "Cat Adventure – Nintendo Switch 2 Edition + Extra World", "dlc": []},
+                       "bunny-fight": {"title": "Bunny Fight", "dlc": []},
+                       "star-trip-and-star-trip-2": {"title": "Star Trip + Star Trip 2", "dlc": []}}
+        data["extra"] = {"bunny-fight-fighters-pass": {"title": "Fighters Pass", "parent": "bunny-fight", "ids": {}},
+                         "bunny-fight-fighters-pass-vol-2": {"title": "Fighters Pass Vol. 2", "parent": "bunny-fight", "ids": {}},
+                         "bunny-fight-expansion-pass": {"title": "Expansion Pass", "parent": "bunny-fight",
+                                                        "ids": {"JP": ["70070000000077"]}}}
+        sync.sync_eshop_names(data, fake, now=2e9)
+        rows = {r["title"]: r for r in planner.eshop_matches(data)["rows"]}
+        self.assertEqual((rows["ねこのぼうけん"]["group"], rows["ねこのぼうけん"]["coll"]), ("coll", "cat-adventure-switch-2"))
+        up = rows["ねこのぼうけん Nintendo Switch 2 Edition アップグレードパス"]
+        self.assertEqual((up["group"], up["coll"], up["eng"]), ("coll", "cat-adventure-switch-2", "Cat Adventure™: Upgrade Pack"))
+        self.assertEqual((rows["うさぎファイト ファイターパス"]["slug"], rows["うさぎファイト ファイターパス"]["group"]),
+                         ("bunny-fight-fighters-pass", "plan"))
+        self.assertEqual((rows["うさぎファイト エキスパンション・パス"]["slug"], rows["うさぎファイト エキスパンション・パス"]["how"]),
+                         ("bunny-fight-expansion-pass", "id"))
+        self.assertEqual(rows["ほしのたび + ほしのたび 2"]["group"], "coll")
+        self.assertEqual(rows["貓咪大冒險"]["eng"], "Cat Adventure™")
+        self.assertEqual(sync._name_file("貓咪大冒險", "DE"), "HK.zh")
 
     def test_names_compare_without_accents(self):
         # 0.76: „Pokemon“ im Kaufverlauf ist „Pokémon“; japanische Zeichen bleiben verschieden

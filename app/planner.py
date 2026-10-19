@@ -119,6 +119,39 @@ def eshop_matches(data):
     return hit[1]
 
 
+# Switch 2 Edition (0.79): DekuDeals führt Spiel und Upgrade als einen Eintrag „Spiel – Nintendo
+# Switch 2 Edition (+ Zusatz)“; der eShop verkauft Spiel und Upgrade-Pass getrennt
+_S2 = re.compile(r" nintendo switch 2 edition\b.*$")
+
+
+def _s2base(title):
+    return _S2.sub("", _tnorm(title))
+
+
+# Pässe ohne Programm-ID in titledb (0.79): Rest des japanischen Kauftitels hinter dem Spielnamen →
+# Name des DLC bei DekuDeals. upgrade gilt für jedes Upgrade Pack des Spiels
+_PASSES = [(re.compile(r"アップグレードパス"), "upgrade"),
+           (re.compile(r"ファイターパス vol 2"), "fighters pass vol 2"),
+           (re.compile(r"ファイターパス"), "fighters pass"),
+           (re.compile(r"エキスパンション ?パス"), "expansion pass")]
+
+
+def _pass_kind(rest):
+    for rx, kind in _PASSES:
+        if rx.search(rest or ""):
+            return kind
+    return None
+
+
+def _pass_label(m):
+    """Lesbarer Name eines Passes ohne englischen Namen: „Spiel: Upgrade Pack“."""
+    kind = _pass_kind((m or {}).get("rest"))
+    if not kind or not m.get("game"):
+        return None
+    return f"{m['game']}: " + {"upgrade": "Upgrade Pack", "fighters pass": "Fighters Pass",
+                               "fighters pass vol 2": "Fighters Pass Vol. 2", "expansion pass": "Expansion Pass"}[kind]
+
+
 def _eshop_matches(data):
     """Kaufverlauf aus dem eShop mit Wishlist und fehlenden DLC abgleichen. Zuerst über die
     Nintendo-ID, sonst über den Titel, wenn genau ein Titel passt (bei DLC auch mit dem Namen
@@ -148,6 +181,10 @@ def _eshop_matches(data):
             if n:
                 by_title.setdefault(n, set()).add(s)
         toks[s] = set(" ".join(names).split())
+    # DLC je Spiel (0.79): {Spiel ohne „Switch 2 Edition“: [(DLC-Name, Slug)]}
+    dlc_of = {}
+    for s, g in games.items():
+        dlc_of.setdefault(_s2base(g), []).append((_tnorm(cands[s].get("title")), s))
     rows, owned = [], set()
     known = slug_names(data)
     # DekuDeals-Sammlung (0.71): Was dort steht, ordnet das Tool selbst ein und fragt nicht
@@ -161,8 +198,28 @@ def _eshop_matches(data):
             coll_title.setdefault(n, s)
         if names:
             coll_toks[s] = set(" ".join(names).split())
+    # Spiel als Switch 2 Edition in der Sammlung (0.79): der Name ohne Zusatz zählt auch, wenn das
+    # Spiel nicht auch allein dort steht
+    coll_s2 = {}
+    for s in coll:
+        n = _tnorm(known.get(s, (None,))[0])
+        if " nintendo switch 2 edition" in f" {n}":
+            coll_s2.setdefault(_s2base(n), s)
+            coll_title.setdefault(_s2base(n), s)
     # Kauftitel → englischer Name aus titledb (0.72), {Titel: [Name oder None, Zeitpunkt]}
     eng = {t: v[0] for t, v in (data.get("eshop_names") or {}).items() if isinstance(v, list) and v and v[0]}
+    # Shop-ID und Spiel zu Pässen ohne Programm-ID (0.79)
+    more = {t: v[3] for t, v in (data.get("eshop_names") or {}).items()
+            if isinstance(v, list) and len(v) > 3 and isinstance(v[3], dict)}
+
+    def pass_dlc(m):
+        """Gekaufter Pass → DLC des Spiels, wenn genau einer passt."""
+        kind = _pass_kind(m.get("rest"))
+        if not kind or not m.get("game"):
+            return None
+        dl = dlc_of.get(_s2base(m["game"]), [])
+        hit = [s for n, s in dl if ("upgrade pack" in n if kind == "upgrade" else n == kind)]
+        return hit[0] if len(hit) == 1 else None
 
     def in_coll(title):
         for t in (title, eng.get(title)):
@@ -197,6 +254,10 @@ def _eshop_matches(data):
             slug, how = next(iter(by_title[norm])), "title"
         elif len(by_title.get(enorm, ())) == 1:
             slug, how = next(iter(by_title[enorm])), "eng"         # über den englischen Namen (0.72)
+        elif str((more.get(e.get("title")) or {}).get("ns") or "") in by_id:
+            slug, how = by_id[str(more[e["title"]]["ns"])], "id"   # Shop-ID aus titledb (0.79)
+        elif pass_dlc(more.get(e.get("title")) or {}):
+            slug, how = pass_dlc(more[e["title"]]), "eng"          # Spiel + Pass (0.79)
         else:
             words = set((enorm or norm).split())
             scored = []
@@ -217,6 +278,10 @@ def _eshop_matches(data):
             group, suggest = "ticket", []
         else:
             in_c = in_coll(e.get("title"))
+            m = more.get(e.get("title")) or {}
+            if not in_c and _pass_kind(m.get("rest")) == "upgrade":
+                # Upgrade-Pass zu einem Spiel, das als Switch 2 Edition in der Sammlung steht (0.79)
+                in_c = coll_s2.get(_s2base(m.get("game")))
             if in_c:
                 group, suggest = "coll", []
             elif suggest and how is None:
@@ -227,7 +292,7 @@ def _eshop_matches(data):
             owned.add(slug)
         rows.append({"key": key, "title": e.get("title"), "date": e.get("date"), "group": group,
                      "coll": in_c, "coll_name": known.get(in_c, (pretty_slug(in_c),))[0] if in_c else None,
-                     "eng": eng.get(e.get("title")),
+                     "eng": eng.get(e.get("title")) or _pass_label(more.get(e.get("title"))),
                      "type": e.get("type"), "slug": slug, "how": how, "suggest": suggest,
                      "item": e.get("item") or "", "plat": e.get("plat") or "", "amount": e.get("amount") or "",
                      "game": (games.get(slug) or known.get(slug, (None, None))[1]) if slug else None,
