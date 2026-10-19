@@ -912,11 +912,23 @@ ESHOP_NAME_RECHECK = 30 * 86400       # ein Kauftitel ohne Treffer: frühestens 
 ESHOP_NAME_SECONDS = 7 * 24 * 3600    # die Listen höchstens einmal die Woche laden
 
 
+_KANA_KANJI = re.compile("[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff66-\uff9f]")
+
+
+def _name_file(title, region):
+    """Welche titledb-Liste den Kauftitel kennt: Kana oder Kanji im Namen heißt Japan, egal in
+    welchem Land das Konto beim Lesen stand (Käufe aus früheren Wechseln, 0.76); sonst das Land
+    beim Lesen."""
+    if _KANA_KANJI.search(str(title or "")):
+        return "JP.ja"
+    return ESHOP_NAME_FILES.get(str(region or "").upper())
+
+
 def sync_eshop_names(data, fetch, now=None):
     """Englische Namen für Käufe, die das Tool nicht zuordnen kann (Gruppe unbekannt oder offen):
     Name → Programm-ID in der Liste des Konto-Landes, Programm-ID → Name in der US-Liste. Lädt
     nur, wenn es neue solche Käufe gibt, und höchstens einmal die Woche. Ablage
-    data.eshop_names {Kauftitel: [englischer Name oder None, Zeitpunkt]}."""
+    data.eshop_names {Kauftitel: [englischer Name oder None, Zeitpunkt, Liste]}."""
     now = now or time.time()
     entries = {e.get("key"): e for e in (data.get("_eshop") or {}).get("entries") or []}
     if not entries:
@@ -925,10 +937,12 @@ def sync_eshop_names(data, fetch, now=None):
     want = {}
     for r in planner.eshop_matches(data)["rows"]:
         e, t = entries.get(r["key"]) or {}, r.get("title")
-        f = ESHOP_NAME_FILES.get(str(e.get("region") or "").upper())
+        f = _name_file(t, e.get("region"))
         old = names.get(t)
+        # Ohne Treffer erst nach 30 Tagen wieder, außer die Liste ist eine andere als beim letzten
+        # Versuch (bis 0.75 nahm das Tool immer die Liste des Kontolands, auch für japanische Titel)
         if r["group"] not in ("unknown", "ask") or not f or not t or \
-                (old and (old[0] or now - old[1] < ESHOP_NAME_RECHECK)):
+                (old and (old[0] or (len(old) > 2 and old[2] == f and now - old[1] < ESHOP_NAME_RECHECK))):
             continue
         want.setdefault(f, set()).add(t)
     if not want:
@@ -940,10 +954,11 @@ def sync_eshop_names(data, fetch, now=None):
         return
     _step("Englische Namen gekaufter Titel aus titledb")
     try:
-        apps = {}
+        apps, used = {}, {}
         for f, titles in sorted(want.items()):
             by_name, _ = sources.fetch_titledb_names(f, names=titles, fetch=fetch)
             apps.update({t: by_name.get(sources.name_key(t)) for t in titles})
+            used.update({t: f for t in titles})
         found = {a for a in apps.values() if a}
         eng = sources.fetch_titledb_names("US.en", apps=found, fetch=fetch)[1] if found else {}
     except Exception as e:
@@ -952,7 +967,7 @@ def sync_eshop_names(data, fetch, now=None):
         return
     data["eshop_names_at"] = now
     for t, a in apps.items():
-        names[t] = [eng.get(a) if a else None, now]
+        names[t] = [eng.get(a) if a else None, now, used[t]]
     _log(f"Englische Namen gekaufter Titel aus titledb: {sum(1 for t in apps if names[t][0])} von {len(apps)} "
          f"({', '.join(sorted(want))})")
 

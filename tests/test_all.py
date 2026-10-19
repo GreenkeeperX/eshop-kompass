@@ -2092,6 +2092,30 @@ class EshopHistoryTest(unittest.TestCase):
         sync.sync_eshop_names(data, fake, now=2e9 + 60)    # nichts Neues: kein Abruf
         self.assertEqual(len(calls), 2)
 
+    def test_japanese_names_found_while_account_elsewhere(self):
+        # 0.76: Gelesen, als das Konto in Brasilien stand; japanische Titel suchen trotzdem in Japan.
+        # Ein alter Fehlversuch in der falschen Liste (ohne Angabe der Liste) wird wiederholt
+        self.imp([{"id": "", "title": "セレステ", "date": "2026-01-26"}], region="BR")
+        lists = {"JP.ja": {"1": {"id": "0100AAA0", "name": "セレステ"}},
+                 "US.en": {"3": {"id": "0100AAA0", "name": "Celeste"}}}
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return json.dumps(next(v for k, v in lists.items() if k in url), ensure_ascii=False)
+        data = store.load_data()
+        data["eshop_names"] = {"セレステ": [None, 2e9 - 86400]}
+        sync.sync_eshop_names(data, fake, now=2e9)
+        self.assertTrue(any("JP.ja" in u for u in calls))
+        self.assertEqual(data["eshop_names"]["セレステ"][0], "Celeste")
+        self.assertEqual(sync._name_file("Algo", "BR"), "BR.pt")
+
+    def test_names_compare_without_accents(self):
+        # 0.76: „Pokemon“ im Kaufverlauf ist „Pokémon“; japanische Zeichen bleiben verschieden
+        self.assertEqual(planner._tnorm("Pokémon Pokopia"), planner._tnorm("Pokemon Pokopia"))
+        self.assertEqual(sources.name_key("Pokémon テスト"), "pokemon テスト")
+        self.assertNotEqual(sources.name_key("ズ"), sources.name_key("ス"))
+
     def test_same_entries_not_added_twice_and_picks(self):
         e = [{"id": "", "title": "Algo desconhecido", "date": "2026-10-01"}]
         self.imp(e)

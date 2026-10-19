@@ -39,7 +39,8 @@ Zweck, Bedienung und Rechenregeln stehen in `README.md`, Geplantes in `ROADMAP.m
 - `app/server.py`: Webserver und JSON-Schnittstelle
 - `app/static/index.html`: gesamte Oberfläche, reines JavaScript ohne Build
 - `docs/oberflaeche.md`: Farben, Marken und Wortwahl der Oberfläche; bei jeder Änderung daran
-  im selben Commit mitpflegen
+  im selben Commit mitpflegen. Vor einer Änderung an Darstellung oder Angaben dort die Liste
+  „Eine Sache, mehrere Orte“ durchgehen und alle genannten Stellen prüfen
 - `docs/abrufe.md`: was das Tool woher, wann und wie oft holt und wo es die Daten ablegt; bei
   jeder Änderung an Abrufen, Grenzen, Zeitplan oder Ablage im selben Commit mitpflegen
 - `tests/test_all.py`: alle Tests, `.github/workflows/image.yml`: Tests und Image bei Push auf `main`

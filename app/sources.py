@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.75.0"
+VERSION = "0.76.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -743,7 +743,8 @@ def _stream(url, timeout=60):
 
 def name_key(title):
     """Name zum Vergleichen (Kauftitel und titledb): ohne ™ ®, Satzzeichen, Groß-/Kleinschreibung."""
-    t = unicodedata.normalize("NFKC", re.sub(r"[™®©]", "", str(title or ""))).casefold()
+    t = re.sub(r"[\u0300-\u036f]", "", unicodedata.normalize("NFKD", re.sub(r"[™®©]", "", str(title or ""))))
+    t = unicodedata.normalize("NFKC", t).casefold()     # ohne Akzente lateinischer Buchstaben (0.76)
     return " ".join(re.sub(r"[^\w]+", " ", t).split())
 
 

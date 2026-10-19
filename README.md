@@ -261,7 +261,8 @@ lädt die Startseite neu.
   Titel-Liste und -Tabelle, in den Warenkörben von Kaufplan, Korb und Ländern, im Verlauf, in
   der Länderliste der Einstellungen, in der Sprachliste und bei der Online-Mitgliedschaft.
   Neu zeichnen lässt jede Tabelle dort stehen, wohin du gescrollt hast.
-- **Suchen:** Jedes Suchfeld hat ein ×, Esc leert es ebenso.
+- **Suchen:** Jedes Suchfeld hat ein ×, Esc leert es ebenso. Gesucht wird ohne Akzente und
+  Satzzeichen: „pokemon“ findet „Pokémon“.
 - **Merken:** Die Ansicht (Reiter, Liste, Tabelle oder Korb, Raster oder Liste der Länder und deren
   Reihenfolge, Filter, aufgeklappte Kästen, Hell oder Dunkel) merkt sich der Browser. Korb,
   Auswahl, Zielpreise und Einstellungen speichert der Server.
@@ -330,6 +331,13 @@ Korb; von selbst nimmt der Plan beides nie); „als Korb
 vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
 dazugenommenen Titel dieses Landes vergessen.
 
+**Passt dazu:** Passt nichts in den Rest, schlägt ein Schritt (wie der Korb und jede Länderkarte)
+den Wishlist-Titel vor, der zusätzlich am meisten spart. „spart“ ist, was der Titel ohne den
+Wechsel hierher kosten würde (im günstigsten zählenden Land gleicher oder leichterer Stufe oder im
+Kontoland), minus dem, was der Kauf hier mit ihm mehr kostet. Der Aufpreis ist oft kleiner als der
+Shop-Preis, weil die Guthabenkarten und der Rest einen Teil decken. Ein Klick nimmt ihn in den
+Schritt.
+
 **Gekauft:** „gekauft“ an einem Land vermerkt den Kauf im Kaufprotokoll
 (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort als Guthaben,
 Guthaben anderer Länder gilt als weg. Gekaufte Titel verschwinden aus dem Plan. Unter
@@ -359,9 +367,10 @@ Alternative in einem leichten oder mittleren Land. Steht der Titel im Kaufplan, 
 Zeile den Preis im Land des Plans; ist er anderswo günstiger, steht dieses Land als
 Alternative daneben. Unter dem Urteil steht, ob der Titel im Plan ist oder warum nicht.
 Filter nach Urteil und Suche stehen oben, dazu eine Sortierung, auch nach Angebotsende. DLC
-stehen direkt unter ihrem Spiel, eingerückt und ohne den Namen des Spiels davor; steht das Spiel
-nicht auf der Wishlist, fasst eine Kopfzeile mehrere seiner DLC zusammen. Sortiert nach Preis,
-Abstand oder Angebotsende ist die Liste flach.
+stehen direkt unter ihrem Spiel, eingerückt und ohne den Namen des Spiels davor; eine Ausgabe
+des Spiels („+ Rayman Edition“) gilt dabei als das Spiel. Steht das Spiel nicht auf der Wishlist,
+fasst eine Kopfzeile ab zwei DLC zusammen; ein einzelner DLC steht für sich, mit dem Spiel grau
+davor. Sortiert nach Preis, Abstand oder Angebotsende ist die Liste flach.
 
 Ein Klick auf den Titel klappt die **Einzelheiten** auf:
 
@@ -510,13 +519,20 @@ Betrag. Jeder Kauf landet von selbst in einer Gruppe:
 - **Nicht in der Sammlung:** Nichts passt. Meist kennt DekuDeals den Titel nicht.
 
 Kauftitel aus Japan und anderen Ländern stehen in der Sprache des Shops. Für Käufe, die offen
-oder unbekannt bleiben, sucht der Abgleich in titledb den Namen in der Liste des Konto-Landes,
+oder unbekannt bleiben, sucht der Abgleich in titledb den Namen in der Liste des Konto-Landes
+(Titel mit japanischen Schriftzeichen immer in der japanischen Liste, auch wenn das Konto beim
+Lesen woanders stand),
 nimmt dessen Programm-ID und daraus den englischen Namen aus der US-Liste (höchstens einmal die
 Woche, je Kauf frühestens nach 30 Tagen wieder). Mit dem englischen Namen gleicht er dann wie
 oben ab; er steht grau hinter dem Kauftitel.
 
-„anderer …“ ordnet jeden Kauf von Hand zu: Name aus der Liste aller bekannten Titel und DLC
-wählen oder einen DekuDeals-Link einfügen. „zurücknehmen“ hebt deine Zuordnung sofort auf,
+Namen gleichen ohne Akzente ab: „Pokemon“ im Kaufverlauf ist „Pokémon“. Die Zeile über den
+Abschnitten zählt die Käufe je Gruppe; „Welcher Titel ist das?“ und „Bei DekuDeals nachtragen“
+sind offen und lassen sich zuklappen, „Alle Käufe“ ist zu.
+
+„anderer …“ öffnet unter dem Kauf eine Zeile mit Suchfeld: Treffer aus allen bekannten Titeln und
+DLC erscheinen beim Tippen (ohne Akzente, „pokemon“ findet „Pokémon“), ein Klick ordnet zu; ein
+DekuDeals-Link geht immer. „zurücknehmen“ hebt deine Zuordnung sofort auf,
 „stimmt nicht“ eine automatische. „Alle Käufe“ zeigt jeden Kauf mit seiner Gruppe, sortierbar.
 Zuordnungen bleiben und stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
 Stand des letzten lückenlosen Laufs mit; das Lesezeichen liest dann bis dorthin und zur

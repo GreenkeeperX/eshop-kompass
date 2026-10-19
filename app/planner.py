@@ -54,6 +54,9 @@ CARD_PLAUSIBLE = (0.70, 1.60)
 def _tnorm(title):
     """Titel zum Vergleichen: ohne ™ ®, Satzzeichen und Groß-/Kleinschreibung."""
     t = re.sub(r"[™®©]", "", str(title or ""))           # vorher: NFKC macht aus ™ „TM“
+    # Akzente lateinischer Buchstaben fallen weg (0.76): „Pokemon“ im Kaufverlauf ist „Pokémon“.
+    # Japanische Zeichen bleiben, wie sie sind (ズ ist nicht ス)
+    t = re.sub(r"[\u0300-\u036f]", "", unicodedata.normalize("NFKD", t))
     t = unicodedata.normalize("NFKC", t).casefold()
     return " ".join(re.sub(r"[^\w]+", " ", t).split())
 

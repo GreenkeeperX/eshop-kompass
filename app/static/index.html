@@ -33,7 +33,6 @@ body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{padding:0 16px 60px}
 body.fit .wrap{padding-bottom:10px}
-.narrow{max-width:1280px}
 header.top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:14px 0 6px}
 header.top h1{font-size:23px;margin:0;letter-spacing:-.015em}
 header.top #syncBtn{font-size:14px;padding:5px 12px}
@@ -177,17 +176,22 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .list .pc th{font-size:11px;padding:3px 6px}
 .list .pc td.t{font-size:14.5px}
 .list .tt .nm{display:block}
-.pc .nm small.gm,.nm small.gm{display:inline;color:var(--muted);font-size:.85em}
+.pc .nm small.gm,.nm small.gm,.tbtn small.gm{display:inline;color:var(--muted);font-size:.85em}
+.tbtn small.gm{font-weight:400}
 #eshophist .gm{color:var(--muted)}
 #eshophist .mini-t button.sm{margin:2px 0 2px 6px}
 #eshophist .eqa{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
 #eshophist .eqa button.sm{margin:0}
 #eshophist button.cand{font-weight:400}
 #eshophist tr.mutr td{color:var(--muted)}
-#eshophist .eqown{display:inline-block;margin:0}
-#eshophist .eqown summary{display:inline;cursor:pointer}
-#eshophist .eqin{display:inline-flex;gap:6px;margin-left:6px}
-#eshophist .eqin input{width:min(260px,60vw)}
+#eshophist .eqrow td{background:var(--bg);padding:8px}
+#eshophist .eqin{display:flex;gap:6px;align-items:center}
+#eshophist .eqin input{flex:1;min-width:0;max-width:420px}
+#eshophist .eqhits{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px}
+#eshophist .eqhits button.sm{margin:0;font-weight:400}
+#eshophist details.eqf{margin:10px 0 0}
+#eshophist details.eqf > summary{cursor:pointer}
+#eshophist .eqsum{margin:8px 0 0}
 .list .pc col.c-l{width:140px}.list .pc col.c-b{width:70px}.list .pc col.c-e{width:80px}.list .pc col.c-d{width:80px}
 .list .pc .c-t{display:table-cell}
 .list .pc col.c-t{display:table-column;width:110px}
@@ -404,7 +408,6 @@ form.set > .setc{margin-top:0}
 .setc > h3.sec:first-child{margin-top:14px}
 .setc .box{background:var(--bg)}
 /* Sprachen prüfen darf breiter werden als die übrigen Einstellungen, bis zur Fensterbreite (0.70) */
-.setc.wide{width:max-content;min-width:100%;max-width:calc(100vw - 32px);box-sizing:border-box}
 .fold>summary{cursor:pointer;font-weight:600}
 .mini-t{margin-top:4px}
 .box h4{margin:10px 0 2px;font-size:13px}
@@ -968,7 +971,7 @@ function render(){
   // Seitlich und senkrecht gescrollte Tabellen bleiben, wo sie waren, etwa nach dem Sortieren (0.61)
   const keep = S.drawnTab === S.tab ? [...m.querySelectorAll(".scroll,.fitbox")].map(e => [e.scrollLeft, e.scrollTop]) : [];
   S.drawnTab = S.tab;
-  m.className = S.tab === "settings" ? "narrow" : "";
+  m.className = "";     // Einstellungen ab 0.76 so breit wie der Bildschirm, alle Karten gleich (vorher 1280 px, nur Sprachen breiter)
   if(S.tab === "jetzt") m.innerHTML = banners() + viewJetzt();
   else if(S.tab === "titel") m.innerHTML = banners() + (S.tview === "table" ? viewMatrix() : S.tview === "korb" ? (S.ui.basket ? viewCompare() : viewKorbEmpty()) : viewTitles());
   else if(S.tab === "sammlung") m.innerHTML = banners() + viewCollection();
@@ -1107,11 +1110,13 @@ function collGame(g){
   if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary>${esc(g.title)}${via} <span class="mut" title="${sumTip}">${sum}</span></summary>${all ? `<div class="cga">${all}</div>` : ""}<table class="mini-t">${g.dlc.map(collDlc).join("")}</table></details>`;
   return `<section class="box cg"><h3>${esc(g.title)}${via} <span class="mut" title="${sumTip}">${sum}</span><span class="sp"></span>${all}</h3>${body}</section>`;
 }
+/* Suchen ohne Akzente, Satzzeichen und Leerzeichen: „pokemon“ findet „Pokémon“, „luigis“ „Luigi’s“
+   (0.69 in der Sammlung, ab 0.76 in jedem Suchfeld) */
+const fold1 = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+const hits = (q, t) => { const nq = fold1(q).replace(/ /g, ""); return !nq || fold1(t).replace(/ /g, "").includes(nq); };
 function viewCollection(){
   const c = S.state.collection || {games: [], plain: [], waiting: []}, q = S.rq.toLowerCase();
-  // Ohne Akzente, Satzzeichen und doppelte Leerzeichen: „pokemon“ findet „Pokémon“, „luigis“ „Luigi’s“ (0.69)
-  const fold1 = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-  const nq = fold1(q).replace(/ /g, ""), hit = t => !nq || fold1(t).replace(/ /g, "").includes(nq);
+  const hit = t => hits(q, t);
   const found = c.games.filter(g => hit(g.title) || g.dlc.some(d => hit(d.title)));
   const done = found.filter(g => !g.missing).sort((a, b) => a.title.localeCompare(b.title, "de"));
   const games = sortRows("sammlung", found.filter(g => g.missing),
@@ -1146,7 +1151,7 @@ function viewCollection(){
 function viewTitles(){
   const q = S.rq.toLowerCase(), f = S.vf || "all";
   const off = r => planOffer(r) || shownOffer(r) || cheapestOffer(r);
-  const rows = sortRows("titel", S.state.radar.filter(r => (!q || r.title.toLowerCase().includes(q)) && (f === "all" || r.verdict === f)), {
+  const rows = sortRows("titel", S.state.radar.filter(r => hits(q, r.title) && (f === "all" || r.verdict === f)), {
     title: r => r.title, verdict: r => VORDER[r.verdict], price: r => off(r)?.eur,
     over: r => off(r) && r.champ ? off(r).eur - r.champ.eur : null, end: r => off(r)?.sale && off(r).end ? +new Date(off(r).end) : null,
     alt: r => { const x = shownOffer(r); return x && x.tier >= 3 && r.easy ? r.easy.eur : null; }});
@@ -1167,19 +1172,24 @@ function viewTitles(){
 function titleGroups(rows){
   const s = S.sorts.titel;
   if(s && ["price", "over", "end", "alt"].includes(s.k)) return rows.map(r => titleRow(r));
+  // Eine Ausgabe des Spiels gilt als das Spiel (0.76): „Sparks of Hope + Rayman Edition“ nimmt den Season Pass zu sich
+  const parents = [...new Set(rows.filter(r => r.dlc_of).map(r => r.dlc_of))].sort((a, b) => b.length - a.length);
+  const gameKey = t => parents.find(p => t === p || (t.toLowerCase().startsWith(p.toLowerCase()) && /^[\s:–\-+]/.test(t.slice(p.length)))) || t;
   const units = new Map();
   for(const r of rows){
-    const k = r.dlc_of || r.title;
-    if(!units.has(k)) units.set(k, {game: null, dlc: []});
+    const k = r.dlc_of || gameKey(r.title);
+    if(!units.has(k)) units.set(k, {games: [], dlc: []});
     const u = units.get(k);
-    if(r.dlc_of) u.dlc.push(r); else u.game = r;
+    (r.dlc_of ? u.dlc : u.games).push(r);
   }
   const out = [];
   for(const [k, u] of units){
-    const sub = u.game ? u.dlc.length > 0 : u.dlc.length > 1;
-    if(u.game) out.push(titleRow(u.game));
-    else if(sub) out.push(`<tr class="tgrp"><td colspan="6"><b>${esc(k)}</b> <small class="mut">${u.dlc.length} DLC${u.dlc[0].parent_owned ? ", das Spiel hast du" : ""}</small></td></tr>`);
-    for(const d of u.dlc) out.push(titleRow(d, sub ? k : null));
+    // Mit Spiel oder ab zwei DLC: eingerückt unter dem Spiel. Ein einzelner DLC ohne sein Spiel steht
+    // für sich, das Spiel grau davor wie im Korb und im Kaufplan
+    const sub = u.games.length ? u.dlc.length > 0 : u.dlc.length > 1;
+    for(const g of u.games) out.push(titleRow(g));
+    if(!u.games.length && sub) out.push(`<tr class="tgrp"><td colspan="6"><b>${esc(k)}</b> <small class="mut">${u.dlc.length} DLC${u.dlc[0].parent_owned ? ", das Spiel hast du" : ""}</small></td></tr>`);
+    for(const d of u.dlc) out.push(titleRow(d, k, !sub));
   }
   return out;
 }
@@ -1190,7 +1200,7 @@ function titleSortSel(){
   const o = (val, l) => `<option value="${val}" ${v === val ? "selected" : ""}>${l}</option>`;
   return `<select class="srt" data-act="tsortsel" data-t="titel" title="Reihenfolge der Titel">${o("", "nach Urteil und Nähe zum Bestpreis")}${o("title:1", "nach Titel")}${o("price:1", "nach Einkaufspreis")}${o("over:1", "nach Abstand zum Bestpreis")}${o("end:1", "nach Angebotsende")}${!["", "title:1", "price:1", "over:1", "end:1"].includes(v) ? o(v, "eigene Sortierung") : ""}</select>`;
 }
-function titleRow(r, group){
+function titleRow(r, group, alone){
   const x = shownOffer(r), open = S.openTitle === r.slug, ce = r.champ;
   const cheapest = cheapestOffer(r), pl = planOffer(r);
   const off = pl || x || cheapest;
@@ -1208,8 +1218,10 @@ function titleRow(r, group){
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
   // In der Gruppe ohne den Namen des Spiels davor („Vampire Survivors: Operation Guns“ → „Operation Guns“)
-  const name = group && r.title.toLowerCase().startsWith(group.toLowerCase()) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
-  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(name)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+  const short = group && r.title.toLowerCase().startsWith(group.toLowerCase()) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
+  const name = short;
+  const gm = alone && group ? `<small class="gm">${esc(group)}:</small> ` : "";
+  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group && !alone ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${gm}${esc(name)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>
     <td class="kb-c"><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
@@ -1702,10 +1714,14 @@ function planCard(p, step){
       .concat(xs.slice(0, 2).map(f => ({h: one(f)})), xs.length > 2 ? [{h: `<small class="mut" title="${esc(xs.slice(2).map(f => f.short).join(", "))}">und ${xs.length - 2} weitere fehlende DLC</small>`}] : []);
     const sel = more.length > 1 ? `<select data-act="planpick" data-c="${p.code}" title="Alles von deiner Wishlist, was in den Rest passt, mit dem, was danach bleibt"><option value="">alles, was passt (${more.length}) …</option>${more.map(f => `<option value="${esc(f.slug)}">${esc(f.title)}${f.dlc ? " (DLC)" : ""} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`).join("")}</select>` : "";
     h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` + nsoFit.concat(top.map(x => x.h)).join(" ") + (sel ? " " + sel : "") + `</div>`;
-  } else if(p.fillers[0] && p.rest > 0){
-    // Nur wo ein Rest bleibt: Bei Kartenzahlung gibt es keinen Rest, der sich füllen ließe
-    const f = p.fillers[0];
-    h += `<p class="restline" style="margin-top:6px">Passt dazu: + ${f.shorts.map(esc).join(" + ")} für ${eur(f.extra)}, sonst ${eur(f.ref)}${f.rest !== null && f.rest !== undefined ? `, Rest dann ${money(f.rest, cur)}` : ""}</p>`;
+  } else if(p.rest > 0){
+    // Nur wo ein Rest bleibt: Bei Kartenzahlung gibt es keinen Rest, der sich füllen ließe. Im Kaufplan
+    // ein Knopf wie im Korb (0.76), ohne Titel, die schon in einem anderen Schritt stehen
+    const planned = new Set(step && S.kauf ? S.kauf.steps.flatMap(x => x.items.map(i => i.slug)) : []);
+    const f = p.fillers.find(f => !f.slugs.some(x => planned.has(x)));
+    if(f) h += `<p class="restline" style="margin-top:6px">Passt dazu: ` + (step
+      ? `<button class="fl" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, cur, "Klick nimmt ihn in diesen Schritt."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b></button>`
+      : `<span title="${esc(fillTip(f, cur, ""))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b></span>`) + `</p>`;
   }
   let foot = has ? `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>Rechnung</summary>${billHtml(p)}</details>` : "";
   if(step && (p.others || []).length) foot += othersHtml(p, step);
@@ -1745,6 +1761,12 @@ function othersHtml(p, step){
       `<td title="Die Spiele kosten dort ${o.estimated ? "ca. " : ""}${eur(o.games_cost)}">${o.estimated ? "ca. " : ""}${amt(o)}</td></tr>`;
   }).join("");
   return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table></details>`;
+}
+/* „Passt dazu“ (Kaufplan, Länderkarte, Korb): Was ein weiterer Wishlist-Titel hier zusätzlich kostet und was er spart */
+function fillTip(f, cur, act){
+  return `${f.titles.join(" + ")}: Mit ${f.titles.length === 1 ? "diesem Titel" : "diesen Titeln"} kostet der Kauf hier ${eur(f.extra)} mehr (Shop ${money(f.local, cur)}; die Guthabenkarten und der Rest decken einen Teil). ` +
+    `Ohne Wechsel hierher kostet ${f.titles.length === 1 ? "er" : "sie"} ${eur(f.ref)}, im günstigsten zählenden Land gleicher oder leichterer Stufe oder in deinem Kontoland. Ersparnis: ${eur(f.ref)} − ${eur(f.extra)} = ${eur(f.gain)}.` +
+    `${f.rest !== null && f.rest !== undefined ? ` Danach bleiben ${money(f.rest, cur)} Rest.` : ""}${act ? " " + act : ""}`;
 }
 function altCell(i){
   if(i.alt === null || i.alt === undefined) return `<td class="mut c-alt">–</td>`;
@@ -2023,7 +2045,7 @@ function viewCompare(){
     row("Passt dazu", p => {
       const f = p.fillers[0];
       if(!f) return "";
-      return `<button class="fl" data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: Aufpreis ${eur(f.extra)}, ohne den Wechsel ${eur(f.ref)}. Kommt für alle Länder in den Korb.">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b></button>`;
+      return `<button class="fl" data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, p.currency, "Klick legt ihn für alle Länder in den Korb."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b></button>`;
     }) +
     row("Hinweise", p => { const c = hurdles(p); return c.length ? c.join("<br>") : ""; }) +
     `</tfoot></table></div>`;
@@ -2041,7 +2063,7 @@ function viewMatrix(){
   const mx = S.state.matrix, q = S.rq.toLowerCase(), f = S.vf || "all";
   const verdictOf = Object.fromEntries(S.state.radar.map(r => [r.slug, r.verdict]));
   const cellEur = (r, code) => { const x = r.cells[code]; return x && !x.na ? x.eur : null; };
-  const rows = sortRows("matrix", mx.rows.filter(r => (!q || r.title.toLowerCase().includes(q)) && (f === "all" || verdictOf[r.slug] === f) &&
+  const rows = sortRows("matrix", mx.rows.filter(r => hits(q, r.title) && (f === "all" || verdictOf[r.slug] === f) &&
     (!S.onlySale || Object.values(r.cells).some(c => c.sale))), new Proxy({title: r => r.title, best: r => r.champ ? r.champ.eur : null},
     {get: (o, k) => o[k] || (r => cellEur(r, k))}));
   // Mit „nur Angebote“ fallen auch Länder ohne ein Angebot in den gezeigten Zeilen weg
@@ -2247,7 +2269,7 @@ function viewSettings(){
     <div class="fields" style="max-width:300px"><label class="f">Schätzung ohne lesbaren Kartenpreis (%)<input name="gift_markup_pct" type="text" inputmode="decimal" value="${dc(s.gift_markup_pct)}"></label></div>
     <p class="hint" style="margin-top:10px">Euro-Guthaben (Deutschland mit Guthaben) bewertet das Tool nach festen Stufen für den Faktor: bis zu diesem Wert Top, gut, okay, darüber teuer. Andere Länder misst es an der Kreditkarte oder am besten Faktor der Karte in 90 Tagen.</p>
     <div class="fields" style="max-width:640px;grid-template-columns:repeat(3,1fr)"><label class="f">Top bis Faktor<input name="eur_top" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.top)}"></label><label class="f">gut bis<input name="eur_good" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.good)}"></label><label class="f">okay bis<input name="eur_ok" type="text" inputmode="decimal" value="${dc(s.eur_card_steps.ok)}"></label></div></details>
-    </section></form><section class="setc wide">` + langSection() + `</section>
+    </section></form><section class="setc">` + langSection() + `</section>
     <section class="setc" id="eshophist">` + eshopBox() + `</section>
     <section class="setc"><h3 class="sec" id="set-quellen">Quellen</h3>
     <div class="fields"><div class="pair"><label class="f">DekuDeals-Wishlist-Link<input form="setForm" name="wishlist_url" value="${esc(s.wishlist_url)}" placeholder="https://www.dekudeals.com/wishlist/…"></label><label class="f">DekuDeals-Sammlung <small>(leer: dieselbe Kennung wie die Wishlist; aktuell ${S.state.owned_count} Titel gelesen)</small><input form="setForm" name="collection_url" value="${esc(s.collection_url || "")}" placeholder="https://www.dekudeals.com/collection/…"></label></div><label class="f" title="Wie oft Wishlist und Preise neu geholt werden. Wechselkurse nur, wenn die Quelle neue hat (einmal am Tag); was sonst wie oft geholt wird, steht in docs/abrufe.md.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
@@ -2433,7 +2455,7 @@ function eshopKnown(){
   const list = S.state.eshop_known || [], map = {};
   for(const x of list) map[x.game ? `${x.game}: ${x.title}` : x.title] = x.slug;
   S.eshopKnown = map;
-  return `<datalist id="eshopknown">${Object.keys(map).map(k => `<option value="${esc(k)}"></option>`).join("")}</datalist>`;
+  return "";
 }
 function eshopBox(){
   const rows = S.state.eshop || [], by = g => rows.filter(r => r.group === g);
@@ -2446,11 +2468,14 @@ function eshopBox(){
   const what = r => [r.date ? dmy(r.date) : "", KIND[r.item] || "", PLAT[r.plat] || "", r.amount || ""].filter(Boolean).map(esc).join(" · ");
   const named = (slug, title, game) => `<a href="${esc(deku(slug))}" target="_blank" rel="noopener" title="Bei DekuDeals ansehen">${game && !String(title || "").toLowerCase().startsWith(game.toLowerCase()) ? `<span class="gm">${esc(game)}:</span> <b>${esc(title || slug)}</b>` : esc(title || slug)}</a>`;
   const kauf = r => `${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}<br><small class="mut">${what(r)}</small>`;
-  const own = (r, label = "anderer …") => `<details class="fold eqown"><summary class="hint">${label}</summary><span class="eqin"><input type="text" list="eshopknown" placeholder="Name suchen oder DekuDeals-Link" aria-label="Gekauften Titel suchen oder DekuDeals-Link einfügen"> <button class="sm" data-act="eshopown" data-k="${esc(r.key)}">zuordnen</button></span></details>`;
+  // „anderer …“ (ab 0.76): öffnet eine eigene Zeile unter dem Kauf, damit sich nichts seitlich verschiebt;
+  // Treffer ohne Akzente wie in jedem Suchfeld, ein Klick ordnet zu
+  const own = (r, label = "anderer …") => `<button class="link" data-act="eqopen" data-k="${esc(r.key)}" title="Einen anderen Titel suchen oder einen DekuDeals-Link einfügen">${S.eqOpen === r.key ? "schließen" : label}</button>`;
+  const ownRow = (r, cols) => S.eqOpen !== r.key ? "" : `<tr class="eqrow"><td class="l" colspan="${cols}"><div class="eqin"><input type="text" class="eqq" data-k="${esc(r.key)}" placeholder="Name suchen oder DekuDeals-Link" aria-label="Gekauften Titel suchen oder DekuDeals-Link einfügen"> <button class="sm" data-act="eshopown" data-k="${esc(r.key)}">zuordnen</button></div><div class="eqhits"></div></td></tr>`;
   const undo = r => r.how === "pick"
     ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Deine Zuordnung zurücknehmen, wirkt sofort">zurücknehmen</button>`
     : `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Falsch zugeordnet: zählt dann nicht als Besitz">stimmt nicht</button>`;
-  const head = rows.length ? `${rows.length} Käufe${at ? `, gelesen am ${esc(dmy(new Date(at * 1000).toISOString()))}` : ""}${ask.length ? ` · <b class="warnc">${ask.length} offen</b>` : ""}${plan.length ? ` · ${plan.length} nachtragen` : ""}` : "noch keine Käufe gelesen";
+  const head = rows.length ? `${rows.length} Käufe${at ? `, gelesen am ${esc(dmy(new Date(at * 1000).toISOString()))}` : ""}` : "noch keine Käufe gelesen";
   let h = `<h3 class="sec" id="set-kaeufe">Käufe aus dem eShop <span class="mut">${head}</span></h3>
     <p class="hint">Deine Sammlung pflegst du bei DekuDeals. Der Kaufverlauf von Nintendo sorgt nur dafür, dass der Plan nichts vorschlägt, was du schon gekauft hast, und zeigt Käufe, die bei DekuDeals noch fehlen. Was schon in der Sammlung steht, ordnet das Tool selbst ein; fragen muss es nur, wenn die Antwort den Plan ändert.</p>
     <details class="fold" data-k="eshophow" ${S.folds.eshophow || !rows.length ? "open" : ""}><summary class="hint">So liest du deine Käufe</summary>
@@ -2465,20 +2490,24 @@ function eshopBox(){
   if(!rows.length) return h;
   h += eshopKnown();
   // Offen: eine Zeile je Kauf, die Kandidaten als Knöpfe; ein Klick heißt „ja, dieser“
-  if(ask.length) h += `<h4>Welcher Titel ist das? <span class="mut">${ask.length}</span></h4><p class="hint">Diese Käufe ähneln einem Titel deiner Wishlist oder einem fehlenden DLC. Ein Klick auf einen Namen ordnet den Kauf zu, er fällt dann aus dem Plan. „keiner“ lässt ihn im Plan.</p>
+  // Zahlen wie bei „Geprüft“ in den Sprachen: violett, was dich braucht, grün, was erledigt ist (0.76)
+  const N = (n, cls) => `<b class="${cls || ""}">${n}</b>`;
+  const counts = [["ask", "warnc"], ["plan", "warnc"], ["coll", "gn"], ["unknown"], ["ticket"], ["void"]]
+    .map(([g, cls]) => [g, cls, by(g).length]).filter(x => x[2]).map(([g, cls, n]) => `${N(n, cls)} ${ESHOP_GROUP[g]}`).join(", ");
+  h += `<p class="hint eqsum">${rows.length} Käufe: ${counts}</p>`;
+  if(ask.length) h += `<details class="fold eqf" data-kc="eshopask" ${S.folds.eshopask ? "" : "open"}><summary><b>Welcher Titel ist das?</b> ${N(ask.length, "warnc")}</summary><p class="hint">Diese Käufe ähneln einem Titel deiner Wishlist oder einem fehlenden DLC. Ein Klick auf einen Namen ordnet den Kauf zu, er fällt dann aus dem Plan. „keiner“ lässt ihn im Plan.</p>
     <div class="scroll"><table class="mini-t eqt"><tbody>${ask.map(r => `<tr><td class="l">${kauf(r)}</td><td class="l eqa">${r.suggest.map(x =>
-      `<button class="sm cand" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist ${esc(x.title)}: zählt als Besitz">${x.game && !String(x.title || "").toLowerCase().startsWith(x.game.toLowerCase()) ? `<span class="gm">${esc(x.game)}:</span> <b>${esc(x.title)}</b>` : esc(x.title)}</button>`).join("")}<button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zählt nicht als Besitz">keiner</button>${own(r)}</td></tr>`).join("")}</tbody></table></div>`;
+      `<button class="sm cand" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist ${esc(x.title)}: zählt als Besitz">${x.game && !String(x.title || "").toLowerCase().startsWith(x.game.toLowerCase()) ? `<span class="gm">${esc(x.game)}:</span> <b>${esc(x.title)}</b>` : esc(x.title)}</button>`).join("")}<button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zählt nicht als Besitz">keiner</button>${own(r)}</td></tr>${ownRow(r, 2)}`).join("")}</tbody></table></div></details>`;
   // Gekauft, aber bei DekuDeals noch nicht in der Sammlung: zählt als Besitz, nachtragen
-  if(plan.length) h += `<h4>Bei DekuDeals nachtragen <span class="mut">${plan.length}</span></h4><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
+  if(plan.length) h += `<details class="fold eqf" data-kc="eshopplan" ${S.folds.eshopplan ? "" : "open"}><summary><b>Bei DekuDeals nachtragen</b> ${N(plan.length, "warnc")}</summary><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshop", "kauf", "Kauf", "", "l")}${sth("eshop", "name", "Zählt als", "", "l")}${sth("eshop", "how", "Woher", "", "l")}<th></th></tr></thead><tbody>${sortRows("eshop", plan, {
       kauf: r => r.title || "", name: r => (r.game ? r.game + " " : "") + (r.name || ""), how: r => how[r.how] || "", date: r => r.date || ""}).map(r =>
-      `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div>`;
+      `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
   // Alle Käufe zum Nachsehen, nach Gruppe; „anderer …“ ordnet jeden von Hand zu
   const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_GROUP[r.group] || "", name: r => r.name || r.coll_name || "", date: r => r.date || ""});
-  const counts = Object.keys(ESHOP_GROUP).map(g => [g, by(g).length]).filter(x => x[1]).map(([g, n]) => `${n} ${ESHOP_GROUP[g]}`).join(" · ");
-  h += `<details class="fold" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary class="hint">Alle Käufe <span class="mut">${counts}</span></summary>
+  h += `<details class="fold eqf" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary><b>Alle Käufe</b> ${N(rows.length)} <span class="mut">zum Nachsehen und Zuordnen</span></summary>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshopall", "kauf", "Kauf", "", "l")}${sth("eshopall", "group", "Einordnung", "", "l")}${sth("eshopall", "name", "Titel", "", "l")}${sth("eshopall", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${allRows.map(r =>
-      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small>${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r)}` : r.group === "void" || r.group === "ticket" ? "" : own(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
+      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small>${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r)}` : r.group === "void" || r.group === "ticket" ? "" : own(r)}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
   return h;
 }
 /* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch
@@ -2706,14 +2735,20 @@ document.addEventListener("click", async e => {
     else if(a === "eshopimport"){ await eshopImport($("eshopimport").value); }
     else if(a === "eshoppick"){
       await api("/api/eshop_history/pick", {key: d.k, slug: d.v});
+      S.eqOpen = null;
       await refresh();
       toast(d.v === "-" ? "Zählt nicht als Besitz" : d.v ? "Zugeordnet, zählt als Besitz" : "Zurückgenommen");
+    }
+    else if(a === "eqopen"){
+      S.eqOpen = S.eqOpen === d.k ? null : d.k; render();
+      const q = document.querySelector(`input.eqq[data-k="${CSS.escape(d.k)}"]`); if(q) q.focus();
     }
     else if(a === "eshopown"){
       const raw = (el.parentElement.querySelector("input").value || "").trim(), v = raw.toLowerCase();
       const slug = (S.eshopKnown || {})[raw] || (v.match(/\/items\/([a-z0-9-]+)/) || [])[1] || v.replace(/[?#].*$/, "");
       if(!/^[a-z0-9][a-z0-9-]*$/.test(slug)){ toast("Bitte einen Namen aus der Liste wählen oder einen DekuDeals-Link einfügen"); return; }
       await api("/api/eshop_history/pick", {key: d.k, slug});
+      S.eqOpen = null;
       await refresh();
       toast("Zugeordnet, zählt als Besitz");
     }
@@ -2850,6 +2885,14 @@ document.addEventListener("change", async e => {
 document.addEventListener("input", e => {
   const el = e.target;
   if(el.dataset.cards){ const i = document.querySelector(`[data-info="${el.dataset.cards}"]`); if(i) i.textContent = cardInfo(el.value); return; }
+  if(el.classList.contains("eqq")){
+    // Treffer für „anderer …“: höchstens zwölf, ohne neu zu zeichnen
+    const box = el.closest("td").querySelector(".eqhits"), q = el.value.trim();
+    const found = q.length < 2 || /\/items\//.test(q) ? [] : Object.entries(S.eshopKnown || {}).filter(([n]) => hits(q, n)).slice(0, 12);
+    box.innerHTML = found.map(([n, slug]) => `<button class="sm" data-act="eshoppick" data-k="${esc(el.dataset.k)}" data-v="${esc(slug)}" title="Ja, das ist ${esc(n)}: zählt als Besitz">${esc(n)}</button>`).join("") +
+      (q.length >= 2 && !found.length && !/\/items\//.test(q) ? `<small class="mut">Nichts gefunden. Ein DekuDeals-Link geht immer: Titel dort suchen, Adresse hier einfügen.</small>` : "");
+    return;
+  }
   if(el.id !== "rq") return;
   S.rq = el.value;
   const pos = el.selectionStart, id = el.id;
@@ -2867,6 +2910,9 @@ $("verlauf").addEventListener("click", e => {   // Klick neben das Fenster schli
 $("legend").addEventListener("click", e => { if(e.target === e.currentTarget) e.currentTarget.close(); });
 // Aufgeklappte Kästen (Rechnung, Nicht im Plan, Gekauft) bleiben beim Neuzeichnen offen
 document.addEventListener("toggle", e => {
+  // data-kc: von Haus aus offen, gemerkt wird das Zuklappen (0.76)
+  const kc = e.target.dataset && e.target.dataset.kc;
+  if(kc){ if(e.target.open) delete S.folds[kc]; else S.folds[kc] = 1; saveView(); return; }
   const k = e.target.dataset && e.target.dataset.k;
   if(!k) return;
   if(e.target.open) S.folds[k] = 1; else delete S.folds[k];

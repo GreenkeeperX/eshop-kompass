@@ -24,8 +24,9 @@ hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft
 ## Favicon und Einstellungen
 
 Favicon (ab 0.70): rotes, fettes „e“ in Nintendo-Rot (`#e60012`, wie `--brand` hell) als SVG im Kopf
-der Seite. Einstellungen sind höchstens 1280 px breit; nur die Karte „Sprachen prüfen“ (`.setc.wide`)
-wächst mit ihrer Tabelle bis zur Fensterbreite, damit sie auf großen Bildschirmen nicht seitlich scrollt.
+der Seite. Alle Karten der Einstellungen sind ab 0.76 so breit wie der Bildschirm und damit
+gleich breit; so scrollt auch „Sprachen prüfen“ auf großen Bildschirmen nicht seitlich (vorher
+höchstens 1280 px, nur diese Karte breiter).
 
 ## Kaufplan (Jetzt)
 
@@ -41,12 +42,18 @@ kaufen heißt und dessen Wechsel sich rechnet.
 ## Käufe aus dem eShop
 
 Ab 0.71 eine eigene Karte in den Einstellungen (`#eshophist`, Sprungleiste „Käufe“), nicht mehr im
-Reiter Sammlung. Kopf: Zahl der Käufe, Lesedatum, violett „n offen“, „n nachtragen“. Erklärung als
+Reiter Sammlung. Kopf: Zahl der Käufe, Lesedatum. Erklärung als
 Satz, Anleitung zum Lesezeichen eingeklappt („So liest du deine Käufe“, offen ohne Käufe).
+Ab 0.76 darunter eine Zahlenzeile wie „Geprüft“ bei den Sprachen („12 Käufe: **3** offen, **2** bei
+DekuDeals nachtragen, **54** in der Sammlung …“; offen und nachtragen violett, Sammlung grün), dann
+die drei Abschnitte als Klappzeilen (`details.eqf`) mit fettem Namen und Zahl: „Welcher Titel ist
+das?“ und „Bei DekuDeals nachtragen“ von Haus aus offen (gemerkt wird das Zuklappen, `data-kc`),
+„Alle Käufe“ zu.
 „Welcher Titel ist das?“: eine Tabellenzeile je offenem Kauf, links Kauf mit grauer Zeile (Datum,
 Art, Plattform, Betrag), rechts die Kandidaten als kleine Knöpfe (`button.cand`, Spiel grau, DLC fett;
-Klick = ja), „keiner“ und „anderer …“ (aufklappbar: Feld mit Suchtreffern aus allen bekannten Titeln
-und DLC, `datalist#eshopknown`, oder DekuDeals-Link; Knopf „zuordnen“). „Bei DekuDeals nachtragen“:
+Klick = ja), „keiner“ und „anderer …“ (ab 0.76 eine eigene Zeile unter dem Kauf, `tr.eqrow`, damit sich nichts
+seitlich verschiebt: Suchfeld, Treffer als Knöpfe beim Tippen über `hits()`, ohne Akzente, höchstens
+zwölf; oder DekuDeals-Link mit Knopf „zuordnen“; der Link heißt dann „schließen“). „Bei DekuDeals nachtragen“:
 sortierbare Tabelle Kauf, Zählt als (Link), Woher, „stimmt nicht“ oder „zurücknehmen“. „Alle Käufe“
 eingeklappt, Zusammenfassung je Gruppe; Zeilen „in der Sammlung“, „Mitgliedschaft oder Gutschein“
 und „erstattet“ grau (`tr.mutr`). Ein englischer Name aus titledb steht grau in Klammern hinter dem
@@ -264,9 +271,29 @@ Protokoll) ist eine eigene Karte (`.setc`), damit klar bleibt, wozu Eingeklappte
 Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Titel-Tabelle: Die Zahl der Bestpreise
 steht neben dem Länderkürzel („JP 17★“), nicht darunter.
 
-Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länderkarten im
-Ansicht der Länderkarten (seit 0.53.6); Grün steht dort nur für „am Bestpreis“ in der Zeile Preis. Weniger Wichtiges wird über
+Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länderkarten
+(seit 0.53.6); Grün steht dort nur für „am Bestpreis“ in der Zeile Preis. Weniger Wichtiges wird über
 gedämpften Text gezeigt, nie über Transparenz der ganzen Kachel.
+
+## Eine Sache, mehrere Orte
+
+Dieselbe Angabe steht in der Oberfläche oft an mehreren Stellen. Wer sie an einer Stelle ändert
+oder ergänzt, geht diese Liste durch und ändert die anderen Stellen mit oder schreibt hierher,
+warum eine Stelle anders bleibt. Funktionen in `app/static/index.html`.
+
+| Was | Wo es vorkommt |
+|---|---|
+| Titelname mit DLC-Marke, Spiel grau davor, Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
+| Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle (Zellen in `viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
+| Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
+| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt (`planpick`, `planfill`), Länderkarte (`pick`, `add`, `trim`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip` |
+| Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |
+| Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
+| Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |
+| Ansichten und Reiter | `TABS`, `render()`, `viewSeg()`, `go()`/`goKorb()`; der Handy-Test `tests/ui_selbsttest.html` zählt jede Ansicht einzeln auf |
+| Felder vom Server | Vertrag `UiContractTest.CONTRACT` in `tests/test_all.py` |
+
+Dazu immer: README (Abschnitt „Nachschlagen“ zum Reiter), diese Datei und bei Abrufen `docs/abrufe.md`.
 
 ## Prüfung
 
