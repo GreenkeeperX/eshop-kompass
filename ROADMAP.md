@@ -32,7 +32,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   braucht eine Entscheidung).
 - [ ] **Handy: Korb und Rechnung.** Korb mit Länder-Umschalter statt seitlichem Scrollen, Antippen
   eines Preises zeigt die Rechnung (statt Wissen nur im Tooltip; hilft auch bei Tastatur).
-- [ ] **„Heute“-Zeile.** Oben höchstens drei Aufgaben als Knöpfe mit Frist.
 - [ ] **Code aufteilen.** Die Oberfläche in mehrere Dateien ohne Build, der Planer in Bewertung,
   Karten und Plan.
 - [ ] **Notbetrieb.** Festlegen und zeigen, was läuft, wenn DekuDeals sperrt oder seine Seiten
@@ -75,7 +74,7 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   - ein Feld für den tatsächlich bezahlten Betrag,
   - gg.deals (Cloudflare sperrt jeden Abruf).
 - **Gestrichen (Entscheidung 19.10.2026):** Kleinteile wie Kostüme zusammenfassen; die Einzelteile
-  bleiben, wie sie sind.
+  bleiben, wie sie sind. Ebenso die „Heute“-Zeile; „Zu erledigen“ deckt sie ab.
 - **Gestrichen (Entscheidung 13.10.2026):** Das Tool bleibt ein privates Werkzeug auf dem
   eigenen Server. Damit entfallen:
   - die Sprache der Oberfläche,
