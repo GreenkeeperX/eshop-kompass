@@ -502,6 +502,15 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(de["threshold"], 3.0)
         # Was es nur in Deutschland gibt, steht unter dem herausgefallenen Land
         self.assertEqual(de["open_slugs"], ["good-job", "nidhogg-2"])
+        # Andere Länder am Schritt (0.74): dieselben Titel anderswo, nach Mehrkosten
+        others = k["steps"][0]["others"]
+        self.assertNotIn("NO", [o["code"] for o in others])
+        self.assertIn("DE", [o["code"] for o in others])
+        keys = [(len(o["missing"]), o["diff"]) for o in others]
+        self.assertEqual(keys, sorted(keys))
+        o = [o for o in others if o["code"] == "DE"][0]
+        if not o["missing"]:
+            self.assertAlmostEqual(o["diff"], round(o["games_cost"] - k["steps"][0]["games_cost"] + (k["steps"][0].get("rest_lost") or 0), 2))
         # Mit Konto in Deutschland (oder ohne Kontoland) ist es kein Wechsel
         for cur in ("DE", ""):
             s["current_country"] = cur
@@ -3879,6 +3888,7 @@ class UiContractTest(unittest.TestCase):
                  "saving", "threshold", "tier", "total", "trims", "warnings", "worth"},
         "plan.items": {"alt", "alt_code", "champ", "dlc_of", "end", "est", "eur", "lang", "local", "needs_parent",
                        "over", "own", "owned", "parent_owned", "pct", "ref", "sale", "short", "slug", "title"},
+        "plan.others": {"code", "current", "diff", "estimated", "games_cost", "is_ref", "missing", "name", "tier"},
         "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "until", "variants"},
@@ -3923,6 +3933,7 @@ class UiContractTest(unittest.TestCase):
             "kaufplan": set(kauf),
             "plan": keys(steps),
             "plan.items": keys([i for p in steps for i in p["items"]]),
+            "plan.others": keys([o for p in kauf["steps"] for o in p["others"]]),
             "collection": set(state["collection"]),
             "collection.games": keys(state["collection"]["games"]),
             "nso": set(state["nso"]),

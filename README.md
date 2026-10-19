@@ -52,8 +52,9 @@ vor weniger als 30 Minuten, entfällt der beim Start.
 3. Kaufen und am Land **„gekauft“** drücken. Das Tool stellt danach Konto und Guthaben selbst
    um und nimmt die Titel aus dem Plan.
 
-Alles Weitere ist Nachschlagen: die Wishlist für Einzelheiten und Verlauf, ihr Korb und die
-Länder zum Durchspielen eigener Zusammenstellungen, Sammlung für fehlende DLC.
+Alles Weitere ist Nachschlagen: „Andere Länder“ an jedem Schritt, die Wishlist für Einzelheiten
+und Verlauf, ihr Korb und die Länderkarten zum Durchspielen eigener Zusammenstellungen,
+Sammlung für fehlende DLC.
 
 ## Begriffe und Regeln
 
@@ -243,9 +244,9 @@ Regeln für die Oberfläche stehen in [`docs/oberflaeche.md`](docs/oberflaeche.m
 
 ### Allgemein
 
-Fünf Reiter: Jetzt, Wishlist, Länder, Sammlung, Einstellungen, erst was ansteht, dann
-Wishlist und Länder zum Einkaufen, dann was du hast. Die Wishlist hat drei Ansichten: Liste,
-Tabelle und Korb. Ein Klick auf den Namen oben links
+Vier Reiter: Jetzt, Wishlist, Sammlung, Einstellungen, erst was ansteht, dann
+die Wishlist zum Einkaufen, dann was du hast. Die Wishlist hat drei Ansichten: Liste,
+Tabelle und Korb. Die Länderkarten öffnen sich aus dem Kaufplan. Ein Klick auf den Namen oben links
 lädt die Startseite neu.
 
 - **Hell oder dunkel:** Der runde Knopf rechts vom „?“ zeigt die aktuelle Ansicht (System,
@@ -300,8 +301,17 @@ Titel nur einmal. Reihenfolge: zuerst das Land, in dem dein Konto steht (ohne An
 Deutschland), dann leicht, mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ist heute
 nichts auf „kaufen“, nennt die Seite die Angebote, die am nächsten am Bestpreis liegen.
 
-Jeder Schritt ist eine Karte wie im Reiter Länder (siehe dort) mit Preis, Wechsel, Rest und
+Jeder Schritt ist eine Karte wie die Länderkarten (siehe dort) mit Preis, Wechsel, Rest und
 der Tabelle der Titel. DLC mit gekürztem Namen tragen das Hauptspiel klein davor.
+
+**Andere Länder:** Zugeklappt unter jedem Schritt steht, was dieselben Titel in den anderen
+Ländern kosten, als Betrag über oder unter diesem Schritt, die günstigsten zuerst; Länder, in
+denen Titel fehlen, folgen mit „ohne …“ und vergleichen nur die übrigen. Wie bei „Preis“ zählt,
+was die Spiele kosten, ein Rest bleibt auf beiden Seiten Guthaben. Grün heißt günstiger: Dann
+lohnt der Wechsel dorthin nicht, oder der Plan hat jeden Titel einzeln dem Land gegeben, in dem
+er am wenigsten kostet, und im Paket teilen sich die Titel die Karten anders. Ein Klick auf ein
+Land zeigt die Titel des Schritts dort als Karte mit Rechnung und darunter die Karte des Landes
+mit seinem eigenen Korb.
 
 **Füllartikel:** Bleibt in einem Schritt ein Rest, stehen darunter Wishlist-Titel, die
 hineinpassen, der kleinste verbleibende Rest zuerst, auch zwei Titel zusammen, wenn sie den
@@ -411,8 +421,10 @@ Unter dem Korb steht, was er kostet, wenn jeder Titel im günstigsten Land mit K
 gekauft wird, sofern das günstiger ist als alles in einem Land. Dort kostet der Wechsel nichts,
 und es bleibt kein Rest.
 
-### Länder
+### Länderkarten
 
+Kein eigener Reiter: Die Karten öffnen sich über „Andere Länder“ an einem Schritt oder über
+„alle Länderkarten“ unter dem Kaufplan; „← Kaufplan“ führt zurück.
 Länderkarten als dichtes Raster oder große Liste. Das Land, in dem dein Konto steht, kommt
 zuerst, dann die übrigen nach der gewählten Reihenfolge, Deutschland als Vergleich am Ende.
 Jede Karte enthält die Angebote des Landes, die günstiger als in Deutschland sind, und

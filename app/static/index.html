@@ -265,6 +265,9 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .matrix.compact td{padding:2px 6px}
 .matrix .tbtn{font-size:13px}
 .matrix .tl{display:flex;gap:6px;align-items:flex-start}
+.pc table.others{table-layout:auto;width:100%}
+.mini-t.others .nw{white-space:nowrap}
+.mini-t.others td:nth-child(2){text-align:right;white-space:nowrap;padding-left:10px;vertical-align:top}
 .matrix .tl .kb{flex:none;margin-top:1px}
 .matrix td.na{color:var(--muted)}
 .matrix td small{display:block;color:var(--muted);font-size:10.5px;line-height:1.2}
@@ -550,7 +553,8 @@ function setTheme(k){
 }
 /* Reihenfolge (0.61): erst was zu tun ist, dann Wunschliste, Korb und Länder (Einkauf), dann was du hast */
 // Der Korb ist ab 0.73 eine Ansicht der Wishlist (Liste | Tabelle | Korb), kein eigener Reiter mehr
-const TABS = [["jetzt","Jetzt"],["titel","Wishlist"],["laender","Länder"],["sammlung","Sammlung"],["settings","Einstellungen"]];
+// Ab 0.74 vier Reiter: Die Länderkarten (intern weiter `laender`) öffnen sich aus dem Kaufplan, kein eigener Reiter
+const TABS = [["jetzt","Jetzt"],["titel","Wishlist"],["sammlung","Sammlung"],["settings","Einstellungen"]];
 const V0 = loadView();
 if(V0.tab === "korb"){ V0.tab = "titel"; V0.tview = "korb"; }
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
@@ -1378,6 +1382,7 @@ function viewKauf(){
   if(k.lock) h += lockBox(k);
   if(k.steps.length) h += `<div class="grid steps">` + k.steps.map((p, n) => planCard(p, n + 1)).join("") + `</div>`;
   else h += emptyPlan();
+  h += `<p class="restline">Jedes Land mit seinem eigenen Korb, zum Durchspielen: <button class="link" data-act="allland">alle Länderkarten</button></p>`;
   h += notPlanned(k) + boughtBox(k);
   return h;
 }
@@ -1446,9 +1451,17 @@ function hiddenLine(){
     `${esc(country(c).name)} <button class="link" data-act="unhide" data-c="${c}">einblenden</button>`).join(" · ") + `</p>`;
 }
 function viewCards(){
+  const back = `<button class="link" data-act="gotab" data-v="jetzt" title="Zurück zum Kaufplan">← Kaufplan</button>`;
+  // Ein Land aus „Andere Länder“ (0.74): nur seine Karte, darunter der Weg zu allen
+  const focus = S.landFocus && cardPlans().find(p => p.code === S.landFocus);
+  // Aus „Andere Länder“: erst die Titel des Schritts in diesem Land, darunter sein eigener Korb
+  const lp = S.landStep && S.landStep.code === S.landFocus ? S.landStep : null;
+  if(focus || lp) return `<div class="tools">${back}<span class="sp"></span><button class="sm" data-act="allland">alle Länder</button></div>` +
+    (lp ? `<p class="restline">Die Titel aus Schritt ${lp.step} (${esc(lp.from)}) in ${esc(lp.p.name)}, zum Vergleich:</p><div class="grid list">${planCard(lp.p)}</div>` : "") +
+    (focus ? `${lp ? `<p class="restline">${esc(focus.name)} mit eigenem Korb, aus allen Titeln, die dort im Angebot sind:</p>` : ""}<div class="grid list">${planCard(focus)}</div>` : "");
   const opt = (v, l) => `<option value="${v}" ${S.lsort === v ? "selected" : ""}>${l}</option>`;
   // Werkzeugzeile wie in Titel: links Reihenfolge, rechts der Ansichtsschalter (0.59)
-  let h = `<div class="tools"><select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Bestpreis")}${opt("saving","nach Wechselgewinn")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
+  let h = `<div class="tools">${back}<select class="srt" data-act="sort" title="Reihenfolge der Länder">${opt("optimum","nach Abstand zum Bestpreis")}${opt("saving","nach Wechselgewinn")}${opt("rest","nach Rest")}${opt("end","nach Angebotsende")}${opt("tier","nach Stufe")}</select>
     ${Object.values(S.ui.overrides).some(ov => ov && ((ov.add || []).length || (ov.remove || []).length)) ? `<button class="sm" data-act="resetall" title="Eigene Änderungen an allen Warenkörben verwerfen">alle zurücksetzen</button>` : ""}
     <span class="seg"><button data-act="dense" data-v="1" class="${S.dense ? "on" : ""}">Raster</button><button data-act="dense" data-v="0" class="${S.dense ? "" : "on"}">Liste</button></span></div>`;
   const cards = [], empty = [];
@@ -1620,7 +1633,7 @@ function planCard(p, step){
   const dim = has && !p.home && !p.current && p.worth === false && !step;
   let h = `<article class="pc ${p.current ? "cur" : ""} ${dim ? "dim" : ""}"><header><h2>${step ? step + ". " : ""}${esc(p.name)} ${p.is_ref ? "" : tierTag(p.tier)}${p.current ? ` <span class="tier cur" title="Dein Konto steht hier">Konto</span>` : ""}</h2>
     ${step ? `<button class="sm" data-act="bought" data-c="${esc(p.code)}" title="Vermerkt den Kauf: Dein Konto steht danach hier, ein Rest bleibt als Guthaben, die Titel verschwinden aus dem Plan">gekauft</button>`
-      : p.is_ref ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</header>`;
+      : p.is_ref || p.ro ? "" : `<button class="hide" data-act="hide" data-c="${p.code}" title="Land ausblenden">×</button>`}</header>`;
   if(has){
     h += `<div class="money" title="${esc(costTip(p))}">${p.estimated ? "ca. " : ""}${eur(p.cost)}${cur === "EUR" ? "" : `<small>${money(p.total, cur)}</small>`}${p.balance_value ? `<small>${p.cost < 0.005 ? "ganz aus deinem Guthaben" : "neu zu zahlen, dazu dein Guthaben"}</small>` : ""}</div>`;
     if(p.from_step && !step) h += `<div class="ln"><span class="k">Korb</span><span class="mut" title="Die Karte rechnet mit den Titeln, die der Kaufplan hier kauft. Ändern, entfernen oder hinzufügen macht daraus einen eigenen Korb.">wie im Kaufplan, Schritt ${p.from_step}</span></div>`;
@@ -1641,7 +1654,7 @@ function planCard(p, step){
         const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${need || (i.parent_owned ? "has" : "")}"${need ? ` title="${esc(needTip(p.code, need))}"` : ""}>DLC${need === "open" ? "?" : ""}</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${i.dlc_of && i.short !== i.title ? `<small class="gm">${esc(i.dlc_of)}:</small> ` : ""}${esc(i.short)}${i.own ? " " + ownMark(i) : ""}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
         const filled = step && (p.fill_slugs || []).includes(i.slug)
           ? ` <button class="link" data-act="planunfill" data-c="${p.code}" data-s="${esc(i.slug)}" title="Von dir dazugenommen. Klick nimmt ihn wieder heraus.">dazugenommen ×</button>` : "";
-        const first = step ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
+        const first = step || p.ro ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
         return `<tr>${first}${wide ? `<td>${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
           <td class="${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
           <td>${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
@@ -1650,7 +1663,7 @@ function planCard(p, step){
   } else {
     h += `<p class="line"><small>Kein Wishlist-Titel im Angebot.</small></p>`;
   }
-  if(!step){
+  if(!step && !p.ro){
     const sugg = p.trims.map(t =>
         `<button data-act="trim" data-c="${p.code}" data-s="${esc(t.slug)}" title="Ohne diesen Titel kostet das Paket ${eur(t.marginal)} weniger, ohne den Wechsel kostet er ${eur(t.ref)}">
           <span class="n">− ${esc(t.short)} weglassen</span><small>hier ${num(t.marginal)}, sonst ${num(t.ref)}${t.rest === null ? "" : ` · Rest ${num(t.rest, cur)}`}</small><b>spart ${eur(t.gain)}</b></button>`)
@@ -1680,7 +1693,8 @@ function planCard(p, step){
     h += `<p class="restline" style="margin-top:6px">Passt dazu: + ${f.shorts.map(esc).join(" + ")} für ${eur(f.extra)}, sonst ${eur(f.ref)}${f.rest !== null && f.rest !== undefined ? `, Rest dann ${money(f.rest, cur)}` : ""}</p>`;
   }
   let foot = has ? `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>Rechnung</summary>${billHtml(p)}</details>` : "";
-  if(p.rate && !step){
+  if(step && (p.others || []).length) foot += othersHtml(p, step);
+  if(p.rate && !step && !p.ro){
     const inPlan = new Set(p.items.map(i => i.slug));
     const opts = p.is_ref ? "" : wishOpts(S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug)),
       r => money(r.cells[p.code].local, cur), {code: p.code, skip: inPlan});
@@ -1701,6 +1715,21 @@ function planCard(p, step){
   }
   if(foot) h += `<div class="foot">${foot}</div>`;
   return h + `</article>`;
+}
+/* Andere Länder an einem Schritt des Kaufplans (0.74): dieselben Titel dort, nach Mehrkosten.
+   Ein Klick auf ein Land öffnet seine Karte. */
+function othersHtml(p, step){
+  const key = "ol:" + p.code, list = p.others.filter(o => !S.ui.hidden.includes(o.code));
+  if(!list.length) return "";
+  const amt = o => o.diff >= 0.005 ? `<span class="abv">+${eur(o.diff)}</span>` : o.diff <= -0.005 ? `<span class="gn">−${eur(-o.diff)}</span>` : `<span class="mut">gleich</span>`;
+  const first = list.find(o => !o.missing.length);
+  const tip = `Was die Titel dieses Schritts in anderen Ländern kosten, verglichen mit ${p.name}. Wie bei „Preis“ zählt, was die Spiele kosten; ein Rest bleibt als Guthaben. Grün heißt günstiger: Der Plan nimmt dann ${p.name}, weil der Wechsel dorthin sich nicht rechnet oder weil er jeden Titel einzeln dem günstigsten Land gibt.`;
+  const rows = list.map(o => {
+    const note = [o.current ? "Konto steht dort, kein Wechsel" : "", o.missing.length ? `ohne ${o.missing.map(esc).join(", ")}` : ""].filter(Boolean).join(" · ");
+    return `<tr><td class="l"><span class="nw"><button class="link" data-act="goland" data-c="${o.code}" data-from="${p.code}" title="Diese Titel in ${esc(o.name)} ansehen, mit Preis, Wechsel und Rechnung">${esc(o.name)}</button> ${o.is_ref ? "" : tierTag(o.tier)}</span>${note ? `<br><small class="mut">${note}</small>` : ""}</td>` +
+      `<td title="Die Spiele kosten dort ${o.estimated ? "ca. " : ""}${eur(o.games_cost)}">${o.estimated ? "ca. " : ""}${amt(o)}</td></tr>`;
+  }).join("");
+  return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table></details>`;
 }
 function altCell(i){
   if(i.alt === null || i.alt === undefined) return `<td class="mut">–</td>`;
@@ -2602,6 +2631,18 @@ document.addEventListener("click", async e => {
     }
     else if(a === "verlauf"){ await openVerlauf(d.s); }
     else if(a === "gotab"){ go(d.v); }
+    else if(a === "goland"){
+      // Andere Länder (0.74): die Titel des Schritts in diesem Land, nur zum Ansehen
+      const st = d.from && S.kauf ? S.kauf.steps.findIndex(x => x.code === d.from) : -1;
+      S.landStep = null;
+      if(st >= 0){
+        const r = await api("/api/plans", {overrides: {}, must: [], basket: S.kauf.steps[st].items.map(i => i.slug)});
+        const p = r.plans.find(x => x.code === d.c);
+        if(p) S.landStep = {code: d.c, step: st + 1, from: S.kauf.steps[st].name, p: Object.assign(p, {ro: true})};
+      }
+      S.landFocus = d.c; go("laender");
+    }
+    else if(a === "allland"){ S.landFocus = null; S.landStep = null; go("laender"); }
     else if(a === "nsov"){
       // Gleich umschalten (0.68): Alle Varianten sind schon geladen, die Wahl ändert sonst nichts
       // auf dem Server. Bis 0.67 lud der Knopf den ganzen Stand neu und brauchte Sekunden.

@@ -29,6 +29,10 @@ wächst mit ihrer Tabelle bis zur Fensterbreite, damit sie auf großen Bildschir
 
 ## Kaufplan (Jetzt)
 
+„Andere Länder“ (ab 0.74) steht zugeklappt wie „Rechnung“ unter jedem Schritt, in der Zusammenfassung
+das nächstgünstigste Land. Je Land eine Zeile: Name als Link, Stufe, darunter klein „ohne …“ oder
+„Konto steht dort“, rechts der Betrag: rot `.abv` „+x €“ teurer, grün `.gn` „−x €“ günstiger.
+
 Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Titel
 dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedschaft“ bietet alle Varianten an). Dazugenommenes ist ein Füllartikel des Schritts und trägt „dazugenommen ×“
 (vorher „Füller ×“). Weglassen-Vorschläge gibt es im Plan nicht: Der Plan nimmt nur, was dort
@@ -193,8 +197,10 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 
 ## Flächen
 
-Reiter (ab 0.61, „Titel“ heißt ab 0.72 „Wishlist“, intern weiter `titel`): Jetzt, Wishlist, Länder, Sammlung, Einstellungen, erst was ansteht, dann
-Einkaufen, dann was du hast. Der Korb ist ab 0.73 kein Reiter mehr, sondern die dritte Ansicht der
+Reiter (ab 0.61, „Titel“ heißt ab 0.72 „Wishlist“, intern weiter `titel`): Jetzt, Wishlist, Sammlung, Einstellungen, erst was ansteht, dann
+Einkaufen, dann was du hast. Die Länderkarten sind ab 0.74 kein Reiter mehr (intern weiter `laender`):
+„alle Länderkarten“ unter dem Kaufplan, „Andere Länder“ an jedem Schritt (`goland`, `S.landFocus`;
+`S.landStep` ist die Karte mit den Titeln des Schritts, nur zum Ansehen, `p.ro`), oben „← Kaufplan“. Der Korb ist ab 0.73 kein Reiter mehr, sondern die dritte Ansicht der
 Wishlist (`S.tview = "korb"`, `goKorb()`; ein gemerkter Reiter `korb` wird dorthin umgeleitet).
 Am Knopf Korb steht grau die Zahl seiner Titel. In der Tabelle steht vor jedem Titel „+“ bzw. „✓“
 (`.kb`, in den Korb oder heraus). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
@@ -255,7 +261,7 @@ Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Titel-Tabelle: Die 
 steht neben dem Länderkürzel („JP 17★“), nicht darunter.
 
 Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länderkarten im
-Reiter Länder (seit 0.53.6); Grün steht dort nur für „am Bestpreis“ in der Zeile Preis. Weniger Wichtiges wird über
+Ansicht der Länderkarten (seit 0.53.6); Grün steht dort nur für „am Bestpreis“ in der Zeile Preis. Weniger Wichtiges wird über
 gedämpften Text gezeigt, nie über Transparenz der ganzen Kachel.
 
 ## Prüfung

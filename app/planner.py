@@ -2259,6 +2259,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     wanted = [s for s in wanted if s not in in_pack]
     current = settings.get("current_country") or ""
     allowed = [code for code, c in ctx.countries.items() if c["unit"] is not None]
+    every = list(allowed)
     dropped = []
 
     def blocks(code):
@@ -2436,6 +2437,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         # deutschen Schritt (dort ist die Ersparnis dann 0)
         p["de_now"] = _r(sum(ctx.ref[i["slug"]] if i["slug"] in ctx.ref
                              else ctx.oeur(c, c["offers"][i["slug"]]) for i in p["items"]))
+    for p in steps:
+        p["others"] = [] if locked else _other_countries(ctx, p, every)
     # Online-Mitgliedschaft als Füllartikel (0.57.1, Vorschlag ohne Übernahme): Varianten, die du
     # selbst kaufen kannst und die in den Rest eines Schritts passen, die größte zuerst
     ms = membership(data, settings, now) if any((p.get("rest") or 0) > 0 for p in steps) else {"variants": []}
@@ -2476,6 +2479,35 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "bought_saving": _r(sum((b.get("de") or 0) - _paid(b) for b in (bought or [])
                                     if b.get("de") is not None and _paid(b) is not None)),
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
+
+
+def _other_countries(ctx, step, codes):
+    """Andere Länder für einen Schritt des Kaufplans (0.74): Was dieselben Titel dort kosten,
+    verglichen mit dem, was die Spiele in diesem Schritt kosten. Ein Rest bleibt auf beiden
+    Seiten Guthaben und zählt nicht, auch wenn er im Plan beim nächsten Wechsel verfällt.
+    Die Länder stehen nach Mehrkosten, Länder ohne alle Titel am Ende."""
+    slugs = [i["slug"] for i in step["items"]]
+    own = step.get("games_cost")
+    if own is None or not slugs:
+        return []
+    own -= step.get("rest_lost") or 0     # wie dort: was die Spiele kosten, ein Rest bleibt Guthaben
+    out = []
+    for code in codes:
+        if code == step["code"]:
+            continue
+        o = plan_country(ctx, code, basket=slugs, allowed=codes)
+        if not o["items"] or o.get("games_cost") is None:
+            continue
+        have = {i["slug"] for i in o["items"]}
+        # Fehlen dort Titel, vergleicht die Zeile nur die übrigen: der Schritt ohne deren Preis
+        base = own - sum(i["eur"] for i in step["items"] if i["slug"] not in have and i.get("eur") is not None)
+        out.append({"code": code, "name": o["name"], "tier": o["tier"],
+                    "is_ref": o["is_ref"], "current": o["current"],
+                    "games_cost": o["games_cost"], "diff": _r(o["games_cost"] - base),
+                    "missing": [ctx.short(s) for s in slugs if s not in have],
+                    "estimated": bool(o.get("estimated"))})
+    out.sort(key=lambda x: (len(x["missing"]), x["diff"], x["name"]))
+    return out
 
 
 def _rest_fill(ctx, c, p, planned, skip, limit=60, xctx=None):
