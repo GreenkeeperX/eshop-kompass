@@ -2234,6 +2234,13 @@ class EshopHistoryTest(unittest.TestCase):
         self.assertEqual(rows["ほしのたび + ほしのたび 2"]["group"], "coll")
         self.assertEqual(rows["貓咪大冒險"]["eng"], "Cat Adventure™")
         self.assertEqual(sync._name_file("貓咪大冒險", "DE"), "HK.zh")
+        # 0.82.2: Der gekaufte Pass fällt danach aus den fehlenden DLC; er bleibt über die DLC-Liste
+        # des Spiels zugeordnet, statt wieder unbekannt zu werden
+        del data["extra"]["bunny-fight-fighters-pass"]
+        data["rel"]["bunny-fight"]["dlc"] = [["bunny-fight-fighters-pass", "Fighters Pass"]]
+        rows = {r["title"]: r for r in planner.eshop_matches(data)["rows"]}
+        self.assertEqual((rows["うさぎファイト ファイターパス"]["slug"], rows["うさぎファイト ファイターパス"]["group"]),
+                         ("bunny-fight-fighters-pass", "plan"))
 
     def test_latin_titles_also_in_german_list_and_owned_dlc(self):
         # 0.81: Ein deutscher Kauftitel, gelesen, als das Konto in Brasilien stand, findet sich in der

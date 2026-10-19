@@ -539,7 +539,8 @@ der Liste von Hongkong.
 
 Pässe (Upgrade-Pass für die Switch 2, Erweiterungs- und Kämpfer-Pass) führt titledb oft ohne
 Programm-ID. Dann zählt die Shop-ID, wenn ein fehlender DLC dieselbe hat, sonst der Spielname am
-Anfang des Kauftitels und die Art des Passes: „Spiel: Upgrade Pack“ findet den DLC dieses Spiels.
+Anfang des Kauftitels und die Art des Passes: „Spiel: Upgrade Pack“ findet den DLC dieses Spiels,
+auch wenn er als gekauft nicht mehr unter den fehlenden DLC steht (aus der DLC-Liste des Spiels).
 Führt DekuDeals ein Spiel nur als „… – Nintendo Switch 2 Edition“, zählen Spiel und Upgrade-Pass
 als dieser Eintrag. Käufe „A + B“ bekommen den englischen Namen aus beiden Teilen.
 

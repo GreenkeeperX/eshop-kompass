@@ -187,6 +187,11 @@ def _eshop_matches(data):
         dlc_of.setdefault(_s2base(g), []).append((_tnorm(cands[s].get("title")), s))
     rows, owned = [], set()
     known = slug_names(data)
+    # Auch DLC, die nicht mehr unter den fehlenden stehen (0.82.2): Ein gekaufter Pass zählt als
+    # Besitz und fällt deshalb aus extra; ohne sie wäre er beim nächsten Abgleich wieder unbekannt
+    for s, (t, g) in known.items():
+        if g and s not in games:
+            dlc_of.setdefault(_s2base(g), []).append((_tnorm(t), s))
     # Alle bekannten Titel und DLC als Rückfall für genaue Namen (0.81.3): Ein gekaufter DLC fällt
     # aus den fehlenden DLC (extra), sobald er als Besitz zählt; ohne diesen Rückfall wäre er beim
     # nächsten Abgleich wieder unbekannt gewesen und hätte zwischen beiden Zuständen gewechselt
@@ -231,7 +236,7 @@ def _eshop_matches(data):
         if not kind or not m.get("game"):
             return None
         dl = dlc_of.get(_s2base(m["game"]), [])
-        hit = [s for n, s in dl if ("upgrade pack" in n if kind == "upgrade" else n == kind)]
+        hit = sorted({s for n, s in dl if ("upgrade pack" in n if kind == "upgrade" else n == kind)})
         return hit[0] if len(hit) == 1 else None
 
     def in_coll(title):
