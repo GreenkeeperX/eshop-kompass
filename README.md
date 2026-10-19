@@ -88,6 +88,13 @@ Rabatt, mit denselben Grenzen für jedes Land:
 - **gut:** bis 15 % oder höchstens 2 € darüber,
 - **warten:** weiter weg.
 
+**Kleinkram** (Bestpreis unter 2 €, unter Einstellungen, Regeln änderbar, 0 schaltet es ab): Für
+ihn gilt die Euro-Grenze bei „kaufen“ nicht, nur die 2 %; 0,50 € wären bei 1 € schon 50 %. Im
+Kaufplan macht er keine Guthabenkarte größer: Er kommt nur in den Rest, den die übrigen Titel
+eines Schritts ohnehin lassen (oder in Guthaben, das schon dort liegt), der teuerste zuerst. Was
+nicht passt, steht unter „Nicht im Plan“ als „Kleinkram: wartet auf einen Rest“ und erscheint
+unter „Passt in den Rest“, sobald einer bleibt. Mit Kreditkarte bezahlt, ändert sich nichts.
+
 Ein dauerhaft günstiger Normalpreis am Bestpreis ist also „kaufen“ wie ein Angebot (der Grund
 nennt dann „Normalpreis“), und ein teureres Angebot in einem anderen Land macht daraus kein
 „warten“. Rabatt und Angebotsende stehen nur daneben. Die beiden Euro-Grenzen sind unter

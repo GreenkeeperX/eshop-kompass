@@ -54,6 +54,8 @@ function notPlanned(k){
     rows.push(`<tr><td>${d.open_titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">Wechsel lohnt nicht</span>: ${d.gain >= 0 ? `spart ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`} gegenüber ${esc(altNames(d.alt_codes))}, lohnt ab ${eur(d.threshold)}</td></tr>`);
   for(const x of k.s2_skip || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">nur ein Weg zur Switch 2: ${esc(x.reason)}</td></tr>`);
   for(const x of k.packed || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">steckt in <b>${esc(x.pack)}</b>, das ebenfalls zum Kauf ansteht: nicht doppelt kaufen</td></tr>`);
+  // Kleinkram (0.92): wartet, bis ein Rest bleibt, statt eine Guthabenkarte größer zu machen
+  if((k.small || []).length) rows.push(`<tr><td>${k.small.map(x => esc(x.short)).join(", ")}</td><td class="l">Kleinkram: wartet auf einen Rest, statt eine Guthabenkarte größer zu machen; steht unter „Passt in den Rest“, sobald einer bleibt</td></tr>`);
   for(const l of k.later) rows.push(`<tr><td>${esc(l.title)}</td><td class="l">lieber warten: ${esc(l.reason)}; in den Ländern, deren Wechsel sich rechnet, kein Kauf</td></tr>`);
   if(k.nowhere.length) rows.push(`<tr><td>${k.nowhere.map(esc).join(", ")}</td><td class="l">nirgends kaufbar, wo es zählt</td></tr>`);
   if(k.bought_waiting.length) rows.push(`<tr><td>${k.bought_waiting.map(esc).join(", ")}</td><td class="l">schon gekauft oder in deiner Sammlung, steht noch auf der Wishlist</td></tr>`);

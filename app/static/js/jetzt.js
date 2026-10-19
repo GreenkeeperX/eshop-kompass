@@ -161,7 +161,7 @@ function nsoBox(){
 function openLegend(){
   const d = $("legend");
   d.innerHTML = `<header><h2>Legende</h2><button data-act="lgclose" autofocus>Schließen</button></header><div class="lgd">
-    <div><span class="vd buy">kaufen</span> Einkaufspreis höchstens ${eur(S.state.settings.deal_eur.buy)} oder höchstens 2 % über dem Bestpreis, oder dein Zielpreis ist erreicht.</div>
+    <div><span class="vd buy">kaufen</span> Einkaufspreis höchstens ${eur(S.state.settings.deal_eur.buy)} oder höchstens 2 % über dem Bestpreis, oder dein Zielpreis ist erreicht.${S.state.settings.deal_eur.mini > 0 ? ` Kleinkram (Bestpreis unter ${eur(S.state.settings.deal_eur.mini)}) nur bis 2 %.` : ""}</div>
     <div><span class="vd good">gut</span> höchstens ${eur(S.state.settings.deal_eur.good)} oder höchstens 15 % über dem Bestpreis.</div>
     <div><span class="vd wait">warten</span> weiter weg vom Bestpreis. Das Urteil gilt dem günstigsten Preis jetzt, mit oder ohne Rabatt: Ein dauerhaft günstiger Normalpreis am Bestpreis ist „kaufen“.</div>
     <div><b>Bestpreis</b>: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet. <b>Einkaufspreis</b>: was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr.</div>

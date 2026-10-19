@@ -107,6 +107,38 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 groups.setdefault(best[1], []).append(slug)
             else:
                 later.append(slug)
+        # Kleinkram (0.92, Entscheidung 19.10.2026): Titel unter deal_eur.mini machen keine
+        # Guthabenkarte größer. Sie kommen nur in den Rest, den die übrigen Titel ohnehin
+        # lassen, die größten zuerst; der Rest wartet auf einen späteren Rest
+        small = []
+        for code in list(groups):
+            c = ctx.countries[code]
+            # Was du selbst in den Schritt genommen hast, zählt wie ein großer Titel
+            mine = [s for s in fill.get(code, []) if s in c["offers"] and s not in done]
+            minis = [s for s in groups[code] if ctx.mini(ctx.oeur(c, c["offers"][s]))
+                     and c["offers"][s].get("direct") is None and s not in mine]
+            if not minis:
+                continue
+            whole = plan_country(ctx, code, basket=groups[code], allowed=allowed)
+            if whole["via"] != "giftcard" or whole["estimated"]:
+                continue            # mit Kreditkarte wird keine Karte größer
+            big = [s for s in groups[code] if s not in minis] + [s for s in mine if s not in groups[code]]
+            if big:
+                q = plan_country(ctx, code, basket=big, allowed=allowed)
+                if q["via"] != "giftcard":
+                    continue        # ohne den Kleinkram zahlt die Kreditkarte: keine Karte
+                room = round((q["rest"] or 0) * 100)
+            else:
+                room = cents(c["cfg"].get("balance") or 0)
+            keep = []
+            for s in sorted(minis, key=lambda s: (-c["offers"][s]["local"], s)):
+                if c["offers"][s]["local"] <= room:
+                    keep.append(s)
+                    room -= c["offers"][s]["local"]
+            small += [s for s in minis if s not in keep]
+            groups[code] = [s for s in groups[code] if s not in minis or s in keep]
+            if not groups[code]:
+                del groups[code]
         # Übernommene Füllartikel kommen in ihren Schritt, solange es ihn gibt
         taken = {x for g in groups.values() for x in g}
         for code, slugs in fill.items():
@@ -121,7 +153,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                     taken.add(s)
         later = [s for s in later if s not in taken]
         nowhere = [s for s in nowhere if s not in taken]
-        return groups, nowhere, later
+        small[:] = [s for s in small if s not in taken]
+        return groups, nowhere, later, small
 
     def first_end(p):
         ends = [i["end"] for i in p["items"] if i.get("end")]
@@ -149,7 +182,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     pin, tried = {}, set()
     for _round in range(4):
         while True:
-            groups, nowhere, later = assign()
+            groups, nowhere, later, small = assign()
             if locked:
                 later = [s for s in later if s not in held]
                 nowhere = [s for s in nowhere if s not in held]
@@ -232,6 +265,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         d["open_titles"] = [ctx.short(s) for s in d["open_slugs"]]
         shown.update(d["open_slugs"])
     later = [s for s in later if s not in shown]
+    small = [s for s in small if s not in shown and s not in planned]
     nowhere = [s for s in nowhere if s not in shown]
 
     lock = None
@@ -286,6 +320,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                                     "name": ctx.countries[everywhere[s][1]]["meta"]["name"]}
                                    for s in held],
             "later": [{"slug": s, "title": ctx.title(s), "reason": reasons.get(s, "")} for s in later],
+            # Kleinkram, der in keinen Rest passte: wartet auf einen späteren Rest (0.92)
+            "small": [{"slug": s, "title": ctx.title(s), "short": ctx.short(s)} for s in small],
             "s2_skip": [dict(x, title=ctx.title(x["slug"])) for x in s2_skip],
             "packed": packed,
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),

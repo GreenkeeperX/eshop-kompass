@@ -41,7 +41,8 @@ DEFAULT_SETTINGS = {
     "own_offers": [],         # eigene Angebote für Titel, etwa Codes bei Amazon Japan (ab 0.62)
     # Urteil im Radar: bis zu diesem Abstand zum Bestpreis in Euro gilt ein
     # Angebot als Kauf bzw. gutes Angebot, auch wenn es prozentual mehr ist
-    "deal_eur": {"buy": 0.5, "good": 2.0},
+    # mini (0.92): Titel mit Bestpreis unter diesem Betrag sind Kleinkram, siehe planner.Context.mini
+    "deal_eur": {"buy": 0.5, "good": 2.0, "mini": 2.0},
     # Euro-Guthaben (Deutschland mit Guthaben): Faktor bis zu diesem Wert gilt als Top, gut,
     # okay; darüber teuer. Stufen wie bei Kenixa (Entscheidung 13.10.2026)
     "eur_card_steps": {"top": 0.81, "good": 0.83, "ok": 0.86},

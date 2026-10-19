@@ -135,6 +135,11 @@ die nicht auf der Wishlist stehen, folgen als höchstens zwei Knöpfe („+ Name
 haben dieselbe Kartenfarbe und denselben feinen Rahmen (globales `select`, ab 0.78). Kostenloses
 fehlt (ab 0.70). Preise in Auswahlfeldern „Titel dazunehmen …“ immer mit Währungszeichen (ab 0.70).
 
+Kleinkram (ab 0.92, Entscheidung 19.10.2026): Titel mit Bestpreis unter `deal_eur.mini` (2 €)
+füllen nur den Rest eines Schritts. Was nicht passt, steht unter „Nicht im Plan“ in einer Zeile
+„Kleinkram: wartet auf einen Rest …“ (`notPlanned`, Feld `small` des Kaufplans). Die Grenze steht
+in Einstellungen, Regeln („Kleinkram unter … €“), im Regelsatz darüber und in der Legende bei „kaufen“.
+
 ## Kopfleiste
 
 Kopf und Reiter kommen beim Scrollen mit. Erst nach 300 px weiter nach unten blenden sie sich

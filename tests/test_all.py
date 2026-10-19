@@ -294,6 +294,7 @@ class CardsTest(unittest.TestCase):
 
 def sample():
     settings = store.load_settings()
+    settings["deal_eur"]["mini"] = 0   # die Beispielpreise sind klein; Kleinkram prüft MiniTest
     for code, c in settings["countries"].items():
         c["enabled"] = code in ("DE", "NO", "BR", "JP")
     settings["countries"]["BR"]["cards"] = "15=3.00 25=4.80 50=9.50"
@@ -326,6 +327,75 @@ def sample():
             "fx": {"rates": {"EUR": 1, "NOK": 10.7155, "BRL": 5.6086, "JPY": 177.3267},
                    "updated": "x"}}
     return data, settings
+
+
+class MiniTest(unittest.TestCase):
+    """Kleinkram unter deal_eur.mini (0.92): keine größere Guthabenkarte, „kaufen“ nur bis 2 %."""
+    def setUp(self):
+        self.data, self.settings = sample()
+        self.settings["deal_eur"]["mini"] = 2.0
+        self.settings["current_country"] = "DE"
+        for code, c in self.settings["countries"].items():
+            c["enabled"] = code in ("DE", "BR")
+        items, de, br = {}, {}, {}
+        for i, (slug, eur, brl) in enumerate([("big", 49.99, 47), ("m1", 1.99, 4), ("m2", 1.99, 3),
+                                               ("m3", 1.99, 2.5)]):
+            items[slug] = {"title": slug.title(), "parent": None, "active": True, "order": i,
+                           "ids": {"EU": ["1"]}, "ids_checked": {}}
+            de[slug] = {"status": "onsale", "currency": "EUR", "regular": eur}
+            br[slug] = {"status": "onsale", "currency": "BRL", "regular": brl}
+        self.data.update(items=items, prices={"DE": de, "BR": br})
+
+    def plan(self):
+        return planner.purchase_plan(self.data, self.settings, now=NOW)
+
+    def test_minis_only_fill_the_rest(self):
+        k = self.plan()
+        br = next(p for p in k["steps"] if p["code"] == "BR")
+        self.assertEqual(sorted(i["slug"] for i in br["items"]), ["big", "m2"])   # 47 + 3 in eine 50er
+        self.assertEqual([(c["face"], c["count"]) for c in br["cards"]], [(50.0, 1)])
+        self.assertEqual(sorted(x["slug"] for x in k["small"]), ["m1", "m3"])
+        self.assertNotIn("DE", [p["code"] for p in k["steps"]])
+
+    def test_taken_filler_counts_like_a_big_title(self):
+        # Selbst in den Schritt genommen: bleibt drin, und der Kleinkram füllt den Rest danach
+        k = planner.purchase_plan(self.data, self.settings, now=NOW, fill={"BR": ["m1"]})
+        br = next(p for p in k["steps"] if p["code"] == "BR")
+        self.assertIn("m1", [i["slug"] for i in br["items"]])
+        self.assertNotIn("m1", [x["slug"] for x in k["small"]])
+
+    def test_without_limit_minis_enlarge_the_cards(self):
+        self.settings["deal_eur"]["mini"] = 0
+        k = self.plan()
+        br = next(p for p in k["steps"] if p["code"] == "BR")
+        self.assertEqual(len(br["items"]), 4)
+        self.assertEqual(k["small"], [])
+        self.assertGreater(sum(c["face"] * c["count"] for c in br["cards"]), 50)
+
+    def test_minis_alone_wait_for_a_rest(self):
+        del self.data["items"]["big"]
+        k = self.plan()
+        self.assertEqual([p["code"] for p in k["steps"]], [])
+        self.assertEqual(len(k["small"]), 3)
+        # Guthaben, das schon dort liegt, füllen sie aber
+        self.settings["current_country"] = "BR"
+        self.settings["countries"]["BR"]["balance"] = 7
+        k = self.plan()
+        self.assertEqual(sorted(i["slug"] for p in k["steps"] for i in p["items"]), ["m1", "m2"])
+
+    def test_minis_paid_by_card_stay(self):
+        self.settings["countries"]["BR"]["pay"] = "card"
+        k = self.plan()
+        self.assertEqual(len(next(p for p in k["steps"] if p["code"] == "BR")["items"]), 4)
+        self.assertEqual(k["small"], [])
+
+    def test_buy_only_within_two_percent(self):
+        ctx = planner.Context(self.data, self.settings, NOW)
+        ctx.champ_all["m1"] = (1.00, "BR", False)
+        self.assertEqual(ctx.grade(1.02, "m1"), "buy")
+        self.assertEqual(ctx.grade(1.10, "m1"), "good")
+        self.settings["deal_eur"]["mini"] = 0
+        self.assertEqual(ctx.grade(1.10, "m1"), "buy")      # 0,50 € darüber wie bisher
 
 
 class OwnOfferTest(unittest.TestCase):
@@ -1605,9 +1675,9 @@ class SafetyTest(unittest.TestCase):
             json.dump({"countries": {"JP": {"rest_blocks": True}}}, f)     # Stand 0.6
         s = store.load_settings()
         self.assertFalse(s["countries"]["JP"]["rest_blocks"])            # Rest verfällt nur
-        self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 2.0})
+        self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 2.0, "mini": 2.0})
         s = store.save_settings({"deal_eur": {"buy": "0,3", "good": -4, "x": 1}})
-        self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 0.0})
+        self.assertEqual(s["deal_eur"], {"buy": 0.5, "good": 0.0, "mini": 2.0})
         s = store.save_settings({"eur_card_steps": {"top": "0.8", "good": 2, "x": 1}})
         self.assertEqual(s["eur_card_steps"], {"top": 0.8, "good": 1.0, "ok": 0.86})
         s = store.save_settings({"countries": {"JP": {"rest_blocks": True}}})
@@ -3132,7 +3202,7 @@ class ExtraDlcTest(unittest.TestCase):
             self.assertIn(("rl-b", "de"), got)
             self.assertEqual(data["lows"]["DE"]["rl-b"]["low"], 1.5)
             row = {d["slug"]: d for d in planner.collection(data, settings, rows=[])["games"][0]["dlc"]}["rl-b"]
-            self.assertEqual((row["champ"], row["at_best"], row["grade"]), (1.5, False, "buy"))   # 0,50 € darüber
+            self.assertEqual((row["champ"], row["at_best"], row["grade"]), (1.5, False, "good"))  # 0,50 € darüber, aber Kleinkram: „kaufen“ nur bis 2 % (0.92)
             data["lows"]["DE"]["rl-b"]["low"] = 2.0
             row = {d["slug"]: d for d in planner.collection(data, settings, rows=[])["games"][0]["dlc"]}["rl-b"]
             self.assertTrue(row["at_best"])
@@ -4198,7 +4268,7 @@ class UiContractTest(unittest.TestCase):
                          "na", "nocard", "nsuid", "own", "pct", "sale"},
         "matrix.cols": {"code", "currency", "name", "tier"},
         "kaufplan": {"bought", "cost", "count", "dropped", "good_left", "held", "later", "lock", "packed",
-                     "s2_skip", "saving", "steps"},
+                     "s2_skip", "saving", "small", "steps"},
         "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
                  "estimated", "family", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
                  "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "rate", "ref_total", "rest", "rest_eur",

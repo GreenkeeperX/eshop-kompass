@@ -549,16 +549,26 @@ class Context:
                 if slug not in self.champ_all or eur < self.champ_all[slug][0] - 1e-9:
                     self.champ_all[slug] = (eur, code, c["estimated"])
 
+    def deal(self):
+        return dict({"buy": 0.5, "good": 2.0, "mini": 2.0}, **(self.settings.get("deal_eur") or {}))
+
+    def mini(self, eur):
+        """Kleinkram (0.92): Ein Einkaufspreis unter deal_eur.mini. Er macht im Kaufplan keine
+        Guthabenkarte größer, sondern füllt nur den Rest, der ohnehin bleibt (Entscheidung 19.10.2026)."""
+        return eur is not None and eur < self.deal()["mini"] - 1e-9
+
     def grade(self, eur, slug):
         """Preisgüte eines Europreises gegenüber dem Bestpreis, für jedes Land gleich:
         buy (am Bestpreis, bis 2 % oder deal_eur.buy darüber), good (bis 15 % oder
-        deal_eur.good darüber), wait. None ohne Bestpreis."""
+        deal_eur.good darüber), wait. None ohne Bestpreis. Kleinkram (Bestpreis unter
+        deal_eur.mini) ist nur bis 2 % "buy": 0,50 € wären bei 1 € schon 50 % (Entscheidung 19.10.2026)."""
         best = self.champ_all.get(slug)
         if eur is None or not best or not best[0]:
             return None
-        deal = dict({"buy": 0.5, "good": 2.0}, **(self.settings.get("deal_eur") or {}))
+        deal = self.deal()
         diff = eur - best[0]
-        if eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005 or diff <= deal["buy"] + 0.005:
+        small = best[0] < deal["mini"] - 1e-9
+        if eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005 or (not small and diff <= deal["buy"] + 0.005):
             return "buy"
         if 100 * (eur / best[0] - 1) <= GOOD_GAP + 1e-9 or diff <= deal["good"] + 0.005:
             return "good"
