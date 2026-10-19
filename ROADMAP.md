@@ -41,7 +41,6 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 
 - [ ] **Käufe:** Ablaufdatum der Online-Mitgliedschaft aus dem letzten Kauf vorschlagen (nie von selbst).
-- [ ] **Kleinteile zusammenfassen** (Kostüme, Packs), nach Erfahrung mit den gruppierten Pässen.
 - [ ] **Weitere Bezugsquellen** wie Händler-Codes, nur wenn sie regelmäßig günstiger sind.
 - [ ] **Mitgliedschaft:** Tiefstpreise für 1 Monat und Erweiterungspaket Familie.
 - [ ] **Rückblick:** Was hat der Kompass im Jahr gespart, welche Länder haben sich gelohnt?
@@ -75,6 +74,8 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
   - Vorhersage des nächsten Angebots (nicht verlässlich),
   - ein Feld für den tatsächlich bezahlten Betrag,
   - gg.deals (Cloudflare sperrt jeden Abruf).
+- **Gestrichen (Entscheidung 19.10.2026):** Kleinteile wie Kostüme zusammenfassen; die Einzelteile
+  bleiben, wie sie sind.
 - **Gestrichen (Entscheidung 13.10.2026):** Das Tool bleibt ein privates Werkzeug auf dem
   eigenen Server. Damit entfallen:
   - die Sprache der Oberfläche,
