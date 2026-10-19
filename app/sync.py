@@ -927,7 +927,7 @@ def _name_file(title, region):
 def sync_eshop_names(data, fetch, now=None):
     """Englische Namen für Käufe, die das Tool nicht zuordnen kann (Gruppe unbekannt oder offen):
     Name → Programm-ID in der Liste des Konto-Landes, Programm-ID → Name in der US-Liste. Lädt
-    nur, wenn es neue solche Käufe gibt, und höchstens einmal die Woche. Ablage
+    nur, wenn es neue solche Käufe gibt, und jede Liste höchstens einmal die Woche. Ablage
     data.eshop_names {Kauftitel: [englischer Name oder None, Zeitpunkt, Liste]}."""
     now = now or time.time()
     entries = {e.get("key"): e for e in (data.get("_eshop") or {}).get("entries") or []}
@@ -947,11 +947,25 @@ def sync_eshop_names(data, fetch, now=None):
         want.setdefault(f, set()).add(t)
     if not want:
         return
-    if now - data.get("titledb_fail_at", 0) < TITLEDB_FAIL_WAIT or now - data.get("eshop_names_at", 0) < ESHOP_NAME_SECONDS:
-        _log("Englische Namen gekaufter Titel: " + str(sum(map(len, want.values()))) + " offen, titledb wieder ab "
-             + datetime.fromtimestamp(max(data.get("eshop_names_at", 0) + ESHOP_NAME_SECONDS,
-                                          data.get("titledb_fail_at", 0) + TITLEDB_FAIL_WAIT)).strftime("%d.%m."))
-        return
+    # Die Woche Ruhe gilt je Liste: Eine Liste, die noch nicht geladen wurde (etwa Japan neben dem
+    # Konto-Land, 0.77), lädt gleich. Bis 0.76 galt sie für alle Listen zusammen (eshop_names_at)
+    files = data.get("eshop_names_files")
+    if files is None:
+        files = {}
+        for old in names.values():
+            if len(old) > 2 and old[2] and old[1] >= data.get("eshop_names_at", 0):
+                files[old[2]] = max(files.get(old[2], 0), old[1])
+        data["eshop_names_files"] = files
+    wait = {f: files[f] + ESHOP_NAME_SECONDS for f in want if now - files.get(f, 0) < ESHOP_NAME_SECONDS}
+    if now - data.get("titledb_fail_at", 0) < TITLEDB_FAIL_WAIT:
+        wait = {f: data["titledb_fail_at"] + TITLEDB_FAIL_WAIT for f in want}
+    if wait:
+        _log("Englische Namen gekaufter Titel: " + ", ".join(
+            f"{len(want[f])} offen ({f}), titledb wieder ab {datetime.fromtimestamp(t).strftime('%d.%m.')}"
+            for f, t in sorted(wait.items())))
+        want = {f: v for f, v in want.items() if f not in wait}
+        if not want:
+            return
     _step("Englische Namen gekaufter Titel aus titledb")
     try:
         apps, used = {}, {}
@@ -966,6 +980,7 @@ def sync_eshop_names(data, fetch, now=None):
         data["titledb_fail_at"] = now
         return
     data["eshop_names_at"] = now
+    files.update({f: now for f in want})
     for t, a in apps.items():
         names[t] = [eng.get(a) if a else None, now, used[t]]
     _log(f"Englische Namen gekaufter Titel aus titledb: {sum(1 for t in apps if names[t][0])} von {len(apps)} "

@@ -176,8 +176,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .list .pc th{font-size:11px;padding:3px 6px}
 .list .pc td.t{font-size:14.5px}
 .list .tt .nm{display:block}
-.pc .nm small.gm,.nm small.gm,.tbtn small.gm{display:inline;color:var(--muted);font-size:.85em}
-.tbtn small.gm{font-weight:400}
+.pc .nm small.gm,.nm small.gm{display:inline;color:var(--muted);font-size:.85em}
 #eshophist .gm{color:var(--muted)}
 #eshophist .mini-t button.sm{margin:2px 0 2px 6px}
 #eshophist .eqa{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
@@ -190,7 +189,8 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 #eshophist .eqhits{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px}
 #eshophist .eqhits button.sm{margin:0;font-weight:400}
 #eshophist details.eqf{margin:10px 0 0}
-#eshophist details.eqf > summary{cursor:pointer}
+#eshophist details.eqf > summary{cursor:pointer;font-size:13px}
+#eshophist .eqsum b.ink{color:var(--ink)}
 #eshophist .eqsum{margin:8px 0 0}
 .list .pc col.c-l{width:140px}.list .pc col.c-b{width:70px}.list .pc col.c-e{width:80px}.list .pc col.c-d{width:80px}
 .list .pc .c-t{display:table-cell}
@@ -407,6 +407,8 @@ button.sm,a.btn.sm{padding:1px 8px;font-size:12px;border-radius:6px}
 form.set > .setc{margin-top:0}
 .setc > h3.sec:first-child{margin-top:14px}
 .setc .box{background:var(--bg)}
+/* Nach dem Regel-Kasten nur wenig Abstand, sonst steht „Grenzen anpassen“ weiter weg als jede andere Klappe (0.77) */
+.setc .rule{margin-bottom:6px}
 /* Sprachen prüfen darf breiter werden als die übrigen Einstellungen, bis zur Fensterbreite (0.70) */
 .fold>summary{cursor:pointer;font-weight:600}
 .mini-t{margin-top:4px}
@@ -832,12 +834,13 @@ function migrateLocal(){   // frühere Versionen merkten sich den Korb im Browse
   }catch(e){}
 }
 async function loadPlans(){
-  // Länder zeigen immer die Körbe je Land; der gemeinsame Korb (Wishlist, Ansicht Korb) rechnet extra (0.59)
-  const r = await api("/api/plans", planBody());
+  // Länder zeigen immer die Körbe je Land; der gemeinsame Korb (Wishlist, Ansicht Korb) rechnet extra (0.59).
+  // Alle drei zugleich anfragen (0.77), nicht nacheinander
+  const [r, b, k] = await Promise.all([api("/api/plans", planBody()),
+    S.ui.basket ? api("/api/plans", planBody(S.ui.basket)) : null, api("/api/kaufplan")]);
   S.plans = r.plans;
-  const b = S.ui.basket ? await api("/api/plans", planBody(S.ui.basket)) : null;
   S.bplans = b ? b.plans : []; S.mix = b ? b.mix : null;
-  S.kauf = await api("/api/kaufplan");
+  S.kauf = k;
 }
 async function refresh(){
   S.state = await api("/api/state");
@@ -851,6 +854,8 @@ async function refresh(){
     S.ui.basket = S.ui.basket.filter(s => known.has(s));
     if(!S.ui.basket.length) S.ui.basket = null;
   }
+  // Beim ersten Laden gleich zeichnen, was schon da ist; Kaufplan und Körbe folgen (0.77)
+  if(!S.drawn){ S.drawn = true; render(); }
   await loadPlans();
   render();
   watch();
@@ -1184,12 +1189,12 @@ function titleGroups(rows){
   }
   const out = [];
   for(const [k, u] of units){
-    // Mit Spiel oder ab zwei DLC: eingerückt unter dem Spiel. Ein einzelner DLC ohne sein Spiel steht
-    // für sich, das Spiel grau davor wie im Korb und im Kaufplan
-    const sub = u.games.length ? u.dlc.length > 0 : u.dlc.length > 1;
+    // DLC stehen immer eingerückt unter ihrem Spiel; steht das Spiel nicht auf der Wishlist, unter
+    // einer Kopfzeile mit seinem Namen, auch bei nur einem DLC (0.77; 0.76 zeigte einen einzelnen grau davor)
+    const sub = u.dlc.length > 0;
     for(const g of u.games) out.push(titleRow(g));
     if(!u.games.length && sub) out.push(`<tr class="tgrp"><td colspan="6"><b>${esc(k)}</b> <small class="mut">${u.dlc.length} DLC${u.dlc[0].parent_owned ? ", das Spiel hast du" : ""}</small></td></tr>`);
-    for(const d of u.dlc) out.push(titleRow(d, k, !sub));
+    for(const d of u.dlc) out.push(titleRow(d, k));
   }
   return out;
 }
@@ -1200,7 +1205,7 @@ function titleSortSel(){
   const o = (val, l) => `<option value="${val}" ${v === val ? "selected" : ""}>${l}</option>`;
   return `<select class="srt" data-act="tsortsel" data-t="titel" title="Reihenfolge der Titel">${o("", "nach Urteil und Nähe zum Bestpreis")}${o("title:1", "nach Titel")}${o("price:1", "nach Einkaufspreis")}${o("over:1", "nach Abstand zum Bestpreis")}${o("end:1", "nach Angebotsende")}${!["", "title:1", "price:1", "over:1", "end:1"].includes(v) ? o(v, "eigene Sortierung") : ""}</select>`;
 }
-function titleRow(r, group, alone){
+function titleRow(r, group){
   const x = shownOffer(r), open = S.openTitle === r.slug, ce = r.champ;
   const cheapest = cheapestOffer(r), pl = planOffer(r);
   const off = pl || x || cheapest;
@@ -1218,10 +1223,8 @@ function titleRow(r, group, alone){
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
   // In der Gruppe ohne den Namen des Spiels davor („Vampire Survivors: Operation Guns“ → „Operation Guns“)
-  const short = group && r.title.toLowerCase().startsWith(group.toLowerCase()) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
-  const name = short;
-  const gm = alone && group ? `<small class="gm">${esc(group)}:</small> ` : "";
-  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group && !alone ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${gm}${esc(name)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+  const name = group && r.title.toLowerCase().startsWith(group.toLowerCase()) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
+  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(name)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>
     <td class="kb-c"><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
@@ -1696,7 +1699,7 @@ function planCard(p, step){
           <span class="n">− ${esc(t.short)} weglassen</span><small>hier ${num(t.marginal)}, sonst ${num(t.ref)}${t.rest === null ? "" : ` · Rest ${num(t.rest, cur)}`}</small><b>spart ${eur(t.gain)}</b></button>`)
       .concat(p.fillers.map(f =>
         `<button data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: ${esc(money(f.local, cur))}, Aufpreis ${eur(f.extra)}, ohne den Wechsel ${eur(f.ref)}">
-          <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)}, sonst ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>spart ${eur(f.gain)}</b></button>`));
+          <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)}, sonst ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`));
     if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.dense ? 3 : 99).join("")}</div>`;
   } else if((p.fill || []).length || (p.fill_nso || []).length){
     // Mitgliedschaft passt in den Rest: nur ein Hinweis, gekauft wird sie über ihren Kasten (0.57.1)
@@ -1704,24 +1707,25 @@ function planCard(p, step){
     // Die besten Treffer als Knöpfe, auch zwei Titel zusammen, wenn sie den Rest besser füllen;
     // alles andere, was passt, im Auswahlfeld daneben (0.70)
     const one = f => f.extra
-      ? `<a class="btn sm" href="${esc(deku(f.slug))}" target="_blank" rel="noopener" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Er steht nicht auf der Wishlist: Setz ihn bei DekuDeals darauf, dann lässt er sich hier übernehmen. DLC gelten nur in der Region des Hauptspiels.">${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></a>`
+      ? `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung, nicht auf der Wishlist: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. DLC gelten nur in der Region des Hauptspiels. Klick nimmt ihn in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></button>`
       : `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`;
     const two = f => `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: zusammen ${esc(money(f.local, cur))}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt beide in diesen Schritt.">+ ${f.shorts.map(esc).join(" + ")} <small style="display:inline">${money(f.local, cur)}</small></button>`;
-    // Übernehmbares (Wishlist) zuerst; fehlende DLC, die nicht auf der Wishlist stehen, nur als zwei Links dahinter
+    // Wishlist zuerst; fehlende DLC, die nicht auf der Wishlist stehen, dahinter: zwei als Knopf, alle im eigenen Auswahlfeld (0.77)
     const fill = p.fill || [], more = fill.filter(f => !f.extra), xs = fill.filter(f => f.extra);
     const top = more.map(f => ({left: f.left, h: one(f)})).concat((p.fill_pairs || []).map(f => ({left: f.left, h: two(f)})))
       .sort((x, y) => x.left - y.left).slice(0, 4)
-      .concat(xs.slice(0, 2).map(f => ({h: one(f)})), xs.length > 2 ? [{h: `<small class="mut" title="${esc(xs.slice(2).map(f => f.short).join(", "))}">und ${xs.length - 2} weitere fehlende DLC</small>`}] : []);
+      .concat(xs.slice(0, 2).map(f => ({h: one(f)})));
+    const xsel = xs.length > 2 ? ` <select data-act="planpick" data-c="${p.code}" title="Alle fehlenden DLC deiner Spiele, die in den Rest passen, mit dem, was danach bleibt"><option value="">fehlende DLC (${xs.length}) …</option>${[...xs].sort((a, b) => (a.game || "").localeCompare(b.game || "", "de") || a.short.localeCompare(b.short, "de")).map(f => `<option value="${esc(f.slug)}">${esc(f.game ? f.game + ": " : "")}${esc(f.short)} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`).join("")}</select>` : "";
     const sel = more.length > 1 ? `<select data-act="planpick" data-c="${p.code}" title="Alles von deiner Wishlist, was in den Rest passt, mit dem, was danach bleibt"><option value="">alles, was passt (${more.length}) …</option>${more.map(f => `<option value="${esc(f.slug)}">${esc(f.title)}${f.dlc ? " (DLC)" : ""} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`).join("")}</select>` : "";
-    h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` + nsoFit.concat(top.map(x => x.h)).join(" ") + (sel ? " " + sel : "") + `</div>`;
+    h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` + nsoFit.concat(top.map(x => x.h)).join(" ") + (sel ? " " + sel : "") + xsel + `</div>`;
   } else if(p.rest > 0){
     // Nur wo ein Rest bleibt: Bei Kartenzahlung gibt es keinen Rest, der sich füllen ließe. Im Kaufplan
     // ein Knopf wie im Korb (0.76), ohne Titel, die schon in einem anderen Schritt stehen
     const planned = new Set(step && S.kauf ? S.kauf.steps.flatMap(x => x.items.map(i => i.slug)) : []);
     const f = p.fillers.find(f => !f.slugs.some(x => planned.has(x)));
     if(f) h += `<p class="restline" style="margin-top:6px">Passt dazu: ` + (step
-      ? `<button class="fl" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, cur, "Klick nimmt ihn in diesen Schritt."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b></button>`
-      : `<span title="${esc(fillTip(f, cur, ""))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b></span>`) + `</p>`;
+      ? `<button class="fl" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, cur, "Klick nimmt ihn in diesen Schritt."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`
+      : `<span title="${esc(fillTip(f, cur, ""))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</span>`) + `</p>`;
   }
   let foot = has ? `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>Rechnung</summary>${billHtml(p)}</details>` : "";
   if(step && (p.others || []).length) foot += othersHtml(p, step);
@@ -1762,11 +1766,17 @@ function othersHtml(p, step){
   }).join("");
   return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table></details>`;
 }
-/* „Passt dazu“ (Kaufplan, Länderkarte, Korb): Was ein weiterer Wishlist-Titel hier zusätzlich kostet und was er spart */
+/* „Passt dazu“ (Kaufplan, Länderkarte, Korb): Was ein weiterer Wishlist-Titel hier zusätzlich kostet und was er spart.
+   „spart“ rechnet mit heutigen Preisen; dahinter klein, wie weit der Titel hier über seinem Bestpreis liegt (0.77) */
+function fillBest(f){
+  if(f.champ === null || f.champ === undefined || f.eur === null || f.eur === undefined) return "";
+  return ` <small>${atBest(f.eur, f.champ) ? `<span class="g-buy">am Bestpreis</span>` : `<span class="abv">+${eur(f.eur - f.champ)}</span> über Bestpreis`}</small>`;
+}
 function fillTip(f, cur, act){
   return `${f.titles.join(" + ")}: Mit ${f.titles.length === 1 ? "diesem Titel" : "diesen Titeln"} kostet der Kauf hier ${eur(f.extra)} mehr (Shop ${money(f.local, cur)}; die Guthabenkarten und der Rest decken einen Teil). ` +
     `Ohne Wechsel hierher kostet ${f.titles.length === 1 ? "er" : "sie"} ${eur(f.ref)}, im günstigsten zählenden Land gleicher oder leichterer Stufe oder in deinem Kontoland. Ersparnis: ${eur(f.ref)} − ${eur(f.extra)} = ${eur(f.gain)}.` +
-    `${f.rest !== null && f.rest !== undefined ? ` Danach bleiben ${money(f.rest, cur)} Rest.` : ""}${act ? " " + act : ""}`;
+    `${f.rest !== null && f.rest !== undefined ? ` Danach bleiben ${money(f.rest, cur)} Rest.` : ""}` +
+    `${f.champ !== null && f.champ !== undefined ? ` Bestpreis der letzten 24 Monate: ${eur(f.champ)}, hier jetzt ${eur(f.eur)}.` : ""}${act ? " " + act : ""}`;
 }
 function altCell(i){
   if(i.alt === null || i.alt === undefined) return `<td class="mut c-alt">–</td>`;
@@ -2045,7 +2055,7 @@ function viewCompare(){
     row("Passt dazu", p => {
       const f = p.fillers[0];
       if(!f) return "";
-      return `<button class="fl" data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, p.currency, "Klick legt ihn für alle Länder in den Korb."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b></button>`;
+      return `<button class="fl" data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, p.currency, "Klick legt ihn für alle Länder in den Korb."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`;
     }) +
     row("Hinweise", p => { const c = hurdles(p); return c.length ? c.join("<br>") : ""; }) +
     `</tfoot></table></div>`;
@@ -2282,7 +2292,8 @@ function viewSettings(){
       <a class="btn" style="margin-left:8px" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
       <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p>
     <p class="hint" style="margin-top:8px">Protokoll des letzten Abgleichs · <button class="link" type="button" data-act="copy" data-t="log">kopieren</button></p>
-    <pre class="log" id="log" style="margin-top:4px"></pre></section>`;
+    <details class="fold" data-kc="logbox" ${S.folds.logbox ? "" : "open"}><summary class="hint">Protokoll anzeigen</summary>
+    <pre class="log" id="log" style="margin-top:4px"></pre></details></section>`;
   return h;
 }
 function settingsBody(form){
@@ -2492,22 +2503,24 @@ function eshopBox(){
   // Offen: eine Zeile je Kauf, die Kandidaten als Knöpfe; ein Klick heißt „ja, dieser“
   // Zahlen wie bei „Geprüft“ in den Sprachen: violett, was dich braucht, grün, was erledigt ist (0.76)
   const N = (n, cls) => `<b class="${cls || ""}">${n}</b>`;
-  const counts = [["ask", "warnc"], ["plan", "warnc"], ["coll", "gn"], ["unknown"], ["ticket"], ["void"]]
+  // Nicht in der Sammlung rot: Diese Käufe kennt das Tool nicht, der Plan könnte sie vorschlagen (0.77)
+  const counts = [["ask", "warnc"], ["plan", "warnc"], ["coll", "gn"], ["unknown", "bad"], ["ticket", "mut"], ["void", "mut"]]
     .map(([g, cls]) => [g, cls, by(g).length]).filter(x => x[2]).map(([g, cls, n]) => `${N(n, cls)} ${ESHOP_GROUP[g]}`).join(", ");
-  h += `<p class="hint eqsum">${rows.length} Käufe: ${counts}</p>`;
+  h += `<p class="hint eqsum"><b class="ink">${rows.length} Käufe:</b> ${counts}</p>`;
   if(ask.length) h += `<details class="fold eqf" data-kc="eshopask" ${S.folds.eshopask ? "" : "open"}><summary><b>Welcher Titel ist das?</b> ${N(ask.length, "warnc")}</summary><p class="hint">Diese Käufe ähneln einem Titel deiner Wishlist oder einem fehlenden DLC. Ein Klick auf einen Namen ordnet den Kauf zu, er fällt dann aus dem Plan. „keiner“ lässt ihn im Plan.</p>
     <div class="scroll"><table class="mini-t eqt"><tbody>${ask.map(r => `<tr><td class="l">${kauf(r)}</td><td class="l eqa">${r.suggest.map(x =>
       `<button class="sm cand" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist ${esc(x.title)}: zählt als Besitz">${x.game && !String(x.title || "").toLowerCase().startsWith(x.game.toLowerCase()) ? `<span class="gm">${esc(x.game)}:</span> <b>${esc(x.title)}</b>` : esc(x.title)}</button>`).join("")}<button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zählt nicht als Besitz">keiner</button>${own(r)}</td></tr>${ownRow(r, 2)}`).join("")}</tbody></table></div></details>`;
   // Gekauft, aber bei DekuDeals noch nicht in der Sammlung: zählt als Besitz, nachtragen
-  if(plan.length) h += `<details class="fold eqf" data-kc="eshopplan" ${S.folds.eshopplan ? "" : "open"}><summary><b>Bei DekuDeals nachtragen</b> ${N(plan.length, "warnc")}</summary><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
+  if(plan.length) h += `<details class="fold eqf" data-kc="eshopplan" ${S.folds.eshopplan ? "" : "open"}><summary><b>Bei DekuDeals nachtragen:</b> ${N(plan.length, "warnc")}</summary><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshop", "kauf", "Kauf", "", "l")}${sth("eshop", "name", "Zählt als", "", "l")}${sth("eshop", "how", "Woher", "", "l")}<th></th></tr></thead><tbody>${sortRows("eshop", plan, {
       kauf: r => r.title || "", name: r => (r.game ? r.game + " " : "") + (r.name || ""), how: r => how[r.how] || "", date: r => r.date || ""}).map(r =>
       `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
-  // Alle Käufe zum Nachsehen, nach Gruppe; „anderer …“ ordnet jeden von Hand zu
+  // Alle Käufe zum Nachsehen, nach Gruppe; „zuweisen“ ordnet jeden von Hand zu, „neu zuweisen“, wenn das
+  // Tool ihn schon einem Titel der Sammlung zugeordnet hat (0.77, vorher „anderer …“)
   const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_GROUP[r.group] || "", name: r => r.name || r.coll_name || "", date: r => r.date || ""});
-  h += `<details class="fold eqf" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary><b>Alle Käufe</b> ${N(rows.length)} <span class="mut">zum Nachsehen und Zuordnen</span></summary>
+  h += `<details class="fold eqf" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary><b>Alle Käufe:</b> ${N(rows.length)} <span class="mut">(zum Nachsehen und Zuweisen)</span></summary>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshopall", "kauf", "Kauf", "", "l")}${sth("eshopall", "group", "Einordnung", "", "l")}${sth("eshopall", "name", "Titel", "", "l")}${sth("eshopall", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${allRows.map(r =>
-      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small>${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r)}` : r.group === "void" || r.group === "ticket" ? "" : own(r)}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
+      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small>${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r, "zuweisen")}` : r.group === "void" || r.group === "ticket" ? "" : own(r, r.coll ? "neu zuweisen" : "zuweisen")}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
   return h;
 }
 /* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch
@@ -2781,7 +2794,7 @@ document.addEventListener("click", async e => {
     else if(a === "unbought"){ await api("/api/bought/undo", {}); toast("Letzter Kauf zurückgenommen"); await refresh(); S.kauf = await api("/api/kaufplan"); render(); }
     else if(a === "vlclose"){ $("verlauf").close(); }
     else if(a === "vltoggle"){ const sh = S.vl.show; sh.has(d.c) ? sh.delete(d.c) : sh.add(d.c); drawVerlauf(); }
-    else if(a === "showlog"){ go("settings", false); const l = $("log"); if(l) l.scrollIntoView({block:"center"}); }
+    else if(a === "showlog"){ go("settings", false); const l = $("log"); if(l){ l.closest("details").open = true; l.scrollIntoView({block:"center"}); } }
     else if(a === "sync"){
       const r = await api("/api/sync", {});
       if(!r.started) toast("Ein Abgleich läuft schon, sein Protokoll steht unter Einstellungen");
@@ -2849,10 +2862,11 @@ document.addEventListener("change", async e => {
     }
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if(a === "planpick" && el.value){
+      const nm = el.selectedOptions[0].textContent.split(" · ")[0];
       const f = S.ui.plan_fill = S.ui.plan_fill || {};
       f[el.dataset.c] = (f[el.dataset.c] || []).concat(el.value);
       await saveUi(); S.kauf = await api("/api/kaufplan"); render();
-      toast(`${rowOf(el.value).title} im Plan`);
+      toast(`${nm} im Plan`);
     }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
     else if(a === "sort"){ S.lsort = el.value; saveView(); render(); }
@@ -2912,6 +2926,7 @@ $("legend").addEventListener("click", e => { if(e.target === e.currentTarget) e.
 document.addEventListener("toggle", e => {
   // data-kc: von Haus aus offen, gemerkt wird das Zuklappen (0.76)
   const kc = e.target.dataset && e.target.dataset.kc;
+  if(kc === "logbox" && e.target.open){ const l = $("log"); if(l) l.scrollTop = l.scrollHeight; }
   if(kc){ if(e.target.open) delete S.folds[kc]; else S.folds[kc] = 1; saveView(); return; }
   const k = e.target.dataset && e.target.dataset.k;
   if(!k) return;

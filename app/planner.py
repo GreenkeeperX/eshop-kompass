@@ -2,7 +2,9 @@
 
 Beträge in Landeswährung werden intern als ganze Hundertstel gerechnet.
 """
+import contextlib
 import math
+import threading
 from decimal import Decimal, ROUND_HALF_UP
 import re
 import unicodedata
@@ -100,7 +102,24 @@ def pretty_slug(slug):
     return " ".join(w[:1].upper() + w[1:] for w in words)
 
 
+_MATCH_KEYS = ("_eshop", "eshop_names", "extra", "items", "links", "owned", "rel")
+
+
 def eshop_matches(data):
+    """Wie _eshop_matches; innerhalb von shared_contexts() einmal je Datenstand (0.77: die
+    Startseite fragte bis zu 19-mal)."""
+    cache = getattr(_shared, "cache", None)
+    if cache is None:
+        return _eshop_matches(data)
+    parts = tuple(data.get(k) for k in _MATCH_KEYS)
+    key = ("matches",) + tuple(map(id, parts))
+    hit = cache.get(key)
+    if hit is None or any(a is not b for a, b in zip(hit[0], parts)):
+        hit = cache[key] = (parts, _eshop_matches(data))
+    return hit[1]
+
+
+def _eshop_matches(data):
     """Kaufverlauf aus dem eShop mit Wishlist und fehlenden DLC abgleichen. Zuerst über die
     Nintendo-ID, sonst über den Titel, wenn genau ein Titel passt (bei DLC auch mit dem Namen
     des Spiels davor); von Hand Zugeordnetes gilt immer. Passt nichts genau, schlägt das Tool
@@ -443,6 +462,33 @@ def offer_checks(data, settings, pay, now=None):
         if x.get("url") and cur:
             out[x["url"]] = read_offer(x, data.get("offer_prices"), cur, now_ts)
     return out
+
+
+# Eine Anfrage an den Server rechnet viele Teile aus denselben Daten; jedes Teil baute bis 0.76
+# seinen eigenen Context (bis zu 16 je Startseite). Innerhalb von shared_contexts() teilen sie
+# sich einen je Datenstand, Einstellungen und Variante (0.77). Nur für Lesezugriffe: Der
+# Abgleich ändert die Daten unterwegs und rechnet ohne.
+_shared = threading.local()
+
+
+@contextlib.contextmanager
+def shared_contexts():
+    _shared.cache = {}
+    try:
+        yield
+    finally:
+        _shared.cache = None
+
+
+def _context(data, settings, now=None, include_all=False):
+    cache = getattr(_shared, "cache", None)
+    if cache is None:
+        return Context(data, settings, now, include_all)
+    key = (id(data), id(settings), now, include_all)
+    hit = cache.get(key)
+    if hit is None or hit[0] is not data or hit[1] is not settings:
+        hit = cache[key] = (data, settings, Context(data, settings, now, include_all))
+    return hit[2]
 
 
 class Context:
@@ -1080,14 +1126,15 @@ def make_payer(ctx, c):
 
 # --------------------------------------------------------------------- Plan
 
-def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
+def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None, fillers=True):
     """Plan für ein Land. Mit `basket` gilt derselbe Warenkorb für alle Länder,
     sonst die Angebote des Landes plus eigene Änderungen (`override`).
 
     Ob sich der Wechsel lohnt, misst der Wechselgewinn: was dieselben Titel ohne diesen
     Wechsel kosten (günstigstes zählendes Land gleicher oder leichterer Stufe oder das
     Land, in dem das Konto steht, siehe Context.alt_price), minus was sie hier kosten.
-    `allowed` begrenzt die Länder, die als Alternative zählen (Kaufplan)."""
+    `allowed` begrenzt die Länder, die als Alternative zählen (Kaufplan). Ohne `fillers` fehlen
+    die Vorschläge „Passt dazu“; sie kosten die meiste Rechenzeit („Andere Länder“, 0.77)."""
     c = ctx.countries[code]
     override = override or {}
     is_ref = code == countries.REFERENCE
@@ -1264,7 +1311,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None):
     if nolang:
         out["warnings"].append(f"{nolang} Titel ohne deutsche Fassung")
 
-    if not is_ref:
+    if not is_ref and fillers:
         out["fillers"] = _fillers(ctx, c, chosen, total, base, pay, has_cards, alt)
         if not basket:
             out["trims"] = _trims(ctx, c, chosen, total, base, pay, alt, must)
@@ -1308,7 +1355,11 @@ def _fillers(ctx, c, chosen, total, base, pay, has_cards, ref):
         p = pay(total + add)
         extra = p["cost"] - base["cost"] + sum(offers[s]["direct"] for s in slugs if offers[s].get("direct") is not None)
         gain = sum(ref[s] for s in slugs) - extra
+        # Zum Vergleich mit dem Bestpreis (0.77): Preis der Titel hier in Euro und ihr Bestpreis
+        champs = [ctx.champ_all.get(s) for s in slugs]
         return {"slugs": list(slugs), "titles": [ctx.title(s) for s in slugs],
+                "eur": _r(sum(ctx.oeur(c, offers[s]) for s in slugs)),
+                "champ": _r(sum(x[0] for x in champs)) if all(x and x[0] for x in champs) else None,
                 "shorts": [ctx.short(s) for s in slugs],
                 "local": add / 100, "extra": _r(extra), "ref": _r(sum(ref[s] for s in slugs)),
                 "gain": _r(gain), "rest": None if p["rest"] is None else p["rest"] / 100,
@@ -1370,7 +1421,7 @@ def mix(ctx, basket):
 def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_mix=False):
     data, settings = with_added(data, settings, list(basket or []) + list(must or []) +
                               [s for o in (overrides or {}).values() for s in (o or {}).get("add") or []])
-    ctx = Context(data, settings, now)
+    ctx = _context(data, settings, now)
     overrides = overrides or {}
     must = [s for s in must if s in ctx.items]
     basket = [s for s in dict.fromkeys(basket or []) if s in ctx.items]
@@ -1392,7 +1443,7 @@ def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_m
 
 def matrix(data, settings, now=None):
     """Alle Wishlist-Titel mal alle aktiven Länder, Preise in Euro."""
-    ctx = Context(data, settings, now)
+    ctx = _context(data, settings, now)
     cols = [{"code": c["code"], "name": c["meta"]["name"], "currency": c["currency"],
              "tier": c["tier"], "lang": c["meta"]["lang"]}
             for c in ctx.countries.values()]
@@ -1453,7 +1504,7 @@ def radar(data, settings, targets=None, now=None):
     schweres Land lohnt, entscheiden Kaufplan und Pakete über den Wechselgewinn.
     "Jetzt, leicht" (Stufen 1 und 2) und "Jetzt, schwer" (Stufe 3) zeigen beide Seiten.
     """
-    ctx = Context(data, settings, now)
+    ctx = _context(data, settings, now)
     targets = targets or {}
     rows = []
     for slug in ctx.order:
@@ -1789,6 +1840,17 @@ def extra_dlc(data, settings):
 def extra_context(data, settings, now=None):
     """Rechnet die fehlenden DLC der Sammlung wie Wishlist-Titel: eigene Angebote je Land
     aus ihren Preisen (xprices), dieselben Karten und Kurse. None ohne solche DLC."""
+    cache = getattr(_shared, "cache", None)
+    key = ("extra", id(data), id(settings), now)
+    if cache is not None and key in cache and cache[key][0] is data and cache[key][1] is settings:
+        return cache[key][2]
+    x = _extra_context(data, settings, now)
+    if cache is not None:
+        cache[key] = (data, settings, x)
+    return x
+
+
+def _extra_context(data, settings, now=None):
     wanted = extra_dlc(data, settings)
     extra = {s: e for s, e in (data.get("extra") or {}).items() if s in wanted}
     if not extra:
@@ -1801,7 +1863,7 @@ def extra_context(data, settings, now=None):
                  "langs_src": (glangs.get(e["parent"]) or {}).get("langs_src") or {}}
              for i, (s, e) in enumerate(extra.items())}
     # Tiefstpreise liest der Abgleich seit 0.53.3 auch für fehlende DLC: Bestpreis wie bei Titeln
-    return Context(dict(data, items=items, prices=data.get("xprices") or {}), settings, now)
+    return _context(dict(data, items=items, prices=data.get("xprices") or {}), settings, now)
 
 
 def extra_offers(data, settings, now=None):
@@ -2050,8 +2112,8 @@ def lang_todo(data, settings, now=None):
     Deutschland: Wishlist-Titel und die Spiele, denen DLC fehlt (Füllartikel). Jeder Titel
     steht einmal je Region in der Liste, unabhängig vom Preis: von Nintendo gelesen, von
     dir bestätigt oder offen. Von Hand gilt vor Nintendo."""
-    ctx = Context(data, settings, now, include_all=True)
-    live = Context(data, settings, now)       # Bestpreis nur über die aktiven Länder
+    ctx = _context(data, settings, now, include_all=True)
+    live = _context(data, settings, now)       # Bestpreis nur über die aktiven Länder
     xctx = extra_context(data, settings, now)
 
     def cheapest(slug, codes, c_=live):
@@ -2135,7 +2197,7 @@ def lang_todo(data, settings, now=None):
 
 def card_status(data, settings, now=None):
     """Je Land die Karten mit Link: gelesener Preis, Stand oder Fehler."""
-    ctx = Context(data, settings, now, include_all=True)
+    ctx = _context(data, settings, now, include_all=True)
     out = {}
     for code, c in ctx.countries.items():
         rows = []
@@ -2164,7 +2226,7 @@ def card_status(data, settings, now=None):
 
 def card_factors(data, settings, now=None):
     """Faktor jeder Karte mit gelesenem Shop-Preis, für den Verlauf: {Link: (Datum, Faktor)}."""
-    ctx = Context(data, settings, now, include_all=True)
+    ctx = _context(data, settings, now, include_all=True)
     out = {}
     for c in ctx.countries.values():
         if not c["rate"]:
@@ -2178,7 +2240,7 @@ def card_factors(data, settings, now=None):
 
 def pay_info(data, settings, now=None):
     """Zahlweg und eigener Kurs je Land, auch für abgeschaltete Länder."""
-    ctx = Context(data, settings, now, include_all=True)
+    ctx = _context(data, settings, now, include_all=True)
     return {code: ctx.how(c) for code, c in ctx.countries.items() if c["unit"] is not None}
 
 
@@ -2187,7 +2249,7 @@ def price_levels(data, settings, now=None):
 
     Auch für abgeschaltete Länder, damit sich entscheiden lässt, welche lohnen.
     """
-    ctx = Context(data, settings, now, include_all=True)
+    ctx = _context(data, settings, now, include_all=True)
     out = {}
     for code, c in ctx.countries.items():
         if code == countries.REFERENCE or c["unit"] is None:
@@ -2236,7 +2298,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt.
     """
     data, settings = with_added(data, settings, [s for slugs in (fill or {}).values() for s in slugs])
-    ctx = Context(data, settings, now)
+    ctx = _context(data, settings, now)
     fill = {code: [s for s in slugs if s in ctx.items] for code, slugs in (fill or {}).items()}
     ok_grades = ("buy", "good") if include_good else ("buy",)
     rows = radar(data, settings, targets, now)
@@ -2498,7 +2560,7 @@ def _other_countries(ctx, step, codes):
     for code in codes:
         if code == step["code"]:
             continue
-        o = plan_country(ctx, code, basket=slugs, allowed=codes)
+        o = plan_country(ctx, code, basket=slugs, allowed=codes, fillers=False)
         if not o["items"] or o.get("games_cost") is None:
             continue
         have = {i["slug"] for i in o["items"]}
@@ -2573,7 +2635,7 @@ def price_history(data, settings, history, slug, now=None):
     heutigen Normalpreis; Lücken, in denen das Tool nicht lief, sieht die
     Aufzeichnung nicht.
     """
-    ctx = Context(data, settings, now)
+    ctx = _context(data, settings, now)
     now = ctx.now
     out = {"slug": slug, "title": ctx.title(slug), "now": now.isoformat(timespec="seconds"),
            "since": None, "countries": []}
@@ -2800,7 +2862,7 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v, extra=
     # Sprachregel sie nicht ausschließt
     items = {"nso": {"title": NSO_TITLE, "active": True, "order": 0, "ids": {},
                      "langs": {f: "german" for f in countries.FAMILIES}}}
-    ctx = Context(dict(data, items=items, prices=prices, lows={}), settings, now)
+    ctx = _context(dict(data, items=items, prices=prices, lows={}), settings, now)
     rows = []
     for code, c in ctx.countries.items():
         o = c["offers"].get("nso")

@@ -20,6 +20,11 @@ def _num(x):
 
 
 def state():
+    with planner.shared_contexts():
+        return _state()
+
+
+def _state():
     settings = store.load_settings()
     data = store.load_data()
     ui = store.load_ui()
@@ -98,9 +103,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, dict(sync.status, last_sync=store.load_data().get("last_sync")))
             elif path == "/api/kaufplan":
                 ui = store.load_ui()
-                out = planner.purchase_plan(store.load_data(), store.load_settings(), ui["targets"],
-                                            include_good=ui["plan_good"],
-                                            bought=store.load_purchases(), fill=ui["plan_fill"])
+                with planner.shared_contexts():
+                    out = planner.purchase_plan(store.load_data(), store.load_settings(), ui["targets"],
+                                                include_good=ui["plan_good"],
+                                                bought=store.load_purchases(), fill=ui["plan_fill"])
                 self._send(200, out)
             elif path == "/api/verlauf":
                 q = urllib.parse.parse_qs(self.path.partition("?")[2])
@@ -140,10 +146,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             body = self._body()
             if path == "/api/plans":
-                res, split = planner.plans(store.load_data(), store.load_settings(),
-                                           overrides=body.get("overrides") or {},
-                                           must=body.get("must") or [],
-                                           basket=body.get("basket") or [], with_mix=True)
+                with planner.shared_contexts():
+                    res, split = planner.plans(store.load_data(), store.load_settings(),
+                                               overrides=body.get("overrides") or {},
+                                               must=body.get("must") or [],
+                                               basket=body.get("basket") or [], with_mix=True)
                 self._send(200, {"plans": res, "mix": split})
             elif path == "/api/settings":
                 self._send(200, {"settings": store.save_settings(body)})

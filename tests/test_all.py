@@ -2110,6 +2110,31 @@ class EshopHistoryTest(unittest.TestCase):
         self.assertEqual(data["eshop_names"]["セレステ"][0], "Celeste")
         self.assertEqual(sync._name_file("Algo", "BR"), "BR.pt")
 
+    def test_name_lists_wait_each_on_their_own(self):
+        # 0.77: Die Woche Ruhe gilt je Liste. Lud der letzte Abgleich nur die Liste des
+        # Konto-Landes, lädt die japanische Liste trotzdem gleich
+        self.imp([{"id": "", "title": "セレステ", "date": "2026-01-26"},
+                  {"id": "", "title": "Algo desconhecido", "date": "2026-01-20"}], region="BR")
+        lists = {"JP.ja": {"1": {"id": "0100AAA0", "name": "セレステ"}},
+                 "BR.pt": {}, "US.en": {"3": {"id": "0100AAA0", "name": "Celeste"}}}
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return json.dumps(next(v for k, v in lists.items() if k in url), ensure_ascii=False)
+        data = store.load_data()
+        data["eshop_names_at"] = 2e9 - 86400
+        data["eshop_names"] = {"セレステ": [None, 2e9 - 86400, "BR.pt"], "Algo desconhecido": [None, 2e9 - 86400, "BR.pt"]}
+        sync.sync_eshop_names(data, fake, now=2e9)
+        self.assertTrue(any("JP.ja" in u for u in calls))
+        self.assertFalse(any("BR.pt" in u for u in calls))
+        self.assertEqual(data["eshop_names"]["セレステ"][0], "Celeste")
+        self.assertEqual(data["eshop_names_files"]["BR.pt"], 2e9 - 86400)
+        calls.clear()
+        data["eshop_names"]["セレステ"] = [None, 2e9, "JP.ja"]      # nach dem Laden: Woche Ruhe
+        sync.sync_eshop_names(data, fake, now=2e9 + 60)
+        self.assertEqual(calls, [])
+
     def test_names_compare_without_accents(self):
         # 0.76: „Pokemon“ im Kaufverlauf ist „Pokémon“; japanische Zeichen bleiben verschieden
         self.assertEqual(planner._tnorm("Pokémon Pokopia"), planner._tnorm("Pokemon Pokopia"))

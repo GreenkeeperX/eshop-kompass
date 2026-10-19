@@ -322,8 +322,8 @@ Rest besser füllen als jeder einzelne. Alles andere, was passt, steht im Auswah
 passt …“ mit dem, was danach bleibt. Das Urteil zählt dabei nicht; Titel aus der Sammlung,
 gekaufte, kostenlose, DLC ohne Hauptspiel und eigene Angebote (die zahlt die Kreditkarte)
 fehlen. Ein Klick nimmt den Titel in den Schritt, „dazugenommen ×“ nimmt ihn wieder heraus. Fehlende
-DLC deiner Spiele erscheinen dahinter, die zwei kleinsten als Link zu DekuDeals; übernehmen lassen sie sich, sobald sie
-auf der Wishlist stehen. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
+DLC deiner Spiele, die nicht auf der Wishlist stehen, erscheinen dahinter: die zwei kleinsten als
+Knopf, alle im Auswahlfeld „fehlende DLC …“; ein Klick nimmt auch sie in den Schritt. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
 steht sie dort als Hinweis, mit ihrem eShop-Preis. Jeden anderen Wishlist-Titel, den es dort
 gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt, ebenso fehlende DLC deiner
 Spiele, die nicht auf der Wishlist stehen, und jede Variante der Online-Mitgliedschaft (auch im
@@ -336,7 +336,9 @@ den Wishlist-Titel vor, der zusätzlich am meisten spart. „spart“ ist, was d
 Wechsel hierher kosten würde (im günstigsten zählenden Land gleicher oder leichterer Stufe oder im
 Kontoland), minus dem, was der Kauf hier mit ihm mehr kostet. Der Aufpreis ist oft kleiner als der
 Shop-Preis, weil die Guthabenkarten und der Rest einen Teil decken. Ein Klick nimmt ihn in den
-Schritt.
+Schritt. „spart“ rechnet mit heutigen Preisen, nicht mit dem Bestpreis: Klein dahinter steht
+deshalb, ob der Titel hier gerade am Bestpreis ist oder wie viel darüber („+x € über Bestpreis“).
+Ein Vorschlag mit großem Abstand spart heute, wäre in einem späteren Angebot aber günstiger.
 
 **Gekauft:** „gekauft“ an einem Land vermerkt den Kauf im Kaufprotokoll
 (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort als Guthaben,
@@ -369,8 +371,7 @@ Alternative daneben. Unter dem Urteil steht, ob der Titel im Plan ist oder warum
 Filter nach Urteil und Suche stehen oben, dazu eine Sortierung, auch nach Angebotsende. DLC
 stehen direkt unter ihrem Spiel, eingerückt und ohne den Namen des Spiels davor; eine Ausgabe
 des Spiels („+ Rayman Edition“) gilt dabei als das Spiel. Steht das Spiel nicht auf der Wishlist,
-fasst eine Kopfzeile ab zwei DLC zusammen; ein einzelner DLC steht für sich, mit dem Spiel grau
-davor. Sortiert nach Preis, Abstand oder Angebotsende ist die Liste flach.
+stehen seine DLC unter einer Kopfzeile mit seinem Namen, auch ein einzelner. Sortiert nach Preis, Abstand oder Angebotsende ist die Liste flach.
 
 Ein Klick auf den Titel klappt die **Einzelheiten** auf:
 
@@ -522,15 +523,17 @@ Kauftitel aus Japan und anderen Ländern stehen in der Sprache des Shops. Für K
 oder unbekannt bleiben, sucht der Abgleich in titledb den Namen in der Liste des Konto-Landes
 (Titel mit japanischen Schriftzeichen immer in der japanischen Liste, auch wenn das Konto beim
 Lesen woanders stand),
-nimmt dessen Programm-ID und daraus den englischen Namen aus der US-Liste (höchstens einmal die
-Woche, je Kauf frühestens nach 30 Tagen wieder). Mit dem englischen Namen gleicht er dann wie
+nimmt dessen Programm-ID und daraus den englischen Namen aus der US-Liste (jede Liste höchstens
+einmal die Woche, je Kauf frühestens nach 30 Tagen wieder). Mit dem englischen Namen gleicht er dann wie
 oben ab; er steht grau hinter dem Kauftitel.
 
 Namen gleichen ohne Akzente ab: „Pokemon“ im Kaufverlauf ist „Pokémon“. Die Zeile über den
-Abschnitten zählt die Käufe je Gruppe; „Welcher Titel ist das?“ und „Bei DekuDeals nachtragen“
+Abschnitten zählt die Käufe je Gruppe, „nicht in der Sammlung“ rot: Diese Käufe kennt das Tool
+nicht, der Plan könnte sie vorschlagen. „Welcher Titel ist das?“ und „Bei DekuDeals nachtragen“
 sind offen und lassen sich zuklappen, „Alle Käufe“ ist zu.
 
-„anderer …“ öffnet unter dem Kauf eine Zeile mit Suchfeld: Treffer aus allen bekannten Titeln und
+„anderer …“ (in „Alle Käufe“: „zuweisen“, bei einem Kauf, den das Tool schon einem Titel der
+Sammlung zugeordnet hat, „neu zuweisen“) öffnet unter dem Kauf eine Zeile mit Suchfeld: Treffer aus allen bekannten Titeln und
 DLC erscheinen beim Tippen (ohne Akzente, „pokemon“ findet „Pokémon“), ein Klick ordnet zu; ein
 DekuDeals-Link geht immer. „zurücknehmen“ hebt deine Zuordnung sofort auf,
 „stimmt nicht“ eine automatische. „Alle Käufe“ zeigt jeden Kauf mit seiner Gruppe, sortierbar.
@@ -569,7 +572,8 @@ Angaben, deine Zuordnungen bleiben, kein Eintrag verschwindet. Der Abgleich läu
 - **Protokoll:** läuft während eines Abgleichs mit, nennt oben Start und Version des Laufs und
   zeigt die Uhrzeit deines Browsers. Jeder Schritt schreibt eine Zeile, auch wenn nichts fällig
   ist („nichts fällig“, „alle aktuell“), damit sich Abgleiche vergleichen lassen. „Verbindung
-  testen“ schreibt in eine eigene Box darüber. Beides lässt sich kopieren.
+  testen“ schreibt in eine eigene Box darüber. Beides lässt sich kopieren; das Protokollfeld
+  lässt sich unter „kopieren“ zuklappen und bleibt dann zu.
 
 #### Guthabenkarten
 

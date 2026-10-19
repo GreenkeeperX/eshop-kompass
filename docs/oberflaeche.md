@@ -44,9 +44,12 @@ kaufen heißt und dessen Wechsel sich rechnet.
 Ab 0.71 eine eigene Karte in den Einstellungen (`#eshophist`, Sprungleiste „Käufe“), nicht mehr im
 Reiter Sammlung. Kopf: Zahl der Käufe, Lesedatum. Erklärung als
 Satz, Anleitung zum Lesezeichen eingeklappt („So liest du deine Käufe“, offen ohne Käufe).
-Ab 0.76 darunter eine Zahlenzeile wie „Geprüft“ bei den Sprachen („12 Käufe: **3** offen, **2** bei
-DekuDeals nachtragen, **54** in der Sammlung …“; offen und nachtragen violett, Sammlung grün), dann
-die drei Abschnitte als Klappzeilen (`details.eqf`) mit fettem Namen und Zahl: „Welcher Titel ist
+Ab 0.76 darunter eine Zahlenzeile wie „Geprüft“ bei den Sprachen („**12 Käufe:** **3** offen, **2** bei
+DekuDeals nachtragen, **54** in der Sammlung …“; „12 Käufe:“ fett in Textfarbe, offen und nachtragen
+violett, Sammlung grün, nicht in der Sammlung rot `.bad`, Mitgliedschaft und erstattet grau, ab 0.77), dann
+die drei Abschnitte als Klappzeilen (`details.eqf`, 13 px, kleiner als die Kartenüberschrift, ab 0.77) mit
+fettem Namen und Zahl („Welcher Titel ist das? **3**“, „Bei DekuDeals nachtragen: **2**“, „Alle Käufe:
+**122** (zum Nachsehen und Zuweisen)“): „Welcher Titel ist
 das?“ und „Bei DekuDeals nachtragen“ von Haus aus offen (gemerkt wird das Zuklappen, `data-kc`),
 „Alle Käufe“ zu.
 „Welcher Titel ist das?“: eine Tabellenzeile je offenem Kauf, links Kauf mit grauer Zeile (Datum,
@@ -55,7 +58,8 @@ Klick = ja), „keiner“ und „anderer …“ (ab 0.76 eine eigene Zeile unter
 seitlich verschiebt: Suchfeld, Treffer als Knöpfe beim Tippen über `hits()`, ohne Akzente, höchstens
 zwölf; oder DekuDeals-Link mit Knopf „zuordnen“; der Link heißt dann „schließen“). „Bei DekuDeals nachtragen“:
 sortierbare Tabelle Kauf, Zählt als (Link), Woher, „stimmt nicht“ oder „zurücknehmen“. „Alle Käufe“
-eingeklappt, Zusammenfassung je Gruppe; Zeilen „in der Sammlung“, „Mitgliedschaft oder Gutschein“
+eingeklappt, Zusammenfassung je Gruppe; dort heißt „anderer …“ „zuweisen“, bei Käufen, die einem Titel
+der Sammlung zugeordnet sind, „neu zuweisen“ (ab 0.77); Zeilen „in der Sammlung“, „Mitgliedschaft oder Gutschein“
 und „erstattet“ grau (`tr.mutr`). Ein englischer Name aus titledb steht grau in Klammern hinter dem
 Kauftitel. Namen nie als roher Slug (sonst lesbar gemacht). „Zu erledigen“: „n Käufe zuordnen“ und
 „n Käufe bei DekuDeals nachtragen“, beide springen zur Karte.
@@ -93,8 +97,13 @@ Länder ohne Guthabenkarte blass mit violettem Grund.
 ## Wishlist (Liste)
 
 DLC unter ihrem Spiel (ab 0.72, `titleGroups`): eingerückt (`tr.sub`), Name ohne Spiel davor; ohne Spiel
-auf der Wishlist und ab zwei DLC eine Kopfzeile (`tr.tgrp`, Spiel fett, grau „n DLC, das Spiel hast du“).
+auf der Wishlist eine Kopfzeile (`tr.tgrp`, Spiel fett, grau „n DLC, das Spiel hast du“), ab 0.77 auch
+für einen einzelnen DLC (0.76 schrieb ihn ohne Kopfzeile mit dem Spiel grau davor; das war unruhig).
 Gruppe an der Stelle ihres ersten Mitglieds; nach Preis, Abstand, Angebotsende oder Alternative flach.
+
+Laden (ab 0.77): Die Seite zeichnet, sobald `/api/state` da ist; Kaufplan und Länderpläne holt sie
+danach gleichzeitig und zeichnet noch einmal. Der Server rechnet die Länder je Anfrage nur einmal
+(`planner.shared_contexts`).
 
 ## Sammlung: unentschiedene DLC
 
@@ -105,11 +114,15 @@ Preis“), im Korb mit dem Spiel grau vor dem Namen.
 
 ## Rest füllen (Kaufplan)
 
+„Passt dazu“ (Plan-Schritt, Länderkarte, Korb): „+ Titel **spart x €**“ rechnet mit heutigen Preisen;
+dahinter klein grün „am Bestpreis“ oder rot „+x € über Bestpreis“ (`fillBest`, Preis hier gegen
+Bestpreis der letzten 24 Monate, ab 0.77). Der Tooltip (`fillTip`) nennt beide Beträge.
+
 „Passt in den Rest (Betrag):“ zeigt höchstens vier Knöpfe, der kleinste verbleibende Rest zuerst:
 einzelne Titel und Paare („+ A + B“, ein Klick nimmt beide), dazu die passende Mitgliedschaft.
 Alles Weitere von der Wishlist im Auswahlfeld „alles, was passt (n) …“ mit „bleiben x“. Fehlende DLC,
-die nicht auf der Wishlist stehen, folgen als höchstens zwei Links zu DekuDeals, dann grau „und n weitere
-fehlende DLC“ (Namen im Tooltip). Kostenloses
+die nicht auf der Wishlist stehen, folgen als höchstens zwei Knöpfe („+ Name DLC · Preis“), alle
+übrigen im eigenen Auswahlfeld „fehlende DLC (n) …“, nach Spiel sortiert (ab 0.77; vorher nur Tooltip). Kostenloses
 fehlt (ab 0.70). Preise in Auswahlfeldern „Titel dazunehmen …“ immer mit Währungszeichen (ab 0.70).
 
 ## Kopfleiste
@@ -168,8 +181,10 @@ Name oben links 23 px, „Aktualisieren“ 14 px, damit der Name sich vom Menü 
 - „am Bestpreis“ (grün) an einem Schritt oder Land steht nur, wenn jeder Titel darin am
   Bestpreis ist; sonst der rote Betrag darüber (ab 0.65). So widersprechen sich Kopfzeile und
   rotes „+x“ einer Zeile nie.
-- DLC mit gekürztem Namen tragen das Hauptspiel klein und grau davor („Vampire Survivors: Ode
-  to Castlevania“, `small.gm`, ab 0.65), damit „Pixel Pack“ nicht allein steht.
+- DLC mit gekürztem Namen tragen in Plan, Korb und Käufen das Hauptspiel klein und grau davor
+  („Vampire Survivors: Ode to Castlevania“, `small.gm`, ab 0.65), damit „Pixel Pack“ nicht allein
+  steht. In der Wishlist-Liste nicht: Dort stehen DLC immer unter einer Kopfzeile mit dem Namen
+  des Spiels, auch ein einzelner DLC (ab 0.77).
 - Links sind ruhig in der Textfarbe (`a` mit `--accent`), nie browser-blau: Blau heißt Rabatt.
 
 ## Vergleiche
@@ -268,7 +283,10 @@ Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel hinzufügen�
 
 Einstellungen: Jeder Bereich (Länder, Regeln, Gebühren, Sprachen prüfen, Quellen, Sicherung und
 Protokoll) ist eine eigene Karte (`.setc`), damit klar bleibt, wozu Eingeklapptes gehört.
-Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Titel-Tabelle: Die Zahl der Bestpreise
+Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Nach dem Regel-Kasten (`.rule`) nur 6 px
+bis „Grenzen anpassen“ wie bei den übrigen Klappen (ab 0.77). Das Protokollfeld steht unter der Zeile
+„Protokoll des letzten Abgleichs · kopieren“ in einer Klappe „Protokoll anzeigen“ (offen von Haus aus,
+`data-kc` logbox; „Protokoll öffnen“ klappt sie auf). Titel-Tabelle: Die Zahl der Bestpreise
 steht neben dem Länderkürzel („JP 17★“), nicht darunter.
 
 Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länderkarten
@@ -283,10 +301,10 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/index.html`.
 
 | Was | Wo es vorkommt |
 |---|---|
-| Titelname mit DLC-Marke, Spiel grau davor, Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
+| Titelname mit DLC-Marke, Spiel grau davor (nicht in der Wishlist-Liste), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
 | Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle (Zellen in `viewMatrix`), Korb (`viewCompare`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
-| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt (`planpick`, `planfill`), Länderkarte (`pick`, `add`, `trim`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip` |
+| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt (`planpick`, `planfill`), Länderkarte (`pick`, `add`, `trim`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |
