@@ -48,7 +48,9 @@ button.link{border:0;background:none;padding:0;color:var(--accent);text-decorati
 button:disabled{opacity:.5;cursor:default}
 nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
 nav.more{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}
-select{max-width:100%}
+/* Alle Auswahlfelder sehen gleich aus (0.78): Kartenfarbe, feiner Rahmen; Formulare haben eigene Maße */
+select{max-width:100%;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+.fillrow select{font-size:12px;max-width:min(100%,320px)}
 /* Kopf und Reiter kommen beim Scrollen mit, verschwinden nach unten weiter, kommen beim Hochscrollen zurück */
 .stick{position:sticky;top:0;z-index:7;background:var(--bg);margin-bottom:10px;
   transition:transform .8s cubic-bezier(.4,0,.2,1),opacity .7s ease,margin-top .8s cubic-bezier(.4,0,.2,1)}
@@ -189,6 +191,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 #eshophist .eqhits{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px}
 #eshophist .eqhits button.sm{margin:0;font-weight:400}
 #eshophist details.eqf{margin:10px 0 0}
+#eshophist details.eqf > summary{font-weight:400}
 #eshophist details.eqf > summary{cursor:pointer;font-size:13px}
 #eshophist .eqsum b.ink{color:var(--ink)}
 #eshophist .eqsum{margin:8px 0 0}
@@ -408,7 +411,9 @@ form.set > .setc{margin-top:0}
 .setc > h3.sec:first-child{margin-top:14px}
 .setc .box{background:var(--bg)}
 /* Nach dem Regel-Kasten nur wenig Abstand, sonst steht „Grenzen anpassen“ weiter weg als jede andere Klappe (0.77) */
-.setc .rule{margin-bottom:6px}
+.setc .rule{margin-bottom:0}
+/* Jede Klappe und jeder Kasten einer Karte hat denselben Abstand zum Inhalt darüber (0.78) */
+.setc details:not(li details):not(td details){margin-top:10px}
 /* Sprachen prüfen darf breiter werden als die übrigen Einstellungen, bis zur Fensterbreite (0.70) */
 .fold>summary{cursor:pointer;font-weight:600}
 .mini-t{margin-top:4px}
@@ -1715,9 +1720,14 @@ function planCard(p, step){
     const top = more.map(f => ({left: f.left, h: one(f)})).concat((p.fill_pairs || []).map(f => ({left: f.left, h: two(f)})))
       .sort((x, y) => x.left - y.left).slice(0, 4)
       .concat(xs.slice(0, 2).map(f => ({h: one(f)})));
-    const xsel = xs.length > 2 ? ` <select data-act="planpick" data-c="${p.code}" title="Alle fehlenden DLC deiner Spiele, die in den Rest passen, mit dem, was danach bleibt"><option value="">fehlende DLC (${xs.length}) …</option>${[...xs].sort((a, b) => (a.game || "").localeCompare(b.game || "", "de") || a.short.localeCompare(b.short, "de")).map(f => `<option value="${esc(f.slug)}">${esc(f.game ? f.game + ": " : "")}${esc(f.short)} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`).join("")}</select>` : "";
-    const sel = more.length > 1 ? `<select data-act="planpick" data-c="${p.code}" title="Alles von deiner Wishlist, was in den Rest passt, mit dem, was danach bleibt"><option value="">alles, was passt (${more.length}) …</option>${more.map(f => `<option value="${esc(f.slug)}">${esc(f.title)}${f.dlc ? " (DLC)" : ""} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`).join("")}</select>` : "";
-    h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` + nsoFit.concat(top.map(x => x.h)).join(" ") + (sel ? " " + sel : "") + xsel + `</div>`;
+    // Ein Auswahlfeld für alles, was passt (0.78): oben die Wishlist, darunter die DLC deiner Spiele,
+    // die nicht auf der Wishlist stehen, nach Spiel sortiert
+    const optOf = (f, name) => `<option value="${esc(f.slug)}">${esc(name)} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`;
+    const xsSorted = [...xs].sort((a, b) => (a.game || "").localeCompare(b.game || "", "de") || a.short.localeCompare(b.short, "de"));
+    const sel = more.length + xs.length > 1 ? ` <select data-act="planpick" data-c="${p.code}" title="Alles, was in den Rest passt, mit dem, was danach bleibt: deine Wishlist und die DLC deiner Spiele, die nicht auf der Wishlist stehen"><option value="">alles, was passt (${more.length + xs.length}) …</option>` +
+      (more.length ? `<optgroup label="Wishlist">${more.map(f => optOf(f, f.title + (f.dlc ? " (DLC)" : ""))).join("")}</optgroup>` : "") +
+      (xs.length ? `<optgroup label="DLC deiner Spiele, nicht auf der Wishlist">${xsSorted.map(f => optOf(f, (f.game ? f.game + ": " : "") + f.short)).join("")}</optgroup>` : "") + `</select>` : "";
+    h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` + nsoFit.concat(top.map(x => x.h)).join(" ") + sel + `</div>`;
   } else if(p.rest > 0){
     // Nur wo ein Rest bleibt: Bei Kartenzahlung gibt es keinen Rest, der sich füllen ließe. Im Kaufplan
     // ein Knopf wie im Korb (0.76), ohne Titel, die schon in einem anderen Schritt stehen
@@ -2461,6 +2471,9 @@ async function jpImport(text){
    einen Kauf nicht kennt. Alles andere ordnet das Tool selbst ein; gefragt wird nur, was den Plan ändert. */
 const ESHOP_GROUP = {ask: "offen", plan: "bei DekuDeals nachtragen", coll: "in der Sammlung",
   unknown: "nicht in der Sammlung", ticket: "Mitgliedschaft oder Gutschein", void: "erstattet"};
+// Farbe je Gruppe, in der Zahlenzeile und der Spalte Einordnung gleich (0.78): grün erledigt,
+// violett braucht dich, rot unbekannt, grau zählt nicht
+const ESHOP_CLS = {ask: "warnc", plan: "warnc", coll: "gn", unknown: "bad", ticket: "mut", void: "mut"};
 function eshopKnown(){
   // Suchtreffer für „anderer …“: Name, bei DLC mit Spiel davor; die Zuordnung zum Slug merkt sich S.eshopKnown
   const list = S.state.eshop_known || [], map = {};
@@ -2489,7 +2502,7 @@ function eshopBox(){
   const head = rows.length ? `${rows.length} Käufe${at ? `, gelesen am ${esc(dmy(new Date(at * 1000).toISOString()))}` : ""}` : "noch keine Käufe gelesen";
   let h = `<h3 class="sec" id="set-kaeufe">Käufe aus dem eShop <span class="mut">${head}</span></h3>
     <p class="hint">Deine Sammlung pflegst du bei DekuDeals. Der Kaufverlauf von Nintendo sorgt nur dafür, dass der Plan nichts vorschlägt, was du schon gekauft hast, und zeigt Käufe, die bei DekuDeals noch fehlen. Was schon in der Sammlung steht, ordnet das Tool selbst ein; fragen muss es nur, wenn die Antwort den Plan ändert.</p>
-    <details class="fold" data-k="eshophow" ${S.folds.eshophow || !rows.length ? "open" : ""}><summary class="hint">So liest du deine Käufe</summary>
+    <details class="box" data-k="eshophow" ${S.folds.eshophow || !rows.length ? "open" : ""}><summary><b>So liest du deine Käufe</b> <span class="mut">Lesezeichen für deine Kaufhistorie bei Nintendo</span></summary>
     <ol class="hint">
       <li>Leg einmal dieses Lesezeichen an: ${bmLink("eshop", eshopHelper(location.origin))}</li>
       <li>Öffne angemeldet <a href="https://ec.nintendo.com/my/transactions/1${seit ? `#ek-seit=${seit}` : ""}" target="_blank" rel="noopener">deine Kaufhistorie bei Nintendo</a> über diesen Link, warte, bis die Liste da ist, und klick das Lesezeichen an.${seit ? ` Es liest nur, was seit dem letzten vollständigen Lesen dazugekommen ist; <a href="https://ec.nintendo.com/my/transactions/1" target="_blank" rel="noopener" title="Liest den ganzen Kaufverlauf noch einmal. Deine Zuordnungen bleiben, ältere Einträge bekommen fehlende Angaben.">alles neu lesen</a>.` : ""}</li>
@@ -2504,23 +2517,23 @@ function eshopBox(){
   // Zahlen wie bei „Geprüft“ in den Sprachen: violett, was dich braucht, grün, was erledigt ist (0.76)
   const N = (n, cls) => `<b class="${cls || ""}">${n}</b>`;
   // Nicht in der Sammlung rot: Diese Käufe kennt das Tool nicht, der Plan könnte sie vorschlagen (0.77)
-  const counts = [["ask", "warnc"], ["plan", "warnc"], ["coll", "gn"], ["unknown", "bad"], ["ticket", "mut"], ["void", "mut"]]
-    .map(([g, cls]) => [g, cls, by(g).length]).filter(x => x[2]).map(([g, cls, n]) => `${N(n, cls)} ${ESHOP_GROUP[g]}`).join(", ");
+  const counts = ["ask", "plan", "coll", "unknown", "ticket", "void"]
+    .map(g => [g, ESHOP_CLS[g], by(g).length]).filter(x => x[2]).map(([g, cls, n]) => `${N(n, cls)} ${ESHOP_GROUP[g]}`).join(", ");
   h += `<p class="hint eqsum"><b class="ink">${rows.length} Käufe:</b> ${counts}</p>`;
-  if(ask.length) h += `<details class="fold eqf" data-kc="eshopask" ${S.folds.eshopask ? "" : "open"}><summary><b>Welcher Titel ist das?</b> ${N(ask.length, "warnc")}</summary><p class="hint">Diese Käufe ähneln einem Titel deiner Wishlist oder einem fehlenden DLC. Ein Klick auf einen Namen ordnet den Kauf zu, er fällt dann aus dem Plan. „keiner“ lässt ihn im Plan.</p>
+  if(ask.length) h += `<details class="fold eqf" data-kc="eshopask" ${S.folds.eshopask ? "" : "open"}><summary>Welcher Titel ist das? ${N(ask.length, "warnc")}</summary><p class="hint">Diese Käufe ähneln einem Titel deiner Wishlist oder einem fehlenden DLC. Ein Klick auf einen Namen ordnet den Kauf zu, er fällt dann aus dem Plan. „keiner“ lässt ihn im Plan.</p>
     <div class="scroll"><table class="mini-t eqt"><tbody>${ask.map(r => `<tr><td class="l">${kauf(r)}</td><td class="l eqa">${r.suggest.map(x =>
       `<button class="sm cand" data-act="eshoppick" data-k="${esc(r.key)}" data-v="${esc(x.slug)}" title="Ja, das ist ${esc(x.title)}: zählt als Besitz">${x.game && !String(x.title || "").toLowerCase().startsWith(x.game.toLowerCase()) ? `<span class="gm">${esc(x.game)}:</span> <b>${esc(x.title)}</b>` : esc(x.title)}</button>`).join("")}<button class="sm" data-act="eshoppick" data-k="${esc(r.key)}" data-v="-" title="Keiner davon: zählt nicht als Besitz">keiner</button>${own(r)}</td></tr>${ownRow(r, 2)}`).join("")}</tbody></table></div></details>`;
   // Gekauft, aber bei DekuDeals noch nicht in der Sammlung: zählt als Besitz, nachtragen
-  if(plan.length) h += `<details class="fold eqf" data-kc="eshopplan" ${S.folds.eshopplan ? "" : "open"}><summary><b>Bei DekuDeals nachtragen:</b> ${N(plan.length, "warnc")}</summary><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
+  if(plan.length) h += `<details class="fold eqf" data-kc="eshopplan" ${S.folds.eshopplan ? "" : "open"}><summary>Bei DekuDeals nachtragen: ${N(plan.length, "warnc")}</summary><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshop", "kauf", "Kauf", "", "l")}${sth("eshop", "name", "Zählt als", "", "l")}${sth("eshop", "how", "Woher", "", "l")}<th></th></tr></thead><tbody>${sortRows("eshop", plan, {
       kauf: r => r.title || "", name: r => (r.game ? r.game + " " : "") + (r.name || ""), how: r => how[r.how] || "", date: r => r.date || ""}).map(r =>
       `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
   // Alle Käufe zum Nachsehen, nach Gruppe; „zuweisen“ ordnet jeden von Hand zu, „neu zuweisen“, wenn das
   // Tool ihn schon einem Titel der Sammlung zugeordnet hat (0.77, vorher „anderer …“)
   const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_GROUP[r.group] || "", name: r => r.name || r.coll_name || "", date: r => r.date || ""});
-  h += `<details class="fold eqf" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary><b>Alle Käufe:</b> ${N(rows.length)} <span class="mut">(zum Nachsehen und Zuweisen)</span></summary>
+  h += `<details class="fold eqf" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary>Alle Käufe: ${N(rows.length)} <span class="mut">(zum Nachsehen und Zuweisen)</span></summary>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshopall", "kauf", "Kauf", "", "l")}${sth("eshopall", "group", "Einordnung", "", "l")}${sth("eshopall", "name", "Titel", "", "l")}${sth("eshopall", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${allRows.map(r =>
-      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small>${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r, "zuweisen")}` : r.group === "void" || r.group === "ticket" ? "" : own(r, r.coll ? "neu zuweisen" : "zuweisen")}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
+      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small class="${ESHOP_CLS[r.group] || ""}">${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r, "zuweisen")}` : r.group === "void" || r.group === "ticket" ? "" : own(r, r.coll ? "neu zuweisen" : "zuweisen")}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
   return h;
 }
 /* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch

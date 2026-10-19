@@ -43,12 +43,14 @@ kaufen heißt und dessen Wechsel sich rechnet.
 
 Ab 0.71 eine eigene Karte in den Einstellungen (`#eshophist`, Sprungleiste „Käufe“), nicht mehr im
 Reiter Sammlung. Kopf: Zahl der Käufe, Lesedatum. Erklärung als
-Satz, Anleitung zum Lesezeichen eingeklappt („So liest du deine Käufe“, offen ohne Käufe).
+Satz, Anleitung zum Lesezeichen als eingeklappter Kasten wie der Browser-Helfer für Japan
+(`details.box`, „**So liest du deine Käufe** Lesezeichen für deine Kaufhistorie bei Nintendo“, offen
+ohne Käufe, ab 0.78).
 Ab 0.76 darunter eine Zahlenzeile wie „Geprüft“ bei den Sprachen („**12 Käufe:** **3** offen, **2** bei
 DekuDeals nachtragen, **54** in der Sammlung …“; „12 Käufe:“ fett in Textfarbe, offen und nachtragen
 violett, Sammlung grün, nicht in der Sammlung rot `.bad`, Mitgliedschaft und erstattet grau, ab 0.77), dann
 die drei Abschnitte als Klappzeilen (`details.eqf`, 13 px, kleiner als die Kartenüberschrift, ab 0.77) mit
-fettem Namen und Zahl („Welcher Titel ist das? **3**“, „Bei DekuDeals nachtragen: **2**“, „Alle Käufe:
+normalem Namen und fetter Zahl (ab 0.78; vorher alles fett) („Welcher Titel ist das? **3**“, „Bei DekuDeals nachtragen: **2**“, „Alle Käufe:
 **122** (zum Nachsehen und Zuweisen)“): „Welcher Titel ist
 das?“ und „Bei DekuDeals nachtragen“ von Haus aus offen (gemerkt wird das Zuklappen, `data-kc`),
 „Alle Käufe“ zu.
@@ -58,7 +60,8 @@ Klick = ja), „keiner“ und „anderer …“ (ab 0.76 eine eigene Zeile unter
 seitlich verschiebt: Suchfeld, Treffer als Knöpfe beim Tippen über `hits()`, ohne Akzente, höchstens
 zwölf; oder DekuDeals-Link mit Knopf „zuordnen“; der Link heißt dann „schließen“). „Bei DekuDeals nachtragen“:
 sortierbare Tabelle Kauf, Zählt als (Link), Woher, „stimmt nicht“ oder „zurücknehmen“. „Alle Käufe“
-eingeklappt, Zusammenfassung je Gruppe; dort heißt „anderer …“ „zuweisen“, bei Käufen, die einem Titel
+eingeklappt, Zusammenfassung je Gruppe; Spalte Einordnung in denselben Farben wie die Zahlenzeile
+(`ESHOP_CLS`, ab 0.78); dort heißt „anderer …“ „zuweisen“, bei Käufen, die einem Titel
 der Sammlung zugeordnet sind, „neu zuweisen“ (ab 0.77); Zeilen „in der Sammlung“, „Mitgliedschaft oder Gutschein“
 und „erstattet“ grau (`tr.mutr`). Ein englischer Name aus titledb steht grau in Klammern hinter dem
 Kauftitel. Namen nie als roher Slug (sonst lesbar gemacht). „Zu erledigen“: „n Käufe zuordnen“ und
@@ -123,7 +126,9 @@ schlägt der Planer nur Titel vor, die höchstens „gut“ über ihrem Bestprei
 einzelne Titel und Paare („+ A + B“, ein Klick nimmt beide), dazu die passende Mitgliedschaft.
 Alles Weitere von der Wishlist im Auswahlfeld „alles, was passt (n) …“ mit „bleiben x“. Fehlende DLC,
 die nicht auf der Wishlist stehen, folgen als höchstens zwei Knöpfe („+ Name DLC · Preis“), alle
-übrigen im eigenen Auswahlfeld „fehlende DLC (n) …“, nach Spiel sortiert (ab 0.77; vorher nur Tooltip). Kostenloses
+übrigen im selben Auswahlfeld „alles, was passt (n) …“, das ab 0.78 zwei Gruppen hat (`optgroup`
+„Wishlist“ und „DLC deiner Spiele, nicht auf der Wishlist“, nach Spiel sortiert). Alle Auswahlfelder
+haben dieselbe Kartenfarbe und denselben feinen Rahmen (globales `select`, ab 0.78). Kostenloses
 fehlt (ab 0.70). Preise in Auswahlfeldern „Titel dazunehmen …“ immer mit Währungszeichen (ab 0.70).
 
 ## Kopfleiste
@@ -284,8 +289,8 @@ Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel hinzufügen�
 
 Einstellungen: Jeder Bereich (Länder, Regeln, Gebühren, Sprachen prüfen, Quellen, Sicherung und
 Protokoll) ist eine eigene Karte (`.setc`), damit klar bleibt, wozu Eingeklapptes gehört.
-Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Nach dem Regel-Kasten (`.rule`) nur 6 px
-bis „Grenzen anpassen“ wie bei den übrigen Klappen (ab 0.77). Das Protokollfeld steht unter der Zeile
+Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Jede Klappe und jeder Kasten einer Karte
+hat 10 px Abstand zum Inhalt darüber (`.setc details`, ab 0.78; nicht in Listen und Tabellen). Das Protokollfeld steht unter der Zeile
 „Protokoll des letzten Abgleichs · kopieren“ in einer Klappe „Protokoll anzeigen“ (offen von Haus aus,
 `data-kc` logbox; „Protokoll öffnen“ klappt sie auf). Titel-Tabelle: Die Zahl der Bestpreise
 steht neben dem Länderkürzel („JP 17★“), nicht darunter.

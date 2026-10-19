@@ -323,7 +323,8 @@ passt …“ mit dem, was danach bleibt. Das Urteil zählt dabei nicht; Titel au
 gekaufte, kostenlose, DLC ohne Hauptspiel und eigene Angebote (die zahlt die Kreditkarte)
 fehlen. Ein Klick nimmt den Titel in den Schritt, „dazugenommen ×“ nimmt ihn wieder heraus. Fehlende
 DLC deiner Spiele, die nicht auf der Wishlist stehen, erscheinen dahinter: die zwei kleinsten als
-Knopf, alle im Auswahlfeld „fehlende DLC …“; ein Klick nimmt auch sie in den Schritt. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
+Knopf, alle im selben Auswahlfeld „alles, was passt …“ unter „DLC deiner Spiele, nicht auf der
+Wishlist“; ein Klick nimmt auch sie in den Schritt. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
 steht sie dort als Hinweis, mit ihrem eShop-Preis. Jeden anderen Wishlist-Titel, den es dort
 gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt, ebenso fehlende DLC deiner
 Spiele, die nicht auf der Wishlist stehen, und jede Variante der Online-Mitgliedschaft (auch im
