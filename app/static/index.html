@@ -498,6 +498,10 @@ button.mini{color:var(--muted);font-size:10px;margin-left:5px;border:1px solid v
 @media (max-width:375px){nav button{padding:6px 5px;font-size:13px}}
 th.grp{text-align:left;padding-top:12px;font-weight:600}
 .fillrow{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.radar tr.sub td.tn{padding-left:26px}
+.radar tr.tgrp td{padding-top:10px;border-bottom:0}
+.mini-t tr.undec td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.chip.und{color:var(--warn);background:var(--warn-bg);border-color:transparent}
 </style>
 </head>
 <body>
@@ -543,7 +547,7 @@ function setTheme(k){
   renderTheme(); themeMenu(false);
 }
 /* Reihenfolge (0.61): erst was zu tun ist, dann Wunschliste, Korb und Länder (Einkauf), dann was du hast */
-const TABS = [["jetzt","Jetzt"],["titel","Titel"],["korb","Korb"],["laender","Länder"],["sammlung","Sammlung"],["settings","Einstellungen"]];
+const TABS = [["jetzt","Jetzt"],["titel","Wishlist"],["korb","Korb"],["laender","Länder"],["sammlung","Sammlung"],["settings","Einstellungen"]];
 const V0 = loadView();
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
 const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? V0.tab : "jetzt",
@@ -964,7 +968,8 @@ function navFade(){
   if(n) n.classList.toggle("more", n.scrollLeft + n.clientWidth < n.scrollWidth - 2);
 }
 addEventListener("resize", navFade);
-const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || (S.state.nso_items || []).map(x => Object.assign({nso: true}, x)).find(r => r.slug === slug) || {title:slug, slug};
+const rowOf = slug => S.state.matrix.rows.find(r => r.slug === slug) || (S.state.nso_items || []).map(x => Object.assign({nso: true}, x)).find(r => r.slug === slug)
+  || (S.state.extra_offers || []).filter(x => x.slug === slug).map(x => ({slug, title: x.title, dlc_of: x.game, extra: true}))[0] || {title:slug, slug};
 const inBasket = slug => (S.ui.basket || []).includes(slug);
 
 /* ---------- Signale: ein Urteil, ein Wechsel, feste Farben ---------- */
@@ -1047,7 +1052,10 @@ function collDlc(d){
     state += ` · ${mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht")} · ${mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend")}`;
   }
   const inner = d.pack ? ` <small class="mut" style="display:inline">enthält ${d.pack.n} DLC${d.pack.have ? `, ${d.pack.have} schon da` : ""}</small>` : "";
-  return `<tr class="${d.ignored ? "ign" : ""}${d.in_pack ? " part" : ""}"><td class="l"${d.in_pack ? ` title="steckt in ${esc(d.in_pack)}"` : ""}>${d.in_pack ? "↳ " : ""}${esc(d.title)}${tag}${inner}</td><td class="l">${state}</td></tr>`;
+  // Noch unentschieden (0.72): fehlt, steht nicht auf der Wishlist und ist nicht ignoriert. Violetter Rand links
+  // und Hinweis am Namen, damit diese DLC zwischen den entschiedenen auffallen
+  const undec = !d.owned && !d.by_hand && !d.ignored && !d.gone && !d.wish;
+  return `<tr class="${d.ignored ? "ign" : ""}${d.in_pack ? " part" : ""}${undec ? " undec" : ""}"><td class="l"${d.in_pack ? ` title="steckt in ${esc(d.in_pack)}"` : ""}>${d.in_pack ? "↳ " : ""}${esc(d.title)}${tag}${inner}${undec ? ` <span class="chip und" title="Fehlt, steht nicht auf deiner Wishlist und ist nicht ignoriert. Auf die Wishlist setzen, mit „habe ich“ abhaken oder ignorieren; in den Korb geht er auch über „Titel dazunehmen …“">nicht auf der Wishlist</span>` : ""}</td><td class="l">${state}</td></tr>`;
 }
 /* Preis eines fehlenden DLC wie in der Titelliste: Stern am Bestpreis, grün bei „kaufen“
    und „gut“, Rabatt blau (0.53.3). Ein Urteil gibt es nur auf der Wishlist. */
@@ -1125,11 +1133,34 @@ function viewTitles(){
     <div class="radar"><table><thead><tr>${sth("titel", "title", "Titel")}${sth("titel", "verdict", "Urteil", "", "l")}${sth("titel", "price", "Einkaufspreis", "Was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr: im Land des Kaufplans, sonst im günstigsten zählenden Land")}
     ${sth("titel", "over", "über Bestpreis", "Einkaufspreis minus Bestpreis. Bestpreis: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet")}
     ${sth("titel", "alt", "Alternative", "Liegt das beste Angebot in einem Land der Stufe schwer: das beste Angebot in einem leichten oder mittleren Land")}<th>Korb</th></tr></thead><tbody>`;
-  h += rows.map(titleRow).join("");
+  h += titleGroups(rows).join("");
   if(!rows.length) h += `<tr><td colspan="6" class="mut">Kein Titel passt zum Filter.</td></tr>`;
   h += `</tbody></table></div>`;
   if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="tab" data-tab="korb">Korb in allen Ländern vergleichen</button></p>`;
   return h;
+}
+/* DLC beim Spiel (0.72): Steht das Spiel auf der Wishlist, folgen seine DLC direkt darunter; mehrere DLC
+   eines Spiels, das nicht auf der Wishlist steht, bekommen eine Kopfzeile wie in der Sammlung. Die Gruppe
+   steht dort, wo ihr erstes Mitglied in der gewählten Reihenfolge steht. Nach Preis, Abstand oder
+   Angebotsende sortiert bleibt die Liste flach, sonst stimmt die Reihenfolge nicht mehr. */
+function titleGroups(rows){
+  const s = S.sorts.titel;
+  if(s && ["price", "over", "end", "alt"].includes(s.k)) return rows.map(r => titleRow(r));
+  const units = new Map();
+  for(const r of rows){
+    const k = r.dlc_of || r.title;
+    if(!units.has(k)) units.set(k, {game: null, dlc: []});
+    const u = units.get(k);
+    if(r.dlc_of) u.dlc.push(r); else u.game = r;
+  }
+  const out = [];
+  for(const [k, u] of units){
+    const sub = u.game ? u.dlc.length > 0 : u.dlc.length > 1;
+    if(u.game) out.push(titleRow(u.game));
+    else if(sub) out.push(`<tr class="tgrp"><td colspan="6"><b>${esc(k)}</b> <small class="mut">${u.dlc.length} DLC${u.dlc[0].parent_owned ? ", das Spiel hast du" : ""}</small></td></tr>`);
+    for(const d of u.dlc) out.push(titleRow(d, sub ? k : null));
+  }
+  return out;
 }
 const VORDER = {buy: 0, good: 1, wait: 2, none: 3};
 // Angebotsende hat keine eigene Spalte: Auswahl neben dem Filter, gemeinsam mit den Spaltenköpfen
@@ -1138,7 +1169,7 @@ function titleSortSel(){
   const o = (val, l) => `<option value="${val}" ${v === val ? "selected" : ""}>${l}</option>`;
   return `<select class="srt" data-act="tsortsel" data-t="titel" title="Reihenfolge der Titel">${o("", "nach Urteil und Nähe zum Bestpreis")}${o("title:1", "nach Titel")}${o("price:1", "nach Einkaufspreis")}${o("over:1", "nach Abstand zum Bestpreis")}${o("end:1", "nach Angebotsende")}${!["", "title:1", "price:1", "over:1", "end:1"].includes(v) ? o(v, "eigene Sortierung") : ""}</select>`;
 }
-function titleRow(r){
+function titleRow(r, group){
   const x = shownOffer(r), open = S.openTitle === r.slug, ce = r.champ;
   const cheapest = cheapestOffer(r), pl = planOffer(r);
   const off = pl || x || cheapest;
@@ -1155,7 +1186,9 @@ function titleRow(r){
   const marks = (r.cashback ? ` <span class="ok" title="Mit ${String(r.cashback.pct).replace(".", ",")} % Cashback des Kartenshops wären es in ${esc(country(r.cashback.code).name)} etwa ${eur(r.cashback.eur)}, also Bestpreis. Cashback gibt es nicht immer, bitte beim Kauf prüfen.">✱</span>` : "") +
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
-  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(r.title)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
+  // In der Gruppe ohne den Namen des Spiels davor („Vampire Survivors: Operation Guns“ → „Operation Guns“)
+  const name = group && r.title.toLowerCase().startsWith(group.toLowerCase()) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
+  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(name)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>
     <td class="kb-c"><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
@@ -1429,7 +1462,7 @@ function viewCards(){
 /* Reiter Korb ohne Korb: wie man einen anlegt (0.59) */
 function viewKorbEmpty(){
   return `<div class="box"><p><b>Noch kein Korb.</b> Ein Korb ist deine eigene Auswahl an Titeln, verglichen in allen Ländern: Was kostet genau das hier, dort und aufgeteilt?</p>
-    <p class="hint">So legst du einen an: „+“ in der Spalte Korb im Reiter Titel oder „als Korb vergleichen“ auf einer Länderkarte. Der Kaufplan unter „Jetzt“ kauft dagegen in mehreren Ländern nacheinander, das ist kein Korb.</p>
+    <p class="hint">So legst du einen an: „+“ in der Spalte Korb im Reiter Wishlist oder „als Korb vergleichen“ auf einer Länderkarte. Der Kaufplan unter „Jetzt“ kauft dagegen in mehreren Ländern nacheinander, das ist kein Korb.</p>
     </div>`;
 }
 function cardsHtml(p){
@@ -1495,7 +1528,13 @@ function wishOpts(rows, label, nso){
   return groups.map(([v, l]) => {
     const g = rows.filter(r => vd(r.slug) === v).sort((a, b) => a.title.localeCompare(b.title, "de"));
     return g.length ? `<optgroup label="${l}">${g.map(r => `<option value="${esc(r.slug)}">${esc(r.title)}${(r.dlc_of || rowOf(r.slug).dlc_of) ? " (DLC)" : ""}${label ? " · " + label(r) : ""}</option>`).join("")}</optgroup>` : "";
-  }).join("") + (nso ? nsoOpts(nso.code, nso.skip) : "");
+  }).join("") + (nso ? extraOpts(nso.code, nso.skip) + nsoOpts(nso.code, nso.skip) : "");
+}
+/* Fehlende DLC deiner Spiele, die nicht auf der Wishlist stehen (0.72): im Land mit dem Preis dort */
+function extraOpts(code, skip){
+  const o = (S.state.extra_offers || []).filter(x => !skip.has(x.slug) && (!code || x.local[code] !== undefined)).map(x =>
+    `<option value="${esc(x.slug)}">${x.game ? esc(x.game) + ": " : ""}${esc(x.title)} · ${code ? money(x.local[code], (S.state.pay[code] || {}).currency || "EUR") : eur(x.eur)}</option>`).join("");
+  return o ? `<optgroup label="Fehlende DLC deiner Spiele">${o}</optgroup>` : "";
 }
 /* Online-Mitgliedschaft unter „Titel dazunehmen“ (0.69): jede Variante mit Preis, im Land mit dem Preis dort */
 function nsoOpts(code, skip){
@@ -1889,7 +1928,7 @@ function viewCompare(){
   for(const slug of order){
     const r = rowOf(slug);
     const cells = cols.map(p => itemIn(p, slug));
-    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft unter Jetzt">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>`}</td>` +
+    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft unter Jetzt">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${r.extra && r.dlc_of ? `<small class="gm">${esc(r.dlc_of)}:</small> ` : ""}${esc(r.title)}</a>`}</td>` +
       `<td class="bp">${r.champ ? `${ax(r.champ)}<b title="Bestpreis in ${esc(country(r.champ.code).name)}">${eur(r.champ.eur)}</b> <small class="inl">${r.champ.code}</small>` : `<span class="mut">–</span>`}</td>` +
       cols.map((p, k) => {
         const i = cells[k];

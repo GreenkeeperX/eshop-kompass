@@ -243,7 +243,7 @@ Regeln für die Oberfläche stehen in [`docs/oberflaeche.md`](docs/oberflaeche.m
 
 ### Allgemein
 
-Sechs Reiter: Jetzt, Titel, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
+Sechs Reiter: Jetzt, Wishlist, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
 Wishlist, Korb und Länder zum Einkaufen, dann was du hast. Ein Klick auf den Namen oben links
 lädt die Startseite neu.
 
@@ -311,8 +311,9 @@ fehlen. Ein Klick nimmt den Titel in den Schritt, „dazugenommen ×“ nimmt ih
 DLC deiner Spiele erscheinen dahinter, die zwei kleinsten als Link zu DekuDeals; übernehmen lassen sie sich, sobald sie
 auf der Wishlist stehen. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
 steht sie dort als Hinweis, mit ihrem eShop-Preis. Jeden anderen Wishlist-Titel, den es dort
-gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt, ebenso jede Variante der
-Online-Mitgliedschaft; „als Korb
+gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt, ebenso fehlende DLC deiner
+Spiele, die nicht auf der Wishlist stehen, und jede Variante der Online-Mitgliedschaft (auch im
+Korb; von selbst nimmt der Plan beides nie); „als Korb
 vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
 dazugenommenen Titel dieses Landes vergessen.
 
@@ -337,14 +338,17 @@ Angebot eintragen“, siehe [Eigene Angebote](#eigene-angebote-codes)). In den K
 Kaufplan-Schritt kommt eine Variante über „Titel dazunehmen …“; von selbst nimmt der Plan sie
 nie auf.
 
-### Titel
+### Wishlist
 
 **Liste:** eine Zeile je Wishlist-Titel mit Urteil, Einkaufspreis samt Land und Stufe,
 Abstand zum Bestpreis und, wenn das beste Angebot in einem schweren Land liegt, der
 Alternative in einem leichten oder mittleren Land. Steht der Titel im Kaufplan, zeigt die
 Zeile den Preis im Land des Plans; ist er anderswo günstiger, steht dieses Land als
 Alternative daneben. Unter dem Urteil steht, ob der Titel im Plan ist oder warum nicht.
-Filter nach Urteil und Suche stehen oben, dazu eine Sortierung, auch nach Angebotsende.
+Filter nach Urteil und Suche stehen oben, dazu eine Sortierung, auch nach Angebotsende. DLC
+stehen direkt unter ihrem Spiel, eingerückt und ohne den Namen des Spiels davor; steht das Spiel
+nicht auf der Wishlist, fasst eine Kopfzeile mehrere seiner DLC zusammen. Sortiert nach Preis,
+Abstand oder Angebotsende ist die Liste flach.
 
 Ein Klick auf den Titel klappt die **Einzelheiten** auf:
 
@@ -438,7 +442,9 @@ DekuDeals-Artikelseite), je DLC „hast du“ oder „fehlt“. Ob du einen DLC 
 Sammlung bei DekuDeals; was sie nicht kennt, etwa einen DLC aus einem Paket, hakst du mit
 „habe ich“ ab. „ignorieren“ (je DLC) und „alle DLC ignorieren“ (je Spiel) blenden Inhalte aus,
 die dich nicht interessieren: Sie zählen nicht als fehlend und stehen eingeklappt unter dem
-Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der Sicherung.
+Spiel. Die DekuDeals-Sammlung geht vor, die Haken stecken in der Sicherung. Fehlende DLC, die
+weder auf der Wishlist stehen noch ignoriert sind, tragen einen violetten Rand und den Hinweis
+„nicht auf der Wishlist“: Über sie hast du noch nicht entschieden.
 
 - **Aufbau:** Spiele mit fehlenden DLC stehen oben, je eines in einem Kasten. Darunter
   zugeklappt „Ohne offene DLC“ (alle DLC da, ignoriert oder nicht mehr erhältlich, je eine

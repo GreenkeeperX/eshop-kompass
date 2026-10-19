@@ -2893,6 +2893,24 @@ class ExtraDlcTest(unittest.TestCase):
             row = {d["slug"]: d for d in planner.collection(data, settings, rows=[])["games"][0]["dlc"]}["rl-b"]
             self.assertTrue(row["at_best"])
 
+    def test_missing_dlc_can_be_added_to_basket(self):
+        # 0.72: Fehlende DLC außerhalb der Wishlist lassen sich in Korb und Plan nehmen, von selbst nie
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code == "DE"
+        data = self.data()
+        data["xprices"] = {"DE": {"rl-b": {"status": "onsale", "currency": "EUR", "regular": 4.0,
+                                           "nsuid": "70050000000001"}}}
+        data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {"EU": ["70050000000001"]},
+                                  "ids_checked": {"EU": 1}}}
+        with mock.patch.object(planner, "extra_dlc", lambda d, s: {"rl-b": ("Car B", "rl")}):
+            offers = planner.extra_offers(data, settings)
+            self.assertEqual([(o["slug"], o["local"]) for o in offers], [("rl-b", {"DE": 4.0})])
+            res = planner.plans(data, settings, basket=["rl-b"])
+            de = next(p for p in res if p["code"] == "DE")
+            self.assertEqual([i["slug"] for i in de["items"]], ["rl-b"])
+            self.assertNotIn("rl-b", {r["slug"] for r in planner.radar(data, settings)})
+
     def test_prices_of_missing_dlc_are_fetched_separately(self):
         settings = store.load_settings()
         data = {"items": {"a": {"active": True, "ids": {"EU": ["1"]}}},

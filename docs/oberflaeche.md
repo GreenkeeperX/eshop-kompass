@@ -79,6 +79,19 @@ Das günstigste zählende Land fett. Chips „Konto“ und „im Plan“ neutral
 Land, damit die Preise rechtsbündig untereinander stehen; Rabatt, Abstand und Link rechts daneben.
 Länder ohne Guthabenkarte blass mit violettem Grund.
 
+## Wishlist (Liste)
+
+DLC unter ihrem Spiel (ab 0.72, `titleGroups`): eingerückt (`tr.sub`), Name ohne Spiel davor; ohne Spiel
+auf der Wishlist und ab zwei DLC eine Kopfzeile (`tr.tgrp`, Spiel fett, grau „n DLC, das Spiel hast du“).
+Gruppe an der Stelle ihres ersten Mitglieds; nach Preis, Abstand, Angebotsende oder Alternative flach.
+
+## Sammlung: unentschiedene DLC
+
+Fehlt ein DLC, steht er nicht auf der Wishlist und ist nicht ignoriert (ab 0.72): violetter Rand links
+an der Zeile (`tr.undec`) und Chip „nicht auf der Wishlist“ (`.chip.und`, violett auf `--warn-bg`).
+„Titel dazunehmen …“ bietet diese DLC in der Gruppe „Fehlende DLC deiner Spiele“ an („Spiel: DLC ·
+Preis“), im Korb mit dem Spiel grau vor dem Namen.
+
 ## Rest füllen (Kaufplan)
 
 „Passt in den Rest (Betrag):“ zeigt höchstens vier Knöpfe, der kleinste verbleibende Rest zuerst:
@@ -180,7 +193,7 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 
 ## Flächen
 
-Reiter (ab 0.61): Jetzt, Titel, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
+Reiter (ab 0.61, „Titel“ heißt ab 0.72 „Wishlist“, intern weiter `titel`): Jetzt, Wishlist, Korb, Länder, Sammlung, Einstellungen, erst was ansteht, dann
 Einkaufen, dann was du hast. Am Reiter Korb steht grau die Zahl
 seiner Titel (ab 0.59). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
 der Ansichtsschalter (`.tools .seg`, Titel: Liste | Tabelle, Länder: Raster | Liste). Ansicht und

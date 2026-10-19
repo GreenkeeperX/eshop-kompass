@@ -1365,7 +1365,7 @@ def mix(ctx, basket):
 
 
 def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_mix=False):
-    data, settings = with_nso(data, settings, list(basket or []) + list(must or []) +
+    data, settings = with_added(data, settings, list(basket or []) + list(must or []) +
                               [s for o in (overrides or {}).values() for s in (o or {}).get("add") or []])
     ctx = Context(data, settings, now)
     overrides = overrides or {}
@@ -1454,8 +1454,8 @@ def radar(data, settings, targets=None, now=None):
     targets = targets or {}
     rows = []
     for slug in ctx.order:
-        if ctx.items[slug].get("nso"):
-            continue                 # Mitgliedschaft nur, wenn du sie dazunimmst (0.69)
+        if ctx.items[slug].get("nso") or ctx.items[slug].get("extra"):
+            continue                 # Mitgliedschaft und DLC außerhalb der Wishlist nur, wenn du sie dazunimmst
         best = {"easy": None, "hard": None}
         unsure, nocard = [], []
         for code, c in ctx.countries.items():
@@ -1799,6 +1799,26 @@ def extra_context(data, settings, now=None):
              for i, (s, e) in enumerate(extra.items())}
     # Tiefstpreise liest der Abgleich seit 0.53.3 auch für fehlende DLC: Bestpreis wie bei Titeln
     return Context(dict(data, items=items, prices=data.get("xprices") or {}), settings, now)
+
+
+def extra_offers(data, settings, now=None):
+    """Fehlende DLC deiner Spiele für „Titel dazunehmen …“ (0.72): [{slug, title, game, local:
+    {Land: Preis in Landeswährung}, eur: günstigster zählender Preis}]. Kostenloses fehlt."""
+    xctx = extra_context(data, settings, now)
+    if not xctx:
+        return []
+    want, rel = extra_dlc(data, settings), data.get("rel") or {}
+    out = []
+    for slug, it in xctx.items.items():
+        local = {code: c["offers"][slug]["local"] / 100 for code, c in xctx.countries.items()
+                 if slug in c["offers"] and c["offers"][slug]["local"] > 0 and xctx.decides(c["offers"][slug])}
+        if not local:
+            continue
+        best = _extra_best(xctx, slug)
+        game = want.get(slug, (None, None))[1]
+        out.append({"slug": slug, "title": it["title"], "game": (rel.get(game) or {}).get("title") or it.get("dlc_of"),
+                    "local": local, "eur": best["eur"] if best else None})
+    return sorted(out, key=lambda x: ((x["game"] or "").casefold(), x["title"].casefold()))
 
 
 def _extra_best(xctx, slug):
@@ -2212,7 +2232,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     Wishlist-Titel, die hineinpassen, möglichst nahe am Rest, egal welches Urteil.
     Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt.
     """
-    data, settings = with_nso(data, settings, [s for slugs in (fill or {}).values() for s in slugs])
+    data, settings = with_added(data, settings, [s for slugs in (fill or {}).values() for s in slugs])
     ctx = Context(data, settings, now)
     fill = {code: [s for s in slugs if s in ctx.items] for code, slugs in (fill or {}).items()}
     ok_grades = ("buy", "good") if include_good else ("buy",)
@@ -2644,18 +2664,32 @@ def nso_items(data):
              "family": bool(v.get("family"))} for v in NSO_VARIANTS if v["key"] in have]
 
 
-def with_nso(data, settings, wanted):
-    """Daten und Einstellungen mit den gewünschten Varianten der Mitgliedschaft als Titel (ab 0.69):
+def with_added(data, settings, wanted):
+    """Daten und Einstellungen mit dem, was du ausdrücklich dazunimmst: fehlende DLC deiner Spiele
+    (ab 0.72) und Varianten der Mitgliedschaft als Titel (ab 0.69):
     Preise je Land aus nso_prices, Deutsch in jeder Region (die Sprachregel gilt nicht), eigene
     Angebote der Variante (etwa Amazon-Codes) wie eigene Angebote eines Titels. Nur für Korb und
     Kaufplan, wenn du sie ausdrücklich dazunimmst; Urteil und Wishlist kennen sie nicht."""
     keys = [s[len(NSO_PREFIX):] for s in dict.fromkeys(wanted or []) if str(s).startswith(NSO_PREFIX)
             and s[len(NSO_PREFIX):] in NSO_KEYS]
-    if not keys:
+    # Fehlende DLC deiner Spiele, die nicht auf der Wishlist stehen (0.72): wie in extra_context,
+    # Preise aus xprices, Sprache vom DLC oder seinem Spiel
+    extra, items0 = data.get("extra") or {}, data.get("items") or {}
+    xs = [s for s in dict.fromkeys(wanted or []) if s in extra and not (items0.get(s) or {}).get("active")]
+    if not keys and not xs:
         return data, settings
-    items = dict(data.get("items") or {})
+    items = dict(items0)
     prices = {shop: dict(t) for shop, t in (data.get("prices") or {}).items()}
     own = list(settings.get("own_offers") or [])
+    glangs = data.get("glangs") or {}
+    for i, s in enumerate(xs):
+        e, g = extra[s], glangs.get(extra[s].get("parent")) or {}
+        items[s] = {"title": e["title"], "parent": e.get("parent"), "active": True, "order": 10 ** 6 + 1 + i,
+                    "ids": e.get("ids") or {}, "langs": dict(g.get("langs") or {}, **(e.get("langs") or {})),
+                    "langs_src": g.get("langs_src") or {}, "extra": True}
+        for shop, t in (data.get("xprices") or {}).items():
+            if s in t:
+                prices.setdefault(shop, {})[s] = t[s]
     for key in keys:
         v = next(x for x in NSO_VARIANTS if x["key"] == key)
         slug = NSO_PREFIX + key
