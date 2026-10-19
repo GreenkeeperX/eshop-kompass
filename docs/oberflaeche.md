@@ -260,9 +260,12 @@ Tooltip steht. Sortieren gibt es dort nicht.
 
 „Zu erledigen“ (Jetzt): je Eintrag ein fetter Kern („7 fehlende DLC kostenlos holen“), Einzelheiten
 klein dahinter, lange Listen eingeklappt („welche“). Die Legende erklärt jedes Zeichen, das die
-Oberfläche zeigt, auch Chips, „ca.“, die DLC-Marken und Sammlung „fehlt“.
-Auswahl „Konto steht in“ (Jetzt und Einstellungen): nur Länder mit eigenem Shop, ohne
-„Deutschland (Guthaben)“.
+Oberfläche zeigt, auch Chips, „ca.“, die DLC-Marken, „Rest“, Sammlung „fehlt“, „nicht auf der Wishlist“
+und „↳“ (ab 0.91 geprüft: Sprachmarken „DE✓“ und „andere Fassung“ wie in den Tabellen, beide „Wechsel“-Zeilen
+zusammengelegt, alle Chips der Wishlist und des Korbs). Neue Chips oder Marken kommen im selben Commit in die Legende.
+Auswahl „Konto steht in:“ (Jetzt und Einstellungen): nur Länder mit eigenem Shop, ohne
+„Deutschland (Guthaben)“. Auf Jetzt stehen „Konto steht in:“ und „Guthaben dort:“ mit Doppelpunkt
+und etwas Abstand nebeneinander, ohne „·“ dazwischen (ab 0.91).
 
 DLC außerhalb Europas (ab 0.61 nach Programm-ID): Hat er dort eine eigene Fassung, steht hinter
 dem Land das violette „DLC“-Kästchen (`.dlc.need`), in den Tabellen ein violetter Strich am linken
@@ -281,7 +284,9 @@ graues × (ab 0.62.1, `searchBox`, das × des Browsers ist ausgeblendet), Esc le
 Aktion (Korb leeren). Auswahlfelder „Titel dazunehmen …“ gruppieren nach Urteil, darin A–Z, zuletzt
 die Online-Mitgliedschaft mit allen Varianten (ab 0.69; im Korb als Zeile mit Link zum Kasten, ohne Sprachmarke).
 Sammlung: Der Filter ignoriert Akzente, Satzzeichen und Leerzeichen („pokemon“ findet „Pokémon“, ab 0.69)
-und klappt „Ohne offene DLC“ und „Ohne Zusatzinhalte“ mit Treffern auf.
+und klappt „Ohne offene DLC“ und „Ohne Zusatzinhalte“ mit Treffern auf. In „Ohne offene DLC“ stehen
+hinter der Erklärung klein „alle aufklappen · alle zuklappen“ für die Spiele darin (ab 0.91); sonst
+gibt es keine lange Reihe gleicher Klappzeilen, deshalb nur dort.
 Sprachen prüfen: „Geprüft: 94 von Nintendo gelesen, 6 laut titledb, 2 von dir bestätigt“, Zahlen von
 Nintendo und von dir grün, laut titledb violett (ab 0.81; vorher „von dir“ violett). Dieselben Farben
 in der Spalte der Tabelle darunter: „Deutsch ✓“ grün von Nintendo oder dir, violett laut titledb (ohne Punktlinie ab 0.81.2), „ohne Deutsch“ rot (bis 0.80 immer gold). Der Browser-Helfer für Japan zählt

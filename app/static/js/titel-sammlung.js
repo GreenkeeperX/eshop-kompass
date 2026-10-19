@@ -109,7 +109,9 @@ function viewCollection(){
   h += tools + games.map(collGame).join("");
   // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
   const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
-  h += fold("colldone", done, "Ohne offene DLC", "Alle DLC da, ignoriert oder nicht mehr erhältlich. Klick auf ein Spiel zeigt seine DLC.", `<div class="cgl">${done.map(collGame).join("")}</div>`);
+  // Alle Spiele darin auf einmal auf- oder zuklappen, dezent hinter der Erklärung (0.91)
+  const both = `<span class="foldall"><button class="link" data-act="foldall" data-v="1">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="">alle zuklappen</button></span>`;
+  h += fold("colldone", done, "Ohne offene DLC", `Alle DLC da, ignoriert oder nicht mehr erhältlich. Klick auf ein Spiel zeigt seine DLC. ${both}`, `<div class="cgl">${done.map(collGame).join("")}</div>`);
   h += fold("collplain", plain, "Ohne Zusatzinhalte", "", `<div class="cl">${plain.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener"${g.via ? ` title="über ${esc(g.via)}"` : ""}>${esc(g.title)}</a>`).join("")}</div>`);
   const list = (arr, head, note) => arr.length ? `<section class="box cg"><h3>${head} <span class="mut">${arr.length}</span></h3>${note ? `<p class="hint" style="margin:0 0 6px">${note}</p>` : ""}<div class="cl">${arr.map(g => `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener"${g.via ? ` title="über ${esc(g.via)}"` : ""}>${esc(g.title)}</a>`).join("")}</div></section>` : "";
   h += list(waiting, "Noch nicht gelesen", "Das Tool liest je Abgleich höchstens 40 Artikelseiten, diese folgen bei den nächsten Abgleichen.");

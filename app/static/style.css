@@ -436,9 +436,11 @@ form.set > .setc{margin-top:0}
 .todo details.inl{display:inline}
 .todo details.inl summary{display:inline;cursor:pointer;color:var(--muted);font-size:12px}
 .todo details.inl[open]{display:block;font-size:12px;margin:2px 0 0}
-.acct{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px;font-size:13px}
+.acct{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:center;margin:0 0 10px;font-size:13px}
 .acct select,.acct input{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
 .acct input{width:90px;text-align:right}
+.foldall{white-space:nowrap;margin-left:4px}
+.foldall .link{color:inherit}   /* dezent wie die Erklärung davor (0.91) */
 
 /* Länderkarten: Kopfzahl, Zeilen Preis, Wechsel, Rest */
 .pc .money{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0 3px}

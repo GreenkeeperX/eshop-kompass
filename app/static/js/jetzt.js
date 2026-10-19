@@ -8,8 +8,8 @@ function accountLine(){
     .sort((x, y) => x.name.localeCompare(y.name, "de"))
     .map(c => `<option value="${c.code}" ${c.code === cur ? "selected" : ""}>${esc(c.name)}</option>`).join("");
   const bal = cur && s.countries[cur] ? s.countries[cur].balance || 0 : 0;
-  return `<div class="acct">Konto steht in <select data-act="acct"><option value="">nicht angegeben</option>${opts}</select>` +
-    (cur && cur !== "DE" ? ` · Guthaben dort <input type="text" inputmode="decimal" data-act="bal" value="${dc(bal)}"> ${esc((pi || {}).currency || "")}` : "") +
+  return `<div class="acct"><span>Konto steht in: <select data-act="acct"><option value="">nicht angegeben</option>${opts}</select></span>` +
+    (cur && cur !== "DE" ? `<span>Guthaben dort: <input type="text" inputmode="decimal" data-act="bal" value="${dc(bal)}"> ${esc((pi || {}).currency || "")}</span>` : "") +
     ` <span class="hint">„gekauft“ stellt beides selbst um.</span></div>`;
 }
 function todos(){
@@ -161,17 +161,17 @@ function nsoBox(){
 function openLegend(){
   const d = $("legend");
   d.innerHTML = `<header><h2>Legende</h2><button data-act="lgclose" autofocus>Schließen</button></header><div class="lgd">
-    <div><span class="vd buy">kaufen</span> Einkaufspreis höchstens ${eur(S.state.settings.deal_eur.buy)} oder 2 % über dem Bestpreis, oder dein Zielpreis ist erreicht.</div>
-    <div><span class="vd good">gut</span> höchstens ${eur(S.state.settings.deal_eur.good)} oder 15 % über dem Bestpreis.</div>
+    <div><span class="vd buy">kaufen</span> Einkaufspreis höchstens ${eur(S.state.settings.deal_eur.buy)} oder höchstens 2 % über dem Bestpreis, oder dein Zielpreis ist erreicht.</div>
+    <div><span class="vd good">gut</span> höchstens ${eur(S.state.settings.deal_eur.good)} oder höchstens 15 % über dem Bestpreis.</div>
     <div><span class="vd wait">warten</span> weiter weg vom Bestpreis. Das Urteil gilt dem günstigsten Preis jetzt, mit oder ohne Rabatt: Ein dauerhaft günstiger Normalpreis am Bestpreis ist „kaufen“.</div>
     <div><b>Bestpreis</b>: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet. <b>Einkaufspreis</b>: was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr.</div>
     <div><span class="star">★</span> am Bestpreis. In der Tabelle: <span class="sw c-buy">9,99</span> „kaufen“, <span class="sw c-good">9,99</span> „gut“, <span class="sw champ">9,99</span> hier gab es den Bestpreis.</div>
-    <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b class="bad">lohnt nicht</b> ist rot.</div>
+    <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt, am Schritt <b>✓ lohnt</b> oder <b class="bad">lohnt nicht</b>. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b>Rest</b>: Guthaben, das nach dem Kauf auf dem Konto bleibt; vor einem weiteren Wechsel verfällt er und zählt als Kosten.</div>
     <div><span class="tier">leicht</span> Kartenzahlung, kein Rest · <span class="tier">mittel</span> Guthabenkarten, ein Rest verfällt beim Wechsel · <span class="tier">schwer</span> Guthabenkarten, ein Wechsel mit Guthaben geht nur über den Support.</div>
     <div><span class="pct">−60 %</span> Rabatt im Shop (blau). <span class="approx">≈</span> geschätzt (ohne gelesenen Kartenpreis). <span class="q">?</span> zählt nicht: Sprache ungeprüft oder ohne Guthabenkarte.</div>
-    <div><span class="lgt de">DE ✓</span> deutsche Fassung bestätigt · <span class="lgt no">ohne DE</span> Fassung ohne Deutsch · <span class="lg warnc">Deutsch</span> violett: laut titledb, nicht von Nintendo.</div>
-    <div><b>Wechsel</b> am Schritt: <b>✓ lohnt</b> oder <b class="bad">lohnt nicht</b>. Chips: <span class="chip">Konto</span> dein Konto steht dort, <span class="chip">im Plan</span> der Kaufplan kauft dort, <span class="chip">Switch-2-Upgrade</span> Upgrade-Paket. <b>ca.</b> vor einem Preis heißt geschätzt.</div>
-    <div>Marken: <span class="dlc">DLC</span> Zusatzinhalt · <span class="dlc need">DLC</span> braucht das Spiel aus dieser Region · <span class="dlc open">DLC?</span> Fassung ungeprüft · <span class="dlc ownm">Amazon</span> eigenes Angebot, mit Kreditkarte bezahlt. In der Sammlung: <span class="warnc">fehlt</span> noch nicht in deiner Sammlung.</div>
+    <div><span class="lgt de">DE✓</span> deutsche Fassung bestätigt oder dieselbe wie im deutschen eShop · <span class="lgt no">andere Fassung</span> ohne Deutsch · <span class="lg warnc">Deutsch</span> violett: laut titledb, nicht von Nintendo.</div>
+    <div>Chips: <span class="chip">Konto</span> dein Konto steht dort, <span class="chip">im Plan</span> der Kaufplan kauft dort, <span class="tagwin">günstigstes</span> günstigstes Land im Korb, <span class="chip">Switch-2-Upgrade</span> Upgrade-Paket, <span class="chip">Upgrade genügt</span> du hast die Switch-1-Fassung, <span class="chip w">schon in Sammlung</span> steht schon in deiner Sammlung, <span class="chip">Paket spart …</span> oder <span class="chip w">einzeln günstiger</span> Paket gegen seine Teile, <span class="chip w">Teil schon da</span> ein Teil des Pakets ist schon in deiner Sammlung. <b>ca.</b> vor einem Preis heißt geschätzt.</div>
+    <div>Marken: <span class="dlc">DLC</span> Zusatzinhalt · <span class="dlc need">DLC</span> braucht das Spiel aus dieser Region · <span class="dlc open">DLC?</span> Fassung ungeprüft · <span class="dlc ownm">Amazon</span> eigenes Angebot, mit Kreditkarte bezahlt. <span class="dlc own">✓</span> im Kaufplan: schon in deiner Sammlung. In der Sammlung: <span class="warnc">fehlt</span> noch nicht in deiner Sammlung, <span class="chip und">nicht auf der Wishlist</span> fehlt, und du hast noch nicht entschieden, ↳ steckt im Pass oder Paket darüber.</div>
     <div>Farben: <span class="g-buy">grün</span> nur fürs Urteil, <span class="star">gold</span> nur für den Bestpreis, <span class="warnc">violett</span> heißt prüfen, <span class="bad">rot</span> heißt nein oder teurer, etwa der Betrag über dem Bestpreis. Jede Rechnung steht unter „Rechnung“ oder im Tooltip.</div>
   </div>`;
   if(!d.open) d.showModal();

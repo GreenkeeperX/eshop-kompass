@@ -503,7 +503,8 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
 
 - **Aufbau:** Spiele mit fehlenden DLC stehen oben, je eines in einem Kasten. Darunter
   zugeklappt „Ohne offene DLC“ (alle DLC da, ignoriert oder nicht mehr erhältlich, je eine
-  Zeile, die seine DLC aufklappt) und „Ohne Zusatzinhalte“, A–Z spaltenweise. Die Suche klappt
+  Zeile, die seine DLC aufklappt; „alle aufklappen“ und „alle zuklappen“ stehen in der Erklärung)
+  und „Ohne Zusatzinhalte“, A–Z spaltenweise. Die Suche klappt
   Abschnitte mit Treffern auf. Noch nicht gelesene Spiele stehen offen am Ende. Filter und
   Reihenfolge (Name, Zahl, Preis oder Angebote fehlender DLC) stehen über den Spielen.
 - **Preise fehlender DLC:** der günstigste Preis je DLC, je Spiel und insgesamt die Summe, mit
