@@ -34,7 +34,7 @@ Commit an. Stand: 0.68.0. Maßgeblich bleibt der Code; Konstanten stehen in `app
 | Abgleich | alle `refresh_hours` Stunden (Einstellung, Vorgabe 6, mindestens 1) seit `last_sync` |
 | Nach dem Start | ein Abgleich nach 5 Minuten (`BOOT_DELAY`), außer der letzte ist jünger als 30 Minuten |
 | Nach Fehlschlag | eine Stunde Pause (nur im Speicher) |
-| Von Hand | Knopf „Aktualisieren“; „Verbindung testen“ ruft nur Proben ab und speichert nichts |
+| Von Hand | Knopf „Aktualisieren“; „Verbindung testen“ ruft nur Proben ab und speichert nichts. Ab 0.80 übergeht ein Abgleich von Hand die Ruhezeiten (`sync.manual`, `_quiet`): titledb einmal die Woche (11), Namen gekaufter Titel je Liste einmal die Woche (11b), titledb einen Tag nach Fehlschlag, Karten- und Angebotsseiten nur einmal am Tag (von Hand: was älter als eine Stunde ist, `MANUAL_CARD_SECONDS`). Immer gelten: DekuDeals-Sperre (`DEKU_REST_SECONDS`), Warteraum von store-jp (`JP_WAIT_SECONDS`), Seiten je Abgleich (`*_PER_SYNC`), Pausen, Wiederholung je Titel (`*_RECHECK*`) und Dateiprüfung von titledb (lädt nur geänderte Listen). Das Protokoll nennt am Ende, was übergangen wurde |
 | `last_sync` | wird nach Preisen und Karten gesetzt; ab dann zeigt die Oberfläche den neuen Stand |
 
 ## Ablauf eines Abgleichs

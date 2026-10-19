@@ -68,6 +68,27 @@ def _log(msg):
     del status["log"][:-200]
 
 
+# Abgleich von Hand (0.80): Ruhe-Grenzen, die nur sagen „vermutlich nichts Neues“, gelten dann nicht.
+# Schutz-Grenzen der Quellen (Sperren, Warteraum, Seiten je Abgleich, Pausen) gelten immer
+manual = {"on": False, "skipped": []}
+MANUAL_CARD_SECONDS = 3600     # Karten- und Angebotsseiten von Hand: was älter als eine Stunde ist
+
+
+def _quiet(age, seconds, what):
+    """Soll ein Schritt noch ruhen? Von Hand nie; übergangen wird dann im Protokoll genannt."""
+    if age >= seconds:
+        return False
+    if manual["on"]:
+        if what not in manual["skipped"]:
+            manual["skipped"].append(what)
+        return False
+    return True
+
+
+def _card_wait():
+    return MANUAL_CARD_SECONDS if manual["on"] else CARD_RECHECK_SECONDS
+
+
 def _step(text, total=0):
     status.update(step=text, done=0, total=total)
     _log(text)
@@ -530,7 +551,9 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
     for url in list(prices):                  # Links, die nicht mehr eingetragen sind
         if url not in urls:
             del prices[url]
-    todo = [u for u in urls if now - (prices.get(u) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS]
+    todo = [u for u in urls if now - (prices.get(u) or {}).get("checked", 0) >= _card_wait()]
+    if manual["on"] and any(now - (prices.get(u) or {}).get("checked", 0) < CARD_RECHECK_SECONDS for u in todo):
+        manual["skipped"].append("Kartenpreise einmal am Tag")
     # Der Shop sperrt nach einigen Abrufen: zuerst die Karten der Länder im Kaufplan, denn
     # deren Preise zählen gerade. Danach und innerhalb davon die Links, die am längsten
     # nicht gelesen wurden, sonst kämen immer dieselben dran und die hinteren nie
@@ -599,8 +622,10 @@ def sync_offer_prices(data, settings, fetch, sleep, now=None):
             del known[url]
     if not urls:
         return
-    todo = sorted((u for u in urls if now - (known.get(u) or {}).get("checked", 0) >= CARD_RECHECK_SECONDS),
+    todo = sorted((u for u in urls if now - (known.get(u) or {}).get("checked", 0) >= _card_wait()),
                   key=lambda u: (known.get(u) or {}).get("checked", 0))[:OFFERS_PER_SYNC]
+    if manual["on"] and any(now - (known.get(u) or {}).get("checked", 0) < CARD_RECHECK_SECONDS for u in todo):
+        manual["skipped"].append("eigene Angebote einmal am Tag")
     if not todo:
         _log(f"Eigene Angebote: alle {len(urls)} Links aktuell")
         return
@@ -968,8 +993,9 @@ def sync_eshop_names(data, fetch, now=None):
             if len(old) > 2 and old[2] and old[1] >= data.get("eshop_names_at", 0):
                 files[old[2]] = max(files.get(old[2], 0), old[1])
         data["eshop_names_files"] = files
-    wait = {f: files[f] + ESHOP_NAME_SECONDS for f in want if now - files.get(f, 0) < ESHOP_NAME_SECONDS}
-    if now - data.get("titledb_fail_at", 0) < TITLEDB_FAIL_WAIT:
+    wait = {f: files[f] + ESHOP_NAME_SECONDS for f in want
+            if _quiet(now - files.get(f, 0), ESHOP_NAME_SECONDS, "Namen gekaufter Titel: jede Liste einmal die Woche")}
+    if _quiet(now - data.get("titledb_fail_at", 0), TITLEDB_FAIL_WAIT, "titledb einen Tag nach Fehlschlag"):
         wait = {f: data["titledb_fail_at"] + TITLEDB_FAIL_WAIT for f in want}
     if wait:
         _log("Englische Namen gekaufter Titel: " + ", ".join(
@@ -1084,12 +1110,12 @@ def sync_titledb(data, settings, fetch, now=None):
     if not (todo or verify or dlc or same):
         _log("titledb: nichts fällig")
         return
-    if now - data.get("titledb_fail_at", 0) < TITLEDB_FAIL_WAIT:
+    if _quiet(now - data.get("titledb_fail_at", 0), TITLEDB_FAIL_WAIT, "titledb einen Tag nach Fehlschlag"):
         # Nach einem Fehlschlag nicht bei jedem Abgleich wieder bis zu 75 MB anfragen (0.54)
         _log("titledb: zuletzt nicht abrufbar, nächster Versuch ab "
              + datetime.fromtimestamp(data["titledb_fail_at"] + TITLEDB_FAIL_WAIT).strftime("%d.%m., %H:%M"))
         return
-    if now - data.get("titledb_at", 0) < wait:
+    if _quiet(now - data.get("titledb_at", 0), wait, "titledb einmal die Woche"):
         if dlc_new or same_new:
             # Sonst verschwindet der Schritt still, und die zurückgestellten DLC wirken vergessen
             _log("IDs fehlender DLC aus titledb: zuletzt um "
@@ -1900,11 +1926,14 @@ def import_eshop_history(text, now=None):
             "open": sum(1 for r in rows if r["how"] is None)}
 
 
-def run_sync(fetch=sources.fetch, sleep=time.sleep):
+def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
     if not _lock.acquire(blocking=False):
         return False
+    manual.update(on=by_hand, skipped=[])
     status.update(running=True, ok=None, log=[], finished=None,
                   started=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    if by_hand:
+        _log("Abgleich von Hand gestartet")
     sources.item_cache = {}       # eine DekuDeals-Seite je Abgleich nur einmal holen (0.54.1)
     sources.deku_blocked = 0      # eine Sperre von DekuDeals beendet alle DekuDeals-Schritte (0.56.1)
     try:
@@ -1968,6 +1997,9 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
             data.pop("deku_wait", None)
         store.save_data(data)
         status["ok"] = True
+        if manual["on"]:
+            _log("Von Hand gestartet, Ruhezeiten übergangen: " + (", ".join(manual["skipped"]) or "keine fällig")
+                 + "; Sperren, Warteraum und Seiten je Abgleich gelten weiter")
         _step("Fertig")
     except Exception as e:
         status["ok"] = False
@@ -1976,6 +2008,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep):
     finally:
         sources.item_cache = None
         sources.deku_blocked = None
+        manual["on"] = False
         status.update(running=False,
                       finished=datetime.now(timezone.utc).isoformat(timespec="seconds"))
         _lock.release()
@@ -2198,10 +2231,10 @@ def membership_probe(probe, sleep=time.sleep):
     return lines
 
 
-def start_sync():
+def start_sync(by_hand=False):
     if status["running"]:
         return False
-    threading.Thread(target=run_sync, daemon=True).start()
+    threading.Thread(target=run_sync, kwargs={"by_hand": by_hand}, daemon=True).start()
     return True
 
 

@@ -197,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
                 store.pick_eshop_history(str(body.get("key") or ""), str(body.get("slug") or ""))
                 self._send(200, {"eshop": planner.eshop_matches(store.load_data())["rows"]})
             elif path == "/api/sync":
-                self._send(200, {"started": sync.start_sync()})
+                self._send(200, {"started": sync.start_sync(by_hand=True)})
             else:
                 self._send(404, {"error": "nicht gefunden"})
         except Exception as e:

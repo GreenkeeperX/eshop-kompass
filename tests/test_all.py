@@ -2147,6 +2147,30 @@ class EshopHistoryTest(unittest.TestCase):
         sync.sync_eshop_names(data, fake, now=2e9 + 60)
         self.assertEqual(calls, [])
 
+    def test_by_hand_skips_quiet_times_only(self):
+        # 0.80: Von Hand gestartet gilt die Woche Ruhe der Listen nicht, die Pause nach einem
+        # Fehlschlag auch nicht; das Protokoll nennt, was übergangen wurde
+        self.imp([{"id": "", "title": "セレステ", "date": "2026-01-26"}], region="BR")
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return "{}"
+        data = store.load_data()
+        data["eshop_names_v"], data["eshop_names_files"] = 1, {"JP.ja": 2e9 - 3600}
+        sync.sync_eshop_names(data, fake, now=2e9)
+        self.assertEqual(calls, [])                         # automatisch: Woche Ruhe
+        sync.manual.update(on=True, skipped=[])
+        try:
+            sync.sync_eshop_names(data, fake, now=2e9)
+        finally:
+            sync.manual["on"] = False
+        self.assertTrue(any("JP.ja" in u for u in calls))
+        self.assertEqual(sync.manual["skipped"], ["Namen gekaufter Titel: jede Liste einmal die Woche"])
+        self.assertFalse(sync._quiet(10, 5, "x"))
+        self.assertTrue(sync._quiet(1, 5, "x"))
+        self.assertEqual(sync._card_wait(), sync.CARD_RECHECK_SECONDS)
+
     def test_old_name_misses_looked_up_again_once(self):
         # 0.79: Käufe ohne englischen Namen aus älteren Versionen werden einmal neu nachgeschlagen
         data = {"_eshop": {"entries": [{"key": "a", "title": "x"}]},
