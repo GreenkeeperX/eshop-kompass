@@ -145,7 +145,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .foot{flex-wrap:wrap}
 .foot>.bill{order:9;flex-basis:100%;margin-top:0}
 .foot button{padding:1px 8px;font-size:12px;border-radius:6px;white-space:nowrap}
-.foot select{flex:1;min-width:0;font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px}
+.foot select{flex:1 1 11em;min-width:11em;max-width:100%;font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 4px}
 .restline{margin:10px 2px 0;color:var(--muted);font-size:13px}
 
 .grid.list{grid-template-columns:1fr;max-width:1000px;gap:12px}
@@ -246,6 +246,8 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 .matrix td.c-buy,.cmp td.c-buy{background:var(--go-fill);color:var(--on-go);font-weight:600}
 .matrix td.c-buy small{color:var(--on-go);opacity:.85}
 .matrix td.c-buy .lgt.de,.cmp td.c-buy .lgt.de,.kpt td.c-buy .lgt.de{color:var(--on-go);border-color:currentColor;opacity:.85}
+/* DLC-Marken auf dunkelgrün lesbar (0.99.7); „braucht Hauptspiel“ behält sein Violett auf hellem Grund */
+.matrix td.c-buy .dlc:not(.need),.cmp td.c-buy .dlc:not(.need),.kpt td.c-buy .dlc:not(.need){color:var(--on-go);border-color:currentColor;background:transparent}
 .matrix td.c-good,.cmp td.c-good{background:var(--go-bg)}
 .matrix td.nc,.cmp tbody td.nc{opacity:.6}
 .matrix tr.grp th{font-size:10px;padding:4px 6px 0;text-align:center;border-bottom:1px solid var(--line);top:0}

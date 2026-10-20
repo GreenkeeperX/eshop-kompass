@@ -327,7 +327,7 @@ der Abstand zum Bestpreis, dann grau beschriftet „bis“, „Shop“ und „so
 Ohne Angebot fällt „normal“ weg; die Spaltenköpfe und damit das Sortieren gibt es dort nicht.
 Ab 0.85 zeigt der Korb unter 641 px statt der Tabelle `korbPhone()` (`.kphone`, die Tabelle
 `.cmp.fitbox` ist dort ausgeblendet): Auswahl des Landes (`S.korbLand`, nicht gemerkt, sonst das
-günstigste), Titel mit „×“ und derselben Preiszelle `twoLine`/`cellMarks`, darunter die Summen als
+günstigste; ohne eigene Beschriftung, ab 0.99.7, der Eintrag nennt das Land), Titel mit „×“ und derselben Preiszelle `twoLine`/`cellMarks`, darunter die Summen als
 Zeilen; „Einkaufspreis“ ist eine Klappzeile mit der Rechnung aus `costTip()`, die sonst nur im
 Tooltip steht. Sortieren gibt es dort nicht.
 
@@ -388,7 +388,8 @@ grau „zählt nicht: der eShop ist dort günstiger“, mit Link dahinter der Pr
 Werkzeugzeile, Reihenfolge in jedem Reiter: Suche, Sortierung, Filter; das Suchfeld hat ein eigenes
 graues × (ab 0.62.1, `searchBox`, das × des Browsers ist ausgeblendet), Esc leert ebenso; rechts die Ansicht oder eine
 Aktion (Korb leeren). Auswahlfelder „Titel dazunehmen …“ gruppieren nach Urteil, darin A–Z, zuletzt
-die Online-Mitgliedschaft mit allen Varianten (ab 0.69; im Korb als Zeile mit Link zum Kasten, ohne Sprachmarke).
+die Online-Mitgliedschaft mit allen Varianten (ab 0.69; im Korb als Zeile mit Link zum Kasten, ohne Sprachmarke). Am Fuß eines Schritts ist das Feld mindestens 11em breit und bricht sonst in
+eine eigene Zeile um, statt abgeschnitten zu werden (ab 0.99.7).
 Sammlung: Der Filter ignoriert Akzente, Satzzeichen und Leerzeichen („pokemon“ findet „Pokémon“, ab 0.69)
 und klappt „Ohne offene DLC“ und „Ohne Zusatzinhalte“ mit Treffern auf. In „Ohne offene DLC“ stehen
 hinter der Erklärung klein „alle aufklappen · alle zuklappen“ für die Spiele darin (ab 0.91); sonst
@@ -425,7 +426,8 @@ Händler-, DLC- und Sprachmarke. Auf dunkelgrüner Zelle („kaufen“) bleiben 
 Im hellen Thema stehen sie auf kleinem hellem Grund (`--go-mark` = `--card`), weil Rot und Blau auf
 dem dunklen Grün sonst nicht lesbar sind; im dunklen Thema ist die Füllung hell genug, dort ohne
 Grund (`--go-mark` transparent, ab 0.82.1). 0.81.0 nahm die weiße Schrift der Zelle und brach damit
-die Farbregel. Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
+die Farbregel. DLC-Marken ohne Violett („DLC“, „DLC?“) stehen dort in der Zellschrift (ab 0.99.7, vorher
+grau auf dunkelgrün kaum lesbar); „braucht Hauptspiel“ behält Violett auf hellem Grund. Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
 breit, in beiden Ansichten gleich. Eine Zeile mit Grund statt Zellen („noch nicht erschienen“) steht
 links (bis 0.80 rechtsbündig und damit außerhalb des Bildes). Wo nur ein Land gezeigt wird (Plan-Schritt,
 Länderkarte), stehen dieselben Angaben in eigenen Spalten (Einkaufspreis mit Rabatt, „über Bestpreis“), in

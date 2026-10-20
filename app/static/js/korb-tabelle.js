@@ -117,7 +117,7 @@ function korbPhone(cols, win, order, rowOf, itemIn){
   const n = S.ui.basket.length;
   const pc = cols.find(p => p.code === S.korbLand) || win || cols[0];
   const label = p => `${p.name} · ${p.missing.length ? `${p.items.length} von ${n}` : `${p.estimated ? "ca. " : ""}${eur(p.cost)}`}${win && p.code === win.code ? " · günstigstes" : ""}`;
-  let m = `<div class="kphone"><label class="f">Land <select data-act="korbland">${cols.map(p =>
+  let m = `<div class="kphone"><label class="f"><select data-act="korbland" aria-label="Land" title="Land, dessen Preise die Karte zeigt">${cols.map(p =>
     `<option value="${p.code}" ${p === pc ? "selected" : ""}>${esc(label(p))}</option>`).join("")}</select></label><table class="kpt"><tbody>`;
   for(const slug of order){
     const r = rowOf(slug), i = itemIn(pc, slug);
