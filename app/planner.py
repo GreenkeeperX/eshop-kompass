@@ -22,6 +22,7 @@ CARD_PRICE_MAX_AGE = 14 * 24 * 3600  # zuletzt gelesene Kartenpreise gelten so l
 OFFER_DEVIATION = 0.4                # ein vom Link gelesener Preis, der so weit vom eingetragenen abweicht, gilt nicht
 MIN_FILLER_GAIN = 0.5    # Füllartikel erst ab dieser Ersparnis in Euro vorschlagen
 BEST_TOLERANCE = 0.02    # bis 2 % über dem Bestpreis gilt ein Angebot als Bestpreis
+PRICE_STALE_SECONDS = 6 * 3600   # Preise eines Lands so weit hinter dem jüngsten Abruf: veraltet (0.95)
 GOOD_GAP = 15            # bis 15 % über dem Bestpreis gilt ein Angebot als gut
 # Typischer Angebotspreis: Median der Tiefstwerte aller Angebotsphasen im
 # DekuDeals-Tagesverlauf dieses Zeitraums, erst ab so vielen Phasen
@@ -134,6 +135,20 @@ class Context:
         self.offer_prices = data.get("offer_prices") or {}
         self.card_hist = data.get("card_hist") or {}
         self._payers, self._shares = {}, {}
+        # Preisstand je Shop (0.95): der jüngste Abruf. Liegt er deutlich hinter dem jüngsten
+        # aller Shops, scheiterte der letzte Abruf dort, und die alten Preise gelten still weiter
+        self.price_at = {shop: max((p.get("fetched") or "" for p in t.values()), default="") or None
+                         for shop, t in data["prices"].items()}
+        newest = max((v for v in self.price_at.values() if v), default=None)
+        self.price_stale = set()
+        if newest:
+            top = datetime.fromisoformat(newest)
+            for shop, at in self.price_at.items():
+                try:
+                    if at and (top - datetime.fromisoformat(at)).total_seconds() > PRICE_STALE_SECONDS:
+                        self.price_stale.add(shop)
+                except (TypeError, ValueError):
+                    pass
         self.countries = {}
         for code in countries.ORDER:
             cfg = settings["countries"][code]
@@ -503,6 +518,12 @@ class Context:
         values = [v for v in (e.get("low"), own) if v is not None]
         return min(values) if values else None
 
+    def has_history(self, slug):
+        """Ob DekuDeals für den Titel in irgendeinem Shop einen Tiefstpreis oder Verlauf geliefert
+        hat. Ohne beruht der Bestpreis nur auf heutigen Preisen und der eigenen Aufzeichnung (0.95)."""
+        return any("low" in (shop.get(slug) or {}) or (shop.get(slug) or {}).get("hist")
+                   for shop in self.lows.values())
+
     def low(self, code, slug, o):
         """Tiefstpreis in Landeswährung und ob das aktuelle Angebot ihn erreicht."""
         low = self.low_value(code, slug)
@@ -687,6 +708,17 @@ def _rest_value(base, total, balance):
     return base["cost"] * rest / (need + rest)
 
 
+def no_cards_warning(c):
+    """Warum ein Land mit Guthabenkarten geschätzt rechnet, nach Ursache (0.95). Beginnt immer
+    mit „Keine Guthabenkarte“, daran erkennt die Oberfläche die Warnung."""
+    cards = c["cards"]
+    if not cards:
+        return "Keine Guthabenkarten eingetragen: Kosten geschätzt"
+    if not any(x["stock"] for x in cards):
+        return "Keine Guthabenkarte vorrätig: alle eingetragenen sind als nicht vorrätig markiert, Kosten geschätzt"
+    return "Keine Guthabenkarte mit Preis: kein Preis gelesen oder eingetragen, Kosten geschätzt"
+
+
 def make_payer(ctx, c):
     """Liefert pay(total) -> Kosten in Euro, Karten, Rest für ein Land.
 
@@ -776,6 +808,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None, f
            "tier": c["tier"], "tier_name": countries.TIERS.get(c["tier"], ""),
            "tax": c["tax"], "lang": c["meta"]["lang"],
            "note": c["meta"]["note"], "items": [], "fillers": [], "warnings": [],
+           "price_at": ctx.price_at.get(c["meta"]["shop"]), "price_stale": c["meta"]["shop"] in ctx.price_stale,
            "available": len(offers), "saving": None, "missing": [], "trims": [],
            "current": bool(ctx.settings.get("current_country"))
                       and c["meta"]["shop"] == ctx.settings.get("current_country"),
@@ -925,7 +958,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None, f
     if no_ref:
         out["warnings"].append(f"{no_ref} Titel ohne deutschen Vergleichspreis")
     if c["cfg"]["pay"] == "giftcard" and not has_cards:
-        out["warnings"].append("Keine Guthabenkarten eingetragen: Kosten geschätzt")
+        out["warnings"].append(no_cards_warning(c))
     if base["rest"] and chosen and c["cfg"]["rest_blocks"]:
         out["warnings"].append("Rest blockiert den Länderwechsel")
     elif chosen and out["rest_value"] >= HIGH_REST_EUR:
@@ -1227,6 +1260,8 @@ def radar(data, settings, targets=None, now=None):
                     if with_cb <= champ_all[0] * (1 + BEST_TOLERANCE) + 0.005 and (
                             cashback is None or with_cb < cashback["eur"]):
                         cashback = {"eur": _r(with_cb), "code": b["code"], "pct": cb}
+        # Urteil ohne Verlauf (0.95): sichtbar machen, statt es still wie jedes andere zu zeigen
+        nohist = verdict in ("buy", "good") and not reason.startswith("Zielpreis") and not ctx.has_history(slug)
         at_info = None if not at else {"code": at["code"], "name": at["name"], "tier": at["tier"]}
         shown_info = None if not shown else {"code": shown["code"], "name": shown["name"],
                                               "tier": shown["tier"], "sale": shown["sale"]}
@@ -1245,7 +1280,7 @@ def radar(data, settings, targets=None, now=None):
                      "typ_diff": typ_diff, "typ_gap": typ_gap, "cashback": cashback,
                      "target": target, "verdict": verdict, "at": at_info,
                      "lang_unsure": [] if both else unsure + nocard,
-                     "reason": reason, "no_ids": not any(it.get("ids", {}).values()),
+                     "reason": reason, "nohist": nohist, "no_ids": not any(it.get("ids", {}).values()),
                      "rhythm": sale_rhythm(ctx, slug)})
     rows.sort(key=lambda r: (VERDICTS.index(r["verdict"]), r["gap"] if r["gap"] is not None else 999))
     return rows

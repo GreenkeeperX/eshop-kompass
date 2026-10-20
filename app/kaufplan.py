@@ -5,8 +5,8 @@ from . import countries
 from .cards import cents
 from .membership import membership
 from .planner import (_context, _r, _switch2_choice, extra_context, NSO_PREFIX, plan_country, radar,
-    with_added)
-from .titles import pack_block, pack_parts
+    with_added, _eur)
+from .titles import owned_sources, pack_block, pack_parts, pretty_slug, slug_names
 
 
 def _paid(b):
@@ -295,13 +295,32 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     nofill = done | {x["slug"] for x in s2_skip} | {x["slug"] for x in packed}
     rest_suggestions(data, settings, ctx, steps, planned, nofill, now)
     where = {i["slug"]: p["code"] for p in steps for i in p["items"]}
+    # Titel eines herausgefallenen Lands, die der Plan woanders kauft (0.95): Der Grund am Titel
+    # nennt das günstigere Land, und das Land bleibt unter „Nicht im Plan“ sichtbar
+    moved_from = {}
+    for d in dropped:
+        d["moved"] = [{"slug": s, "short": ctx.short(s), "to": where[s]} for s in d["slugs"]
+                      if s in where and s not in moved_from and where[s] != d["code"]]
+        for m in d["moved"]:
+            gain = d.get("gain") or 0
+            moved_from[m["slug"]] = (f"günstiger in {d['name']}, aber der Wechsel dorthin "
+                                     + (f"spart nur {_eur(gain)}" if gain >= 0 else f"kostet {_eur(-gain)} mehr")
+                                     + (f", lohnt ab {_eur(d['threshold'])}" if d.get("threshold") is not None else "")
+                                     if not d.get("blocked_by") else
+                                     f"günstiger in {d['name']}, aber nur ein Land mit blockierendem Rest je Plan")
+    # Übernommene Füllartikel, die gerade in keinen Schritt kommen (0.95): sonst verschwänden sie still
+    fill_idle = [{"code": code, "name": ctx.countries[code]["meta"]["name"] if code in ctx.countries else code,
+                  "slug": s, "short": ctx.short(s), "title": ctx.title(s), "to": where.get(s),
+                  "step": any(p["code"] == code for p in steps)}
+                 for code, slugs in fill.items() for s in slugs
+                 if s in ctx.items and where.get(s) != code and (s not in done or s.startswith(NSO_PREFIX))]
     out_skip = []
     for p in steps:
         c = ctx.countries[p["code"]]
         p["fill_slugs"] = [i["slug"] for i in p["items"] if i["slug"] in fill.get(p["code"], [])]
         p["skipped"] = [{"slug": s, "short": ctx.short(s), "title": ctx.title(s), "to": where.get(s)}
                         for s in sorted(skip.get(p["code"], ())) if s in ctx.items and s not in done]
-        p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
+        p["reasons"] = {i["slug"]: moved_from.get(i["slug"]) or reasons.get(i["slug"], "") for i in p["items"]}
         # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
         # deutschen Schritt (dort ist die Ersparnis dann 0)
         p["de_now"] = _r(sum(ctx.ref[i["slug"]] if i["slug"] in ctx.ref
@@ -327,6 +346,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "small": [{"slug": s, "title": ctx.title(s), "short": ctx.short(s)} for s in small],
             "small_groups": _small_groups(ctx, small, small_at, steps, allowed),
             "skipped": out_skip,
+            "fill_idle": fill_idle,
             "s2_skip": [dict(x, title=ctx.title(x["slug"])) for x in s2_skip],
             "packed": packed,
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
@@ -336,6 +356,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "include_good": include_good,
             "bought_waiting": [ctx.title(s) for s in ctx.order if s in done],
             "bought_slugs": [s for s in ctx.order if s in done],
+            # Woher (0.95): im Kaufplan gekauft, Sammlung, eShop-Kauf oder über ein Paket
+            "bought_how": _bought_how(data, settings, ctx, bought, done),
             "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "games", "de", "rest", "currency")}
                        for b in (bought or [])[-5:]][::-1],
             # Ein Rest bleibt als Guthaben und ist kein Verlust: Die Ersparnis rechnet mit
@@ -498,6 +520,20 @@ def rest_suggestions(data, settings, ctx, plans_, planned, skip, now=None):
             fits.append({"key": v["key"], "label": v["label"], "local": r["local"], "eur": r["eur"],
                          "left": (rest - round(r["local"] * 100)) / 100, "at_best": r.get("at_best", False)})
         p["fill_nso"] = sorted(fits, key=lambda f: f["left"])[:2]
+
+
+def _bought_how(data, settings, ctx, bought, done):
+    src = owned_sources(data, settings)
+    logged = {s for b in (bought or []) for s in b.get("slugs", [])}
+    names = slug_names(data)
+    out = []
+    for s in ctx.order:
+        if s not in done:
+            continue
+        how, via = ("plan", None) if s in logged else src.get(s, ("collection", None))
+        out.append({"slug": s, "title": ctx.title(s), "how": how,
+                    "via": (names.get(via) or (pretty_slug(via),))[0] if via else None})
+    return out
 
 
 def _rest_fill(ctx, c, p, planned, skip, limit=60, xctx=None):

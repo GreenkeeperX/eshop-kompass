@@ -107,6 +107,12 @@ bekannt. Der Grund sagt, was Nintendo meldet: „noch nicht erschienen“, „ni
 Verkauf“, „im eShop nicht einzeln kaufbar“ (etwa nur im Abo wie N64-Spiele oder nur in einem
 Paket), „nicht im eShop gefunden“ (keine Nintendo-Kennung) oder „kostenlos“.
 
+„ohne Verlauf“ neben „kaufen“ oder „gut“ heißt: DekuDeals hat für den Titel noch keinen
+Tiefstpreis geliefert, der Bestpreis stützt sich nur auf heutige Preise und die eigene
+Aufzeichnung. Das Urteil gilt, ist aber weniger sicher. Nennt DekuDeals einen Tiefstpreis über
+dem Normalpreis (etwa einer anderen Fassung), verwirft der Abgleich ihn und schreibt es ins
+Protokoll.
+
 ### Was zählt
 
 Ein Angebot zählt für Bestpreis, Urteil und Kaufplan nur, wenn es dort wirklich zu bekommen
@@ -308,7 +314,8 @@ und steht deshalb nicht zur Wahl.
 
 - ungeprüfte Sprachen, die etwas ändern würden (die Fassung wäre günstiger; alle offenen
   stehen unter Einstellungen, „Sprachen prüfen“),
-- Länder ohne Guthabenkarte mit Preis und Kartenpreise, die älter als 30 Tage sind,
+- Länder ohne Guthabenkarte mit Preis, nach Ursache (keine eingetragen, keine vorrätig, keine
+  mit Preis), und Kartenpreise, die älter als 30 Tage sind,
 - fehlende DLC deiner Spiele, die gerade kostenlos sind (eingeklappt unter „welche“),
 - ein Pass, der günstiger ist als seine fehlenden Teile, wenn Teile davon auf der Wishlist
   stehen, er selbst aber nicht (auf die Wishlist gesetzt, plant der Kaufplan ihn statt der
@@ -324,7 +331,14 @@ sind die Titel mit dem Urteil „kaufen“, per Schalter auch „gut“. Jeder T
 er am wenigsten kostet. Ein Land bleibt nur im Plan, wenn sich der Wechsel lohnt (siehe
 [Wechsel und Stufen](#wechsel-und-stufen)); sonst wandern seine Titel ins nächstbeste Land.
 Sind sie dort kein Kauf mehr, stehen sie unter „Nicht im Plan“ (zugeklappt), mit Grund, jeder
-Titel nur einmal. Reihenfolge: zuerst das Land, in dem dein Konto steht (ohne Angabe
+Titel nur einmal. Kommen sie anderswo in den Plan, bleibt das Land dort trotzdem sichtbar („kauft
+der Plan in Schweden; in Polen wären sie günstiger, aber Wechsel lohnt nicht: spart nur 2,10 €“),
+und der Grund am Titel sagt dasselbe. Was schon gekauft ist, steht dort mit Quelle: im Kaufplan
+vermerkt, in deiner Sammlung, laut eShop-Kaufverlauf oder „steckt in …, das du schon hast“.
+Titel, die du für ein Land übernommen hast, in dem gerade kein Schritt kauft, stehen dort als
+„übernommen, gerade nicht im Plan“ mit ×; sie kommen wieder dazu, sobald es den Schritt gibt.
+Scheiterte der letzte Preisabruf in einem Land, steht oben „Preise nicht aktuell“ und an der
+Karte „Preise vom …“; es gelten dann die alten Preise. Reihenfolge: zuerst das Land, in dem dein Konto steht (ohne Angabe
 Deutschland), dann leicht, mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ist heute
 nichts auf „kaufen“, nennt die Seite die Angebote, die am nächsten am Bestpreis liegen.
 
@@ -379,7 +393,7 @@ was heute spart, aber weit darüber liegt, wäre im nächsten Angebot günstiger
 
 **Gekauft:** „gekauft“ an einem Land vermerkt den Kauf im Kaufprotokoll
 (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort als Guthaben,
-Guthaben anderer Länder gilt als weg. Gekaufte Titel verschwinden aus dem Plan. Unter
+Guthaben anderer Länder gilt als weg; die Rückfrage nennt es mit Land und Betrag. Gekaufte Titel verschwinden aus dem Plan. Unter
 „Gekauft“ stehen die letzten Käufe; die Ersparnis rechnet wie der Plan mit dem, was die Spiele
 kosten. „letzten Kauf zurücknehmen“ stellt Land und Guthaben wieder her. „als Korb
 vergleichen“ übernimmt die Titel in den gemeinsamen Korb.
@@ -679,7 +693,8 @@ gruppiert nach Quelle (von Nintendo gelesen, laut titledb, von dir bestätigt). 
 grün, wenn Nintendo oder du es bestätigt habt, violett, wenn es nur
 laut titledb gilt. ✎ überschreibt eine gelesene Angabe, ↺ stellt sie wieder
 her. Von Hand gilt dauerhaft und geht der Angabe von Nintendo vor. Steht ein Titel weder auf
-der Wishlist noch in der Sammlung, löscht der Abgleich seine Angaben wieder.
+der Wishlist noch in der Sammlung, löscht der Abgleich die gelesenen Angaben wieder; deine
+Bestätigungen bleiben (ab 0.95), auch wenn ein Titel nur kurz von der Wishlist verschwindet.
 
 **Japan:** store-jp steht hinter einem Warteraum mit Bot-Schutz, durch kommt nur ein Browser
 mit JavaScript. Das Tool erkennt den Warteraum, hört auf und fragt die nächsten sieben Tage

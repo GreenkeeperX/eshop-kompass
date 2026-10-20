@@ -340,6 +340,18 @@ def owned_set(data, settings=None):
     return base | set(pack_parts(data, base, pack_block(settings)))
 
 
+def owned_sources(data, settings=None):
+    """Woher der Besitz kommt (0.95), damit der Kaufplan es nennt statt pauschal „gekauft“:
+    {Titel: ("collection" | "eshop" | "pack", Paket oder None)}. Die Sammlung geht vor."""
+    coll = set(data.get("owned") or [])
+    esh = eshop_matches(data)["owned"] - coll
+    out = {s: ("collection", None) for s in coll}
+    out.update({s: ("eshop", None) for s in esh})
+    for part, pack in pack_parts(data, coll | esh, pack_block(settings)).items():
+        out.setdefault(part, ("pack", pack))
+    return out
+
+
 def owned_games(data, settings=None):
     """Spiele, deren DLC die Sammlung zeigt: die der DekuDeals-Sammlung und Spiele, die du
     nur über ein Paket hast (etwa eine Deluxe Edition), sobald ihre Seite gelesen ist."""

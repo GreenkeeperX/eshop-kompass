@@ -277,6 +277,20 @@ günstigste), Titel mit „×“ und derselben Preiszelle `twoLine`/`cellMarks`,
 Zeilen; „Einkaufspreis“ ist eine Klappzeile mit der Rechnung aus `costTip()`, die sonst nur im
 Tooltip steht. Sortieren gibt es dort nicht.
 
+Nichts still im Hintergrund (ab 0.95, Entscheidung 20.10.2026): Was das Tool von selbst entscheidet,
+steht sichtbar da. „Nicht im Plan“ (`notPlanned`) nennt ein Land, dessen Wechsel sich nicht lohnt, auch
+wenn seine Titel anderswo in den Plan kommen (`dropped[].moved`: „kauft der Plan in X; in Y wären sie
+günstiger, aber Wechsel lohnt nicht …“; der Grund am Titel sagt dasselbe), Besitz mit Quelle
+(`bought_how`: im Kaufplan vermerkt, Sammlung, eShop-Kaufverlauf, „steckt in …, das du schon hast“;
+ebenso `planState` in der Wishlist) und übernommene Füllartikel ohne Schritt (`fill_idle`, „übernommen,
+gerade nicht im Plan“ mit ×). Alte Preise eines Lands (`price_stale`, `price_at`): oben im Kaufplan
+„Preise nicht aktuell: Land vom …“ mit Link ins Protokoll, an Schritt und Länderkarte `.warnc` „Preise
+vom …“ (`hurdles`). Ein Urteil ohne DekuDeals-Tiefstpreis trägt `.nohist` „ohne Verlauf“ (grau,
+gestrichelt wie der Zielpreis) in der Wishlist neben dem Urteil, in den Einzelheiten und am
+„am Bestpreis“ der Plan-Tabelle. „gekauft“ nennt in der Rückfrage die Guthaben, die es auf 0 setzt.
+„Zu erledigen“ und die Hürde am Schritt sagen nach Ursache „Guthabenkarte eintragen“, „keine Karte
+vorrätig“ oder „kein Kartenpreis“ (`no_cards_warning`).
+
 „Zu erledigen“ (Jetzt): je Eintrag ein fetter Kern („7 fehlende DLC kostenlos holen“), Einzelheiten
 klein dahinter, lange Listen eingeklappt („welche“). Die Legende erklärt jedes Zeichen, das die
 Oberfläche zeigt, auch Chips, „ca.“, die DLC-Marken, „Rest“, Sammlung „fehlt“, „nicht auf der Wishlist“
@@ -368,6 +382,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Was | Wo es vorkommt |
 |---|---|
 | Titelname mit DLC-Marke, Spiel grau davor (nicht in der Wishlist-Liste), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
+| Urteil ohne Verlauf (`nohist`) | Wishlist-Liste (`titleRow`), Einzelheiten, Plan-Tabelle („am Bestpreis“), Legende |
 | Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`, am Handy `korbPhone`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
 | Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml`, `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |

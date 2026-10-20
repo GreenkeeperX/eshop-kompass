@@ -17,6 +17,9 @@ function viewKauf(){
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
     </div>`;
   if(k.lock) h += lockBox(k);
+  // Alte Preise in einem Schritt (0.95): oben sagen, nicht nur an der Karte
+  const stale = k.steps.filter(p => p.price_stale);
+  if(stale.length) h += `<p class="restline"><span class="bad">Preise nicht aktuell:</span> ${stale.map(p => `${esc(p.name)} vom ${esc(dmy(p.price_at))}`).join(", ")}. Der letzte Abruf dort scheiterte, Angebote können inzwischen geendet haben. <button class="link" data-act="showlog">Protokoll</button></p>`;
   if(k.steps.length) h += `<div class="grid steps">` + k.steps.map((p, n) => planCard(p, n + 1)).join("") + `</div>`;
   else h += emptyPlan();
   h += `<p class="restline">Jedes Land mit seinem eigenen Korb, zum Durchspielen: <button class="link" data-act="allland">alle Länderkarten</button></p>`;
@@ -52,6 +55,16 @@ function notPlanned(k){
     rows.push(`<tr><td>${d.open_titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">nur ein Land mit blockierendem Rest je Plan</span>: ${esc(d.blocked_by.join(", "))} bringt mehr</td></tr>`);
   for(const d of open.filter(d => !d.blocked_by))
     rows.push(`<tr><td>${d.open_titles.map(esc).join(", ")}</td><td class="l">kaufen in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))}, aber <span class="bad">Wechsel lohnt nicht</span>: ${d.gain >= 0 ? `spart ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`} gegenüber ${esc(altNames(d.alt_codes))}, lohnt ab ${eur(d.threshold)}</td></tr>`);
+  // Titel eines herausgefallenen Lands, die der Plan woanders kauft (0.95): sonst verschwände das Land still
+  for(const d of k.dropped.filter(d => (d.moved || []).length)){
+    const to = [...new Set(d.moved.map(m => country(m.to).name))].join(", ");
+    rows.push(`<tr><td>${d.moved.map(m => esc(m.short)).join(", ")}</td><td class="l">kauft der Plan in ${esc(to)}; in <b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))} wären sie günstiger, aber ` +
+      (d.blocked_by ? `<span class="bad">nur ein Land mit blockierendem Rest je Plan</span>` :
+       `<span class="bad">Wechsel lohnt nicht</span>: ${d.gain >= 0 ? `spart nur ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`}${d.threshold !== null && d.threshold !== undefined ? `, lohnt ab ${eur(d.threshold)}` : ""}`) + `</td></tr>`);
+  }
+  // Übernommene Füllartikel ohne Schritt (0.95): bleiben gespeichert, kommen wieder, sobald es den Schritt gibt
+  for(const x of k.fill_idle || [])
+    rows.push(`<tr><td>${esc(x.short)}</td><td class="l">von dir für <b>${esc(x.name)}</b> übernommen, gerade nicht im Plan${x.to ? ` (jetzt in ${esc(country(x.to).name)})` : ""}${x.step ? "" : ": kommt wieder dazu, sobald dort ein Schritt kauft"} <button class="link" data-act="planunfill" data-c="${x.code}" data-s="${esc(x.slug)}" title="Nicht mehr für ${esc(x.name)} vormerken">×</button></td></tr>`);
   for(const x of k.s2_skip || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">nur ein Weg zur Switch 2: ${esc(x.reason)}</td></tr>`);
   for(const x of k.packed || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">steckt in <b>${esc(x.pack)}</b>, das ebenfalls zum Kauf ansteht: nicht doppelt kaufen</td></tr>`);
   // Kleinkram (0.92): wartet, bis ein Rest bleibt, statt eine Guthabenkarte größer zu machen
@@ -74,7 +87,17 @@ function notPlanned(k){
   if(loose.length) rows.push(`<tr><td>${loose.map(x => esc(x.short)).join(", ")}</td><td class="l">Kleinkram: wartet auf einen Rest, statt eine Guthabenkarte größer zu machen; steht unter „Passt in den Rest“, sobald einer bleibt</td></tr>`);
   for(const l of k.later) rows.push(`<tr><td>${esc(l.title)}</td><td class="l">lieber warten: ${esc(l.reason)}; in den Ländern, deren Wechsel sich rechnet, kein Kauf</td></tr>`);
   if(k.nowhere.length) rows.push(`<tr><td>${k.nowhere.map(esc).join(", ")}</td><td class="l">nirgends kaufbar, wo es zählt</td></tr>`);
-  if(k.bought_waiting.length) rows.push(`<tr><td>${k.bought_waiting.map(esc).join(", ")}</td><td class="l">schon gekauft oder in deiner Sammlung, steht noch auf der Wishlist</td></tr>`);
+  // Woher der Besitz kommt (0.95): sonst verschwände ein Titel über ein Paket oder einen eShop-Kauf still
+  const HOW = {plan: "im Kaufplan als gekauft vermerkt", collection: "in deiner Sammlung", eshop: "laut eShop-Kaufverlauf gekauft"};
+  const how = k.bought_how || (k.bought_waiting || []).map(t => ({title: t, how: "collection"}));
+  for(const key of ["plan", "collection", "eshop"]){
+    const list = how.filter(x => x.how === key);
+    if(list.length) rows.push(`<tr><td>${list.map(x => esc(x.title)).join(", ")}</td><td class="l">${HOW[key]}, steht noch auf der Wishlist</td></tr>`);
+  }
+  const packs = {};
+  for(const x of how.filter(x => x.how === "pack")) (packs[x.via] = packs[x.via] || []).push(x.title);
+  for(const [via, list] of Object.entries(packs))
+    rows.push(`<tr><td>${list.map(esc).join(", ")}</td><td class="l">steckt in <b>${esc(via)}</b>, das du schon hast, steht noch auf der Wishlist</td></tr>`);
   if(!rows.length) return "";
   return `<details class="box fold" data-k="notplan" ${S.folds.notplan ? "open" : ""}><summary>Nicht im Plan (${rows.length})</summary><table class="mini-t">${rows.join("")}</table></details>`;
 }
@@ -246,11 +269,13 @@ function giftOver(p){
 function hurdles(p, last){
   const out = [];
   if(giftOver(p)) out.push(`<span class="warnc" title="Guthaben gerade ${giftOver(p)} % über seinem Bestwert der letzten 90 Tage. Wenn die Titel nicht drängen: Warten lohnt eher wegen des Guthabens.">Guthaben teuer</span>`);
+  // Alte Preise (0.95): Der letzte Abruf hier scheiterte, es gelten noch die vom genannten Tag
+  if(p.price_stale) out.push(`<span class="warnc" title="Der letzte Preisabruf in ${esc(p.name)} scheiterte, es gelten noch die Preise vom ${esc(dmy(p.price_at))}. Angebote können inzwischen geendet haben. Einzelheiten im Protokoll unter Einstellungen.">Preise vom ${esc(dmy(p.price_at))}</span>`);
   for(const w of p.warnings){
     // Im letzten Schritt des Kaufplans folgt kein Wechsel mehr: Der Rest bleibt, ein späterer Wechsel wartet auf ihn
     if(w.startsWith("Rest blockiert") && last) out.push(`<span class="warnc" title="Der Kaufplan wechselt danach nicht mehr. Ein späterer Wechsel geht erst, wenn das Guthaben aufgebraucht ist.">Rest bleibt, blockiert spätere Wechsel</span>`);
     else if(w.startsWith("Rest blockiert")) out.push(`<span class="bad" title="${esc(w)}, bis das Guthaben 0 ist">Rest blockiert Wechsel</span>`);
-    else if(w.startsWith("Keine Guthabenkarten")) out.push(`<span class="warnc" title="${esc(w)}">Karten fehlen, geschätzt</span>`);
+    else if(w.startsWith("Keine Guthabenkarte")) out.push(`<span class="warnc" title="${esc(w)}">${w.startsWith("Keine Guthabenkarten") ? "Karten fehlen" : w.includes("vorrätig") ? "keine Karte vorrätig" : "kein Kartenpreis"}, geschätzt</span>`);
     // In Europa passt das Hauptspiel ohnehin. Sonst nur DLC mit eigener Fassung in dieser Region (Programm-ID, 0.61)
     else if(w.startsWith("DLC braucht")){
       const kind = i => i.needs_parent ? needsRegion(i.dlc_of, p.code, i.slug) : "";
@@ -313,7 +338,7 @@ function planCard(p, step){
         // Klassen c-… ordnen die Zellen am Handy zu einer Karte je Titel (0.75)
         return `<tr>${first}${wide ? `<td class="c-loc" data-l="Shop">${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td class="c-end"${i.sale ? ` data-l="bis"` : ""}>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
           <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
-          <td class="c-best">${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
+          <td class="c-best">${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>${(S.state.radar.find(r => r.slug === i.slug) || {}).nohist ? ` <span class="nohist" title="DekuDeals hat für diesen Titel noch keinen Tiefstpreis geliefert: Der Bestpreis stützt sich nur auf heutige Preise und die eigene Aufzeichnung">ohne Verlauf</span>` : ""}` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
           ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
       }).join("") + `</tbody></table></div>`;
   } else {

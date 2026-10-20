@@ -501,6 +501,11 @@ function planState(slug){
   if(s2) return `nicht im Plan: nur ein Weg zur Switch 2: ${esc(s2.reason)}`;
   const pk = (k.packed || []).find(x => x.slug === slug);
   if(pk) return `nicht einzeln im Plan: steckt in ${esc(pk.pack)}`;
-  if((k.bought_slugs || []).includes(slug)) return (S.state.radar.find(r => r.slug === slug) || {}).owned ? "nicht im Plan: steht schon in deiner Sammlung" : "nicht im Plan: schon gekauft, steht noch auf der Wishlist";
+  if((k.bought_slugs || []).includes(slug)){
+    const b = (k.bought_how || []).find(x => x.slug === slug) || {};
+    return b.how === "pack" ? `nicht im Plan: steckt in ${esc(b.via)}, das du schon hast` : b.how === "eshop" ? "nicht im Plan: laut eShop-Kaufverlauf gekauft"
+      : b.how === "plan" ? "nicht im Plan: im Kaufplan als gekauft vermerkt"
+      : (S.state.radar.find(r => r.slug === slug) || {}).owned ? "nicht im Plan: steht schon in deiner Sammlung" : "nicht im Plan: schon gekauft, steht noch auf der Wishlist";
+  }
   return "";
 }

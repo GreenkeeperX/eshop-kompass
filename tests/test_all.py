@@ -1341,6 +1341,61 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(plan["cost"], 6.24)
         self.assertEqual(plan["count"], 1)
 
+    def test_dropped_country_stays_visible_when_its_titles_move(self):
+        # 0.95: Kommt ein Titel eines herausgefallenen Lands woanders in den Plan, nennt der
+        # Grund am Titel das günstigere Land, und das Land steht mit „moved“ unter „Nicht im Plan“
+        self.without_lasting()
+        self.settings["tier_min_saving"]["3"] = 15
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True)
+        br = next(d for d in plan["dropped"] if d["code"] == "BR")
+        self.assertEqual(br["moved"], [{"slug": "vs-foscari", "short": br["moved"][0]["short"], "to": "DE"}])
+        de = next(p for p in plan["steps"] if p["code"] == "DE")
+        self.assertTrue(de["reasons"]["vs-foscari"].startswith("günstiger in Brasilien, aber der Wechsel dorthin spart nur"))
+        # Jeder Titel nur einmal
+        self.assertEqual(sum(1 for d in plan["dropped"] for m in d["moved"] if m["slug"] == "vs-foscari"), 1)
+
+    def test_taken_fill_items_without_step_stay_visible(self):
+        # 0.95: Übernommenes für ein Land ohne Schritt verschwindet nicht still
+        self.without_lasting()
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW, fill={"JP": ["spiritfarer"]})
+        self.assertNotIn("JP", [p["code"] for p in plan["steps"]])
+        self.assertEqual([(x["code"], x["slug"], x["to"], x["step"]) for x in plan["fill_idle"]],
+                         [("JP", "spiritfarer", "DE", False)])
+        self.assertEqual(planner.purchase_plan(self.data, self.settings, now=NOW)["fill_idle"], [])
+
+    def test_verdict_without_history_is_marked(self):
+        # 0.95: Ohne Tiefstpreis von DekuDeals trägt ein Kauf-Urteil „noch ohne Verlauf“
+        self.data["lows"] = {}
+        rows = [r for r in planner.radar(self.data, self.settings, now=NOW) if r["verdict"] in ("buy", "good")]
+        self.assertTrue(rows)
+        self.assertTrue(all(r["nohist"] for r in rows))
+        data, settings = sample()
+        self.assertFalse(any(r["nohist"] for r in planner.radar(data, settings, now=NOW)
+                             if planner._context(data, settings, now=NOW).has_history(r["slug"])))
+
+    def test_stale_prices_are_flagged_per_country(self):
+        # 0.95: Scheiterte der letzte Abruf in einem Land, sagt der Plan, von wann die Preise sind
+        for shop, t in self.data["prices"].items():
+            for p in t.values():
+                p["fetched"] = "2026-10-11T04:00:00+00:00"
+        for p in self.data["prices"]["BR"].values():
+            p["fetched"] = "2026-10-09T04:00:00+00:00"
+        by = self.by(planner.plans(self.data, self.settings, now=NOW))
+        self.assertTrue(by["BR"]["price_stale"])
+        self.assertEqual(by["BR"]["price_at"], "2026-10-09T04:00:00+00:00")
+        self.assertFalse(by["NO"]["price_stale"])
+        # Ohne Zeitstempel (alte Daten): nichts markiert
+        data, settings = sample()
+        self.assertFalse(any(p["price_stale"] for p in planner.plans(data, settings, now=NOW)))
+
+    def test_no_cards_warning_names_the_cause(self):
+        c = {"cards": []}
+        self.assertTrue(planner.no_cards_warning(c).startswith("Keine Guthabenkarten eingetragen"))
+        c["cards"] = [{"face": 5000, "stock": False}]
+        self.assertTrue(planner.no_cards_warning(c).startswith("Keine Guthabenkarte vorrätig"))
+        c["cards"] = [{"face": 5000, "stock": True}]
+        self.assertTrue(planner.no_cards_warning(c).startswith("Keine Guthabenkarte mit Preis"))
+
     def test_ui_fields_for_signals(self):
         # Die Oberfläche färbt Preise nach dem Urteil und nennt Titel, deren Wechsel nicht lohnt
         self.without_lasting()
@@ -2041,6 +2096,8 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(data["lows"]["BR"]["a"]["low"], 4.0)
         self.assertEqual(data["lows"]["BR"]["a"]["src"], "own")
         self.assertNotIn("low", data["lows"]["BR"]["b"])   # über Normalpreis: verworfen
+        self.assertIn("BR: 1 Tiefstpreis von DekuDeals verworfen, über dem Normalpreis: b (99.00 über 10.00)",
+                      sync.status["log"][-1])                 # und im Protokoll (0.95)
         table["a"]["discount"] = 6
         sync._track(data, hist, "BR", table, "2026-10-12T00:00:00+00:00")
         self.assertEqual([p for _, p in hist["BR"]["a"]], [4.0, 6.0])
@@ -2547,6 +2604,18 @@ class PurchaseLogTest(unittest.TestCase):
         self.assertEqual([(x["slug"], x["reason"]) for x in plan["s2_skip"]], [("hades", "Grund")])
         self.assertEqual(plan["bought_slugs"], [])
 
+    def test_plan_names_where_ownership_comes_from(self):
+        # 0.95: Sammlung, Paket: der Kaufplan nennt die Quelle statt pauschal „gekauft“
+        data, settings = sample()
+        data["owned"] = ["bundle"]
+        data["links"] = {"bundle": {"hades": {}}}
+        data.setdefault("rel", {})["bundle"] = {"title": "Big Bundle"}
+        plan = planner.purchase_plan(data, settings, now=NOW)
+        self.assertEqual(plan["bought_how"], [{"slug": "hades", "title": "Hades", "how": "pack", "via": "Big Bundle"}])
+        data["owned"] = ["hades"]
+        plan = planner.purchase_plan(data, settings, now=NOW)
+        self.assertEqual([x["how"] for x in plan["bought_how"]], ["collection"])
+
     def test_plan_skips_bought_titles(self):
         data, settings = sample()
         bought = [{"at": "2026-10-11T20:00:00+00:00", "code": "JP", "slugs": ["hades"],
@@ -2556,6 +2625,7 @@ class PurchaseLogTest(unittest.TestCase):
         self.assertEqual(plan["bought_waiting"], ["Hades"])
         # Für den Hinweis im Reiter Titel: gekaufte Titel auch als Kennung
         self.assertEqual(plan["bought_slugs"], ["hades"])
+        self.assertEqual(plan["bought_how"], [{"slug": "hades", "title": "Hades", "how": "plan", "via": None}])
         self.assertAlmostEqual(plan["bought_saving"], 16.99)
         # Mit dem Preis der Spiele (ohne den Rest, der als Guthaben bleibt) rechnet die
         # Ersparnis wie der Kaufplan
@@ -3741,18 +3811,13 @@ class ExtraDlcTest(unittest.TestCase):
         data["extra"] = {"rl-b": {"title": "Car B", "parent": "rl", "ids": {}}}
         saved = []
         with mock.patch.object(store, "save_settings", saved.append):
-            self.assertEqual(sync.prune_langs(data, settings), 1)
+            sync.prune_langs(data, settings)
         self.assertNotIn("langs", data["items"]["gone"])
         self.assertIn("langs", data["items"]["rl-a"])                 # in der Sammlung: bleibt
         self.assertEqual(list(data["glangs"]), ["rl"])
-        self.assertEqual(saved, [{"lang_confirm": {"gone": {"JP": None}}}])
-        self.assertEqual(set(settings["lang_confirm"]), {"rl", "rl-w"})
-        # Sammlung nie gelesen: Bestätigungen bleiben
-        del data["owned"]
-        settings["lang_confirm"]["gone"] = {"JP": True}
-        with mock.patch.object(store, "save_settings", saved.append):
-            self.assertEqual(sync.prune_langs(data, settings), 0)
-        self.assertIn("gone", settings["lang_confirm"])
+        # Deine Bestätigungen bleiben, auch für Titel, die gerade nirgends stehen (0.95)
+        self.assertEqual(saved, [])
+        self.assertEqual(set(settings["lang_confirm"]), {"gone", "rl", "rl-w"})
 
 
 
@@ -4319,17 +4384,17 @@ class UiContractTest(unittest.TestCase):
     # Felder, die die Oberfläche je Struktur liest. Benennt der Server eines um oder lässt es weg,
     # schlägt der Test fehl; liest die Oberfläche ein neues Feld, gehört es hier dazu.
     CONTRACT = {
-        "radar": {"at", "cashback", "champ", "de", "diff", "dlc_of", "easy", "gap", "hard", "no_ids", "owned",
+        "radar": {"at", "cashback", "champ", "de", "diff", "dlc_of", "easy", "gap", "hard", "no_ids", "nohist", "owned",
                   "parent_owned", "reason", "rhythm", "shown", "slug", "target", "title", "typical", "verdict"},
         "matrix.rows": {"best", "cells", "champ", "dlc_of", "no_ids", "owned", "parent_owned", "slug", "title", "typical"},
         "matrix.cells": {"alone", "champ", "end", "est", "eur", "gap", "grade", "lang", "local", "low", "low_eur",
                          "na", "nocard", "nsuid", "own", "pct", "sale"},
         "matrix.cols": {"code", "currency", "name", "tier"},
-        "kaufplan": {"bought", "cost", "count", "dropped", "good_left", "held", "later", "lock", "packed",
-                     "s2_skip", "saving", "skipped", "small", "small_groups", "steps"},
+        "kaufplan": {"bought", "bought_how", "cost", "count", "dropped", "good_left", "held", "later", "lock", "packed",
+                     "s2_skip", "saving", "fill_idle", "skipped", "small", "small_groups", "steps"},
         "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
                  "estimated", "family", "fill", "fill_nso", "fill_pairs", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
-                 "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "rate", "ref_total", "rest", "rest_eur",
+                 "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "price_at", "price_stale", "rate", "ref_total", "rest", "rest_eur",
                  "saving", "threshold", "tier", "total", "trims", "warnings", "worth"},
         "plan.items": {"alt", "alt_code", "champ", "dlc_of", "end", "est", "eur", "lang", "local", "needs_parent",
                        "over", "own", "owned", "parent_owned", "pct", "ref", "sale", "short", "slug", "title"},

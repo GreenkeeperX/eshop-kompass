@@ -21,8 +21,14 @@ function todos(){
   if(need.length) out.push([`<b>${need.length} ${need.length === 1 ? "Sprache" : "Sprachen"} prüfen</b> <small>in ${[...new Set(need.map(t => t.family_name))].join(", ")} wäre es günstiger (${need.slice(0, 3).map(t => esc(t.title)).join(", ")}${need.length > 3 ? " …" : ""})${open.length > need.length ? `; insgesamt ${open.length} offen` : ""}</small>`, `<button class="link" data-act="gosprachen">prüfen</button>`]);
   for(const p of S.plans){
     if(p.is_ref || p.code === "DG" || !(s.countries[p.code] || {}).enabled) continue;
-    if(p.warnings.some(w => w.startsWith("Keine Guthabenkarten")))
-      out.push([`<b>${esc(p.name)}: Guthabenkarte eintragen</b> <small>ohne Karte mit Preis sind die Preise dort geschätzt</small>`, `<button class="link" data-act="gocards" data-c="${p.code}">Karten eintragen</button>`]);
+    // Nach Ursache (0.95): keine Karte, keine vorrätig, keine mit Preis
+    const w = p.warnings.find(w => w.startsWith("Keine Guthabenkarte"));
+    if(w){
+      const [what, why] = w.startsWith("Keine Guthabenkarten") ? ["Guthabenkarte eintragen", "ohne Karte mit Preis sind die Preise dort geschätzt"]
+        : w.startsWith("Keine Guthabenkarte vorrätig") ? ["keine Karte vorrätig", "alle eingetragenen Karten sind als nicht vorrätig markiert, die Preise dort sind geschätzt"]
+        : ["kein Kartenpreis", "für keine vorrätige Karte ist ein Preis gelesen oder eingetragen, die Preise dort sind geschätzt"];
+      out.push([`<b>${esc(p.name)}: ${what}</b> <small>${why}</small>`, `<button class="link" data-act="gocards" data-c="${p.code}">Karten ${w.startsWith("Keine Guthabenkarten") ? "eintragen" : "ansehen"}</button>`]);
+    }
   }
   const coll = S.state.collection || {};
   // Kostenlose DLC deiner Spiele: holen kostet nichts (0.52)
@@ -164,6 +170,7 @@ function openLegend(){
     <div><span class="vd buy">kaufen</span> Einkaufspreis höchstens ${eur(S.state.settings.deal_eur.buy)} oder höchstens 2 % über dem Bestpreis, oder dein Zielpreis ist erreicht.${S.state.settings.deal_eur.mini > 0 ? ` Kleinkram (Bestpreis unter ${eur(S.state.settings.deal_eur.mini)}) nur bis 2 %.` : ""}</div>
     <div><span class="vd good">gut</span> höchstens ${eur(S.state.settings.deal_eur.good)} oder höchstens 15 % über dem Bestpreis.</div>
     <div><span class="vd wait">warten</span> weiter weg vom Bestpreis. Das Urteil gilt dem günstigsten Preis jetzt, mit oder ohne Rabatt: Ein dauerhaft günstiger Normalpreis am Bestpreis ist „kaufen“.</div>
+    <div><span class="nohist">ohne Verlauf</span> DekuDeals hat noch keinen Tiefstpreis geliefert: Der Bestpreis stützt sich nur auf heutige Preise und die eigene Aufzeichnung. <span class="warnc">Preise vom 18.10.2026</span> am Schritt: Der letzte Preisabruf dort scheiterte, es gelten die alten Preise.</div>
     <div><b>Bestpreis</b>: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet. <b>Einkaufspreis</b>: was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr.</div>
     <div><span class="star">★</span> am Bestpreis. In der Tabelle: <span class="sw c-buy">9,99</span> „kaufen“, <span class="sw c-good">9,99</span> „gut“, <span class="sw champ">9,99</span> hier gab es den Bestpreis.</div>
     <div><b>Wechsel</b>: ob sich der Weg in ein Land lohnt, am Schritt <b>✓ lohnt</b> oder <b class="bad">lohnt nicht</b>. Gerechnet gegen das, was dieselben Titel ohne diesen Wechsel kosten („sonst“: günstigstes Land gleicher oder leichterer Stufe oder dein aktuelles Land), mit deiner Schwelle je Stufe. <b>Rest</b>: Guthaben, das nach dem Kauf auf dem Konto bleibt; vor einem weiteren Wechsel verfällt er und zählt als Kosten.</div>

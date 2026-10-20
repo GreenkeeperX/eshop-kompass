@@ -185,7 +185,12 @@ document.addEventListener("click", async e => {
     else if(a === "tgtfill"){ S.ui.targets[d.s] = parseFloat(d.v); await saveUi(); await refresh(); toast("Zielpreis übernommen"); }
     else if(a === "bought"){
       const p = S.kauf.steps.find(x => x.code === d.c);
-      if(!confirm(`Kauf in ${p.name} vermerken? Dein Konto steht danach dort${p.rest ? `, Rest ${money(p.rest, p.currency)}` : ""}.`)) return;
+      // Auch nennen, welches Guthaben dabei auf 0 geht (0.95): Nintendo nimmt es beim Wechsel nicht mit
+      const gone = Object.entries(S.state.settings.countries).filter(([c, v]) => c !== p.code && v.balance > 0)
+        .map(([c, v]) => { const cur = ((S.plans || []).find(x => x.code === c) || {}).currency;
+          return `${country(c).name} (${cur ? money(v.balance, cur) : dc(v.balance)})`; });
+      if(!confirm(`Kauf in ${p.name} vermerken? Dein Konto steht danach dort${p.rest ? `, Rest ${money(p.rest, p.currency)}` : ""}.` +
+        (gone.length ? ` Dein Guthaben in ${gone.join(", ")} gilt danach als 0.` : ""))) return;
       await api("/api/bought", {code: p.code, slugs: p.items.map(i => i.slug), titles: p.items.map(i => i.short),
         cost: p.cost, games: p.games_paid, de: p.de_now, rest: p.rest, currency: p.currency});
       if(S.ui.plan_fill && S.ui.plan_fill[p.code]){ delete S.ui.plan_fill[p.code]; await saveUi(); }

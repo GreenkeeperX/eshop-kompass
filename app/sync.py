@@ -306,6 +306,7 @@ def _track(data, history, code, table, stamp):
         now = datetime.now(timezone.utc)
     lows = data.setdefault("lows", {}).setdefault(code, {})
     hist = history.setdefault(code, {})
+    gone = []
     for slug, p in table.items():
         o = planner.offer(p, now)
         if not o:
@@ -317,6 +318,7 @@ def _track(data, history, code, table, stamp):
         e = lows.setdefault(slug, {})
         if "low" in e:
             if e["low"] > regular * 1.001:   # unplausibel, z. B. anderes Format
+                gone.append(f"{slug} ({e['low']:.2f} über {regular:.2f})")
                 del e["low"]
             elif cur < e["low"] - 1e-9:
                 e.update(low=cur, src="own", since=stamp)
@@ -324,6 +326,10 @@ def _track(data, history, code, table, stamp):
         # DekuDeals keinen Wert liefert
         if cur < e.get("own_low", float("inf")) - 1e-9:
             e.update(own_low=cur, own_since=stamp)
+    if gone:
+        # Nicht still verwerfen (0.95): ins Protokoll, mit beiden Werten
+        _log(f"{code}: {len(gone)} Tiefstpreis{'e' if len(gone) > 1 else ''} von DekuDeals verworfen, "
+             f"über dem Normalpreis: {', '.join(gone[:5])}{' …' if len(gone) > 5 else ''}")
 
 
 def nso_ids_for(data, code, key="m12"):
@@ -889,9 +895,9 @@ def prune_old(data, now=None):
 
 
 def prune_langs(data, settings):
-    """Räumt Sprachangaben auf, die keine Rolle mehr spielen: Titel weder auf der Wishlist
-    noch in der Sammlung, Spiele ohne fehlende DLC. Deine Bestätigungen bleiben für alles,
-    was auf der Wishlist oder in der Sammlung steht."""
+    """Räumt gelesene Sprachangaben auf, die keine Rolle mehr spielen: Titel weder auf der
+    Wishlist noch in der Sammlung, Spiele ohne fehlende DLC. Deine Bestätigungen löscht es nie (ab 0.95):
+    Ein Titel, der kurz von der Wishlist verschwindet, soll sie beim Wiederkommen noch haben."""
     keep = {s for s, it in data["items"].items() if it.get("active")} | set(data.get("owned") or [])
     for slug, it in data["items"].items():
         if slug not in keep:
@@ -904,15 +910,6 @@ def prune_langs(data, settings):
     glangs = data.get("glangs") or {}
     for game in [g for g in glangs if g not in games]:
         del glangs[game]
-    if "owned" not in data:
-        return 0                     # Sammlung nie gelesen: Bestätigungen nicht anfassen
-    conf = settings.get("lang_confirm") or {}
-    drop = [s for s in conf if s not in keep]
-    if drop:
-        store.save_settings({"lang_confirm": {s: {f: None for f in conf[s]} for s in drop}})
-        for s in drop:
-            conf.pop(s, None)
-    return len(drop)
 
 
 def suspect_id(rec, fam, now):
@@ -1369,9 +1366,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                     (rec.get("langs_tries") or {}).pop(fam, None)
                     (rec.get("langs_checked") or {}).pop(fam, None)
         data["langs_bundle_reset"] = 1
-    dropped = prune_langs(data, settings)
-    if dropped:
-        _log(f"Sprachen: {dropped} Bestätigungen für Titel gelöscht, die weder auf der Wishlist noch in der Sammlung stehen")
+    prune_langs(data, settings)
 
     def due(rec, fam):
         """Noch ohne Angabe und wieder an der Reihe. Sperren und Fehler zählen nicht als

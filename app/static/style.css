@@ -455,6 +455,7 @@ form.set > .setc{margin-top:0}
 .radar td.pr,.radar td.ob,.radar td.al{text-align:right}
 .tgtm{font-size:11px;color:var(--muted);border:1px dashed var(--line);border-radius:4px;padding:0 4px;white-space:nowrap}
 .tgtm.hit{color:var(--go);border-color:var(--go)}
+.nohist{font-size:11px;color:var(--muted);border:1px dashed var(--line);border-radius:4px;padding:0 4px;white-space:nowrap}
 .dh{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 8px}
 .dh .sp{flex:1}
 .dg{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;font-size:13px}
