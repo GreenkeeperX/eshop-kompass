@@ -299,7 +299,11 @@ def _store_low(data, settings, code, slug, low, now, history=None, platforms=1):
 
 def _track(data, history, code, table, stamp):
     """Zeichnet Preiswechsel auf und senkt den Tiefstpreis, wenn er unterboten wird."""
-    now = datetime.now(timezone.utc)
+    # Der Zeitpunkt des Abrufs zählt, nicht die Uhr beim Rechnen (Tests mit festem Datum)
+    try:
+        now = datetime.fromisoformat(stamp)
+    except (TypeError, ValueError):
+        now = datetime.now(timezone.utc)
     lows = data.setdefault("lows", {}).setdefault(code, {})
     hist = history.setdefault(code, {})
     for slug, p in table.items():
