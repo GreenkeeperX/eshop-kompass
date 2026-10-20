@@ -700,11 +700,16 @@ class Context:
     def short(self, slug):
         """Titel ohne vorangestellten Spielnamen, damit DLCs unterscheidbar bleiben."""
         title, parent = self.title(slug), self.parent_title(slug)
-        if parent and title.lower().startswith(parent.lower()):
+        # Typografische und gerade Apostrophe gelten gleich („Luigi’s“ und „Luigi's“, 1.1.5)
+        same = lambda t: t.lower().translate(_APOS)
+        if parent and same(title).startswith(same(parent)):
             rest = title[len(parent):].lstrip(" :–-")
             if len(rest) > 2:
                 return rest
         return title
+
+
+_APOS = str.maketrans("’‘`´", "'" * 4)
 
 
 def cfg_balance(c):

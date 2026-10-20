@@ -4772,6 +4772,17 @@ class ZeroTest(unittest.TestCase):
         self.assertIsNone(self.br()["fill_zero"])
 
 
+class ShortTitleTest(unittest.TestCase):
+    def test_apostrophes_match(self):
+        # 1.1.5: Spiel mit typografischem, DLC mit geradem Apostroph wird trotzdem gekürzt
+        ctx = planner.Context.__new__(planner.Context)
+        ctx.title = {"dlc": "Game's Tale 3: Party Pack"}.get
+        ctx.parent_title = lambda s: "Game’s Tale 3" if s == "dlc" else None
+        self.assertEqual(planner.Context.short(ctx, "dlc"), "Party Pack")
+        ctx.title = {"dlc": "Game’s Tale 3: Party Pack"}.get
+        self.assertEqual(planner.Context.short(ctx, "dlc"), "Party Pack")
+
+
 class RestPairsTest(unittest.TestCase):
     def test_pairs_fill_rest_better(self):
         # 0.70: zwei Titel zusammen, wenn sie weniger übrig lassen als jeder einzelne
