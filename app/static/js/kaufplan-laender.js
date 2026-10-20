@@ -544,7 +544,7 @@ function zeroHtml(p, step, planned){
       return cell ? shopLink(i.slug, p.code, cell, money(i.local, cur), cur) : priceLink(i.slug, p.code, money(i.local, cur), null, cur); };
     const names = x.items.map(i => `<span class="nw">${i.dlc ? `<span class="dlc">DLC</span>` : ""}${esc(i.extra && i.game ? i.game + ": " + i.short : i.short)} <small style="display:inline">${price(i)}</small></span>`).join(", ");
     const tip = `Mit ${x.items.length === 1 ? "diesem Titel" : "diesen Titeln"} (zusammen ${money(x.local, cur)}) bleiben ${money(x.left, cur)}. Guthabenkarten dann: ${cards}. Das kostet ${eur(x.extra)} mehr als der Schritt jetzt${p.rest_lost ? `, statt ${eur(p.rest_lost)} Rest verfallen zu lassen` : ""}. ${step ? "Klick nimmt alle in diesen Schritt." : "Klick legt alle in den Korb dieses Landes."}`;
-    return `<details class="zero" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary class="mut">${head}</summary>` +
+    return `<details class="zero" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary class="mut" title="${esc(`Danach bleiben ${money(x.left, cur)} (jetzt ${money(p.rest, cur)}). Guthabenkarten dann: ${cards}. Klick klappt die Titel auf.`)}">${head}</summary>` +
       `<div class="fillrow"><span>${x.items.length} Titel: ${names}${best}</span> ` +
       `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(x.slugs.join(","))}" title="${esc(tip)}">alle dazunehmen</button></div></details>`;
   };

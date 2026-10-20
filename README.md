@@ -420,7 +420,7 @@ Wechsel nur mit 0) oder „Rest blockiert“ eingestellt ist, stehen darunter zw
 - **Fast Null:** höchstens 0,50 € Rest für höchstens 10 € mehr, nur wenn das günstiger ist als genau
   Null und eine Karte dazukommt (ohne Zuzahlung zeigt es „Passt in den Rest“), etwa „Fast Null für
   2,00 € mehr (Rest 0,01 € statt 0,50 €)“; beide Reste in derselben Einheit, der Betrag in
-  Landeswährung im Tooltip. Beide Grenzen stehen unter Regeln.
+  Landeswährung im Tooltip der Zeile. Beide Grenzen stehen unter Regeln.
 
 In Frage kommen dieselben Titel wie bei den Füllartikeln, das Urteil zählt nicht. Die Karten rechnet
 derselbe Zahlweg wie der Schritt: Nach „alle dazunehmen“ steht genau das im Schritt. Bei gleichen

@@ -197,7 +197,8 @@ schlägt der Planer nur Titel vor, die höchstens „gut“ über ihrem Bestprei
 nächsten Wechsel, Stufe schwer, „Rest blockiert“). Ab 1.1.1 klappbar wie „Rechnung“ (`details.zero`,
 `data-k`, zu als Vorgabe), Kopfzeile ohne Doppelpunkt in einer Größe, nur der Betrag fett. „statt y
 Rest“: verfällt er im Plan, sein Wert in Euro (`rest_lost`), sonst der Rest in Landeswährung; der
-Rest z bei „Fast Null“ in derselben Einheit, zum selben Kurs (ab 1.1.2, Landeswährung im Tooltip).
+Rest z bei „Fast Null“ in derselben Einheit, zum selben Kurs (ab 1.1.2). Die Beträge in Landeswährung
+und die Karten nennt der Tooltip der Kopfzeile (ab 1.1.6) und von „alle dazunehmen“.
 Aufgeklappt „n Titel:“ mit DLC-Marke und Preis als Link (`shopLink`), dahinter klein „n von m am
 Bestpreis, zusammen **+x €** über Bestpreis“ (nur der Betrag rot) und der Knopf „alle dazunehmen“
 (Schritt `planfill`, Länderkarte `add`). Ohne Zuzahlung steht „ohne Zuzahlung“ fett. Gibt es keinen
