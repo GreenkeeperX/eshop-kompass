@@ -228,6 +228,8 @@ document.addEventListener("click", async e => {
         const r = await api("/api/plans", {overrides: {}, must: [], basket: S.kauf.steps[st].items.map(i => i.slug), only: [d.c]});
         const p = r.plans.find(x => x.code === d.c);
         S.olInline = p ? {code: d.c, from: d.from, p: Object.assign(p, {ro: true})} : null; render();
+        if(!p) toast(`${country(d.c).name}: für diese Titel kein Plan`);
+        const box = document.querySelector(".olrow .olin"); if(box) box.scrollIntoView({block: "nearest", behavior: "smooth"});
       }
     }
     else if(a === "planfill" || a === "planunfill"){

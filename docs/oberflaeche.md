@@ -63,7 +63,9 @@ höchstens 1280 px, nur diese Karte breiter).
 das nächstgünstigste Land. Je Land eine Zeile: Name als Link, Stufe, darunter klein „ohne …“ oder
 „Konto steht dort“, rechts der Betrag: rot `.abv` „+x €“ teurer, grün `.gn` „−x €“ günstiger.
 Ab 0.94 klappt ein Klick auf ein Land dessen Karte mit den Titeln des Schritts direkt darunter auf
-(`olshow`, `S.olInline`, nur zum Ansehen), darunter „Länderkarte von … öffnen · zuklappen“.
+(`olshow`, `S.olInline`, nur zum Ansehen), darunter „Länderkarte von … öffnen · zuklappen“. Ab 1.0.4
+steht sie direkt unter der Zeile des Landes (`tr.olrow`) und rollt ins Bild; am Ende der Liste lag sie
+unter langen Listen außer Sicht, der Klick schien nichts zu tun.
 
 Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Titel
 dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedschaft“ bietet alle Varianten an). Dazugenommenes ist ein Füllartikel des Schritts und trägt klein grau „dazugenommen“.

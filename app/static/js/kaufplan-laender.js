@@ -534,9 +534,11 @@ function othersHtml(p, step){
   const rows = list.map(o => {
     const note = [o.current ? "Konto steht dort, kein Wechsel" : "", o.missing.length ? `ohne ${o.missing.map(esc).join(", ")}` : ""].filter(Boolean).join(" · ");
     return `<tr><td class="l"><span class="nw"><button class="link" data-act="olshow" data-c="${o.code}" data-from="${p.code}" title="Diese Titel in ${esc(o.name)} hier aufklappen, mit Preis, Wechsel und Rechnung">${esc(o.name)}</button> ${o.is_ref ? "" : tierTag(o.tier)}</span>${note ? `<br><small class="mut">${note}</small>` : ""}</td>` +
-      `<td title="Die Spiele kosten dort ${o.estimated ? "ca. " : ""}${eur(o.games_cost)}">${o.estimated ? "ca. " : ""}${amt(o)}</td></tr>`;
+      `<td title="Die Spiele kosten dort ${o.estimated ? "ca. " : ""}${eur(o.games_cost)}">${o.estimated ? "ca. " : ""}${amt(o)}</td></tr>` +
+      // Aufgeklappt direkt unter seiner Zeile (1.0.4): am Ende der Liste lag es oft außer Sicht
+      (ol && ol.code === o.code ? `<tr class="olrow"><td colspan="2">${inline}</td></tr>` : "");
   }).join("");
-  return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table>${inline}</details>`;
+  return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table></details>`;
 }
 /* „Passt dazu“ (Kaufplan, Länderkarte, Korb): Was ein weiterer Wishlist-Titel hier zusätzlich kostet und was er spart.
    „spart“ rechnet mit heutigen Preisen; dahinter klein, wie weit der Titel hier über seinem Bestpreis liegt (0.77) */
