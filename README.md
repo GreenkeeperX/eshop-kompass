@@ -545,12 +545,17 @@ weder auf der Wishlist stehen noch ignoriert sind, tragen einen violetten Rand u
 „nicht auf der Wishlist“: Über sie hast du noch nicht entschieden. Jeder DLC-Name führt zu
 DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
 
-- **Aufbau:** Spiele mit fehlenden DLC stehen oben, je eines in einem Kasten. Darunter
+- **Aufbau:** Spiele mit fehlenden DLC stehen oben, je eines in einem klappbaren Kasten; die
+  Zahlen im Kopf sind farbig (vorhanden grün, fehlen violett, ignoriert rot). Im Kasten steht je
+  DLC eine Zeile mit Stand, Preis, Rabatt, Land, Angebotsende und Handlungen, erst die
+  fehlenden, eingeklappt darunter die vorhandenen, ignorierten und nicht mehr erhältlichen;
+  Teile eines Passes stehen eingerückt unter ihm. Darunter
   zugeklappt „Ohne offene DLC“ (alle DLC da, ignoriert oder nicht mehr erhältlich, je eine
   Zeile, die seine DLC aufklappt; „alle aufklappen“ und „alle zuklappen“ stehen in der Erklärung)
   und „Ohne Zusatzinhalte“, A–Z spaltenweise. Die Suche klappt
   Abschnitte mit Treffern auf. Noch nicht gelesene Spiele stehen offen am Ende. Filter und
-  Reihenfolge (Name, Zahl, Preis oder Angebote fehlender DLC) stehen über den Spielen.
+  Reihenfolge (Name, Zahl, Preis oder Angebote fehlender DLC) stehen über den Spielen, daneben
+  „alle aufklappen · alle zuklappen“ für ihre Kästen.
 - **Preise fehlender DLC:** der günstigste Preis je DLC, je Spiel und insgesamt die Summe, mit
   denselben Zeichen wie die Titelliste (Stern am Bestpreis, grün bei „kaufen“ oder „gut“,
   Rabatt blau), soweit Tiefstpreise bekannt sind. Steht ein fehlender DLC auf deiner Wishlist,

@@ -161,10 +161,20 @@ fertig 1,7 s → 0,9 s, Neurechnen nach × 1,6 s → 0,4 s.
 ## Sammlung: unentschiedene DLC
 
 Fehlt ein DLC, steht er nicht auf der Wishlist und ist nicht ignoriert (ab 0.72): violetter Rand links
-an der Zeile (`tr.undec`) und Chip „nicht auf der Wishlist“ (`.chip.und`, violett auf `--warn-bg`).
+an der Zeile (`.cdr.undec`) und Chip „nicht auf der Wishlist“ (`.chip.und`, violett auf `--warn-bg`).
 Ein fehlender Pass, dessen Teile nicht alle einzeln einen Preis haben, zeigt statt „einzeln … · als Pass …“ grau
 „einzeln nicht alle kaufbar“ (ab 0.90). „Titel dazunehmen …“ bietet diese DLC in der Gruppe „Fehlende DLC deiner Spiele“ an („Spiel: DLC ·
 Preis“).
+
+Ab 0.99.6 nach der Checkliste (Entscheidung 20.10.2026): je DLC eine Rasterzeile wie unter „Nicht im
+Plan“ (`.npr.cdr`, `collDlc`), Spalten Name (darunter klein Pass-Vergleich oder Paket), Stand („fehlt“
+violett, Urteil-Pill auf der Wishlist, „✓ hast du“ grau, „ignoriert“ rot), Preis als Link zu
+DekuDeals für das Land, Rabatt, Land, bis, Handlungen mit „·“. Teile eines Passes stehen mit „↳“
+eingerückt unter ihm (`.cdr.part`, `collBlocks`). Je Spiel mit offenen DLC ein klappbarer Kasten
+(`details.cgo`, von Haus aus offen, gemerkt wird das Zuklappen); oben das Offene, darunter
+eingeklappt „x vorhanden“, „x ignoriert“, „x nicht mehr erhältlich“ (`details.cgs`). „alle aufklappen
+· alle zuklappen“ in der Werkzeugzeile gilt für diese Kästen (`data-scope="#collopen"`). Am Handy
+brechen die Zeilen um wie unter „Nicht im Plan“.
 
 ## Rest füllen (Kaufplan)
 
@@ -291,8 +301,8 @@ Nur die Zahl trägt die Farbe, Verbindungswörter bleiben grau. Sammlung je Spie
 Art, wie ein Satz aufgezählt und ohne Gesamtzahl („10 vorhanden und 7 ignoriert“, „3 vorhanden,
 2 fehlen und 1 ignoriert“; die Gesamtzahl steht im Tooltip), damit nichts wie „17,7“ liest. Der
 Betrag dahinter folgt mit „·“. Ist alles da, steht „5 von 5“ grün und
-„vorhanden“ grau; sonst bei nichts Offenem nur die Zahl vorhandener grün, die Zahl ignorierter rot
-(Entscheidung 13.10.2026, Wortlaut ab 0.56.3). Der Kopf der Sammlung steht als kompakter Kasten über den
+„vorhanden“ grau; sonst die Zahl vorhandener grün, fehlender violett, ignorierter rot (`collSum`;
+Entscheidung 13.10.2026, Wortlaut ab 0.56.3, „fehlen“ violett auch bei offenen Spielen ab 0.99.6). Der Kopf der Sammlung steht als kompakter Kasten über den
 Gruppen: Zahlen fett in zwei kurzen Zeilen, die Erklärung eingeklappt darunter. Filter und
 Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 

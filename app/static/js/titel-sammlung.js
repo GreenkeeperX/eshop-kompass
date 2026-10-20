@@ -21,62 +21,84 @@ function titleFilterBar(){
   return b("buy", "kaufen", n("buy")) + b("good", "gut", n("good")) + b("wait", "warten", n("wait")) + b("all", "alle", S.state.radar.length);
 }
 /* ---------- Sammlung: Zusatzinhalte zu Spielen, die du hast ---------- */
+/* Ab 0.99.6 nach der Checkliste (Entscheidung 20.10.2026): je DLC eine Rasterzeile wie unter „Nicht im Plan“,
+   Spalten Name, Stand, Preis (Link), Rabatt, Land, bis, Handlungen; offene DLC oben, Vorhandenes,
+   Ignoriertes und nicht mehr Erhältliches eingeklappt darunter */
 function collDlc(d){
   const tag = d.upgrade ? ` <span class="chip" title="Upgrade-Paket: macht die Switch-1-Fassung zur Nintendo Switch 2 Edition">Switch-2-Upgrade</span>` : "";
   const mk = (v, label, tip) => `<button class="link" data-act="dlcmark" data-s="${esc(d.slug)}" data-v="${v}" title="${tip}">${label}</button>`;
-  let state;
-  if(d.owned) state = `<span class="mut">✓ hast du${d.via ? `, im Paket ${esc(d.via)}` : ""}</span>` +
-    (d.via ? ` · ${mk("missing", "stimmt nicht", "DekuDeals nennt diesen DLC im Paket, du hast ihn aber nicht: zählt wieder als fehlend")}` : "");
-  else if(d.by_hand) state = `<span class="mut">✓ hast du (von dir abgehakt)</span> · ${mk("", "zurücksetzen", "Haken entfernen")}`;
-  else if(d.ignored) state = `<span class="mut">ignoriert</span>${d.mark === "ignore" ? " · " + mk("", "zurücksetzen", "Wieder als fehlend zählen") : ""}`;
-  else if(d.gone) state = `<span class="mut" title="Die ID-Suche fand ihn in keiner Region, mehrmals: meist nur im Spiel erhältlich oder aus dem eShop verschwunden">nicht mehr erhältlich</span> · ${mk("have", "habe ich", "Hast du schon")}`;
+  const open = !d.owned && !d.by_hand && !d.ignored && !d.gone;
+  let st = "", note = "", act = [];
+  if(d.owned){ st = `<span class="mut">✓ hast du</span>`; if(d.via){ note = `im Paket ${esc(d.via)}`; act.push(mk("missing", "stimmt nicht", "DekuDeals nennt diesen DLC im Paket, du hast ihn aber nicht: zählt wieder als fehlend")); } }
+  else if(d.by_hand){ st = `<span class="mut">✓ hast du</span>`; note = "von dir abgehakt"; act.push(mk("", "zurücksetzen", "Haken entfernen")); }
+  else if(d.ignored){ st = `<span class="abv">ignoriert</span>`; if(d.mark === "ignore") act.push(mk("", "zurücksetzen", "Wieder als fehlend zählen")); }
+  else if(d.gone){ st = `<span class="mut" title="Die ID-Suche fand ihn in keiner Region, mehrmals: meist nur im Spiel erhältlich oder aus dem eShop verschwunden">nicht mehr erhältlich</span>`; act.push(mk("have", "habe ich", "Hast du schon")); }
   else {
-    if(d.wish) state = `${pill(d.verdict)} ${d.eur !== null && d.eur !== undefined ? `<a class="pl" href="${esc(deku(d.slug, d.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals für ${esc(d.name || "")}">${d.est ? "ca. " : ""}${eur(d.eur)}</a> in ${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}` : `<span class="mut">${esc(d.reason || "kein Preis")}</span>`}${d.end ? ` <small class="mut">bis ${esc(dmy(d.end))}</small>` : ""} <button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`;
-    else state = `<span class="warnc">fehlt</span>${d.eur !== null && d.eur !== undefined ? ` · ${d.eur < 0.005 ? "kostenlos" : `<a class="pl" href="${esc(deku(d.slug, d.code))}" target="_blank" rel="noopener">${dlcPrice(d)}</a> in ${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}`}${d.end ? ` <small class="mut">${endCell(d.end, "bis ")}</small>` : ""}` : ""}`;
+    st = d.wish ? pill(d.verdict) : `<span class="warnc">fehlt</span>`;
     const p = d.pack;
     if(p && p.open && p.single !== null && d.eur !== null && d.eur !== undefined){
       const b = (on, t) => on ? `<b>${t}</b>` : t;
-      state += ` · <span title="Was die ${p.open} fehlenden Teile einzeln kosten, gegen den Pass. In die Summe geht der günstigere Weg.">${b(p.cheaper === "single", `einzeln ${eur(p.single)}`)} · ${b(p.cheaper === "pass", `als Pass ${eur(d.eur)}`)}</span>`;
-    }
-    else if(p && p.open && d.eur !== null && d.eur !== undefined)
-      state += ` · <span class="mut" title="Mindestens ein fehlender Teil ist einzeln nicht kaufbar oder hat noch keinen Preis; dann gibt es ihn nur über den Pass">einzeln nicht alle kaufbar</span>`;
-    if(d.not_in_pack) state += ` · <span class="mut">laut dir nicht im Paket</span> ${mk("", "zurücksetzen", "Wieder als im Paket enthalten zählen")}`;
-    state += ` · ${mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht")} · ${mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend")}`;
+      note = `<span title="Was die ${p.open} fehlenden Teile einzeln kosten, gegen den Pass. In die Summe geht der günstigere Weg.">${b(p.cheaper === "single", `einzeln ${eur(p.single)}`)} · ${b(p.cheaper === "pass", `als Pass ${eur(d.eur)}`)}</span>`;
+    } else if(p && p.open && d.eur !== null && d.eur !== undefined)
+      note = `<span title="Mindestens ein fehlender Teil ist einzeln nicht kaufbar oder hat noch keinen Preis; dann gibt es ihn nur über den Pass">einzeln nicht alle kaufbar</span>`;
+    if(d.not_in_pack){ note = (note ? note + " · " : "") + "laut dir nicht im Paket"; act.push(mk("", "zurücksetzen", "Wieder als im Paket enthalten zählen")); }
+    if(d.wish) act.push(`<button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`);
+    act.push(mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht"), mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend"));
   }
+  const priced = open && d.eur !== null && d.eur !== undefined;
+  const price = !priced ? (open ? `<span class="mut" title="${esc(d.reason || "kein Preis")}">–</span>` : "")
+    : d.eur < 0.005 ? "kostenlos"
+    : `<a class="pl" href="${esc(deku(d.slug, d.code))}" target="_blank" rel="noopener" title="Preisverlauf bei DekuDeals für ${esc(d.name || "")}">${d.wish ? `${d.est ? "ca. " : ""}${eur(d.eur)}` : dlcPrice(d, true)}</a>`;
   const inner = d.pack ? ` <small class="mut" style="display:inline">enthält ${d.pack.n} DLC${d.pack.have ? `, ${d.pack.have} schon da` : ""}</small>` : "";
   // Noch unentschieden (0.72): fehlt, steht nicht auf der Wishlist und ist nicht ignoriert. Violetter Rand links
-  // und Hinweis am Namen, damit diese DLC zwischen den entschiedenen auffallen
-  const undec = !d.owned && !d.by_hand && !d.ignored && !d.gone && !d.wish;
-  return `<tr class="${d.ignored ? "ign" : ""}${d.in_pack ? " part" : ""}${undec ? " undec" : ""}"><td class="l"${d.in_pack ? ` title="steckt in ${esc(d.in_pack)}"` : ""}>${d.in_pack ? "↳ " : ""}<a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="${d.wish || d.owned || d.by_hand || d.ignored ? "Bei DekuDeals ansehen" : "Bei DekuDeals ansehen; auf die Wishlist gesetzt rechnet das Tool auch Urteil und Bestpreis"}">${esc(d.title)}</a>${tag}${inner}${undec ? ` <span class="chip und" title="Fehlt, steht nicht auf deiner Wishlist und ist nicht ignoriert. Auf die Wishlist setzen, mit „habe ich“ abhaken oder ignorieren; in den Korb geht er auch über „Titel dazunehmen …“">nicht auf der Wishlist</span>` : ""}</td><td class="l">${state}</td></tr>`;
+  const undec = open && !d.wish;
+  const name = `${d.in_pack ? `<span class="mut" title="steckt in ${esc(d.in_pack)}">↳ </span>` : ""}<a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="${d.wish || !open ? "Bei DekuDeals ansehen" : "Bei DekuDeals ansehen; auf die Wishlist gesetzt rechnet das Tool auch Urteil und Bestpreis"}">${esc(d.title)}</a>${tag}${inner}` +
+    (undec ? ` <span class="chip und" title="Fehlt, steht nicht auf deiner Wishlist und ist nicht ignoriert. Auf die Wishlist setzen, mit „habe ich“ abhaken oder ignorieren; in den Korb geht er auch über „Titel dazunehmen …“">nicht auf der Wishlist</span>` : "");
+  return `<div class="npr cdr${undec ? " undec" : ""}${d.ignored ? " ign" : ""}${d.in_pack ? " part" : ""}"><span class="t">${name}${note ? `<small class="np-w">${note}</small>` : ""}</span>` +
+    `<span class="c-vd">${st}</span><span class="r c-eur">${priced && d.at_best && d.wish ? `<span class="star" title="Am Bestpreis">★</span>` : ""}${price}</span>` +
+    `<span class="c-pct">${priced && d.sale && d.pct ? `<span class="pct">−${d.pct} %</span>` : ""}</span>` +
+    `<span class="c-land">${priced && d.eur >= 0.005 ? `${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}` : ""}</span>` +
+    `<span class="c-end">${priced && d.end ? endCell(d.end) : ""}</span><span class="c-act">${act.join(" · ")}</span></div>`;
 }
 /* Preis eines fehlenden DLC wie in der Titelliste: Stern am Bestpreis, grün bei „kaufen“
-   und „gut“, Rabatt blau (0.53.3). Ein Urteil gibt es nur auf der Wishlist. */
-function dlcPrice(d){
+   und „gut“, Rabatt blau (0.53.3; ab 0.99.6 Rabatt in eigener Spalte). Ein Urteil gibt es nur auf der Wishlist. */
+function dlcPrice(d, bare){
   const tip = [d.champ !== null && d.champ !== undefined ? `Bestpreis ${eur(d.champ)} (24 Monate, alle zählenden Länder)` : "Bestpreis noch nicht bekannt",
     d.grade === "buy" ? "am Bestpreis oder knapp darüber" : d.grade === "good" ? "gutes Angebot" : ""].filter(Boolean).join(" · ");
   const cls = d.grade === "buy" ? "g-buy" : d.grade === "good" ? "g-good" : "";
-  return `${d.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}<span class="${cls}" title="${esc(tip)}">${d.est ? "ca. " : ""}${eur(d.eur)}</span>${d.sale && d.pct ? `<span class="pct">−${d.pct} %</span>` : ""}`;
+  return `${d.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}<span class="${cls}" title="${esc(tip)}">${d.est ? "ca. " : ""}${eur(d.eur)}</span>${!bare && d.sale && d.pct ? `<span class="pct">−${d.pct} %</span>` : ""}`;
+}
+/* DLC eines Spiels in Blöcken: ein Pass mit seinen Teilen bleibt zusammen. Offen ist ein Block, wenn einer darin fehlt */
+function collBlocks(list){
+  const blocks = [];
+  for(const d of list){
+    const last = blocks[blocks.length - 1];
+    if(d.in_pack && last && last[0].pack) last.push(d); else blocks.push([d]);
+  }
+  return blocks;
+}
+/* Zahlen je Spiel farbig (0.99.6, Entscheidung 20.10.2026): vorhanden grün, fehlen violett, ignoriert rot */
+function collSum(g){
+  const parts = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span> vorhanden` : g.have ? `<span class="gn">${g.have}</span> vorhanden` : "",
+    g.missing ? `<span class="warnc">${g.missing}</span> ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : ""].filter(Boolean);
+  // Wie ein Satz: „10 vorhanden und 7 ignoriert“, „3 vorhanden, 2 fehlen und 1 ignoriert“ (0.56.3)
+  return [parts.length > 1 ? parts.slice(0, -1).join(", ") + " und " + parts[parts.length - 1] : parts[0] || "",
+    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${g.missing_eur < 0.005 && g.missing_priced === g.missing ? "kostenlos" : eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
 }
 function collGame(g){
-  const shown = g.dlc.filter(d => !d.ignored && !d.gone), ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
+  const isOpen = d => !d.owned && !d.by_hand && !d.ignored && !d.gone;
+  const blocks = collBlocks(g.dlc.filter(d => !d.ignored && !d.gone));
+  const openRows = blocks.filter(b => b.some(isOpen)).flat(), haveRows = blocks.filter(b => !b.some(isOpen)).flat();
+  const ign = g.dlc.filter(d => d.ignored), gone = g.dlc.filter(d => d.gone);
   const all = !g.missing && !g.ignore_all ? "" : `<button class="link" data-act="dlcmark" data-s="${esc(g.slug)}" data-v="${g.ignore_all ? "" : "ignore_all"}" title="${g.ignore_all ? "Die DLC dieses Spiels wieder zählen" : "Alle DLC dieses Spiels, die du nicht hast, ausblenden"}">${g.ignore_all ? "DLC wieder zählen" : "alle DLC ignorieren"}</button>`;
-  // Je Art eine Zahl, ohne Gesamtzahl („10 von 17, 7 …“ las sich wie 17,7): „10 vorhanden und 7 ignoriert“.
-  // Alles da: „5 von 5“ grün, „vorhanden“ grau; nichts mehr offen: die Zahl vorhandener grün, ignorierte rot,
-  // Wörter grau (0.55.1, Wortlaut 0.56.2)
-  const parts = [g.have === g.dlc.length ? `<span class="gn">${g.have} von ${g.dlc.length}</span> vorhanden` : g.have ? (!g.missing ? `<span class="gn">${g.have}</span> vorhanden` : `${g.have} vorhanden`) : "",
-    g.missing ? `${g.missing} ${g.missing === 1 ? "fehlt" : "fehlen"}` : "", g.ignored ? `<span class="abv">${g.ignored}</span> ignoriert` : "", g.gone ? `${g.gone} nicht mehr erhältlich` : ""].filter(Boolean);
-  // Wie ein Satz: „10 vorhanden und 7 ignoriert“, „3 vorhanden, 2 fehlen und 1 ignoriert“ (0.56.3)
-  const sum = [parts.length > 1 ? parts.slice(0, -1).join(", ") + " und " + parts[parts.length - 1] : parts[0] || "",
-    g.missing_eur !== null && g.missing_eur !== undefined ? `fehlende jetzt ${g.missing_eur < 0.005 && g.missing_priced === g.missing ? "kostenlos" : eur(g.missing_eur)}${g.missing_priced < g.missing ? ` (${g.missing_priced} mit Preis)` : ""}` : ""].filter(Boolean).join(" · ");
-  const sumTip = `${g.dlc.length} DLC insgesamt`;
-  const key = "ign:" + g.slug;
-  const body = (shown.length ? `<table class="mini-t">${shown.map(collDlc).join("")}</table>` : "") +
-    (ign.length ? `<details class="fold" data-k="${esc(key)}" ${S.folds[key] ? "open" : ""}><summary class="hint">${ign.length} ignoriert</summary><table class="mini-t">${ign.map(collDlc).join("")}</table></details>` : "") +
-    (gone.length ? `<details class="fold" data-k="${esc("gone:" + g.slug)}" ${S.folds["gone:" + g.slug] ? "open" : ""}><summary class="hint">${gone.length} nicht mehr erhältlich</summary><table class="mini-t">${gone.map(collDlc).join("")}</table></details>` : "");
+  const sum = `<span class="mut" title="${g.dlc.length} DLC insgesamt">${collSum(g)}</span>`;
   const via = g.via ? ` <small class="mut">über ${esc(g.via)}</small>` : "";
-  // Vollständig (nichts mehr offen): eine Zeile, die DLC aufklappbar wie bei „alle ignoriert“ (0.53.1)
-  if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary>${esc(g.title)}${via} <span class="mut" title="${sumTip}">${sum}</span></summary>${all ? `<div class="cga">${all}</div>` : ""}<table class="mini-t">${g.dlc.map(collDlc).join("")}</table></details>`;
-  return `<section class="box cg"><h3>${esc(g.title)}${via} <span class="mut" title="${sumTip}">${sum}</span><span class="sp"></span>${all}</h3>${body}</section>`;
+  const sub = (k, rows, head) => rows.length ? `<details class="fold cgs" data-k="${esc(k + g.slug)}" ${S.folds[k + g.slug] ? "open" : ""}><summary class="hint">${head}</summary>${rows.map(collDlc).join("")}</details>` : "";
+  const body = openRows.map(collDlc).join("") + sub("have:", haveRows, `${haveRows.length} vorhanden`) + sub("ign:", ign, `${ign.length} ignoriert`) + sub("gone:", gone, `${gone.length} nicht mehr erhältlich`);
+  // Vollständig (nichts mehr offen): zugeklappt unter „Ohne offene DLC“ (0.53.1)
+  if(!g.missing) return `<details class="fold cgd" data-k="${esc("cg:" + g.slug)}" ${S.folds["cg:" + g.slug] || (S.rq && g.dlc.some(d => d.title.toLowerCase().includes(S.rq.toLowerCase()))) ? "open" : ""}><summary><b>${esc(g.title)}</b>${via} ${sum}</summary>${all ? `<div class="cga">${all}</div>` : ""}${g.dlc.map(collDlc).join("")}</details>`;
+  // Offene: klappbar, von Haus aus offen (0.99.6)
+  return `<details class="box cg cgo npf" data-kc="${esc("co:" + g.slug)}" ${S.folds["co:" + g.slug] ? "" : "open"}><summary><b>${esc(g.title)}</b>${via} ${sum}<span class="sp"></span>${all}</summary>${body}</details>`;
 }
 /* Suchen ohne Akzente, Satzzeichen und Leerzeichen: „pokemon“ findet „Pokémon“, „luigis“ „Luigi’s“
    (0.69 in der Sammlung, ab 0.76 in jedem Suchfeld) */
@@ -96,7 +118,8 @@ function viewCollection(){
   const missing = c.games.reduce((n, g) => n + g.missing, 0);
   // Filter und Reihenfolge direkt über den Spielen, unter Zahlen und Erklärung (0.58)
   const tools = `<div class="tools">${searchBox("Spiel oder DLC filtern")}
-    <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select></div>`;
+    <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select>
+    <span class="foldall"><button class="link" data-act="foldall" data-v="1" data-scope="#collopen">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="" data-scope="#collopen">alle zuklappen</button></span></div>`;
   let h = "";
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)
@@ -106,7 +129,7 @@ function viewCollection(){
     ${missing ? `<div class="cstat"><span><b>${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b>${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}
     <details class="fold" data-k="collhow" ${S.folds.collhow ? "open" : ""}><summary class="hint">So funktioniert die Sammlung</summary><p class="hint" style="margin:2px 0 8px">Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details></div>`;
-  h += tools + games.map(collGame).join("");
+  h += tools + `<div id="collopen">${games.map(collGame).join("")}</div>`;
   // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
   const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
   // Alle Spiele darin auf einmal auf- oder zuklappen, dezent hinter der Erklärung (0.91)

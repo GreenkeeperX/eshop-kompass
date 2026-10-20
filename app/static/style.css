@@ -323,7 +323,6 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .vd.wait,.vd.none{background:var(--chip);color:var(--muted)}
 .cg h3{font-size:14px;margin:2px 0 6px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
 .cg h3 .link{font-size:12.5px;font-weight:400}
-.cg tr.ign td{color:var(--muted)}
 .cg h3 .sp{flex:1}
 .cg details.fold{margin-top:4px}
 /* A–Z spaltenweise: erst die erste Spalte von oben nach unten (0.53.1) */
@@ -331,13 +330,21 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .cg .cl a{display:block;break-inside:avoid;padding:2px 0}
 details.cg > summary{cursor:pointer;font-size:14px}
 .cgl{margin-top:6px}
+.npr.cdr{grid-template-columns:minmax(0,1fr) 96px 84px 52px 110px 64px 230px;padding-left:6px}
+.cdr.undec{box-shadow:inset 3px 0 0 var(--warn);padding-left:12px}
+.cdr.ign .t,.cdr.ign .c-vd{color:var(--muted)}
+.npr.cdr.part{padding-left:24px}
+.cdr .c-act{font-size:12.5px}
+details.cgo>summary{cursor:pointer;font-size:14px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+details.cgo>summary .sp{flex:1}
+details.cgo>summary::before{content:"▸";color:var(--muted);font-size:12px}
+details.cgo[open]>summary::before{content:"▾"}
+details.cgs{margin-top:4px}
+details.cgs>summary{cursor:pointer;font-size:13px;color:var(--muted)}
 .cgd{border-top:1px solid var(--line);padding:4px 0}
 .cgd > summary{cursor:pointer;font-size:13.5px}
 .cgd .cga{font-size:12.5px;margin:4px 0}
 .cg h3 .mut{font-weight:400;font-size:12.5px}
-.cg table{width:100%}
-.cg td{vertical-align:top;padding:4px 6px 4px 0;border-top:1px solid var(--line)}
-.cg td:first-child{width:48%}
 .kb{border:1px solid var(--line);background:none;border-radius:6px;padding:0 7px;font-size:12px}
 .kb.on{background:var(--accent);border-color:var(--accent);color:var(--card)}
 a.tl{color:inherit;text-decoration:none}
@@ -556,6 +563,7 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
   .npr .c-end:empty,.npr .c-pct:empty{display:none}
   .np details.npgrp details.npf{margin-left:0}
   .np details.npg .npr{padding-left:12px}
+  .npr.cdr.part{padding-left:18px}
 }
 
 /* Cashback-Hinweis (0.99.4): blau wie Rabatte, nicht gold (gold heißt Bestpreis) */

@@ -54,7 +54,7 @@ document.addEventListener("click", async e => {
     if(a === "tab"){ go(d.tab); }
     else if(a === "legend"){ openLegend(); }
     // Alle Spiele eines Kastens auf einmal auf- oder zuklappen; das toggle-Ereignis merkt sie wie von Hand (0.91)
-    else if(a === "foldall"){ const box = el.closest("details.box") || el.closest(".box"); if(box) box.querySelectorAll("details.cgd, details.npf").forEach(x => { x.open = !!d.v; }); }
+    else if(a === "foldall"){ const box = d.scope ? document.querySelector(d.scope) : el.closest("details.box") || el.closest(".box"); if(box) box.querySelectorAll("details.cgd, details.npf").forEach(x => { x.open = !!d.v; }); }
     else if(a === "thm"){ themeMenu($("thmMenu").hidden); }
     else if(a === "thmset"){ setTheme(d.v); }
     else if(a === "lgclose"){ $("legend").close(); }
