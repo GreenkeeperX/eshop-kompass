@@ -382,7 +382,8 @@ vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“
 dazugenommenen Titel dieses Landes vergessen.
 
 **Passt dazu:** Ein Schritt und jede Länderkarte (der Korb je Land) schlagen bis zu zwei
-Wishlist-Titel vor, die zusätzlich am meisten sparen; **Weglassen spart** nennt bis zu zwei Titel,
+Wishlist-Titel vor, die zusätzlich am meisten sparen, auch wenn etwas in den Rest passt: Der Korb
+wird größer und lässt einen neuen Rest (Titel aus „Passt in den Rest“ stehen nicht noch einmal da); **Weglassen spart** nennt bis zu zwei Titel,
 ohne die der Kauf hier mehr spart, als sie anderswo kosten. „spart“ ist, was der Titel ohne den
 Wechsel hierher kosten würde (im günstigsten zählenden Land gleicher oder leichterer Stufe oder im
 Kontoland), minus dem, was der Kauf hier mit ihm mehr kostet. Der Aufpreis ist oft kleiner als der

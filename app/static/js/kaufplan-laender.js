@@ -473,7 +473,8 @@ function suggestHtml(p, step){
   const planned = new Set(step && S.kauf ? S.kauf.steps.flatMap(x => x.items.map(i => i.slug)) : p.items.map(i => i.slug));
   // Was du hier mit × herausgenommen hast, schlägt die Karte nicht gleich wieder vor (0.95.1)
   (step ? (p.skipped || []).map(x => x.slug) : ((S.ui.overrides || {})[p.code] || {}).remove || []).forEach(x => planned.add(x));
-  let h = "", restHit = false;
+  let h = "";
+  const inRest = new Set();
   if(p.rest > 0){
     // Mitgliedschaft passt in den Rest (0.57.1); die besten Treffer als Knöpfe, auch zwei Titel zusammen,
     // alles andere im Auswahlfeld (0.70, 0.78); fehlende DLC deiner Spiele dahinter (0.77)
@@ -492,14 +493,15 @@ function suggestHtml(p, step){
       (more.length ? `<optgroup label="Wishlist">${more.map(f => optOf(f, f.title + (f.dlc ? " (DLC)" : ""))).join("")}</optgroup>` : "") +
       (xs.length ? `<optgroup label="DLC deiner Spiele, nicht auf der Wishlist">${xsSorted.map(f => optOf(f, (f.game ? f.game + ": " : "") + f.short)).join("")}</optgroup>` : "") + `</select>` : "";
     const btns = nsoFit.concat(top.map(x => x.h));
-    restHit = !!(btns.length || sel);
+    fill.forEach(f => inRest.add(f.slug));
     // Auch ohne Treffer sichtbar (0.94): Die Zeile fehlt nicht, sie sagt, dass nichts passt
     h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` +
       (btns.length || sel ? btns.join(" ") + sel : `<small class="mut">nichts von deiner Wishlist oder den DLC deiner Spiele</small>`) + `</div>`;
   }
   // Was dazu lohnt: Ein weiterer Titel spart hier gegenüber dem Kauf ohne diesen Wechsel (0.76)
-  // Nur wenn nichts in den Rest passt (wie bis 0.93): sonst stünden dieselben Titel zweimal da
-  const fillers = restHit ? [] : (p.fillers || []).filter(f => !f.slugs.some(x => planned.has(x))).slice(0, S.dense && !step ? 1 : 2);
+  // Immer, als Alternative zum Auffüllen: Der Korb wird größer, der Rest ein anderer (0.98.1). Ohne Titel,
+  // die schon unter „Passt in den Rest“ stehen, sonst stünden sie zweimal da
+  const fillers = (p.fillers || []).filter(f => !f.slugs.some(x => planned.has(x) || inRest.has(x))).slice(0, S.dense && !step ? 1 : 2);
   if(fillers.length) h += `<div class="fillrow"><span class="mut">Passt dazu:</span> ` + fillers.map(f =>
     `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, cur, f.slugs.length > 1 ? verb2 : verb))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`).join(" ") + `</div>`;
   // Was weglassen spart: Ohne diesen Titel kostet der Kauf hier weniger, als er anderswo kostet
