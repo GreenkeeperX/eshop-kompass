@@ -337,6 +337,8 @@ details.cg > summary{cursor:pointer;font-size:14px}
 .cdr.ign .t,.cdr.ign .c-vd{color:var(--muted)}
 .npr.cdr.part{padding-left:24px}
 .cdr .c-act{font-size:12.5px}
+button.vdb{border:0;background:none;padding:0;cursor:pointer;font:inherit}
+button.vdb:hover .vd{text-decoration:underline}
 details.cgo>summary{cursor:pointer;font-size:14px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
 details.cgo>summary .sp{flex:1}
 details.cgo>summary::before{content:"▸";color:var(--muted);font-size:12px}

@@ -34,7 +34,8 @@ function collDlc(d){
   else if(d.ignored){ st = `<span class="abv">ignoriert</span>`; if(d.mark === "ignore") act.push(mk("", "zurücksetzen", "Wieder als fehlend zählen")); }
   else if(d.gone){ st = `<span class="mut" title="Die ID-Suche fand ihn in keiner Region, mehrmals: meist nur im Spiel erhältlich oder aus dem eShop verschwunden">nicht mehr erhältlich</span>`; act.push(mk("have", "habe ich", "Hast du schon")); }
   else {
-    st = d.wish ? pill(d.verdict) : `<span class="warnc">fehlt</span>`;
+    // Auf der Wishlist führt das Urteil zu den Einzelheiten dort (ab 1.0.1 statt eigenem Link „Einzelheiten“)
+    st = d.wish ? `<button class="vdb" data-act="gotitle" data-s="${esc(d.slug)}" title="Einzelheiten in der Wishlist: Preise je Land, Grund des Urteils, Verlauf">${pill(d.verdict)}</button>` : `<span class="warnc">fehlt</span>`;
     const p = d.pack;
     if(p && p.open && p.single !== null && d.eur !== null && d.eur !== undefined){
       const b = (on, t) => on ? `<b>${t}</b>` : t;
@@ -42,7 +43,6 @@ function collDlc(d){
     } else if(p && p.open && d.eur !== null && d.eur !== undefined)
       note = `<span title="Mindestens ein fehlender Teil ist einzeln nicht kaufbar oder hat noch keinen Preis; dann gibt es ihn nur über den Pass">einzeln nicht alle kaufbar</span>`;
     if(d.not_in_pack){ note = (note ? note + " · " : "") + "laut dir nicht im Paket"; act.push(mk("", "zurücksetzen", "Wieder als im Paket enthalten zählen")); }
-    if(d.wish) act.push(`<button class="link" data-act="gotitle" data-s="${esc(d.slug)}">Einzelheiten</button>`);
     act.push(mk("have", "habe ich", "Hast du schon, etwa aus einem Paket, und die DekuDeals-Sammlung kennt es nicht"), mk("ignore", "ignorieren", "Interessiert dich nicht: zählt nicht mehr als fehlend"));
   }
   const priced = open && d.eur !== null && d.eur !== undefined;

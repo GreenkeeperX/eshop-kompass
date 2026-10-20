@@ -576,7 +576,8 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
 - **Preise fehlender DLC:** der günstigste Preis je DLC, je Spiel und insgesamt die Summe, mit
   denselben Zeichen wie die Titelliste (Stern am Bestpreis, grün bei „kaufen“ oder „gut“,
   Rabatt blau), soweit Tiefstpreise bekannt sind. Steht ein fehlender DLC auf deiner Wishlist,
-  stehen Urteil, Einkaufspreis und Land dabei, sonst ein Link zu DekuDeals, um ihn auf die
+  stehen Urteil, Einkaufspreis und Land dabei (ein Klick aufs Urteil öffnet seine Einzelheiten in
+  der Wishlist), sonst ein Link zu DekuDeals, um ihn auf die
   Wishlist zu setzen. Upgrade-Pakete für die Switch 2 sind markiert.
 - **Pakete:** Spiele, die du nur über eine Edition hast, stehen mit „über …“, ihre neueren DLC
   als fehlend, enthaltene als „hast du, im Paket …“. Liegt DekuDeals bei einem Teil falsch,

@@ -168,7 +168,8 @@ Preis“).
 
 Ab 0.99.6 nach der Checkliste (Entscheidung 20.10.2026): je DLC eine Rasterzeile wie unter „Nicht im
 Plan“ (`.npr.cdr`, `collDlc`), Spalten Name (darunter klein Pass-Vergleich oder Paket), Stand („fehlt“
-violett, Urteil-Pill auf der Wishlist, „✓ hast du“ grau, „ignoriert“ rot), Preis als Link zu
+violett, Urteil-Pill auf der Wishlist, ab 1.0.1 als Link zu den Einzelheiten in der Wishlist statt
+eines eigenen Links „Einzelheiten“, damit „habe ich · ignorieren“ immer an derselben Stelle stehen, „✓ hast du“ grau, „ignoriert“ rot), Preis als Link zu
 DekuDeals für das Land, Rabatt, Land, bis, Handlungen mit „·“. Teile eines Passes stehen mit „↳“
 eingerückt unter ihm (`.cdr.part`, `collBlocks`). Je Spiel mit offenen DLC ein klappbarer Kasten
 (`details.cgo`, von Haus aus offen, gemerkt wird das Zuklappen); oben das Offene, darunter
