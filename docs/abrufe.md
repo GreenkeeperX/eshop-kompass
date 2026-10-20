@@ -17,6 +17,10 @@ Commit an. Stand: 0.68.0. Maßgeblich bleibt der Code; Konstanten stehen in `app
   die nächsten 24 Stunden (`DEKU_REST_SECONDS`, `data.deku_wait`) auch kein anderer Abgleich;
   Nintendo-Preise, Kurse und Karten laufen weiter. Warteräume und Bot-Schutz werden nicht
   umgangen; Amazon liefert seine Prüfseite oft mit 503, das gilt dort wie eine Sperre.
+- **Schritte für sich (ab 0.99.2):** Nach dem Speichern der Preise läuft jeder weitere Schritt
+  (Sprachen, Tiefstpreise, Pakete, DLC-IDs, titledb, eShop-Namen) für sich; ein Fehler darin steht im
+  Protokoll („Schritt … abgebrochen“), die übrigen laufen weiter. Die Ruhezeit nach einer Sperre von
+  DekuDeals gilt auch nach einem Abbruch.
 - **Nichts still löschen:** Ein Fehler auf einer Folgeseite von Wishlist oder Sammlung heißt
   „nicht lesbar“, nicht „Liste zu Ende“ (nur 404 und andere 4xx außer Sperren beenden das
   Blättern). Fehlt einer Artikelseite der Abschnitt „All time low“ oder der DLC-Abschnitt, obwohl
@@ -100,7 +104,7 @@ fragt der Test DekuDeals nicht weiter an und sagt das je Probe:
 |---|---|---|
 | `settings.json` | nur Eingaben | dauerhaft |
 | `data.json` | Abgleichsdaten | `prices`, `fx`, `owned`, `card_prices`, `offer_prices`, `checks` werden überschrieben; `items`, `lows` und `rel` verlieren Titel nach 180 Tagen ohne Wishlist und Sammlung; `extra`, `glangs`, `links` und `card_hist` räumen sich selbst auf |
-| `history.json` | eigene Preisaufzeichnung | wächst, wird nie gekürzt, weil sie unersetzlich ist |
+| `history.json` | eigene Preisaufzeichnung | wächst, wird nie gekürzt, weil sie unersetzlich ist; ist eine Datei kaputt, bleibt sie als `<Name>.kaputt-<Zeit>` liegen (ab 0.99.2) |
 | `eshop_history.json` | Kaufverlauf | bis 3000 Einträge |
 | `purchases.json`, `ui.json` | Kaufprotokoll, Ansicht | dauerhaft |
 

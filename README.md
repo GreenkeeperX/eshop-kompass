@@ -647,7 +647,9 @@ Angaben, deine Zuordnungen bleiben, kein Eintrag verschwindet. Der Abgleich läu
   steht dabei, ob du das Hauptspiel hast.
 - **Sicherung:** Einstellungen, Karten, Zielpreise, Körbe, Kaufprotokoll, Haken und
   Zuordnungen sowie die eigene Preisaufzeichnung als eine Datei. Beim Einlesen wird die
-  Aufzeichnung ergänzt, nicht ersetzt; alles andere holt das Tool beim Abgleich neu.
+  Aufzeichnung ergänzt, nicht ersetzt; alles andere holt das Tool beim Abgleich neu. Eine
+  Sicherung darf bis 50 MB groß sein. Ist eine Datei im Datenordner kaputt (etwa nach einem
+  Stromausfall), startet das Tool mit der Vorgabe und hebt die Datei als `…kaputt-<Zeit>` auf.
   „Abgleichsdaten herunterladen“ lädt die gesamten Abgleichsdaten (IDs, Sprachen, Preise,
   `data.json`) und das Protokoll als Datei, ohne Einstellungen und ab 0.99.1 ohne Kaufverlauf.
 - **Protokoll:** läuft während eines Abgleichs mit, nennt oben Start und Version des Laufs und

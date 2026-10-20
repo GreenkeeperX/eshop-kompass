@@ -113,14 +113,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _body(self):
+    def _body(self, limit=1_000_000):
         # Nur JSON annehmen: Ein einfaches Formular einer fremden Seite im
         # Browser kann so keine Einstellungen ändern oder Abgleiche starten.
         ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         if ctype != "application/json":
             raise ValueError("nur application/json")
         n = int(self.headers.get("Content-Length") or 0)
-        if n < 0 or n > 1_000_000:          # negativ hieße: lesen bis zum Ende (0.99.1)
+        if n < 0 or n > limit:          # negativ hieße: lesen bis zum Ende (0.99.1)
             raise ValueError("zu groß")
         body = json.loads(self.rfile.read(n) or b"{}")
         if not isinstance(body, dict):
@@ -184,7 +184,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split("?")[0]
         try:
-            body = self._body()
+            # Eine Sicherung wächst mit Preisaufzeichnung und Kaufverlauf über 1 MB (0.99.2)
+            body = self._body(50_000_000 if path == "/api/import" else 1_000_000)
             if path == "/api/plans":
                 with planner.shared_contexts():
                     res, split = planner.plans(store.load_data(), store.load_settings(),
@@ -216,8 +217,11 @@ class Handler(BaseHTTPRequestHandler):
                 eh = body.get("eshop_history")
                 if isinstance(eh, dict) and isinstance(eh.get("entries"), list):
                     store.merge_eshop_history([e for e in eh["entries"] if isinstance(e, dict) and e.get("key")], eh.get("at"), eh.get("seit") or 0)
-                    for k, v in (eh.get("picks") or {}).items():
-                        store.pick_eshop_history(str(k), str(v or ""))
+                    for k, v in (eh.get("picks") if isinstance(eh.get("picks"), dict) else {}).items():
+                        try:
+                            store.pick_eshop_history(str(k), str(v or ""))
+                        except ValueError:
+                            pass          # unbekannter Titel: diese Zuordnung fällt weg, der Rest kommt (0.99.2)
                 self._send(200, {"ok": True})
             elif path == "/api/bought":
                 slugs = [str(x) for x in (body.get("slugs") or [])][:200]

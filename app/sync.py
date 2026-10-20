@@ -2001,6 +2001,15 @@ def import_eshop_history(text, now=None):
             "open": sum(1 for r in rows if r["how"] is None)}
 
 
+def _deku_rest(data, resting):
+    """Ruhezeit nach einer Sperre von DekuDeals setzen oder, ohne Sperre, aufheben."""
+    if sources.deku_blocked and not resting:
+        data["deku_wait"] = time.time() + DEKU_REST_SECONDS
+        _log(f"DekuDeals hat gesperrt (HTTP {sources.deku_blocked}): Die nächsten {DEKU_REST_SECONDS // 3600} Stunden fragt kein Abgleich dort an")
+    elif not resting:
+        data.pop("deku_wait", None)
+
+
 def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
     if not _lock.acquire(blocking=False):
         return False
@@ -2046,7 +2055,19 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
         data["last_sync"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         store.save_data(data)      # ab hier ist die Oberfläche aktuell
         langs_budget = {}         # höchstens LANG_PER_SYNC Seiten je Region im ganzen Abgleich
-        sync_langs(data, settings, fetch, sleep, budget=langs_budget)
+        # Ab hier läuft jeder Schritt für sich (0.99.2): Ein Fehler in einem überspringt nicht die
+        # übrigen, und die Ruhezeit nach einer Sperre wird trotzdem gespeichert
+        failed = []
+
+        def safe(fn, *a, **kw):
+            try:
+                fn(*a, **kw)
+            except Exception as e:
+                name = getattr(fn, "__name__", "?")
+                failed.append(name)
+                _log(f"Schritt {name} abgebrochen: {e!r}")
+                traceback.print_exc()
+        safe(sync_langs, data, settings, fetch, sleep, budget=langs_budget)
         if data.get("lows_v") != LOWS_VERSION:
             # Frühere Versionen lasen teils den Händler- statt den digitalen
             # Tiefstpreis. Von DekuDeals übernommene Werte neu laden.
@@ -2057,21 +2078,17 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
                             e.pop(k, None)
             data["lows_v"] = LOWS_VERSION
             _log("Tiefstpreise werden neu geladen (Lesefehler bei Spielen für Switch und Switch 2 behoben)")
-        sync_lows(data, settings, fetch, sleep)
-        sync_related(data, settings, fetch, sleep)
-        sync_extra_ids(data, settings, fetch, sleep, report=False)
-        sync_titledb(data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
-        sync_eshop_names(data, fetch)           # Kauftitel aus Japan und anderen Ländern zuordnen (0.72)
+        safe(sync_lows, data, settings, fetch, sleep)
+        safe(sync_related, data, settings, fetch, sleep)
+        safe(sync_extra_ids, data, settings, fetch, sleep, report=False)
+        safe(sync_titledb, data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
+        safe(sync_eshop_names, data, fetch)           # Kauftitel aus Japan und anderen Ländern zuordnen (0.72)
         # Stand der ID-Suche erst jetzt, mit den IDs aus titledb (0.48.1)
-        _log_extra_ids(data.get("extra") or {}, data.get("glangs") or {}, needed_families(settings), time.time())
-        sync_langs(data, settings, fetch, sleep, budget=langs_budget, report_idle=False)    # Sprachen der neu gefundenen DLC
-        if sources.deku_blocked and not resting:
-            data["deku_wait"] = time.time() + DEKU_REST_SECONDS
-            _log(f"DekuDeals hat gesperrt (HTTP {sources.deku_blocked}): Die nächsten {DEKU_REST_SECONDS // 3600} Stunden fragt kein Abgleich dort an")
-        elif not resting:
-            data.pop("deku_wait", None)
+        safe(_log_extra_ids, data.get("extra") or {}, data.get("glangs") or {}, needed_families(settings), time.time())
+        safe(sync_langs, data, settings, fetch, sleep, budget=langs_budget, report_idle=False)    # Sprachen der neu gefundenen DLC
+        _deku_rest(data, resting)
         store.save_data(data)
-        status["ok"] = True
+        status["ok"] = not failed
         if manual["on"]:
             _log("Von Hand gestartet, Ruhezeiten übergangen: " + (", ".join(manual["skipped"]) or "keine fällig")
                  + "; Sperren, Warteraum und Seiten je Abgleich gelten weiter")
@@ -2080,6 +2097,12 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
         status["ok"] = False
         _log(f"Abbruch: {e}")
         traceback.print_exc()
+        if sources.deku_blocked and not (store.load_data().get("deku_wait") or 0) > time.time():
+            # Auch nach einem Abbruch ruht DekuDeals nach einer Sperre (0.99.2), sonst fragte der
+            # nächste Abgleich gleich wieder an
+            d = store.load_data()
+            _deku_rest(d, False)
+            store.save_data(d)
     finally:
         sources.item_cache = None
         sources.deku_blocked = None

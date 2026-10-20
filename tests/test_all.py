@@ -1762,6 +1762,37 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(list(h), ["BR", "JP"])
         store.save_history({})
 
+    def test_broken_file_is_kept_not_overwritten(self):
+        # Kaputte Datei (0.99.2): Vorgabe laden, die Datei aber aufheben statt sie beim nächsten Speichern zu verlieren
+        path = os.path.join(store.DATA_DIR, "history.json")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write('{"BR": {"hades": [["2026-10')
+        with mock.patch("builtins.print"):
+            self.assertEqual(store.load_history(), {})
+        kept = [n for n in os.listdir(store.DATA_DIR) if n.startswith("history.json.kaputt-")]
+        self.assertEqual(len(kept), 1)
+        os.remove(os.path.join(store.DATA_DIR, kept[0]))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("[]")                         # falsche Form zählt genauso
+        with mock.patch("builtins.print"):
+            self.assertEqual(store.load_history(), {})
+        for n in os.listdir(store.DATA_DIR):
+            if n.startswith("history.json.kaputt-"):
+                os.remove(os.path.join(store.DATA_DIR, n))
+        store.save_history({})
+
+    def test_backup_keeps_cards_of_germany_with_balance(self):
+        # Eine Sicherung hat für Deutschland leere Karten; die leerten bis 0.99.1 die von DG (0.99.2)
+        before = store.load_settings()
+        store.save_settings({"countries": {"DG": {"cards": "25 | 20.50"}}})
+        s = store.load_settings()
+        store.save_settings(s)
+        self.assertEqual(store.load_settings()["countries"]["DG"]["cards"], "25 | 20.50")
+        # Ältere Datei mit Karten bei Deutschland: kommen weiter zu DG, wenn DG keine hat
+        store.save_settings({"countries": {"DG": {"cards": ""}, "DE": {"cards": "50 | 45"}}})
+        self.assertEqual(store.load_settings()["countries"]["DG"]["cards"], "50 | 45")
+        store.save_settings({"countries": {"DG": before["countries"]["DG"]}})
+
     def test_ui_state_and_settings_validation(self):
         ui = store.save_ui({"basket": ["a", "b"], "targets": {"a": "8,5", "b": "7.5", "c": 0},
                             "hidden": ["NZ"], "sort": "quatsch", "dense": 0,
@@ -2132,6 +2163,13 @@ class SyncTest(unittest.TestCase):
         # Wishlist (2), Sammlung (2), Kurse (1), Preise (19 Länder minus das ruhende Chile)
         self.assertEqual(len(calls) - n, 2 + 2 + 1 + 18)
         self.assertEqual(len(store.load_history()["BR"]["vs-foscari"]), 1)  # kein Preiswechsel
+        # Ein Fehler in einem späten Schritt überspringt die übrigen nicht (0.99.2)
+        with mock.patch.object(sync, "sync_related", side_effect=KeyError("x"), __name__="sync_related"), \
+                mock.patch.object(sync, "sync_titledb") as tdb, mock.patch("traceback.print_exc"):
+            sync.run_sync(fetch=fake, sleep=lambda s: None)
+        self.assertFalse(sync.status["ok"])
+        self.assertTrue(any("sync_related abgebrochen" in l for l in sync.status["log"]))
+        self.assertTrue(tdb.called)
 
     def test_low_is_lowered_by_own_tracking(self):
         data = {"lows": {"BR": {"a": {"low": 5.0, "src": "deku"}, "b": {"low": 99.0}}}}

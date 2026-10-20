@@ -2,6 +2,7 @@
 import json
 import re
 import os
+import sys
 import threading
 from datetime import date, datetime, timezone
 
@@ -67,9 +68,23 @@ def _path(name):
 def _load(name, default):
     try:
         with open(_path(name), encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, ValueError):
+            got = json.load(f)
+        if type(got) is type(default):
+            return got
+        why = "falsche Form"
+    except FileNotFoundError:
         return json.loads(json.dumps(default))
+    except ValueError as e:
+        why = str(e)[:80]
+    # Kaputte Datei (0.99.2): nicht still durch die Vorgabe ersetzen, sonst überschriebe das nächste
+    # Speichern sie endgültig. Sie bleibt daneben liegen, das Protokoll des Containers nennt sie
+    keep = f"{_path(name)}.kaputt-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    try:
+        os.replace(_path(name), keep)
+        print(f"{name} nicht lesbar ({why}), aufgehoben als {os.path.basename(keep)}", file=sys.stderr)
+    except OSError:
+        pass
+    return json.loads(json.dumps(default))
 
 
 def _save(name, obj):
@@ -77,6 +92,8 @@ def _save(name, obj):
     tmp = _path(name) + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=1)
+        f.flush()
+        os.fsync(f.fileno())      # erst auf der Platte, dann umbenennen: kein leeres File nach Stromausfall
     os.replace(tmp, _path(name))
 
 
@@ -236,13 +253,15 @@ def save_settings(new):
         de = incoming.get(countries.REFERENCE)
         if isinstance(de, dict) and ("cards" in de or "cards_add" in de):
             # Karten für Deutschland (etwa aus einer älteren Einlese-Datei) gehören jetzt
-            # zu „Deutschland mit Guthaben“
-            dg = dict(incoming.get("DG") or {}, enabled=True)
-            for k in ("cards", "cards_add"):
-                if k in de:
-                    dg[k] = de[k]
+            # zu „Deutschland mit Guthaben“. Nur, wenn dort wirklich welche stehen (0.99.2): Jede
+            # Sicherung hat für Deutschland leere Karten, und die leerten die von DG
+            if str(de.get("cards") or "").strip() or de.get("cards_add"):
+                dg = dict(incoming.get("DG") or {}, enabled=True)
+                for k in ("cards", "cards_add"):
+                    if de.get(k) and not dg.get(k):
+                        dg[k] = de[k]
+                incoming["DG"] = dg
             incoming[countries.REFERENCE] = {k: v for k, v in de.items() if k not in ("cards", "cards_add")}
-            incoming["DG"] = dg
         for code, c in incoming.items():
             if code not in s["countries"] or not isinstance(c, dict):
                 continue
