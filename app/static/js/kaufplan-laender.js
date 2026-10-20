@@ -535,7 +535,9 @@ function zeroHtml(p, step, planned){
     const key = `zero:${p.code}:${kind}`;
     const cards = x.cards.map(k => `${k.count}× ${money(k.face, cur)}`).join(" + ");
     const cost = x.extra >= 0.005 ? `für <b>${eur(x.extra)}</b> mehr` : `<b>ohne Zuzahlung</b>`;
-    const head = `${kind === "exact" ? "Genau Null" : "Fast Null"} ${cost} (statt ${was} Rest${kind === "near" ? `, bleiben ${money(x.left, cur)}` : ""})`;
+    // Fast Null in derselben Einheit wie „statt“ (1.1.2): der Rest danach zum selben Kurs, Landeswährung im Tooltip
+    const left = !p.rest_lost ? money(x.left, cur) : x.left * p.rest_lost / p.rest < 0.005 ? "unter 0,01 €" : eur(x.left * p.rest_lost / p.rest);
+    const head = `${kind === "exact" ? "Genau Null" : "Fast Null"} ${cost} (${kind === "near" ? `Rest ${left} statt ${was}` : `statt ${was} Rest`})`;
     const best = x.known ? ` <small style="display:inline">· ${x.at_best} von ${x.known} am Bestpreis${x.over >= 0.005 ? `, zusammen <span class="abv">+${eur(x.over)}</span> über Bestpreis` : ""}</small>` : "";
     // Preise als Link wie überall (in den eShop, ohne eShop-Seite zum Verlauf bei DekuDeals)
     const price = i => { const r = rowOf(i.slug), cell = r && r.cells ? r.cells[p.code] : null;

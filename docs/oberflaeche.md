@@ -192,11 +192,12 @@ dahinter klein grün „am Bestpreis“ oder rot „+x € über Bestpreis“ (`
 Bestpreis der letzten 24 Monate, ab 0.77). Der Tooltip (`fillTip`) nennt beide Beträge. Ab 0.77.1
 schlägt der Planer nur Titel vor, die höchstens „gut“ über ihrem Bestpreis liegen (`_fillers`, `ctx.grade`).
 
-„Genau Null für **x €** mehr (statt y Rest)“ und „Fast Null für **x €** mehr (statt y Rest, bleiben z)“
+„Genau Null für **x €** mehr (statt y Rest)“ und „Fast Null für **x €** mehr (Rest z statt y)“
 (ab 1.1.0, `zeroHtml`, Daten `p.fill_zero`): nur bei Rest in einem Land, wo er stört (verfällt beim
 nächsten Wechsel, Stufe schwer, „Rest blockiert“). Ab 1.1.1 klappbar wie „Rechnung“ (`details.zero`,
 `data-k`, zu als Vorgabe), Kopfzeile ohne Doppelpunkt in einer Größe, nur der Betrag fett. „statt y
-Rest“: verfällt er im Plan, sein Wert in Euro (`rest_lost`), sonst der Rest in Landeswährung.
+Rest“: verfällt er im Plan, sein Wert in Euro (`rest_lost`), sonst der Rest in Landeswährung; der
+Rest z bei „Fast Null“ in derselben Einheit, zum selben Kurs (ab 1.1.2, Landeswährung im Tooltip).
 Aufgeklappt „n Titel:“ mit DLC-Marke und Preis als Link (`shopLink`), dahinter klein „n von m am
 Bestpreis, zusammen **+x €** über Bestpreis“ (nur der Betrag rot) und der Knopf „alle dazunehmen“
 (Schritt `planfill`, Länderkarte `add`). Ohne Zuzahlung steht „ohne Zuzahlung“ fett. Gibt es keinen
