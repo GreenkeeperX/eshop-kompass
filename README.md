@@ -9,6 +9,23 @@ Regeln**, nach denen das Tool rechnet, und **Nachschlagen** je Reiter. Am Ende s
 Betrieb, Abrufe und Prüfung. Was wann dazukam, steht in der Git-Geschichte, Geplantes in
 der [ROADMAP](ROADMAP.md).
 
+**Version 1.0** (20.10.2026) bringt keine neuen Funktionen, sondern heißt: geprüft, robust,
+vollständig beschrieben. Vor 1.0 liefen Prüfungen zu Rechnung, Daten, Abrufen, Sicherheit,
+Oberfläche und Doku. Seither gilt:
+
+- Jede Rechenregel dieser Anleitung ist durch einen Test belegt, die Zeilen eines Schritts ergeben
+  auf den Cent die Summe, und Schätzwerte tragen „≈“ oder „ca.“.
+- Ein leerer Datenordner und alte Datenstände starten ohne Fehler. Kaputte Dateien bleiben als
+  `<name>.kaputt-<Zeit>` liegen und werden gemeldet, und eine Sicherung lässt sich vollständig
+  zurückspielen.
+- Fremde Texte können in der Oberfläche keinen Code ausführen. Der Server nimmt nur begrenzte
+  JSON-Anfragen an und antwortet nur unter bekannten Adressen (siehe Betrieb). Der Container
+  bleibt gehärtet.
+- Fällt eine Quelle aus, rechnet das Tool mit dem Letzten weiter und sagt es. Es fragt dann nie
+  häufiger nach, und ein Fehler in einem Schritt des Abgleichs hält die anderen nicht auf.
+- Jede Ansicht folgt der Checkliste in [docs/oberflaeche.md](docs/oberflaeche.md) und ist am
+  Handy ohne Seitwärtsrollen bedienbar.
+
 ## Kurzanleitung
 
 ### Starten
