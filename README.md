@@ -169,7 +169,9 @@ Plan“ („Wechsel blockiert“), bis das Guthaben aufgebraucht ist oder der Su
 Jeder Europreis eines Guthabenlandes rechnet mit den Karten, die du für genau diesen Betrag
 kaufen würdest (die günstigste Kombination, die ihn deckt), anteilig. Für ein Spiel zu
 60 MXN zählt also die 100er Karte, nicht der bessere Kurs einer 1000er. Im Paket teilen sich
-die Titel die Karten. Kaufst du einen Titel allein, brauchst du meist mehr Guthaben, als er
+die Titel die Karten: Die Zeilen eines Schritts zeigen, was du im Paket zahlst, auf den Cent so
+verteilt, dass sie zusammen die Spiele des Schritts ergeben, auch wenn „das Günstigere“ das Paket
+mit Kreditkarte zahlt (ab 0.99.3). Euro-Guthaben ohne Kartenpreis zählt zum Nennwert. Kaufst du einen Titel allein, brauchst du meist mehr Guthaben, als er
 kostet; was das kostet, nennt der Tooltip als „allein gekauft“ mit Karten und Rest.
 
 Den Preis einer Karte nimmt das Tool in dieser Reihenfolge:

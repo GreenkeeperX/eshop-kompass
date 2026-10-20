@@ -350,7 +350,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "packed": packed,
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
             "ref_total": _r(ref_total), "saving": _r(ref_total - games),
-            "rest_value": _r(total - games),
+            "rest_value": _r(sum(p.get("rest_value") or 0 for p in steps)),   # je Schritt summiert (0.99.3)
             "rest_lost": _r(sum(p.get("rest_lost") or 0 for p in steps)),
             "include_good": include_good,
             "bought_waiting": [ctx.title(s) for s in ctx.order if s in done],

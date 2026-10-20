@@ -1750,6 +1750,26 @@ class PlanTest(unittest.TestCase):
         self.assertEqual((r["verdict"], r["reason"]), ("none", "kostenlos"))
 
 
+class StepRowsTest(unittest.TestCase):
+    """Preise je Zeile eines Schritts (0.99.3): was du zahlst, auf den Cent die Spiele des Schritts."""
+    def test_card_payment_rows_and_cent_sum(self):
+        data, s = sample()
+        s["countries"]["BR"]["pay"] = "auto"
+        s["countries"]["BR"]["cards"] = "100=16.00"
+        for slug, reg, disc in (("hades", 150, 90), ("spiritfarer", 200, 150)):
+            data["prices"]["BR"][slug] = {"status": "onsale", "currency": "BRL", "regular": reg, "discount": disc,
+                                          "start": "2026-10-01T00:00:00Z", "end": "2026-10-20T00:00:00Z"}
+        br = {p["code"]: p for p in planner.plans(data, s, basket=["hades", "spiritfarer"], now=NOW)}["BR"]
+        self.assertEqual(br["via"], "card")
+        self.assertAlmostEqual(sum(i["eur"] for i in br["items"]), br["games_cost"], places=2)
+        for i in br["items"]:
+            self.assertEqual(i["over"], i["alt"] is not None and i["eur"] > i["alt"] + 0.005)
+        # Auf den Cent: Zeilen ergeben zusammen die Spiele, in jedem Land mit Kartenpreis
+        for p in planner.plans(data, sample()[1], basket=["hades", "spiritfarer", "celeste"], now=NOW):
+            if p.get("games_cost") is not None and not p["estimated"] and not p["direct_n"]:
+                self.assertAlmostEqual(sum(i["eur"] for i in p["items"]), p["games_cost"], places=2, msg=p["code"])
+
+
 class StoreTest(unittest.TestCase):
     def test_backup_adds_price_recording(self):
         # Die eigene Preisaufzeichnung lässt sich nicht neu laden: Die Sicherung ergänzt sie

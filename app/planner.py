@@ -763,6 +763,10 @@ def make_payer(ctx, c):
                         "estimated": False, "via": "giftcard"}
             except ValueError:
                 pass
+        if c["currency"] == "EUR":
+            # Euro-Guthaben ohne Kartenpreis (0.99.3): zum Nennwert, wie Bewertung und Bestpreis rechnen
+            # (_euro_card); keine Schätzung, ein Rest bliebe ohnehin auf dem eigenen Konto
+            return {"cost": need / 100, "cards": [], "rest": left, "estimated": False, "via": "giftcard"}
         mid = 1 / 100 / c["rate"] * (1 + ctx.markup(c) / 100)
         return {"cost": need * mid, "cards": [], "rest": None, "estimated": True,
                 "via": "giftcard"}
@@ -903,7 +907,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None, f
         "rest": None if base["rest"] is None else base["rest"] / 100,
         "rest_eur": None if base["rest"] is None else _r(base["rest"] / 100 / c["rate"]),
         # Was der Rest gekostet hat: anteilig an den Karten, die du dafür kaufst
-        "rest_value": _rest_value(base, total, cfg_balance(c)),
+        "rest_value": _r(_rest_value(base, total, cfg_balance(c))),
         "ref_total": _r(ref_total),
     })
     if chosen:
@@ -924,11 +928,20 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None, f
         # Was dieser Kauf kostet, wenn er stattfindet: Spiele ohne den Rest, der als
         # Guthaben bleibt (fürs Kaufprotokoll; ein späterer Wechsel zählt dort nicht)
         out["games_paid"] = _r(games)
-        # Im Paket teilen sich die Titel die Karten: Europreis je Titel anteilig
-        if total and not base["estimated"] and base["via"] == "giftcard":
-            for i in out["items"]:
-                if i["slug"] not in direct:
-                    i["eur"] = _r((games - extra_cost) * offers[i["slug"]]["local"] / total)
+        # Im Paket teilen sich die Titel die Karten: Europreis je Titel anteilig. Ab 0.99.3 auch, wenn
+        # „das Günstigere“ den Korb mit Kreditkarte zahlt (vorher standen dann Kartenpreise da), und
+        # auf den Cent so verteilt, dass die Zeilen zusammen die Spiele des Schritts ergeben
+        if total and not base["estimated"] and games >= extra_cost:
+            rows = [i for i in out["items"] if i["slug"] not in direct]
+            whole = round((games - extra_cost) * 100)
+            exact = [whole * offers[i["slug"]]["local"] / total for i in rows]
+            cents_ = [int(x) for x in exact]
+            for k in sorted(range(len(rows)), key=lambda k: cents_[k] - exact[k])[:whole - sum(cents_)]:
+                cents_[k] += 1
+            for i, ct in zip(rows, cents_):
+                i["eur"] = ct / 100
+                # Teurer als ohne den Wechsel: mit dem Preis, der in der Zeile steht (0.99.3)
+                i["over"] = bool(i["slug"] in alt and i["eur"] > alt[i["slug"]] + 0.005)
         out["saving"] = _r(ref_cmp - games)
         out["saving_pct"] = round(100 * (ref_cmp - games) / ref_cmp) if ref_cmp else 0
         # Wechselgewinn gegenüber der Alternative ohne diesen Wechsel (Entscheidung 12.10.2026)
