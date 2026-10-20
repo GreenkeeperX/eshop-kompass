@@ -249,6 +249,10 @@ function buyLink(code, x, text){
   return url ? `<a class="pl" href="${url}" target="_blank" rel="noopener" title="${tip} · Klick öffnet den eShop ${esc(country(code).name)}">${text}</a>`
              : `<span title="${tip}">${text}</span>`;
 }
+/* Preis als Link (0.99.4): in den eShop des Lands, ohne eShop-Seite zum Verlauf bei DekuDeals */
+function shopLink(slug, code, x, text, cur){
+  return (x.own && x.own.url) || shopUrl(code, x.nsuid) ? buyLink(code, x, text) : priceLink(slug, code, text, x, cur);
+}
 function costTip(p){
   const own = p.direct_n ? ` · dazu ${p.direct_n === 1 ? "ein eigenes Angebot" : `${p.direct_n} eigene Angebote`} (Codes) für ${eur(p.direct)}, mit Kreditkarte bezahlt` : "";
   return costTip0(p) + own;

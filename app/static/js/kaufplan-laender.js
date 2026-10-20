@@ -11,7 +11,7 @@ function viewKauf(){
   if(!k) return `<p class="hint">Kaufplan wird berechnet …</p>`;
   const sums = planSums(k.steps);
   const head = k.count
-    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${atBest(sums.opt + sums.gap, sums.opt) && k.steps.every(p => itemsAtBest(p.items)) ? `<span class="g-buy"${nearTip(sums.gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(sums.gap)}</span> über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)} Rest verfällt beim Wechsel</span>` : ""}</span>`
+    ? `<b class="big">${eur(k.cost)}</b><span>${k.count} Titel in ${k.steps.length} ${k.steps.length === 1 ? "Land" : "Ländern"} · ${atBest(sums.opt + sums.gap, sums.opt) && k.steps.every(p => itemsAtBest(p.items)) ? `<span class="g-buy"${nearTip(sums.gap)}>am Bestpreis</span>` : `<span class="abv">+${eur(sums.gap)}</span> über Bestpreis-Summe ${eur(sums.opt)}`}${k.rest_lost ? ` · <span class="bad">${eur(k.rest_lost)}</span> Rest verfällt beim Wechsel` : ""}</span>`
     : `<span>Gerade steht kein Titel auf „kaufen“${!S.ui.plan_good && k.good_left ? `, aber ${k.good_left} auf „gut“: rechts „auch gute Angebote“ anhaken` : ""}.</span>`;
   let h = `<div class="bar on"><b>Jetzt kaufen</b>${head}<span class="sp"></span>
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
@@ -70,7 +70,7 @@ function npRow(slug, o){
     : `<small class="mut" title="Kein Schritt des Kaufplans bietet den Titel an">in keinem Schritt</small>`;
   return `<div class="npr"><span class="t">${name}${o.note ? `<small class="np-w">${o.note}</small>` : ""}</span>` +
     `<span class="c-vd">${r ? pill(r.verdict) : ""}${r && r.nohist ? ` <span class="nohist" title="DekuDeals hat noch keinen Tiefstpreis geliefert">ohne Verlauf</span>` : ""}</span>` +
-    `<span class="r c-eur">${x ? `${star(x)}${ax(x)}${shopUrl(x.code, x.nsuid) || (x.own && x.own.url) ? buyLink(x.code, x, eur(x.eur)) : priceLink(slug, x.code, eur(x.eur), x, x.currency)}` : `<span class="mut">–</span>`}</span>` +
+    `<span class="r c-eur">${x ? `${star(x)}${ax(x)}${shopLink(slug, x.code, x, eur(x.eur), x.currency)}` : `<span class="mut">–</span>`}</span>` +
     `<span class="c-pct">${x && x.sale ? `<span class="pct">−${x.pct} %</span>` : ""}</span>` +
     `<span class="c-land">${x ? priceLink(slug, x.code, esc(x.name), x, x.currency) : ""}</span>` +
     `<span class="r c-best">${x && ce ? overBest(x.eur, ce.eur, r.verdict === "none" ? null : r.verdict) : `<span class="mut">–</span>`}</span>` +
@@ -92,6 +92,11 @@ function npTitles(slugs, key, o){
     ? npRow(list[0], opt(list[0]))
     : npFold(`np:t:${key}:${g}`, `<b>${esc(g)}</b> <small class="mut">${list.length} Titel</small>`, list.map(s => npRow(s, Object.assign(opt(s), {game: g}))).join(""), "npg")).join("");
 }
+/* Mit × aus einem Schritt genommen (0.99.4): Der Grund steht am Titel, wo er auch landet */
+function skippedFrom(slug){
+  const from = Object.entries(S.ui.plan_skip || {}).filter(([, l]) => (l || []).includes(slug)).map(([c]) => country(c).name);
+  return from.length ? `von dir aus ${esc(from.join(", "))} herausgenommen, wartet` : "";
+}
 function npFold(k, head, body, cls){
   return `<details class="npf ${cls || ""}" data-kc="${esc(k)}" ${S.folds[k] ? "" : "open"}><summary>${head}</summary>${body}</details>`;
 }
@@ -99,7 +104,7 @@ function notPlanned(k){
   const groups = [], seen = new Set(), mark = list => list.forEach(s => seen.add(s));
   const add = (key, label, why, body, n) => { if(body) groups.push(npFold(`np:g:${key}`, `${esc(label)}${n ? ` <span class="mut">${n}</span>` : ""}`, (why ? `<p class="hint">${why}</p>` : "") + body, "npgrp")); return n; };
   const gap = d => d.blocked_by ? `<span class="bad">nur ein Land mit blockierendem Rest je Plan</span>, ${esc(d.blocked_by.join(", "))} bringt mehr`
-    : `Wechsel ${d.gain >= 0 ? `spart nur <span class="bad">${eur(d.gain)}</span>` : `kostet <span class="bad">${eur(-d.gain)}</span> mehr`}${d.threshold !== null && d.threshold !== undefined ? `, lohnt ab ${eur(d.threshold)}` : ""}`;
+    : `Wechsel ${d.gain >= 0 ? `spart nur <span class="bad">${eur(d.gain)}</span>` : `kostet <span class="bad">${eur(-d.gain)}</span> mehr`}${d.threshold !== null && d.threshold !== undefined ? `, lohnt ab ${eur(d.threshold)} Ersparnis` : ""}`;
   const sums = [];
   // Wechsel: Konto gesperrt oder Land lohnt nicht. Je Land klappbar; was der Plan woanders kauft, steht zur Erklärung dabei
   let sw = "", nsw = 0;
@@ -112,7 +117,7 @@ function notPlanned(k){
     const open = d.open_slugs || [], moved = d.moved || [];
     if(!open.length && !moved.length) continue;
     mark(open); nsw += open.length;
-    const note = s => { const m = moved.find(x => x.slug === s); if(!m) return "wartet"; const n = S.kauf.steps.findIndex(p => p.code === m.to); return `<span class="chip">im Plan</span> Schritt ${n + 1}, ${esc(country(m.to).name)}`; };
+    const note = s => { const m = moved.find(x => x.slug === s); if(!m) return skippedFrom(s) || "wartet"; const n = S.kauf.steps.findIndex(p => p.code === m.to); return `<span class="chip">im Plan</span> Schritt ${n + 1}, ${esc(country(m.to).name)}`; };
     sw += npFold(`np:c:${d.code}`, `<b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))} <span class="mut">${open.length ? `${open.length} wartet` : ""}${open.length && moved.length ? ", " : ""}${moved.length ? `${moved.length} im Plan` : ""}</span> · ${gap(d)} · <button class="link" data-act="goland" data-c="${d.code}" title="Die Länderkarte von ${esc(d.name)} mit eigenem Korb öffnen">Länderkarte</button>`,
       npTitles(open.concat(moved.map(m => m.slug)), d.code, {note, act: s => moved.some(m => m.slug === s) ? "" : undefined}));
   }
@@ -460,8 +465,10 @@ function removedLine(p, step){
     : ((S.ui.overrides[p.code] || {}).remove || []).map(s => ({slug: s, short: (rowOf(s) || {}).title || s}));
   if(!list.length) return "";
   const where = x => !step ? "" : x.to ? ` <small class="mut">jetzt in ${esc(country(x.to).name)}</small>` : ` <small class="mut">wartet</small>`;
+  // Name wie in den Zeilen (0.99.4): voller Titel, DLC-Marke davor, in Schritt und Länderkarte gleich
+  const name = x => { const r = rowOf(x.slug); return `${r && r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r ? r.title : x.short)}`; };
   return `<p class="restline removed">Herausgenommen: ` + list.map(x =>
-    `${esc(x.short)}${where(x)} <button class="link" data-act="${step ? "planunskip" : "undrop"}" data-c="${p.code}" data-s="${esc(x.slug)}" title="Wieder hineinnehmen">zurück</button>`).join(" · ") + `</p>`;
+    `${name(x)}${where(x)} <button class="link" data-act="${step ? "planunskip" : "undrop"}" data-c="${p.code}" data-s="${esc(x.slug)}" title="Wieder hineinnehmen">zurück</button>`).join(" · ") + `</p>`;
 }
 /* Vorschläge in drei Zeilen, überall gleich: was in den Rest passt, was dazu lohnt, was weglassen spart */
 function suggestHtml(p, step){
@@ -480,8 +487,8 @@ function suggestHtml(p, step){
     // alles andere im Auswahlfeld (0.70, 0.78); fehlende DLC deiner Spiele dahinter (0.77)
     const nsoFit = (p.fill_nso || []).map(f => `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="nso-${esc(f.key)}" title="Online-Mitgliedschaft ${esc(f.label)} für ${esc(money(f.local, cur))}${f.at_best ? ", am Bestpreis" : ""}. Danach bleiben ${esc(money(f.left, cur))}. Sie verlängert deine laufende Mitgliedschaft. ${verb.replace("ihn", "sie")}">${f.at_best ? `<span class="star">★</span>` : ""}Mitgliedschaft ${esc(f.label)} <small style="display:inline">${money(f.local, cur)}</small></button>`);
     const one = f => f.extra
-      ? `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slug)}" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung, nicht auf der Wishlist: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. DLC gelten nur in der Region des Hauptspiels. ${verb}">+ ${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></button>`
-      : `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. ${verb}">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`;
+      ? `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slug)}" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung, nicht auf der Wishlist: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. DLC gelten nur in der Region des Hauptspiels. ${verb}">+ <span class="dlc">DLC</span>${esc(f.short)} <small style="display:inline">${money(f.local, cur)}</small></button>`
+      : `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. ${verb}">+ ${f.dlc ? `<span class="dlc">DLC</span>` : ""}${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`;
     const two = f => `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: zusammen ${esc(money(f.local, cur))}. Danach bleiben ${esc(money(f.left, cur))}. ${verb2}">+ ${f.shorts.map(esc).join(" + ")} <small style="display:inline">${money(f.local, cur)}</small></button>`;
     const fill = (p.fill || []).filter(f => !planned.has(f.slug)), more = fill.filter(f => !f.extra), xs = fill.filter(f => f.extra);
     const top = more.map(f => ({left: f.left, h: one(f)})).concat((p.fill_pairs || []).filter(f => !f.slugs.some(x => planned.has(x))).map(f => ({left: f.left, h: two(f)})))

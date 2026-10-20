@@ -557,3 +557,6 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
   .np details.npgrp details.npf{margin-left:0}
   .np details.npg .npr{padding-left:12px}
 }
+
+/* Cashback-Hinweis (0.99.4): blau wie Rabatte, nicht gold (gold heißt Bestpreis) */
+.cb{color:var(--deal)}

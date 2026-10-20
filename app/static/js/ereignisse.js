@@ -431,6 +431,21 @@ document.addEventListener("keydown", e => {
 function nameButtons(){
   for(const b of document.querySelectorAll("button[title]:not([aria-label])"))
     if(!/\p{L}/u.test(b.textContent)) b.setAttribute("aria-label", b.title.split(" · ")[0]);
+  // Eingabefelder ohne eigenes Etikett (0.99.4): Name aus Titel, Platzhalter oder Spaltenkopf,
+  // in der Ländertabelle mit dem Land davor
+  for(const f of document.querySelectorAll("input:not([type=hidden]):not([aria-label]), select:not([aria-label]), textarea:not([aria-label])")){
+    if(f.closest("label") || (f.id && document.querySelector(`label[for="${f.id}"]`))) continue;
+    let name = f.title || f.placeholder || "";
+    const td = f.closest("td"), tr = td && td.parentElement, table = td && td.closest("table");
+    if(!name && table){
+      const th = table.querySelectorAll("thead th")[[...tr.children].indexOf(td)];
+      const head = th ? th.textContent.trim() : "";
+      const first = tr.children[0] && tr.children[0] !== td ? tr.children[0].textContent.trim() : "";
+      name = [first, head].filter(Boolean).join(": ");
+    }
+    if(!name && f.previousSibling && f.previousSibling.textContent) name = f.previousSibling.textContent.trim();
+    if(name) f.setAttribute("aria-label", name.split(" · ")[0].slice(0, 120));
+  }
 }
 new MutationObserver(nameButtons).observe(document.body, {childList: true, subtree: true});
 document.addEventListener("submit", e => { if(e.target.id === "setForm") e.preventDefault(); });

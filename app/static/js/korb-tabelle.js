@@ -210,11 +210,11 @@ function viewMatrix(){
       // darunter Rabatt und Marken
       const need = needsRegion(r.dlc_of, c.code, r.slug), gap = r.champ && !atBest(x.eur, r.champ.eur) ? x.eur - r.champ.eur : 0;
       return `<td class="${g} ${champ ? "champ" : ""} ${counts ? "" : "nc"} ${need === "need" ? "needr" : ""}" title="${esc(tip)}">` +
-        twoLine(`${star(x)}${ax(x)}${counts ? "" : `<span class="q">?</span>`}`, priceLink(r.slug, c.code, num(x.eur), x, c.currency), gap, cellMarks(x, "")) +
+        twoLine(`${star(x)}${ax(x)}${counts ? "" : `<span class="q">?</span>`}`, shopLink(r.slug, c.code, x, num(x.eur), c.currency), gap, cellMarks(x, "")) +
         (det ? `<small>Landestief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}</small>${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}${x.nocard ? `<small>ohne Karte</small>` : x.lang === "unknown" ? `<small><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">Sprache?</button></small>` : ""}` : "") + `</td>`;
     }).join("") + `</tr>`)).join("");
   if(!rows.length) h += `<tr><td colspan="${cols.length + 2}" class="mut">Kein Titel passt zum Filter.</td></tr>`;
-  return h + `</tbody></table></div><p class="hint" style="margin-top:6px">Zellfarbe für Angebote: dunkelgrün „kaufen“, hellgrün „gut“. Gold umrandet: hier gab es den Bestpreis. <span class="q">?</span> zählt nicht. Ein Klick auf den Preis öffnet den Verlauf bei DekuDeals, auf den Titel die Einzelheiten.</p>`;
+  return h + `</tbody></table></div><p class="hint" style="margin-top:6px">Zellfarbe für Angebote: dunkelgrün „kaufen“, hellgrün „gut“. Gold umrandet: hier gab es den Bestpreis. <span class="q">?</span> zählt nicht. Ein Klick auf den Preis öffnet den eShop des Lands, ohne eShop-Seite den Verlauf bei DekuDeals, auf den Titel die Einzelheiten.</p>`;
 }
 function viewSeg(){
   const b = (v, l, tip) => `<button data-act="tview" data-v="${v}" class="${S.tview === v ? "on" : ""}" title="${tip}">${l}</button>`;

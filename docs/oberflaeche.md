@@ -72,7 +72,7 @@ Eine Karte überall (ab 0.94, Entscheidung 20.10.2026): Schritt und Länderkarte
 Werkzeuge. Vor jedem Titel ein graues × (`xBtn`; wie im Korb, statt der Häkchen der Länderkarten):
 im Schritt `planskip` (Titel nicht in diesem Schritt, `ui.plan_skip`), bei Dazugenommenem
 `planunfill`, auf der Länderkarte `drop`. Unter der Tabelle „Herausgenommen: Titel jetzt in Land
-zurück“ (`removedLine`; ohne Schritt unter „Nicht im Plan“), am Schritt „zurücksetzen“
+zurück“ (`removedLine`; ab 0.99.4 mit vollem Namen und DLC-Marke, in Schritt und Länderkarte gleich; ohne Schritt unter „Nicht im Plan“), am Schritt „zurücksetzen“
 (`planreset`). Darunter bis zu drei Zeilen `.fillrow` (`suggestHtml`): „Passt in den Rest (x):“
 (Knöpfe, Paare, Mitgliedschaft, fehlende DLC, Auswahlfeld; ohne Treffer grau „nichts von deiner
 Wishlist …“), „Passt dazu:“ (bis zu zwei, Raster einer) und „Weglassen spart:“ (bis zu zwei). Im
@@ -164,7 +164,7 @@ Fehlt ein DLC, steht er nicht auf der Wishlist und ist nicht ignoriert (ab 0.72)
 an der Zeile (`tr.undec`) und Chip „nicht auf der Wishlist“ (`.chip.und`, violett auf `--warn-bg`).
 Ein fehlender Pass, dessen Teile nicht alle einzeln einen Preis haben, zeigt statt „einzeln … · als Pass …“ grau
 „einzeln nicht alle kaufbar“ (ab 0.90). „Titel dazunehmen …“ bietet diese DLC in der Gruppe „Fehlende DLC deiner Spiele“ an („Spiel: DLC ·
-Preis“), im Korb mit dem Spiel grau vor dem Namen.
+Preis“).
 
 ## Rest füllen (Kaufplan)
 
@@ -176,7 +176,8 @@ schlägt der Planer nur Titel vor, die höchstens „gut“ über ihrem Bestprei
 „Passt in den Rest (Betrag):“ zeigt höchstens vier Knöpfe, der kleinste verbleibende Rest zuerst:
 einzelne Titel und Paare („+ A + B“, ein Klick nimmt beide), dazu die passende Mitgliedschaft.
 Alles Weitere von der Wishlist im Auswahlfeld „alles, was passt (n) …“ mit „bleiben x“. Fehlende DLC,
-die nicht auf der Wishlist stehen, folgen als höchstens zwei Knöpfe („+ Name DLC · Preis“), alle
+die nicht auf der Wishlist stehen, folgen als höchstens zwei Knöpfe („+ DLC-Marke Name · Preis“; ab
+0.99.4 steht die Marke wie überall vor dem Namen, auch bei DLC von der Wishlist), alle
 übrigen im selben Auswahlfeld „alles, was passt (n) …“, das ab 0.78 zwei Gruppen hat (`optgroup`
 „Wishlist“ und „DLC deiner Spiele, nicht auf der Wishlist“, nach Spiel sortiert). Alle Auswahlfelder
 haben dieselbe Kartenfarbe und denselben feinen Rahmen (globales `select`, ab 0.78). Kostenloses
@@ -186,8 +187,9 @@ Kleinkram (ab 0.92, Entscheidung 19.10.2026): Titel mit Bestpreis unter `deal_eu
 machen keine Karte größer. Ab 0.98 (Entscheidung 20.10.2026) kommen sie nie von selbst in einen
 Schritt: Lässt ein Schritt Rest, stehen sie unter „Passt in den Rest“ zur Auswahl; sonst unter
 „Nicht im Plan“, Gruppe „Kleinkram“, je Land einklappbar mit Summe, Anteil an der Karte und „alle
-dazunehmen“ (Felder `small` und `small_groups`). Füllt er eine Karte bis auf höchstens 10 %, folgt
-fett „Reicht für eine eigene Karte.“ mit Link „in den Schritt nehmen“. Die Grenze steht
+„dazunehmen …“ je Titel (Felder `small` und `small_groups`). Füllt er eine Karte bis auf höchstens
+10 %, folgt grün „reicht für eine eigene Karte“ mit Knopf „alle dazunehmen“ (ohne Schritt: „in die
+Länderkarte“). Die Grenze steht
 in Einstellungen, Regeln („Kleinkram unter … €“), im Regelsatz darüber und in der Legende bei „kaufen“.
 
 ## Kopfleiste
@@ -246,15 +248,21 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
 - ≈ (violett): geschätzter Wert, etwa Guthaben ohne gelesenen Kartenpreis. Geschätzte
   Werte entscheiden nichts und sind immer so gekennzeichnet.
 - ? (violett): zählt nicht, weil Sprache ungeprüft oder ohne Guthabenkarte.
-- "ca." vor Beträgen: aus anderen Angaben errechnet (etwa Pass-Preis).
+- "ca." vor Beträgen: geschätzt oder aus anderen Angaben errechnet (etwa Pass-Preis), so auch in der Legende.
+- ✱ (blau, `.cb`, ab 0.99.4 nicht mehr gold): mit Cashback des Kartenshops wäre es der Bestpreis.
+- Preise sind überall Links in den eShop des Lands (`shopLink`, ab 0.99.4 auch in der Tabelle), ohne
+  eShop-Seite zum Verlauf bei DekuDeals.
+- Titel, die du mit × aus einem Schritt genommen hast, tragen unter „Nicht im Plan“ den Grund „von dir
+  aus Land herausgenommen, wartet“ (`skippedFrom`).
 - Nicht zählende Zeilen sind blass (`opacity`), nicht farbig.
 - Violett: Angabe aus titledb, nicht von Nintendo (bis 0.81.1 zusätzlich gepunktet unterstrichen).
 - „am Bestpreis“ (grün) an einem Schritt oder Land steht nur, wenn jeder Titel darin am
   Bestpreis ist; sonst der rote Betrag darüber (ab 0.65). So widersprechen sich Kopfzeile und
   rotes „+x“ einer Zeile nie.
-- DLC mit gekürztem Namen tragen in Plan, Korb und Käufen das Hauptspiel klein und grau davor
-  („Vampire Survivors: Ode to Castlevania“, `small.gm`, ab 0.65), damit „Pixel Pack“ nicht allein
-  steht. In der Wishlist-Liste nicht: Dort stehen DLC immer unter einer Kopfzeile mit dem Namen
+- DLC mit gekürztem Namen tragen in den Tabellen der Plan-Schritte und Länderkarten und in Käufen
+  das Hauptspiel klein und grau darüber (`small.gm`, ab 0.65), damit „Pixel Pack“ nicht allein
+  steht. Überall sonst (Korb, „Nicht im Plan“, Herausgenommen) steht der volle Name in normaler Größe
+  mit DLC-Marke davor (Checkliste, Punkt 1). In der Wishlist-Liste nicht: Dort stehen DLC immer unter einer Kopfzeile mit dem Namen
   des Spiels, auch ein einzelner DLC (ab 0.77).
 - Links sind ruhig in der Textfarbe (`a` mit `--accent`), nie browser-blau: Blau heißt Rabatt.
 
@@ -321,7 +329,7 @@ Schritten, vor „alle Länderkarten“, und ist nach Grund gegliedert (`.np`): 
 Kleinkram, Lieber warten, Von dir geändert, Schon gekauft, Sonst nicht im Plan. Ab 0.98 ist jede
 Ebene klappbar (Gruppe, Land oder Quelle, Spiel; `details.npf` mit `data-kc`, oben „alle aufklappen ·
 alle zuklappen“). Kopfzeile je Land: fettes Land, Stufe, grau „n wartet, n im Plan“, „Wechsel spart nur
-**1,50 €**, lohnt ab 20,00 €“ (nur der Betrag rot), Link „Länderkarte“; Kleinkram mit Summe und grün
+**1,50 €**, lohnt ab 20,00 € Ersparnis“ (nur der Betrag rot), Link „Länderkarte“; Kleinkram mit Summe und grün
 „reicht für eine eigene Karte“ samt Knopf „alle dazunehmen“. Jeder Titel ist eine Zeile im Raster der
 Kopfzeile (`npRow`, `.npr`; Spalten Titel, Urteil, Einkaufspreis, Rabatt, Land, über Bestpreis, bis,
 Handlung), Namen wie in der Wishlist (`npTitles`: voller Name, zwei und mehr Titel eines Spiels unter
@@ -413,7 +421,7 @@ links (bis 0.80 rechtsbündig und damit außerhalb des Bildes). Wo nur ein Land 
 Länderkarte), stehen dieselben Angaben in eigenen Spalten (Einkaufspreis mit Rabatt, „über Bestpreis“), in
 der Wishlist-Liste zweizeilig je Spalte.
 
-Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel hinzufügen“ stehen in einer Zeile, die
+Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel dazunehmen …“ stehen in einer Zeile, die
 „Rechnung“ darunter in eigener Zeile; Aufklappen schiebt so nichts zur Seite (ab 0.58).
 
 Einstellungen: Jeder Bereich (Länder, Regeln, Gebühren, Sprachen prüfen, Quellen, Sicherung und
@@ -462,8 +470,10 @@ Ab 0.89: Sortierbare Spaltenköpfe haben `tabindex="0"` (in `sth()` und im Korb)
 Leertaste sortieren, der Fokus bleibt danach auf dem Kopf. Knöpfe ohne Wort (nur Zeichen oder
 Symbol) bekommen ihren Tooltip als `aria-label` (`nameButtons`, über einen MutationObserver für
 alles, was gezeichnet wird); neue Zeichenknöpfe brauchen deshalb immer ein `title`. Dialoge
-öffnen mit `autofocus` auf „Schließen“. Der Selbsttest bei 390 px schlägt fehl, wenn ein Knopf
-oder Link ohne Wort keinen Namen hat.
+öffnen mit `autofocus` auf „Schließen“. Ab 0.99.4 bekommen auch Eingabefelder ohne eigenes
+Etikett einen Namen (`nameButtons`: Titel, Platzhalter oder Spaltenkopf, in Tabellen mit dem Land
+davor). Der Selbsttest bei 390 px schlägt fehl, wenn ein Knopf oder Link ohne Wort oder ein
+Eingabefeld keinen Namen hat.
 
 ## Wortwahl
 

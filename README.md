@@ -334,7 +334,8 @@ er am wenigsten kostet. Ein Land bleibt nur im Plan, wenn sich der Wechsel lohnt
 Sind sie dort kein Kauf mehr, stehen sie unter „Nicht im Plan“ (zugeklappt, direkt unter den
 Schritten), nach Grund gegliedert, jeder Titel nur einmal; die Kopfzeile nennt die Gruppen mit Zahl.
 Jeder Titel steht dort mit Urteil, günstigstem Preis jetzt, Abstand zum Bestpreis und Angebotsende;
-„in Schritt nehmen …“ nimmt ihn mit dem Preis dort in einen Schritt. Kommen sie anderswo in den Plan, bleibt das Land dort trotzdem sichtbar („kauft
+„dazunehmen …“ nimmt ihn mit dem Preis dort in einen Schritt; geht das nirgends, steht dort „in
+keinem Schritt“. Was du mit × herausgenommen hast, sagt das am Titel. Kommen sie anderswo in den Plan, bleibt das Land dort trotzdem sichtbar („kauft
 der Plan in Schweden; in Polen wären sie günstiger, aber Wechsel lohnt nicht: spart nur 2,10 €“),
 und der Grund am Titel sagt dasselbe. Was schon gekauft ist, steht dort mit Quelle: im Kaufplan
 vermerkt, in deiner Sammlung, laut eShop-Kaufverlauf oder „steckt in …, das du schon hast“.
@@ -470,8 +471,8 @@ dem es den Bestpreis gab. Jede Zelle hat zwei Zeilen wie im Korb: oben Preis und
 Abstand zum Bestpreis, darunter Rabatt und Marken. „Details“ zeigt in jeder Zelle Landestief, Angebotsende und Sprache.
 Die Tabelle füllt das Fenster und scrollt in sich, Kopfzeile und Titelspalte bleiben stehen.
 „nur Angebote“ blendet auch Länder ohne Angebot aus. Ist ein Titel überall kostenlos oder
-nirgends zu haben, steht statt lauter gleicher Zellen eine Zeile mit dem Grund. Der Landespreis
-verlinkt den Verlauf bei DekuDeals, der Europreis die eShop-Seite des Landes.
+nirgends zu haben, steht statt lauter gleicher Zellen eine Zeile mit dem Grund. Ein Klick auf den
+Preis öffnet den eShop des Lands (ab 0.99.4, wie überall), ohne eShop-Seite den Verlauf bei DekuDeals.
 
 ### Korb
 
