@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -264,6 +264,13 @@ def parse_amount(text):
     return float(re.sub(r"[.,]", "", raw))
 
 
+_LOW_TOKEN_RE = re.compile(
+    r"digital|physical|"
+    r"(?:(?P<pre>[€$¥£₩₪]|(?<![A-Za-z])(?:R\$?|kr|zł|Kč|CHF|Ft|S/))\s?)?"
+    r"(?P<num>" + _AMOUNT_RE.pattern + r")"
+    r"(?:\s?(?P<suf>[€¥円]|(?:kr|zł|Kč|CHF|Ft|lei)(?![A-Za-z])))?", re.I)
+
+
 def parse_lows(page_html):
     """Digitale Tiefstpreise einer Artikelseite, einer je Plattform.
 
@@ -280,9 +287,14 @@ def parse_lows(page_html):
     text = re.sub(r"\(\s*[-−+]?\s*\d+\s*%\s*\)", " ", text)            # (-60%)
     text = re.sub(r"(?:Nintendo\s+)?Switch(?:\s*2)?|\b\d+\s*[my]\b", " ", text, flags=re.I)
     seq = []
-    for t in re.finditer(r"digital|physical|" + _AMOUNT_RE.pattern, text, re.I):
+    for t in _LOW_TOKEN_RE.finditer(text.replace("\u00a0", " ")):
         w = t.group(0).lower()
-        seq.append(w if w in ("digital", "physical") else parse_amount(t.group(0)))
+        if w in ("digital", "physical"):
+            seq.append(w)
+        elif t.group("pre") or t.group("suf"):
+            # Nur Beträge mit Währung (1.0.5): Zahlen ohne Währung in der Nähe des Abschnitts
+            # (Breiten, Prozente, Zähler) lieferten sonst Tiefstpreise wie 768 oder 100
+            seq.append(parse_amount(t.group("num")))
     if "digital" not in seq:
         if "physical" in seq:
             return []                         # nur ein Händler-Tiefstpreis bekannt
@@ -301,6 +313,15 @@ def parse_lows(page_html):
         if v == "digital" and i + 1 < len(seq) and isinstance(seq[i + 1], float):
             out.append(seq[i + 1])
     return out
+
+
+def low_snippet(page_html, n=160):
+    """Text des Abschnitts „All time low“ für den Verbindungstest (1.0.5): zeigt, was der Leser sieht."""
+    m = _LOW_RE.search(page_html or "")
+    if not m:
+        return "kein Abschnitt „All time low“"
+    text = html.unescape(_TAG_RE.sub(" ", m.group(1)))
+    return re.sub(r"\s+", " ", text).strip()[:n]
 
 
 def parse_low(page_html):

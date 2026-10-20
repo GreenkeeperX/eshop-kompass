@@ -127,7 +127,8 @@ Paket), „nicht im eShop gefunden“ (keine Nintendo-Kennung) oder „kostenlos
 Tiefstpreis geliefert, der Bestpreis stützt sich nur auf heutige Preise und die eigene
 Aufzeichnung. Das Urteil gilt, ist aber weniger sicher. Nennt DekuDeals einen Tiefstpreis über
 dem Normalpreis (etwa einer anderen Fassung), verwirft der Abgleich ihn und schreibt es ins
-Protokoll.
+Protokoll. Als Tiefstpreis zählt nur ein Betrag mit Währung; andere Zahlen auf der Seite
+nimmt das Tool nicht dafür (ab 1.0.5). Der Verbindungstest zeigt den gelesenen Abschnitt.
 
 ### Was zählt
 

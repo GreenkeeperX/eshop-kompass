@@ -24,7 +24,8 @@ Commit an. Stand: 0.68.0. Maßgeblich bleibt der Code; Konstanten stehen in `app
 - **Nichts still löschen:** Ein Fehler auf einer Folgeseite von Wishlist oder Sammlung heißt
   „nicht lesbar“, nicht „Liste zu Ende“ (nur 404 und andere 4xx außer Sperren beenden das
   Blättern). Fehlt einer Artikelseite der Abschnitt „All time low“ oder der DLC-Abschnitt, obwohl
-  Werte bekannt sind, bleiben die alten Werte, und das Protokoll warnt.
+  Werte bekannt sind, bleiben die alten Werte, und das Protokoll warnt. Im Abschnitt zählen nur Beträge mit
+  Währung (ab 1.0.5); der Verbindungstest zeigt seinen Text.
 - **Schonend:** Pausen zwischen Seiten und Obergrenzen je Abgleich. Was nicht fällig ist,
   wird nicht geholt. Jede DekuDeals-Artikelseite kommt je Abgleich höchstens einmal
   (`sources.item_cache`), auch wenn IDs, Tiefstpreis und DLC sie alle brauchen.

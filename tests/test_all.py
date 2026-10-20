@@ -157,6 +157,10 @@ class SourcesTest(unittest.TestCase):
                "<tr><td>Switch</td><td>€49,99</td><td></td><td>€39,99</td><td>(-33%)</td></tr></table> Time range 6m 1y")
         self.assertEqual(sources.parse_lows(two), [59.99, 39.99])
         self.assertEqual(sources.parse_low(two), 59.99)
+        # Zahlen ohne Währung sind keine Preise (1.0.5): Verbindungstest zeigte 768 und 100
+        self.assertEqual(sources.parse_lows("All time low <div style='max-width:768'>100</div> Time range"), [])
+        self.assertEqual(sources.parse_lows("All time low 3 offers Digital 62,00 kr Time range"), [62.0])
+        self.assertIn("Digital", sources.low_snippet("<b>All time low</b> <td>Digital</td> €5,91"))
 
     def test_low_of_own_platform(self):
         # Je Plattform ein Tiefstpreis: es gilt der höchste, den der Preis jetzt nicht übersteigt

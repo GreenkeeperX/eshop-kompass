@@ -1450,7 +1450,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                          f"{len(todo) - wish} Spiele der Sammlung (Sprache für fehlende DLC)" if len(todo) > wish else "",
                          f"davon {tdb} schon aus titledb, nur zur Bestätigung" if tdb else ""]
                 _log(f"Sprachen {name}: {len(todo)} Seiten offen ({', '.join(x for x in parts if x)}), der Store zeigte zuletzt den Warteraum; nächster Versuch ab "
-                     f"{datetime.fromtimestamp(wait_until).strftime('%d.%m.')}, bis dahin titledb und Browser-Helfer")
+                     f"{datetime.fromtimestamp(wait_until).strftime('%d.%m., %H:%M')}, bis dahin titledb und Browser-Helfer")
             continue
         # Schonend: ungeprüfte zuerst, höchstens LANG_PER_SYNC Seiten, der Rest beim nächsten Abgleich
         todo.sort(key=lambda t: (t[0].get("langs_tries") or {}).get(fam, 0))
@@ -1474,7 +1474,7 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                 elif e.status == 503:
                     data.setdefault("lang_wait", {})[fam] = now + JP_WAIT_SECONDS
                     _log(f"Sprachen {name}: Der Store zeigt den Warteraum, nächster Versuch ab "
-                         f"{datetime.fromtimestamp(now + JP_WAIT_SECONDS).strftime('%d.%m.')}")
+                         f"{datetime.fromtimestamp(now + JP_WAIT_SECONDS).strftime('%d.%m., %H:%M')}")
                     queue = True
                     if budget is not None:
                         budget[fam] = 0    # im selben Abgleich nicht noch einmal anklopfen
@@ -2154,7 +2154,7 @@ def diagnose(sleep=time.sleep):
     def item_info(text):
         info = sources.parse_item_page(text)
         return (f"Titel „{(info['title'] or '')[:50]}“, IDs {info['nsuids']}, "
-                f"Tiefstpreis {info['low']}")
+                f"Tiefstpreis {info['low']} (Abschnitt: {sources.low_snippet(text)})")
     item = probe(f"Artikelseite {slug}", f"https://www.dekudeals.com/items/{slug}?country=de",
               None, item_info)
     probe("Nintendo-Preise", sources.NINTENDO_PRICE_URL + "?country=DE&lang=de&ids=70010000000126",
