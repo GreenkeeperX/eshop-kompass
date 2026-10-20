@@ -191,9 +191,37 @@ document.addEventListener("click", async e => {
       if(S.ui.plan_fill && S.ui.plan_fill[p.code]){ delete S.ui.plan_fill[p.code]; await saveUi(); }
       toast(`Kauf in ${p.name} vermerkt`); await refresh(); S.kauf = await api("/api/kaufplan"); render();
     }
+    else if(a === "planskip" || a === "planunskip"){
+      // Aus einem Schritt herausnehmen (0.94): der Plan kauft den Titel dort nicht, er steht unter der Tabelle
+      const k = S.ui.plan_skip = S.ui.plan_skip || {}, list = k[d.c] || [];
+      k[d.c] = a === "planskip" ? list.filter(x => x !== d.s).concat(d.s) : list.filter(x => x !== d.s);
+      if(!k[d.c].length) delete k[d.c];
+      const name = (rowOf(d.s) || {}).title || d.s;
+      await saveUi(); S.kauf = await api("/api/kaufplan"); render();
+      toast(a === "planskip" ? `${name} aus ${country(d.c).name} herausgenommen` : `${name} wieder im Plan`);
+    }
+    else if(a === "planreset"){
+      delete (S.ui.plan_skip || {})[d.c]; delete (S.ui.plan_fill || {})[d.c];
+      await saveUi(); S.kauf = await api("/api/kaufplan"); render(); toast(`${country(d.c).name} wie vorgeschlagen`);
+    }
+    else if(a === "undrop"){
+      const name = (rowOf(d.s) || {}).title || d.s;
+      await change(`${name} wieder im Korb`, () => { const o = ov(d.c); o.remove = o.remove.filter(x => x !== d.s); });
+    }
+    else if(a === "olshow"){
+      // Andere Länder (0.94): dieselben Titel dort direkt unter dem Schritt, statt in eine andere Ansicht zu springen
+      if(S.olInline && S.olInline.code === d.c && S.olInline.from === d.from){ S.olInline = null; render(); }
+      else {
+        const st = S.kauf.steps.findIndex(x => x.code === d.from);
+        const r = await api("/api/plans", {overrides: {}, must: [], basket: S.kauf.steps[st].items.map(i => i.slug)});
+        const p = r.plans.find(x => x.code === d.c);
+        S.olInline = p ? {code: d.c, from: d.from, p: Object.assign(p, {ro: true})} : null; render();
+      }
+    }
     else if(a === "planfill" || a === "planunfill"){
       const f = S.ui.plan_fill = S.ui.plan_fill || {}, list = f[d.c] || [];
       f[d.c] = a === "planfill" ? list.concat(d.s.split(",")) : list.filter(x => x !== d.s);
+      if(a === "planfill" && (S.ui.plan_skip || {})[d.c]) S.ui.plan_skip[d.c] = S.ui.plan_skip[d.c].filter(x => !d.s.split(",").includes(x));
       if(!f[d.c].length) delete f[d.c];
       await saveUi(); S.kauf = await api("/api/kaufplan"); render();
       toast(a === "planfill" ? "Füllartikel im Plan" : "Füllartikel herausgenommen");

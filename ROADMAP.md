@@ -26,7 +26,16 @@ Leitsätze für jede Entscheidung (Entscheidung 14.10.2026):
 
 ## Horizont 2: Überall nutzbar und wartbar
 
-Derzeit nichts offen.
+**Nichts still im Hintergrund** (Entscheidung 20.10.2026), je Punkt eine kleine Version:
+
+1. Preisstand je Land; veraltete Preise nach einem gescheiterten Abruf an Schritt, Länderkarte und oben zeigen.
+2. Besitz über Paket oder eShop-Kauf mit Quelle nennen.
+3. Ein Land, dessen Wechsel sich nicht lohnt, bleibt am Titel sichtbar („günstiger in X, Wechsel spart nur Y“).
+4. Urteile ohne Verlauf kennzeichnen; gelöschte unglaubhafte Tiefstwerte ins Protokoll.
+5. „gekauft“ nennt in der Rückfrage die Guthaben, die es auf 0 setzt.
+6. Übernommene Füllartikel ohne Schritt zeigen („übernommen, gerade nicht im Plan“).
+7. Sprachbestätigungen nicht mehr löschen.
+8. „Guthabenkarte eintragen“ nach Ursache formulieren.
 
 ## Horizont 3: Klüger, nur mit belegtem Nutzen
 

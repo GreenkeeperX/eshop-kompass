@@ -114,7 +114,8 @@ class Handler(BaseHTTPRequestHandler):
                 with planner.shared_contexts():
                     out = planner.purchase_plan(store.load_data(), store.load_settings(), ui["targets"],
                                                 include_good=ui["plan_good"],
-                                                bought=store.load_purchases(), fill=ui["plan_fill"])
+                                                bought=store.load_purchases(), fill=ui["plan_fill"],
+                                                skip=ui["plan_skip"])
                 self._send(200, out)
             elif path == "/api/verlauf":
                 q = urllib.parse.parse_qs(self.path.partition("?")[2])

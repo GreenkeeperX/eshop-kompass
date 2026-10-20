@@ -6,7 +6,9 @@ function viewCompare(){
   // wenn sie direkt in der Ansicht Korb geöffnet wurde)
   if(!S.bplans) return `<p class="mut">Korb wird berechnet …</p>`;
   const inB = new Set(S.ui.basket);
-  const opts = wishOpts(S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids), null, {code: null, skip: inB});
+  // Mit dem günstigsten zählenden Preis wie in Kaufplan und Länderkarten mit dem Landespreis (0.94)
+  const low = r => { const o = cheapestOffer(S.state.radar.find(x => x.slug === r.slug) || {}); return o ? `ab ${o.est ? "ca. " : ""}${eur(o.eur)} in ${o.name}` : ""; };
+  const opts = wishOpts(S.state.matrix.rows.filter(r => !inB.has(r.slug) && !r.no_ids), low, {code: null, skip: inB});
   const shown = S.bplans.filter(p => p.is_ref || !S.ui.hidden.includes(p.code));
   const usable = shown.filter(p => p.rate && p.items.length);
   // Spalten von leicht nach schwer, innerhalb einer Stufe die günstigeren zuerst (0.69; vorher in der

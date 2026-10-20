@@ -14,7 +14,7 @@ def _paid(b):
     return b.get("games") if b.get("games") is not None else b.get("cost")
 
 
-def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None, fill=None):
+def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None, fill=None, skip=None):
     """Ein Gesamtvorschlag: welche Titel jetzt in welchem Land, in welcher Reihenfolge.
 
     Kandidaten sind die Titel mit dem Urteil "kaufen" (wahlweise auch "gutes Angebot").
@@ -34,10 +34,14 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     Füllartikel: Bleibt in einem Schritt ein Rest, nennt der Plan bis zu drei
     Wishlist-Titel, die hineinpassen, möglichst nahe am Rest, egal welches Urteil.
     Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt.
+
+    Herausgenommen (`skip`: {Land: [Titel]}, 0.94): Dort kauft der Plan den Titel nicht, er geht
+    ins nächstbeste Land oder wartet. Der Schritt nennt ihn mit einem Weg zurück.
     """
     data, settings = with_added(data, settings, [s for slugs in (fill or {}).values() for s in slugs])
     ctx = _context(data, settings, now)
     fill = {code: [s for s in slugs if s in ctx.items] for code, slugs in (fill or {}).items()}
+    skip = {code: set(slugs) for code, slugs in (skip or {}).items() if code in ctx.countries}
     ok_grades = ("buy", "good") if include_good else ("buy",)
     rows = radar(data, settings, targets, now)
     # Schon gekauft, aber noch auf der Wishlist: nicht noch einmal einplanen. Das gilt auch
@@ -86,6 +90,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     def cheapest_in(slug, codes):
         best = None
         for code in codes:
+            if slug in skip.get(code, ()):
+                continue                    # von dir aus diesem Land herausgenommen (0.94)
             c = ctx.countries[code]
             o = c["offers"].get(slug)
             if not o or not ctx.decides(o):
@@ -101,6 +107,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         groups, nowhere, later = {}, [], []
         for slug in wanted:
             best = cheapest_in(slug, [pin[slug]] if pin.get(slug) in allowed else allowed)
+            if not best and pin.get(slug) in allowed:
+                best = cheapest_in(slug, allowed)      # im Paketland herausgenommen
             if not best:
                 nowhere.append(slug)
             elif fits(slug, best[0]):
@@ -284,35 +292,28 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         lock = {"code": cur_code, "name": countries.BY_CODE[cur_code]["name"],
                 "currency": (cur_c or {}).get("currency"), "balance": cur_balance / 100,
                 "left": left, "fits": fit[:5]}
-    skip = done | {x["slug"] for x in s2_skip} | {x["slug"] for x in packed}
-    xctx = extra_context(data, settings, now)
+    nofill = done | {x["slug"] for x in s2_skip} | {x["slug"] for x in packed}
+    rest_suggestions(data, settings, ctx, steps, planned, nofill, now)
+    where = {i["slug"]: p["code"] for p in steps for i in p["items"]}
+    out_skip = []
     for p in steps:
         c = ctx.countries[p["code"]]
         p["fill_slugs"] = [i["slug"] for i in p["items"] if i["slug"] in fill.get(p["code"], [])]
-        p["fill"] = _rest_fill(ctx, c, p, planned, skip, xctx=xctx)
-        p["fill_pairs"] = _rest_pairs(p["fill"], p.get("rest") or 0)
+        p["skipped"] = [{"slug": s, "short": ctx.short(s), "title": ctx.title(s), "to": where.get(s)}
+                        for s in sorted(skip.get(p["code"], ())) if s in ctx.items and s not in done]
         p["reasons"] = {i["slug"]: reasons.get(i["slug"], "") for i in p["items"]}
         # Vergleich mit dem Kauf in Deutschland zum heutigen Preis, auch für den
         # deutschen Schritt (dort ist die Ersparnis dann 0)
         p["de_now"] = _r(sum(ctx.ref[i["slug"]] if i["slug"] in ctx.ref
                              else ctx.oeur(c, c["offers"][i["slug"]]) for i in p["items"]))
+    stepped = {p["code"] for p in steps}
+    # Herausgenommen aus einem Land, in dem gerade kein Schritt kauft: sonst sähe man es nirgends
+    out_skip = [{"code": code, "name": ctx.countries[code]["meta"]["name"], "slug": s, "short": ctx.short(s),
+                 "title": ctx.title(s), "to": where.get(s)}
+                for code, slugs in skip.items() if code not in stepped
+                for s in sorted(slugs) if s in ctx.items and s not in done]
     for p in steps:
         p["others"] = [] if locked else _other_countries(ctx, p, every)
-    # Online-Mitgliedschaft als Füllartikel (0.57.1, Vorschlag ohne Übernahme): Varianten, die du
-    # selbst kaufen kannst und die in den Rest eines Schritts passen, die größte zuerst
-    ms = membership(data, settings, now) if any((p.get("rest") or 0) > 0 for p in steps) else {"variants": []}
-    for p in steps:
-        rest = round((p.get("rest") or 0) * 100)
-        fits = []
-        for v in ms["variants"]:
-            # Nur der eShop zahlt aus dem Guthaben; eigene Angebote (Codes) zahlt die Kreditkarte (0.63)
-            r = next((r for r in v["rows"] if r["code"] == p["code"] and r["counts"] and not r.get("src")), None)
-            if v.get("family") or not r or rest <= 0 or p.get("is_ref") or round(r["local"] * 100) > rest \
-                    or NSO_PREFIX + v["key"] in {i["slug"] for i in p["items"]}:
-                continue
-            fits.append({"key": v["key"], "label": v["label"], "local": r["local"], "eur": r["eur"],
-                         "left": (rest - round(r["local"] * 100)) / 100, "at_best": r.get("at_best", False)})
-        p["fill_nso"] = sorted(fits, key=lambda f: f["left"])[:2]
     total = sum(p["cost"] for p in steps if p["cost"] is not None)
     games = sum(p.get("games_cost", p["cost"]) for p in steps if p["cost"] is not None)
     ref_total = sum(p["de_now"] for p in steps)
@@ -325,6 +326,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             # Kleinkram, der in keinen Rest passte: wartet auf einen späteren Rest (0.92)
             "small": [{"slug": s, "title": ctx.title(s), "short": ctx.short(s)} for s in small],
             "small_groups": _small_groups(ctx, small, small_at, steps, allowed),
+            "skipped": out_skip,
             "s2_skip": [dict(x, title=ctx.title(x["slug"])) for x in s2_skip],
             "packed": packed,
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
@@ -464,6 +466,38 @@ def _other_countries(ctx, step, codes):
                     "estimated": bool(o.get("estimated"))})
     out.sort(key=lambda x: (len(x["missing"]), x["diff"], x["name"]))
     return out
+
+
+def rest_suggestions(data, settings, ctx, plans_, planned, skip, now=None):
+    """Was in den Rest passt, für Schritte des Kaufplans und Länderkarten gleich (0.94): Wishlist,
+    fehlende DLC deiner Spiele, Paare und die Online-Mitgliedschaft. `planned`: Titel, die schon
+    gekauft werden (ein Satz für alle oder je Karte die eigenen, wenn None)."""
+    todo = [p for p in plans_ if (p.get("rest") or 0) > 0 and not p.get("is_ref") and p["code"] in ctx.countries]
+    for p in plans_:
+        p.setdefault("fill", [])
+        p.setdefault("fill_pairs", [])
+        p.setdefault("fill_nso", [])
+    if not todo:
+        return
+    xctx = extra_context(data, settings, now)
+    # Online-Mitgliedschaft als Füllartikel (0.57.1, Vorschlag ohne Übernahme): Varianten, die du
+    # selbst kaufen kannst und die in den Rest passen, die größte zuerst
+    ms = membership(data, settings, now)
+    for p in todo:
+        mine = planned if planned is not None else {i["slug"] for i in p["items"]}
+        p["fill"] = _rest_fill(ctx, ctx.countries[p["code"]], p, mine, skip, xctx=xctx)
+        p["fill_pairs"] = _rest_pairs(p["fill"], p.get("rest") or 0)
+        rest = round((p.get("rest") or 0) * 100)
+        fits = []
+        for v in ms["variants"]:
+            # Nur der eShop zahlt aus dem Guthaben; eigene Angebote (Codes) zahlt die Kreditkarte (0.63)
+            r = next((r for r in v["rows"] if r["code"] == p["code"] and r["counts"] and not r.get("src")), None)
+            if v.get("family") or not r or round(r["local"] * 100) > rest \
+                    or NSO_PREFIX + v["key"] in {i["slug"] for i in p["items"]}:
+                continue
+            fits.append({"key": v["key"], "label": v["label"], "local": r["local"], "eur": r["eur"],
+                         "left": (rest - round(r["local"] * 100)) / 100, "at_best": r.get("at_best", False)})
+        p["fill_nso"] = sorted(fits, key=lambda f: f["left"])[:2]
 
 
 def _rest_fill(ctx, c, p, planned, skip, limit=60, xctx=None):

@@ -1473,6 +1473,33 @@ class PlanTest(unittest.TestCase):
         self.assertAlmostEqual(plan["rest_lost"], jp["rest_lost"])
         self.assertNotIn("rest_lost", plan["steps"][1])         # letzter Schritt: Rest bleibt
 
+    def test_plan_skip_takes_a_title_out_of_one_step(self):
+        # × im Kaufplan (0.94): dort nicht kaufen, sichtbar mit dem Land, in das er nun geht
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW)
+        step = next(p for p in plan["steps"] if len(p["items"]) > 1)
+        slug = step["items"][0]["slug"]
+        k = planner.purchase_plan(self.data, self.settings, now=NOW, skip={step["code"]: [slug]})
+        here = next((p for p in k["steps"] if p["code"] == step["code"]), None)
+        self.assertNotIn(slug, [i["slug"] for i in here["items"]])
+        moved = next((p["code"] for p in k["steps"] if slug in [i["slug"] for i in p["items"]]), None)
+        self.assertEqual(here["skipped"], [{"slug": slug, "short": here["skipped"][0]["short"],
+                                            "title": here["skipped"][0]["title"], "to": moved}])
+        self.assertEqual(k["skipped"], [])
+        # Fällt der ganze Schritt weg, steht das Herausgenommene unter „Nicht im Plan“
+        all_out = planner.purchase_plan(self.data, self.settings, now=NOW,
+                                        skip={step["code"]: [i["slug"] for i in step["items"]]})
+        self.assertNotIn(step["code"], [p["code"] for p in all_out["steps"]])
+        self.assertEqual(sorted(x["slug"] for x in all_out["skipped"]), sorted(i["slug"] for i in step["items"]))
+
+    def test_country_cards_get_rest_suggestions(self):
+        # Länderkarten zeigen „Passt in den Rest“ wie der Kaufplan (0.94)
+        res, _ = planner.plans(self.data, self.settings, now=NOW, with_mix=True)
+        for p in res:
+            self.assertIn("fill", p)
+            if p["fill"]:
+                self.assertTrue(all(f["local"] <= p["rest"] + 1e-9 for f in p["fill"]))
+                self.assertFalse({f["slug"] for f in p["fill"]} & {i["slug"] for i in p["items"]})
+
     def test_plan_fills_the_rest(self):
         # 900 ¥ bleiben in Japan. Celeste (800 ¥) passt hinein, auch ohne Urteil „kaufen“
         self.without_lasting()
@@ -4299,9 +4326,9 @@ class UiContractTest(unittest.TestCase):
                          "na", "nocard", "nsuid", "own", "pct", "sale"},
         "matrix.cols": {"code", "currency", "name", "tier"},
         "kaufplan": {"bought", "cost", "count", "dropped", "good_left", "held", "later", "lock", "packed",
-                     "s2_skip", "saving", "small", "small_groups", "steps"},
+                     "s2_skip", "saving", "skipped", "small", "small_groups", "steps"},
         "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
-                 "estimated", "family", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
+                 "estimated", "family", "fill", "fill_nso", "fill_pairs", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
                  "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "rate", "ref_total", "rest", "rest_eur",
                  "saving", "threshold", "tier", "total", "trims", "warnings", "worth"},
         "plan.items": {"alt", "alt_code", "champ", "dlc_of", "end", "est", "eur", "lang", "local", "needs_parent",

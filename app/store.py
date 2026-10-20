@@ -51,7 +51,8 @@ DEFAULT_SETTINGS = {
 
 # Was die Oberfläche sich merkt, für alle Geräte gleich
 DEFAULT_UI = {"basket": None, "overrides": {}, "targets": {}, "hidden": [],
-              "sort": "optimum", "dense": True, "plan_good": False, "plan_fill": {}}
+              "sort": "optimum", "dense": True, "plan_good": False, "plan_fill": {},
+              "plan_skip": {}}
 
 EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {},
               "fx": {"rates": {"EUR": 1.0}, "updated": ""}, "last_sync": None}
@@ -432,6 +433,11 @@ def save_ui(new):
             ui["dense"] = bool(new["dense"])
         if "plan_good" in new:
             ui["plan_good"] = bool(new["plan_good"])
+        # Aus einem Schritt des Kaufplans herausgenommen (0.94): {Land: [Titel]}
+        if isinstance(new.get("plan_skip"), dict):
+            ui["plan_skip"] = {str(code): [str(x) for x in slugs][:50]
+                               for code, slugs in new["plan_skip"].items()
+                               if isinstance(slugs, list) and slugs}
         if isinstance(new.get("plan_fill"), dict):
             ui["plan_fill"] = {str(code): [str(x) for x in slugs][:20]
                                for code, slugs in new["plan_fill"].items()

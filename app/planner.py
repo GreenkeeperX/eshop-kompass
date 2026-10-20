@@ -1061,6 +1061,9 @@ def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_m
     res = [plan_country(ctx, code, overrides.get(code), must, basket)
            for code in ctx.countries]
     if with_mix:
+        # Länderkarten und Korb zeigen „Passt in den Rest“ wie der Kaufplan (0.94)
+        from .kaufplan import rest_suggestions
+        rest_suggestions(data, settings, ctx, res, None, set(), now)
         ref = [p for p in res if p["is_ref"]]
         rest = sorted((p for p in res if not p["is_ref"]),
                       key=lambda p: (bool(p.get("must_missing")), len(p["missing"]),

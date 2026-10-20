@@ -56,6 +56,9 @@ function notPlanned(k){
   for(const x of k.packed || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">steckt in <b>${esc(x.pack)}</b>, das ebenfalls zum Kauf ansteht: nicht doppelt kaufen</td></tr>`);
   // Kleinkram (0.92): wartet, bis ein Rest bleibt, statt eine Guthabenkarte größer zu machen
   // Je Land mit Summe; füllt er eine Karte fast ganz, ein Vorschlag zum Übernehmen, nie von selbst (0.93)
+  // Herausgenommen aus einem Land ohne Schritt (0.94): sonst stünde es nirgends
+  for(const x of k.skipped || [])
+    rows.push(`<tr><td>${esc(x.short)}</td><td class="l">von dir aus <b>${esc(x.name)}</b> herausgenommen${x.to ? `, jetzt in ${esc(country(x.to).name)}` : ""} <button class="link" data-act="planunskip" data-c="${x.code}" data-s="${esc(x.slug)}">zurück</button></td></tr>`);
   const grouped = new Set();
   for(const g of k.small_groups || []){
     g.slugs.forEach(x => grouped.add(x));
@@ -195,7 +198,7 @@ function wishOpts(rows, label, nso){
   const groups = [["buy", "kaufen"], ["good", "gut"], ["wait", "warten"], ["none", "ohne Urteil"]];
   return groups.map(([v, l]) => {
     const g = rows.filter(r => vd(r.slug) === v).sort((a, b) => a.title.localeCompare(b.title, "de"));
-    return g.length ? `<optgroup label="${l}">${g.map(r => `<option value="${esc(r.slug)}">${esc(r.title)}${(r.dlc_of || rowOf(r.slug).dlc_of) ? " (DLC)" : ""}${label ? " · " + label(r) : ""}</option>`).join("")}</optgroup>` : "";
+    return g.length ? `<optgroup label="${l}">${g.map(r => { const t = label ? label(r) : ""; return `<option value="${esc(r.slug)}">${esc(r.title)}${(r.dlc_of || rowOf(r.slug).dlc_of) ? " (DLC)" : ""}${t ? " · " + t : ""}</option>`; }).join("")}</optgroup>` : "";
   }).join("") + (nso ? extraOpts(nso.code, nso.skip) + nsoOpts(nso.code, nso.skip) : "");
 }
 /* Fehlende DLC deiner Spiele, die nicht auf der Wishlist stehen (0.72): im Land mit dem Preis dort */
@@ -304,9 +307,9 @@ function planCard(p, step){
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
         const need = i.needs_parent ? needsRegion(i.dlc_of, p.code, i.slug) : "";
         const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${need || (i.parent_owned ? "has" : "")}"${need ? ` title="${esc(needTip(p.code, need))}"` : ""}>DLC${need === "open" ? "?" : ""}</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${i.dlc_of && i.short !== i.title ? `<small class="gm">${esc(i.dlc_of)}:</small> ` : ""}${esc(i.short)}${i.own ? " " + ownMark(i) : ""}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
-        const filled = step && (p.fill_slugs || []).includes(i.slug)
-          ? ` <button class="link" data-act="planunfill" data-c="${p.code}" data-s="${esc(i.slug)}" title="Von dir dazugenommen. Klick nimmt ihn wieder heraus.">dazugenommen ×</button>` : "";
-        const first = step || p.ro ? `<td class="t" title="${esc(tip)}">${nm}${filled}</td>` : `<td class="t" title="${esc(tip)}"><label class="tt"><input type="checkbox" checked data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}">${nm}</label></td>`;
+        const filled = step && (p.fill_slugs || []).includes(i.slug) ? ` <small class="mut">dazugenommen</small>` : "";
+        // Überall dasselbe × (0.94): im Kaufplan „nicht in diesem Schritt“, auf der Länderkarte aus dem Korb
+        const first = `<td class="t" title="${esc(tip)}">${xBtn(p, i, step)}${nm}${filled}</td>`;
         // Klassen c-… ordnen die Zellen am Handy zu einer Karte je Titel (0.75)
         return `<tr>${first}${wide ? `<td class="c-loc" data-l="Shop">${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td class="c-end"${i.sale ? ` data-l="bis"` : ""}>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
           <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
@@ -316,45 +319,7 @@ function planCard(p, step){
   } else {
     h += `<p class="line"><small>Kein Wishlist-Titel im Angebot.</small></p>`;
   }
-  if(!step && !p.ro){
-    const sugg = p.trims.map(t =>
-        `<button data-act="trim" data-c="${p.code}" data-s="${esc(t.slug)}" title="Ohne diesen Titel kostet das Paket ${eur(t.marginal)} weniger, ohne den Wechsel kostet er ${eur(t.ref)}">
-          <span class="n">− ${esc(t.short)} weglassen</span><small>hier ${num(t.marginal)}, sonst ${num(t.ref)}${t.rest === null ? "" : ` · Rest ${num(t.rest, cur)}`}</small><b>spart ${eur(t.gain)}</b></button>`)
-      .concat(p.fillers.map(f =>
-        `<button data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: ${esc(money(f.local, cur))}, Aufpreis ${eur(f.extra)}, ohne den Wechsel ${eur(f.ref)}">
-          <span class="n">+ ${f.shorts.map(esc).join(" + ")}</span><small>+${num(f.extra)}, sonst ${num(f.ref)}${f.rest === null || f.rest === undefined ? "" : ` · Rest ${num(f.rest, cur)}`}</small><b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`));
-    if(sugg.length) h += `<div class="sugg">${sugg.slice(0, S.dense ? 3 : 99).join("")}</div>`;
-  } else if((p.fill || []).length || (p.fill_nso || []).length){
-    // Mitgliedschaft passt in den Rest: nur ein Hinweis, gekauft wird sie über ihren Kasten (0.57.1)
-    const nsoFit = (p.fill_nso || []).map(f => `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="nso-${esc(f.key)}" title="Online-Mitgliedschaft ${esc(f.label)} für ${esc(money(f.local, cur))}${f.at_best ? ", am Bestpreis" : ""}. Danach bleiben ${esc(money(f.left, cur))}. Sie verlängert deine laufende Mitgliedschaft. Klick nimmt sie in diesen Schritt.">${f.at_best ? `<span class="star">★</span>` : ""}Mitgliedschaft ${esc(f.label)} <small style="display:inline">${money(f.local, cur)}</small></button>`);
-    // Die besten Treffer als Knöpfe, auch zwei Titel zusammen, wenn sie den Rest besser füllen;
-    // alles andere, was passt, im Auswahlfeld daneben (0.70)
-    const one = f => f.extra
-      ? `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung, nicht auf der Wishlist: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. DLC gelten nur in der Region des Hauptspiels. Klick nimmt ihn in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></button>`
-      : `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt den Titel in diesen Schritt.">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`;
-    const two = f => `<button class="sm" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: zusammen ${esc(money(f.local, cur))}. Danach bleiben ${esc(money(f.left, cur))}. Klick nimmt beide in diesen Schritt.">+ ${f.shorts.map(esc).join(" + ")} <small style="display:inline">${money(f.local, cur)}</small></button>`;
-    // Wishlist zuerst; fehlende DLC, die nicht auf der Wishlist stehen, dahinter: zwei als Knopf, alle im eigenen Auswahlfeld (0.77)
-    const fill = p.fill || [], more = fill.filter(f => !f.extra), xs = fill.filter(f => f.extra);
-    const top = more.map(f => ({left: f.left, h: one(f)})).concat((p.fill_pairs || []).map(f => ({left: f.left, h: two(f)})))
-      .sort((x, y) => x.left - y.left).slice(0, 4)
-      .concat(xs.slice(0, 2).map(f => ({h: one(f)})));
-    // Ein Auswahlfeld für alles, was passt (0.78): oben die Wishlist, darunter die DLC deiner Spiele,
-    // die nicht auf der Wishlist stehen, nach Spiel sortiert
-    const optOf = (f, name) => `<option value="${esc(f.slug)}">${esc(name)} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`;
-    const xsSorted = [...xs].sort((a, b) => (a.game || "").localeCompare(b.game || "", "de") || a.short.localeCompare(b.short, "de"));
-    const sel = more.length + xs.length > 1 ? ` <select data-act="planpick" data-c="${p.code}" title="Alles, was in den Rest passt, mit dem, was danach bleibt: deine Wishlist und die DLC deiner Spiele, die nicht auf der Wishlist stehen"><option value="">alles, was passt (${more.length + xs.length}) …</option>` +
-      (more.length ? `<optgroup label="Wishlist">${more.map(f => optOf(f, f.title + (f.dlc ? " (DLC)" : ""))).join("")}</optgroup>` : "") +
-      (xs.length ? `<optgroup label="DLC deiner Spiele, nicht auf der Wishlist">${xsSorted.map(f => optOf(f, (f.game ? f.game + ": " : "") + f.short)).join("")}</optgroup>` : "") + `</select>` : "";
-    h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` + nsoFit.concat(top.map(x => x.h)).join(" ") + sel + `</div>`;
-  } else if(p.rest > 0){
-    // Nur wo ein Rest bleibt: Bei Kartenzahlung gibt es keinen Rest, der sich füllen ließe. Im Kaufplan
-    // ein Knopf wie im Korb (0.76), ohne Titel, die schon in einem anderen Schritt stehen
-    const planned = new Set(step && S.kauf ? S.kauf.steps.flatMap(x => x.items.map(i => i.slug)) : []);
-    const f = p.fillers.find(f => !f.slugs.some(x => planned.has(x)));
-    if(f) h += `<p class="restline" style="margin-top:6px">Passt dazu: ` + (step
-      ? `<button class="fl" data-act="planfill" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, cur, "Klick nimmt ihn in diesen Schritt."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`
-      : `<span title="${esc(fillTip(f, cur, ""))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</span>`) + `</p>`;
-  }
+  h += removedLine(p, step) + suggestHtml(p, step);
   let foot = has ? `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>Rechnung</summary>${billHtml(p)}</details>` : "";
   if(step && (p.others || []).length) foot += othersHtml(p, step);
   if(p.rate && !step && !p.ro){
@@ -373,11 +338,74 @@ function planCard(p, step){
     const inPlan = new Set(p.items.map(i => i.slug));
     const opts = wishOpts(S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug) && !r.cells[p.code].own),
       r => money(r.cells[p.code].local, cur), {code: p.code, skip: inPlan});
+    const mine = ((S.ui.plan_fill || {})[p.code] || []).length + ((S.ui.plan_skip || {})[p.code] || []).length;
     foot += (has ? `<button data-act="share" data-c="${p.code}" data-step="1" title="Die Titel dieses Schritts als Korb übernehmen und in allen Ländern vergleichen (Wishlist, Ansicht Korb)">als Korb vergleichen</button>` : "") +
-      (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu."><option value="">Titel dazunehmen …</option>${opts}</select>` : "");
+      (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu."><option value="">Titel dazunehmen …</option>${opts}</select>` : "") +
+      (mine ? `<button class="link" data-act="planreset" data-c="${p.code}" title="Was du in diesem Schritt dazugenommen oder herausgenommen hast, verwerfen">zurücksetzen</button>` : "");
   }
   if(foot) h += `<div class="foot">${foot}</div>`;
   return h + `</article>`;
+}
+/* Eine Karte für Kaufplan und Länderkarten (0.94): dieselben Werkzeuge an beiden Orten. Im Kaufplan
+   wirkt alles auf den Plan (dazunehmen, herausnehmen), auf der Länderkarte auf den Korb des Landes. */
+function xBtn(p, i, step){
+  if(p.ro) return "";
+  if(step && (p.fill_slugs || []).includes(i.slug))
+    return `<button class="x" data-act="planunfill" data-c="${p.code}" data-s="${esc(i.slug)}" title="Von dir dazugenommen. Klick nimmt ihn wieder heraus.">×</button>`;
+  if(step)
+    return `<button class="x" data-act="planskip" data-c="${p.code}" data-s="${esc(i.slug)}" title="Nicht in diesem Schritt kaufen: Der Plan rechnet ohne ihn neu, er geht ins nächstbeste Land oder wartet. Er steht danach unter der Tabelle, ein Klick holt ihn zurück.">×</button>`;
+  return `<button class="x" data-act="drop" data-c="${p.code}" data-s="${esc(i.slug)}" title="Aus dem Korb dieses Landes nehmen. Er steht danach unter der Tabelle, ein Klick holt ihn zurück.">×</button>`;
+}
+/* Was du herausgenommen hast, bleibt sichtbar, mit dem Weg zurück: nichts verschwindet still */
+function removedLine(p, step){
+  if(p.ro) return "";
+  const list = step ? (p.skipped || [])
+    : ((S.ui.overrides[p.code] || {}).remove || []).map(s => ({slug: s, short: (rowOf(s) || {}).title || s}));
+  if(!list.length) return "";
+  const where = x => !step ? "" : x.to ? ` <small class="mut">jetzt in ${esc(country(x.to).name)}</small>` : ` <small class="mut">wartet</small>`;
+  return `<p class="restline removed">Herausgenommen: ` + list.map(x =>
+    `${esc(x.short)}${where(x)} <button class="link" data-act="${step ? "planunskip" : "undrop"}" data-c="${p.code}" data-s="${esc(x.slug)}" title="Wieder hineinnehmen">zurück</button>`).join(" · ") + `</p>`;
+}
+/* Vorschläge in drei Zeilen, überall gleich: was in den Rest passt, was dazu lohnt, was weglassen spart */
+function suggestHtml(p, step){
+  if(p.ro || p.is_ref || !p.rate) return "";
+  const cur = p.currency, act = step ? "planfill" : "add";
+  const verb = step ? "Klick nimmt ihn in diesen Schritt." : "Klick legt ihn in den Korb dieses Landes.";
+  const verb2 = step ? "Klick nimmt beide in diesen Schritt." : "Klick legt beide in den Korb dieses Landes.";
+  // Im Kaufplan nichts, was schon ein anderer Schritt kauft
+  const planned = new Set(step && S.kauf ? S.kauf.steps.flatMap(x => x.items.map(i => i.slug)) : p.items.map(i => i.slug));
+  let h = "";
+  if(p.rest > 0){
+    // Mitgliedschaft passt in den Rest (0.57.1); die besten Treffer als Knöpfe, auch zwei Titel zusammen,
+    // alles andere im Auswahlfeld (0.70, 0.78); fehlende DLC deiner Spiele dahinter (0.77)
+    const nsoFit = (p.fill_nso || []).map(f => `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="nso-${esc(f.key)}" title="Online-Mitgliedschaft ${esc(f.label)} für ${esc(money(f.local, cur))}${f.at_best ? ", am Bestpreis" : ""}. Danach bleiben ${esc(money(f.left, cur))}. Sie verlängert deine laufende Mitgliedschaft. ${verb.replace("ihn", "sie")}">${f.at_best ? `<span class="star">★</span>` : ""}Mitgliedschaft ${esc(f.label)} <small style="display:inline">${money(f.local, cur)}</small></button>`);
+    const one = f => f.extra
+      ? `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slug)}" title="Fehlender DLC zu ${esc(f.game)} aus deiner Sammlung, nicht auf der Wishlist: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. DLC gelten nur in der Region des Hauptspiels. ${verb}">+ ${esc(f.short)} <small style="display:inline">DLC · ${money(f.local, cur)}</small></button>`
+      : `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slug)}" title="${esc(f.title)}${f.dlc ? " (DLC)" : ""}: ${esc(money(f.local, cur))}${f.eur !== null ? `, umgerechnet ca. ${eur(f.eur)}` : ""}. Danach bleiben ${esc(money(f.left, cur))}. ${verb}">+ ${esc(f.short)} <small style="display:inline">${money(f.local, cur)}${f.sale ? " · Angebot" : ""}</small></button>`;
+    const two = f => `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(f.titles.join(" + "))}: zusammen ${esc(money(f.local, cur))}. Danach bleiben ${esc(money(f.left, cur))}. ${verb2}">+ ${f.shorts.map(esc).join(" + ")} <small style="display:inline">${money(f.local, cur)}</small></button>`;
+    const fill = (p.fill || []).filter(f => !planned.has(f.slug)), more = fill.filter(f => !f.extra), xs = fill.filter(f => f.extra);
+    const top = more.map(f => ({left: f.left, h: one(f)})).concat((p.fill_pairs || []).filter(f => !f.slugs.some(x => planned.has(x))).map(f => ({left: f.left, h: two(f)})))
+      .sort((x, y) => x.left - y.left).slice(0, 4)
+      .concat(xs.slice(0, 2).map(f => ({h: one(f)})));
+    const optOf = (f, name) => `<option value="${esc(f.slug)}">${esc(name)} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`;
+    const xsSorted = [...xs].sort((a, b) => (a.game || "").localeCompare(b.game || "", "de") || a.short.localeCompare(b.short, "de"));
+    const sel = more.length + xs.length > 1 ? ` <select data-act="${step ? "planpick" : "pick"}" data-c="${p.code}" title="Alles, was in den Rest passt, mit dem, was danach bleibt: deine Wishlist und die DLC deiner Spiele, die nicht auf der Wishlist stehen"><option value="">alles, was passt (${more.length + xs.length}) …</option>` +
+      (more.length ? `<optgroup label="Wishlist">${more.map(f => optOf(f, f.title + (f.dlc ? " (DLC)" : ""))).join("")}</optgroup>` : "") +
+      (xs.length ? `<optgroup label="DLC deiner Spiele, nicht auf der Wishlist">${xsSorted.map(f => optOf(f, (f.game ? f.game + ": " : "") + f.short)).join("")}</optgroup>` : "") + `</select>` : "";
+    const btns = nsoFit.concat(top.map(x => x.h));
+    // Auch ohne Treffer sichtbar (0.94): Die Zeile fehlt nicht, sie sagt, dass nichts passt
+    h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` +
+      (btns.length || sel ? btns.join(" ") + sel : `<small class="mut">nichts von deiner Wishlist oder den DLC deiner Spiele</small>`) + `</div>`;
+  }
+  // Was dazu lohnt: Ein weiterer Titel spart hier gegenüber dem Kauf ohne diesen Wechsel (0.76)
+  const fillers = (p.fillers || []).filter(f => !f.slugs.some(x => planned.has(x))).slice(0, S.dense && !step ? 1 : 2);
+  if(fillers.length) h += `<div class="fillrow"><span class="mut">Passt dazu:</span> ` + fillers.map(f =>
+    `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, cur, f.slugs.length > 1 ? verb2 : verb))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`).join(" ") + `</div>`;
+  // Was weglassen spart: Ohne diesen Titel kostet der Kauf hier weniger, als er anderswo kostet
+  const trims = (p.trims || []).slice(0, 2);
+  if(trims.length) h += `<div class="fillrow"><span class="mut">Weglassen spart:</span> ` + trims.map(t =>
+    `<button class="sm" data-act="${step ? "planskip" : "trim"}" data-c="${p.code}" data-s="${esc(t.slug)}" title="Ohne ${esc(t.short)} kostet der Kauf hier ${eur(t.marginal)} weniger; ohne den Wechsel kostet der Titel ${eur(t.ref)}${t.rest === null ? "" : `, danach bleiben ${money(t.rest, cur)} Rest`}. ${step ? "Klick nimmt ihn aus diesem Schritt." : "Klick nimmt ihn aus dem Korb dieses Landes."}">− ${esc(t.short)} <b>spart ${eur(t.gain)}</b></button>`).join(" ") + `</div>`;
+  return h;
 }
 /* Andere Länder an einem Schritt des Kaufplans (0.74): dieselben Titel dort, nach Mehrkosten.
    Ein Klick auf ein Land öffnet seine Karte. */
@@ -386,13 +414,16 @@ function othersHtml(p, step){
   if(!list.length) return "";
   const amt = o => o.diff >= 0.005 ? `<span class="abv">+${eur(o.diff)}</span>` : o.diff <= -0.005 ? `<span class="gn">−${eur(-o.diff)}</span>` : `<span class="mut">gleich</span>`;
   const first = list.find(o => !o.missing.length);
+  // Ein Land aufgeklappt (0.94): dieselbe Karte, nur zum Ansehen; weiterspielen auf seiner Länderkarte
+  const ol = S.olInline && S.olInline.from === p.code ? S.olInline : null;
+  const inline = ol ? `<div class="olin">${planCard(ol.p)}<p class="restline"><button class="link" data-act="goland" data-c="${ol.code}" title="Die Länderkarte von ${esc(ol.p.name)} mit eigenem Korb öffnen">Länderkarte von ${esc(ol.p.name)} öffnen</button> · <button class="link" data-act="olshow" data-c="${ol.code}" data-from="${p.code}">zuklappen</button></p></div>` : "";
   const tip = `Was die Titel dieses Schritts in anderen Ländern kosten, verglichen mit ${p.name}. Wie bei „Preis“ zählt, was die Spiele kosten; ein Rest bleibt als Guthaben. Grün heißt günstiger: Der Plan nimmt dann ${p.name}, weil der Wechsel dorthin sich nicht rechnet oder weil er jeden Titel einzeln dem günstigsten Land gibt.`;
   const rows = list.map(o => {
     const note = [o.current ? "Konto steht dort, kein Wechsel" : "", o.missing.length ? `ohne ${o.missing.map(esc).join(", ")}` : ""].filter(Boolean).join(" · ");
-    return `<tr><td class="l"><span class="nw"><button class="link" data-act="goland" data-c="${o.code}" data-from="${p.code}" title="Diese Titel in ${esc(o.name)} ansehen, mit Preis, Wechsel und Rechnung">${esc(o.name)}</button> ${o.is_ref ? "" : tierTag(o.tier)}</span>${note ? `<br><small class="mut">${note}</small>` : ""}</td>` +
+    return `<tr><td class="l"><span class="nw"><button class="link" data-act="olshow" data-c="${o.code}" data-from="${p.code}" title="Diese Titel in ${esc(o.name)} hier aufklappen, mit Preis, Wechsel und Rechnung">${esc(o.name)}</button> ${o.is_ref ? "" : tierTag(o.tier)}</span>${note ? `<br><small class="mut">${note}</small>` : ""}</td>` +
       `<td title="Die Spiele kosten dort ${o.estimated ? "ca. " : ""}${eur(o.games_cost)}">${o.estimated ? "ca. " : ""}${amt(o)}</td></tr>`;
   }).join("");
-  return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table></details>`;
+  return `<details class="bill" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary title="${esc(tip)}">Andere Länder${first ? ` <span class="mut">· ${esc(first.name)} ${first.diff >= 0.005 ? "+" + eur(first.diff) : first.diff <= -0.005 ? "−" + eur(-first.diff) : "gleich"}</span>` : ""}</summary><table class="mini-t others">${rows}</table>${inline}</details>`;
 }
 /* „Passt dazu“ (Kaufplan, Länderkarte, Korb): Was ein weiterer Wishlist-Titel hier zusätzlich kostet und was er spart.
    „spart“ rechnet mit heutigen Preisen; dahinter klein, wie weit der Titel hier über seinem Bestpreis liegt (0.77) */

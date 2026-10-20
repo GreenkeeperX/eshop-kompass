@@ -337,15 +337,25 @@ denen Titel fehlen, folgen mit „ohne …“ und vergleichen nur die übrigen. 
 was die Spiele kosten, ein Rest bleibt auf beiden Seiten Guthaben. Grün heißt günstiger: Dann
 lohnt der Wechsel dorthin nicht, oder der Plan hat jeden Titel einzeln dem Land gegeben, in dem
 er am wenigsten kostet, und im Paket teilen sich die Titel die Karten anders. Ein Klick auf ein
-Land zeigt die Titel des Schritts dort als Karte mit Rechnung und darunter die Karte des Landes
-mit seinem eigenen Korb.
+Land klappt die Titel des Schritts dort direkt darunter auf, als Karte mit Preis, Wechsel und
+Rechnung; „Länderkarte von … öffnen“ führt zu seinem eigenen Korb.
+
+**Eine Karte überall:** Schritt und Länderkarte haben dieselben Werkzeuge. Das × vor jedem Titel
+nimmt ihn heraus: im Kaufplan nur aus diesem Schritt (der Plan rechnet neu, der Titel geht ins
+nächstbeste Land oder wartet), auf der Länderkarte aus ihrem Korb. Herausgenommenes steht danach
+unter der Tabelle („Herausgenommen: Titel jetzt in Polen zurück“), fällt ein ganzer Schritt weg,
+unter „Nicht im Plan“; „zurück“ holt es wieder hinein, „zurücksetzen“ verwirft alles, was du an
+einem Schritt geändert hast. Darunter drei Zeilen Vorschläge: „Passt in den Rest“, „Passt dazu“
+und „Weglassen spart“.
 
 **Füllartikel:** Bleibt in einem Schritt ein Rest, stehen darunter Wishlist-Titel, die
 hineinpassen, der kleinste verbleibende Rest zuerst, auch zwei Titel zusammen, wenn sie den
 Rest besser füllen als jeder einzelne. Alles andere, was passt, steht im Auswahlfeld „alles, was
 passt …“ mit dem, was danach bleibt. Das Urteil zählt dabei nicht; Titel aus der Sammlung,
 gekaufte, kostenlose, DLC ohne Hauptspiel und eigene Angebote (die zahlt die Kreditkarte)
-fehlen. Ein Klick nimmt den Titel in den Schritt, „dazugenommen ×“ nimmt ihn wieder heraus. Fehlende
+fehlen. Ein Klick nimmt den Titel in den Schritt (auf der Länderkarte in ihren Korb), er trägt
+dann klein „dazugenommen“, das × nimmt ihn wieder heraus. Bleibt ein Rest und passt nichts, sagt
+die Zeile das („nichts von deiner Wishlist …“), statt zu fehlen. Fehlende
 DLC deiner Spiele, die nicht auf der Wishlist stehen, erscheinen dahinter: die zwei kleinsten als
 Knopf, alle im selben Auswahlfeld „alles, was passt …“ unter „DLC deiner Spiele, nicht auf der
 Wishlist“; ein Klick nimmt auch sie in den Schritt. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
@@ -356,8 +366,9 @@ Korb; von selbst nimmt der Plan beides nie); „als Korb
 vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
 dazugenommenen Titel dieses Landes vergessen.
 
-**Passt dazu:** Passt nichts in den Rest, schlägt ein Schritt (wie der Korb und jede Länderkarte)
-den Wishlist-Titel vor, der zusätzlich am meisten spart. „spart“ ist, was der Titel ohne den
+**Passt dazu:** Ein Schritt und jede Länderkarte (der Korb je Land) schlagen bis zu zwei
+Wishlist-Titel vor, die zusätzlich am meisten sparen; **Weglassen spart** nennt bis zu zwei Titel,
+ohne die der Kauf hier mehr spart, als sie anderswo kosten. „spart“ ist, was der Titel ohne den
 Wechsel hierher kosten würde (im günstigsten zählenden Land gleicher oder leichterer Stufe oder im
 Kontoland), minus dem, was der Kauf hier mit ihm mehr kostet. Der Aufpreis ist oft kleiner als der
 Shop-Preis, weil die Guthabenkarten und der Rest einen Teil decken. Ein Klick nimmt ihn in den

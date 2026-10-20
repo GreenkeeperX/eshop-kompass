@@ -33,11 +33,22 @@ höchstens 1280 px, nur diese Karte breiter).
 „Andere Länder“ (ab 0.74) steht zugeklappt wie „Rechnung“ unter jedem Schritt, in der Zusammenfassung
 das nächstgünstigste Land. Je Land eine Zeile: Name als Link, Stufe, darunter klein „ohne …“ oder
 „Konto steht dort“, rechts der Betrag: rot `.abv` „+x €“ teurer, grün `.gn` „−x €“ günstiger.
+Ab 0.94 klappt ein Klick auf ein Land dessen Karte mit den Titeln des Schritts direkt darunter auf
+(`olshow`, `S.olInline`, nur zum Ansehen), darunter „Länderkarte von … öffnen · zuklappen“.
 
 Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Titel
-dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedschaft“ bietet alle Varianten an). Dazugenommenes ist ein Füllartikel des Schritts und trägt „dazugenommen ×“
-(vorher „Füller ×“). Weglassen-Vorschläge gibt es im Plan nicht: Der Plan nimmt nur, was dort
-kaufen heißt und dessen Wechsel sich rechnet.
+dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedschaft“ bietet alle Varianten an). Dazugenommenes ist ein Füllartikel des Schritts und trägt klein grau „dazugenommen“.
+
+Eine Karte überall (ab 0.94, Entscheidung 20.10.2026): Schritt und Länderkarte haben dieselben
+Werkzeuge. Vor jedem Titel ein graues × (`xBtn`; wie im Korb, statt der Häkchen der Länderkarten):
+im Schritt `planskip` (Titel nicht in diesem Schritt, `ui.plan_skip`), bei Dazugenommenem
+`planunfill`, auf der Länderkarte `drop`. Unter der Tabelle „Herausgenommen: Titel jetzt in Land
+zurück“ (`removedLine`; ohne Schritt unter „Nicht im Plan“), am Schritt „zurücksetzen“
+(`planreset`). Darunter bis zu drei Zeilen `.fillrow` (`suggestHtml`): „Passt in den Rest (x):“
+(Knöpfe, Paare, Mitgliedschaft, fehlende DLC, Auswahlfeld; ohne Treffer grau „nichts von deiner
+Wishlist …“), „Passt dazu:“ (bis zu zwei, Raster einer) und „Weglassen spart:“ (bis zu zwei). Im
+Schritt wirken sie auf den Plan, auf der Länderkarte auf ihren Korb. Die alte Knopfreihe der
+Länderkarten (`.sugg`) ist weg.
 
 ## Käufe aus dem eShop
 
@@ -245,8 +256,8 @@ Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 
 Reiter (ab 0.61, „Titel“ heißt ab 0.72 „Wishlist“, intern weiter `titel`): Jetzt, Wishlist, Sammlung, Einstellungen, erst was ansteht, dann
 Einkaufen, dann was du hast. Die Länderkarten sind ab 0.74 kein Reiter mehr (intern weiter `laender`):
-„alle Länderkarten“ unter dem Kaufplan, „Andere Länder“ an jedem Schritt (`goland`, `S.landFocus`;
-`S.landStep` ist die Karte mit den Titeln des Schritts, nur zum Ansehen, `p.ro`), oben „← Kaufplan“. Der Korb ist ab 0.73 kein Reiter mehr, sondern die dritte Ansicht der
+„alle Länderkarten“ unter dem Kaufplan, „Länderkarte von … öffnen“ unter einem aufgeklappten Land
+in „Andere Länder“ (`goland`, `S.landFocus`), oben „← Kaufplan“. Der Korb ist ab 0.73 kein Reiter mehr, sondern die dritte Ansicht der
 Wishlist (`S.tview = "korb"`, `goKorb()`; ein gemerkter Reiter `korb` wird dorthin umgeleitet).
 Am Knopf Korb steht grau die Zahl seiner Titel. In der Tabelle steht vor jedem Titel „+“ bzw. „✓“
 (`.kb`, in den Korb oder heraus). Werkzeugzeile in jedem Reiter gleich: links Filter und Reihenfolge, rechts
@@ -359,7 +370,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Titelname mit DLC-Marke, Spiel grau davor (nicht in der Wishlist-Liste), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
 | Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`, am Handy `korbPhone`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
-| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt (`planpick`, `planfill`), Länderkarte (`pick`, `add`, `trim`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |
+| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml`, `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |

@@ -136,19 +136,9 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .pc th{padding:1px 3px;font-size:10px}
 .pc td{padding:2px 3px;font-size:12.5px;vertical-align:top}
 .pc td.t{white-space:normal;font-size:13px;line-height:1.25}
-.tt{display:flex;gap:5px;align-items:flex-start}
-.tt input{margin:2px 0 0;flex:none}
-.tt .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .pc col.c-l{width:88px}.pc col.c-b{width:52px}.pc col.c-e{width:44px}.pc col.c-d{width:44px}
 .pc .c-t{display:none}
 .soon{color:var(--warn);font-weight:600}
-.sugg{display:flex;flex-direction:column;gap:2px;margin-top:5px}
-.sugg button{display:flex;gap:7px;align-items:baseline;text-align:left;border:0;background:var(--bg);border-radius:6px;
-  padding:2px 7px;font-size:12px;width:100%;font-variant-numeric:tabular-nums}
-.sugg button:hover{outline:1px solid var(--accent)}
-.sugg .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:60px}
-.sugg small{color:var(--muted);white-space:nowrap}
-.sugg b{white-space:nowrap}
 .foot{display:flex;gap:6px;align-items:center;margin-top:6px}
 /* Rechnung in eigener Zeile unter den Knöpfen: Aufklappen schiebt nichts zur Seite (0.58) */
 .foot{flex-wrap:wrap}
@@ -167,7 +157,6 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .list .pc td{font-size:14px;padding:5px 6px}
 .list .pc th{font-size:11px;padding:3px 6px}
 .list .pc td.t{font-size:14.5px}
-.list .tt .nm{display:block}
 .pc .nm small.gm,.nm small.gm{display:inline;color:var(--muted);font-size:.85em}
 #eshophist .gm{color:var(--muted)}
 #eshophist .mini-t button.sm{margin:2px 0 2px 6px}
@@ -189,7 +178,6 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .list .pc .c-t{display:table-cell}
 .list .pc col.c-t{display:table-column;width:110px}
 .list .pct{font-size:12px}
-.list .sugg button{font-size:13.5px;padding:5px 10px}
 .list .foot button,.list .foot select{font-size:13px;padding:3px 9px}
 .list .chip{font-size:12px}
 
@@ -229,7 +217,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 /* Länder ohne den ganzen Korb blass; farbige Zellen nicht, sonst trübt die Deckkraft ihre Schrift (0.68) */
 .cmp td.incomplete:not(.c-buy):not(.c-good){opacity:.6}
 .cmp thead th.incomplete{color:var(--muted)}  /* Kopf deckend: sonst scheint beim Scrollen die Tabelle durch */
-.cmp .x,.kpt .x,.mini-t .x,.dg .x{border:0;background:none;padding:0 6px 0 0;color:var(--muted)}
+.cmp .x,.kpt .x,.mini-t .x,.dg .x,.it .x{border:0;background:none;padding:0 6px 0 0;color:var(--muted)}
 .mini-t .x,.dg .x{padding:0 4px;font-size:13px}
 .cmp .fl{border:0;background:var(--bg);border-radius:6px;padding:1px 6px;font-size:11.5px;white-space:normal;text-align:right}
 .cmp .fl b{white-space:nowrap}
@@ -304,7 +292,7 @@ label.f input,label.f select,.set td input[type=text],.set td select{
 pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:240px;overflow:auto;font-size:12px;margin:0}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;z-index:8}
 @media (max-width:420px){.grid{grid-template-columns:1fr}}
-@media (max-width:520px){.sugg button{flex-wrap:wrap}.sugg small{white-space:normal}#nsobox .mini-t{display:block;overflow-x:auto}}
+@media (max-width:520px){#nsobox .mini-t{display:block;overflow-x:auto}}
 #nsobox{scroll-margin-top:12px}
 @media (max-width:640px){.cmp td:first-child,.cmp th:first-child{min-width:130px;max-width:150px}}
 /* Korb am Handy (0.85): ein Land nach dem anderen statt der breiten Tabelle */

@@ -102,8 +102,9 @@ def run(code_dir, abgleich, sicherung, scenarios, now):
         store.save_data(data)
         data, ui, bought = store.load_data(), store.load_ui(), store.load_purchases()
         radar = planner.radar(data, settings, ui["targets"], now=now)
+        more = {"skip": ui["plan_skip"]} if "plan_skip" in ui else {}    # ab 0.94
         plan = planner.purchase_plan(data, settings, ui["targets"], include_good=ui["plan_good"],
-                                     now=now, bought=bought, fill=ui["plan_fill"])
+                                     now=now, bought=bought, fill=ui["plan_fill"], **more)
         langs = planner.lang_todo(data, settings, now=now)
         coll = planner.collection(data, settings, rows=radar, now=now)
         return {"version": m["sources"].VERSION, "data": data, "settings": settings,
