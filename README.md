@@ -90,12 +90,11 @@ Rabatt, mit denselben Grenzen für jedes Land:
 
 **Kleinkram** (Bestpreis unter 2 €, unter Einstellungen, Regeln änderbar, 0 schaltet es ab): Für
 ihn gilt die Euro-Grenze bei „kaufen“ nicht, nur die 2 %; 0,50 € wären bei 1 € schon 50 %. Im
-Kaufplan macht er keine Guthabenkarte größer: Er kommt nur in den Rest, den die übrigen Titel
-eines Schritts ohnehin lassen (oder in Guthaben, das schon dort liegt), der teuerste zuerst. Was
-nicht passt, steht unter „Nicht im Plan“ je Land mit Summe („zusammen 11,20 R$ von 30 R$ (37 %)“)
-und erscheint unter „Passt in den Rest“, sobald einer bleibt. Füllt er zusammen eine Karte bis auf
-höchstens 10 %, steht dort „Reicht für eine eigene Karte“ mit einem Knopf, der ihn in den Schritt
-nimmt; von selbst passiert das nie. Mit Kreditkarte bezahlt, ändert sich nichts.
+Kaufplan macht er keine Guthabenkarte größer und kommt auch nie von selbst in einen Schritt
+(ab 0.98): Er steht unter „Passt in den Rest“ zur Auswahl, sobald ein Schritt Rest lässt, und
+unter „Nicht im Plan“ je Land mit Summe („zusammen 11,20 R$ von 30 R$ (37 %)“) und „alle
+dazunehmen“. Füllt er zusammen eine Karte bis auf höchstens 10 %, steht dort „Reicht für eine
+eigene Karte“ mit einem Knopf, der ihn in den Schritt nimmt. Mit Kreditkarte bezahlt, ändert sich nichts.
 
 Ein dauerhaft günstiger Normalpreis am Bestpreis ist also „kaufen“ wie ein Angebot (der Grund
 nennt dann „Normalpreis“), und ein teureres Angebot in einem anderen Land macht daraus kein

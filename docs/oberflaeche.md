@@ -10,6 +10,35 @@ folgen dieser Datei.
 Jede Farbe hat genau eine Bedeutung. Was nichts entscheidet, bleibt grau. Beide Ansichten,
 hell und dunkel, müssen lesbar sein; jede Farbänderung wird in beiden geprüft.
 
+## Checkliste für jede neue oder umgebaute Ansicht
+
+Gilt für jede Liste, Tabelle oder Karte, die Titel zeigt (Entscheidung 20.10.2026, nach „Nicht im
+Plan“ 0.96/0.97). Vor dem Commit Punkt für Punkt prüfen und mit Bildschirmfotos (breit und 390 px)
+gegen eine bestehende Ansicht derselben Art halten, etwa die Wishlist-Liste oder einen Plan-Schritt.
+
+1. **Titelnamen:** voller Name in normaler Größe, DLC mit Marke `DLC` davor. Das Spiel klein und grau
+   vor dem DLC-Namen nur dort, wo Spiel und DLC wie in den Schritt-Tabellen eng untereinander stehen.
+   Mehrere Titel eines Spiels unter einer eigenen Zeile mit dem Spielnamen (fett, „n Titel“), die
+   Titel darunter eingerückt ohne Spielnamen (`titleGroups`, `npTitles`). Klick auf den Namen:
+   Einzelheiten (`gotitle`).
+2. **Preise:** jeder Preis ist ein Link, in den eShop des Lands (`buyLink`), ohne eShop-Seite (DLC) zum
+   Preisverlauf bei DekuDeals (`priceLink`). ★ vor einem Bestpreis, „≈“ vor geschätzten Werten.
+   Preise stehen rechtsbündig untereinander, Rabatt, Land und Zusatzangaben in eigenen Spalten, nie
+   als Anhang hinter dem Preis.
+3. **Farben:** nur der Betrag ist rot (`.bad`/`.abv`), nicht der ganze Satz („kostet **0,08 €** mehr“).
+   Grün nur fürs Urteil und für das, was gelingt, Gold nur für den Bestpreis, violett heißt prüfen.
+4. **Gruppen:** jede Ebene mit mehr als einer Zeile klappbar (`details` mit `data-kc`, offen als
+   Vorgabe, gemerkt wird das Zuklappen), Kopfzeile mit fettem Namen und grauer Zahl, bei mehreren
+   Gruppen „alle aufklappen · alle zuklappen“ (`foldall`).
+5. **Handlungen:** was man mit einem Titel tun kann, steht in seiner Zeile, wie am Schritt: Auswahl
+   „dazunehmen …“ mit Ziel und Preis dort, „zurück“, „entfernen“, Link zur Länderkarte oder zu
+   DekuDeals. Geht nichts, sagt die Zeile warum („in keinem Schritt“), statt leer zu bleiben.
+6. **Nichts still:** was das Tool selbst entscheidet, steht sichtbar da, mit Grund. Es nimmt nie von
+   selbst Titel in einen Schritt; Vorschläge stehen unter „Passt in den Rest“ oder „Passt dazu“.
+7. **Wiederverwenden:** bestehende Bausteine nehmen (`pill`, `star`, `ax`, `buyLink`, `priceLink`,
+   `overBest`, `endCell`, `tierTag`, `needMark`, `langTag`, `.chip`), keine eigene Form für dasselbe.
+8. **Mitpflegen:** Legende, README, diese Datei und „Eine Sache, mehrere Orte“ im selben Commit.
+
 ## Hell, dunkel, System
 
 - Umschalter oben rechts, rechts vom "?": rund, zeigt nur das Zeichen der aktuellen Wahl
@@ -48,7 +77,8 @@ zurück“ (`removedLine`; ohne Schritt unter „Nicht im Plan“), am Schritt �
 (Knöpfe, Paare, Mitgliedschaft, fehlende DLC, Auswahlfeld; ohne Treffer grau „nichts von deiner
 Wishlist …“), „Passt dazu:“ (bis zu zwei, Raster einer) und „Weglassen spart:“ (bis zu zwei). Im
 Schritt wirken sie auf den Plan, auf der Länderkarte auf ihren Korb. Die alte Knopfreihe der
-Länderkarten (`.sugg`) ist weg. Was du an der Karte mit × herausgenommen hast, schlägt keine der
+Länderkarten (`.sugg`) ist weg. „Passt dazu“ steht nur, wenn nichts in den Rest passt (wie bis 0.93,
+wieder ab 0.98). Was du an der Karte mit × herausgenommen hast, schlägt keine der
 drei Zeilen wieder vor (ab 0.95.1; Schritt `p.skipped`, Länderkarte `overrides.remove`). Die Zeile
 „Passt in den Rest“ gibt es nur mit Rest, also nie bei Kartenzahlung; „Passt dazu“ steht unabhängig
 davon.
@@ -150,11 +180,11 @@ haben dieselbe Kartenfarbe und denselben feinen Rahmen (globales `select`, ab 0.
 fehlt (ab 0.70). Preise in Auswahlfeldern „Titel dazunehmen …“ immer mit Währungszeichen (ab 0.70).
 
 Kleinkram (ab 0.92, Entscheidung 19.10.2026): Titel mit Bestpreis unter `deal_eur.mini` (2 €)
-füllen nur den Rest eines Schritts. Was nicht passt, steht unter „Nicht im Plan“ in einer Zeile
-„Kleinkram in Land: wartet auf einen Rest …“ je Land mit Summe und Anteil an der Karte (`notPlanned`,
-Felder `small` und `small_groups` des Kaufplans). Füllt er eine Karte bis auf höchstens 10 %, folgt fett
-„Reicht für eine eigene Karte.“ mit Link „in den Schritt nehmen“ (ohne Schritt: „in die Länderkarte“);
-ab 0.93, Entscheidung 19.10.2026: ein Vorschlag, nie still im Hintergrund. Die Grenze steht
+machen keine Karte größer. Ab 0.98 (Entscheidung 20.10.2026) kommen sie nie von selbst in einen
+Schritt: Lässt ein Schritt Rest, stehen sie unter „Passt in den Rest“ zur Auswahl; sonst unter
+„Nicht im Plan“, Gruppe „Kleinkram“, je Land einklappbar mit Summe, Anteil an der Karte und „alle
+dazunehmen“ (Felder `small` und `small_groups`). Füllt er eine Karte bis auf höchstens 10 %, folgt
+fett „Reicht für eine eigene Karte.“ mit Link „in den Schritt nehmen“. Die Grenze steht
 in Einstellungen, Regeln („Kleinkram unter … €“), im Regelsatz darüber und in der Legende bei „kaufen“.
 
 ## Kopfleiste
@@ -285,18 +315,19 @@ Karten ohne Lücken (ab 0.96): Schritte des Kaufplans und die Länderkarten in m
 `grund.js`, nach jedem `render()`; ein ResizeObserver passt beim Auf- und Zuklappen an). Schritt 3 rückt
 so unter den kürzeren der beiden ersten. Die Liste „Nicht im Plan“ steht ab 0.96 direkt unter den
 Schritten, vor „alle Länderkarten“, und ist nach Grund gegliedert (`.np`): Wechsel lohnt nicht,
-Kleinkram, Lieber warten, Von dir geändert, Schon gekauft, Sonst nicht im Plan. Je Gruppe eine
-Überschrift mit Zahl und ein Satz; darin Kopfzeilen je Land oder Quelle (`tr.np-h`: fettes Land,
-Stufe, „Wechsel spart nur …“ rot, „lohnt ab …“ grau, Link „Länderkarte“; Kleinkram mit Summe und grün
-„reicht für eine eigene Karte“ samt Knopf). Ab 0.97 ist jeder Titel eine Zeile wie in den Tabellen
-des Plans (`npRow`, Tabelle `.np-tab` mit festen Spalten): Name mit DLC-Marke und Spiel grau davor
-(Klick: Einzelheiten), darunter grau die Begründung oder Chip „im Plan“ mit Schritt, Urteil,
-günstigster Preis jetzt mit ★, Rabatt und Land (Link in den eShop), Abstand zum Bestpreis,
-Angebotsende und rechts die Handlung: Auswahl „in Schritt nehmen …“ mit jedem Schritt, in dem es den
-Titel gibt, Preis dort und Aufpreis (`npadd`, wie „Titel dazunehmen“), „zurück“, „entfernen“ oder bei
-Gekauftem „DekuDeals“. Titel, die der Plan in einem anderen Land kauft, stehen zur Erklärung unter
-ihrem Land, zählen aber nicht mit. Am Handy je Titel eine kleine Karte wie im Plan. Zugeklappt nennt
-die Kopfzeile Titelzahl und Gruppen („2 Titel: Kleinkram 2“).
+Kleinkram, Lieber warten, Von dir geändert, Schon gekauft, Sonst nicht im Plan. Ab 0.98 ist jede
+Ebene klappbar (Gruppe, Land oder Quelle, Spiel; `details.npf` mit `data-kc`, oben „alle aufklappen ·
+alle zuklappen“). Kopfzeile je Land: fettes Land, Stufe, grau „n wartet, n im Plan“, „Wechsel spart nur
+**1,50 €**, lohnt ab 20,00 €“ (nur der Betrag rot), Link „Länderkarte“; Kleinkram mit Summe und grün
+„reicht für eine eigene Karte“ samt Knopf „alle dazunehmen“. Jeder Titel ist eine Zeile im Raster der
+Kopfzeile (`npRow`, `.npr`; Spalten Titel, Urteil, Einkaufspreis, Rabatt, Land, über Bestpreis, bis,
+Handlung), Namen wie in der Wishlist (`npTitles`: voller Name, zwei und mehr Titel eines Spiels unter
+klappbarer Spielzeile ohne Spielnamen), darunter grau die Begründung oder Chip „im Plan“ mit Schritt.
+Preis mit ★ als Link in den eShop, bei DLC zu DekuDeals; Land als Link zum Preisverlauf. Handlung:
+Auswahl „dazunehmen …“ mit „Schritt n, Land · Preis (+Aufpreis)“ (`npadd`), sonst grau „in keinem
+Schritt“, „zurück“, „entfernen“ oder „bei DekuDeals“. Titel, die der Plan in einem anderen Land kauft,
+stehen zur Erklärung unter ihrem Land, zählen aber nicht mit. Am Handy je Titel eine kleine Karte.
+Zugeklappt nennt die Kopfzeile Titelzahl und Gruppen („5 Titel: Kleinkram 5“).
 
 Nichts still im Hintergrund (ab 0.95, Entscheidung 20.10.2026): Was das Tool von selbst entscheidet,
 steht sichtbar da. „Nicht im Plan“ (`notPlanned`) nennt ein Land, dessen Wechsel sich nicht lohnt, auch

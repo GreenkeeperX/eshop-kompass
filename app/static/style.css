@@ -527,28 +527,33 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 .radar tr.tgrp td{padding-top:10px;border-bottom:0}
 .mini-t tr.undec td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .chip.und{color:var(--warn);background:var(--warn-bg);border-color:transparent}
-/* Nicht im Plan (0.96, 0.97): Gruppen nach Grund, darin Kopfzeilen je Land oder Quelle und Titel wie im Plan */
-.np section{border-top:1px solid var(--line);margin-top:10px;padding-top:6px}
-.np section:first-of-type{border-top:0}
-.np h4{margin:2px 0 0}
-.np .hint{margin:0 0 2px}
-.np-tab{table-layout:fixed}
-.np-tab td{vertical-align:baseline;padding:4px 8px;overflow:hidden;text-overflow:ellipsis}
-.np-tab td.t{text-align:left;white-space:normal}
-.np-tab tr.np-h td{text-align:left;white-space:normal;padding-top:10px;border-top:0;font-size:13px}
-.np-tab tr.np-h + tr td{border-top:1px solid var(--line)}
-.np-tab td.c-vd{text-align:left}
+/* Nicht im Plan (0.96; 0.98 neu): jede Ebene klappbar, alle Titel im selben Raster wie die Kopfzeile */
+.np .np-tools{margin:4px 0 0}
+.np-grid{margin-top:4px}
+.npr{display:grid;grid-template-columns:minmax(0,1fr) 112px 84px 52px 120px 96px 72px 190px;gap:0 10px;align-items:baseline;padding:4px 0 4px 18px;border-top:1px dashed var(--line);font-size:13px}
+.npr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.npr .r{text-align:right;white-space:nowrap}
+.npr .c-pct,.npr .c-end,.npr .c-land{white-space:nowrap}
+.npr .c-land{font-size:12px}
+.npr .t{min-width:0}
+.npr .np-n{display:inline;text-align:left}
+.npr .np-w{display:block;color:var(--muted)}
+.np details.npf>summary{cursor:pointer;padding:5px 0;font-size:13px}
+.np details.npgrp{border-top:1px solid var(--line);margin-top:6px}
+.np details.npgrp>summary{font-weight:600}
+.np details.npgrp>.hint{margin:0 0 4px}
+.np details.npgrp details.npf{margin-left:10px}
+.np details.npg>summary{padding-left:8px}
+.np details.npg .npr{padding-left:26px}
 .np button.link.np-n{text-decoration:none;color:inherit;text-align:left;font:inherit;padding:0}
 .np button.link.np-n:hover{text-decoration:underline}
-.np .np-w{display:block;color:var(--muted)}
 .np-add{font-size:12px;width:100%}
-@media (max-width:640px){
-  .np .scroll{overflow:visible}
-  .np-tab,.np-tab tbody{display:block;width:100%}
-  .np-tab colgroup{display:none}
-  .np-tab tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:6px 0;border-bottom:1px solid var(--line)}
-  .np-tab td{border:0!important;padding:0;width:auto!important;text-align:left;overflow:visible}
-  .np-tab td.t,.np-tab tr.np-h td{flex:1 0 100%}
-  .np-tab td.c-end:not([data-l]){display:none}
-  .np-tab td[data-l]::before{content:attr(data-l) " ";color:var(--muted);font-size:11px}
+@media (max-width:760px){
+  .npr.nph{display:none}
+  .npr{display:flex;flex-wrap:wrap;gap:2px 12px;padding-left:6px}
+  .npr .t{flex:1 0 100%}
+  .npr .c-act{flex:1 0 100%}
+  .npr .c-end:empty,.npr .c-pct:empty{display:none}
+  .np details.npgrp details.npf{margin-left:0}
+  .np details.npg .npr{padding-left:12px}
 }

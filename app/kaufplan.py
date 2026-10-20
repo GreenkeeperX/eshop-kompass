@@ -116,8 +116,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             else:
                 later.append(slug)
         # Kleinkram (0.92, Entscheidung 19.10.2026): Titel unter deal_eur.mini machen keine
-        # Guthabenkarte größer. Sie kommen nur in den Rest, den die übrigen Titel ohnehin
-        # lassen, die größten zuerst; der Rest wartet auf einen späteren Rest
+        # Guthabenkarte größer. Ab 0.98 kommen sie auch nicht mehr von selbst in den Rest, sondern
+        # warten, bis du sie über „Passt in den Rest“ dazunimmst
         small = []
         small_at.clear()
         for code in list(groups):
@@ -132,21 +132,14 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             if whole["via"] != "giftcard" or whole["estimated"]:
                 continue            # mit Kreditkarte wird keine Karte größer
             big = [s for s in groups[code] if s not in minis] + [s for s in mine if s not in groups[code]]
-            if big:
-                q = plan_country(ctx, code, basket=big, allowed=allowed)
-                if q["via"] != "giftcard":
-                    continue        # ohne den Kleinkram zahlt die Kreditkarte: keine Karte
-                room = round((q["rest"] or 0) * 100)
-            else:
-                room = cents(c["cfg"].get("balance") or 0)
-            keep = []
-            for s in sorted(minis, key=lambda s: (-c["offers"][s]["local"], s)):
-                if c["offers"][s]["local"] <= room:
-                    keep.append(s)
-                    room -= c["offers"][s]["local"]
-            small += [s for s in minis if s not in keep]
-            small_at.update({s: code for s in minis if s not in keep})
-            groups[code] = [s for s in groups[code] if s not in minis or s in keep]
+            if big and plan_country(ctx, code, basket=big, allowed=allowed)["via"] != "giftcard":
+                continue            # ohne den Kleinkram zahlt die Kreditkarte: keine Karte
+            # Ab 0.98 nie von selbst in den Rest (Entscheidung 20.10.2026): Sonst nahm der Plan nach jedem ×
+            # still anderen Kleinkram dazu. Er wartet unter „Nicht im Plan“ und steht unter „Passt in den
+            # Rest“ zur Auswahl, sobald er hineinpasst
+            small += minis
+            small_at.update({s: code for s in minis})
+            groups[code] = [s for s in groups[code] if s not in minis]
             if not groups[code]:
                 del groups[code]
         # Übernommene Füllartikel kommen in ihren Schritt, solange es ihn gibt

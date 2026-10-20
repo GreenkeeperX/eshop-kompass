@@ -350,11 +350,13 @@ class MiniTest(unittest.TestCase):
         return planner.purchase_plan(self.data, self.settings, now=NOW)
 
     def test_minis_only_fill_the_rest(self):
+        # Ab 0.98 nie von selbst: Kleinkram wartet und steht unter „Passt in den Rest“ zur Auswahl
         k = self.plan()
         br = next(p for p in k["steps"] if p["code"] == "BR")
-        self.assertEqual(sorted(i["slug"] for i in br["items"]), ["big", "m2"])   # 47 + 3 in eine 50er
+        self.assertEqual([i["slug"] for i in br["items"]], ["big"])
         self.assertEqual([(c["face"], c["count"]) for c in br["cards"]], [(50.0, 1)])
-        self.assertEqual(sorted(x["slug"] for x in k["small"]), ["m1", "m3"])
+        self.assertEqual(sorted(x["slug"] for x in k["small"]), ["m1", "m2", "m3"])
+        self.assertEqual(sorted(f["slug"] for f in br["fill"]), ["m2", "m3"])     # 3 R$ Rest
         self.assertNotIn("DE", [p["code"] for p in k["steps"]])
 
     def test_taken_filler_counts_like_a_big_title(self):
@@ -368,9 +370,9 @@ class MiniTest(unittest.TestCase):
         # Je Land mit Summe; füllt der Kleinkram eine Karte fast ganz, ist das nur ein Vorschlag (0.93)
         k = self.plan()
         g = k["small_groups"][0]
-        self.assertEqual((g["code"], sorted(g["slugs"]), g["local"], g["step"]), ("BR", ["m1", "m3"], 6.5, True))
-        self.assertFalse(g["full"])                                   # 6,50 von 15: weit weg
-        for slug, brl in (("m4", 3.9), ("m5", 3.6)):                  # 6,5 + 7,5 = 14 von 15
+        self.assertEqual((g["code"], sorted(g["slugs"]), g["local"], g["step"]), ("BR", ["m1", "m2", "m3"], 9.5, True))
+        self.assertFalse(g["full"])                                   # 9,50 von 15: weit weg
+        for slug, brl in (("m4", 3.9), ("m5", 1.1)):                  # 9,5 + 5 = 14,5 von 15
             self.data["items"][slug] = dict(self.data["items"]["m1"], title=slug)
             self.data["prices"]["DE"][slug] = dict(self.data["prices"]["DE"]["m1"])
             self.data["prices"]["BR"][slug] = dict(self.data["prices"]["BR"]["m1"], regular=brl)
@@ -378,7 +380,7 @@ class MiniTest(unittest.TestCase):
         self.assertTrue(g["full"])
         self.assertEqual([(c["face"], c["count"]) for c in g["cards"]], [(15.0, 1)])
         br = next(p for p in self.plan()["steps"] if p["code"] == "BR")
-        self.assertEqual(sorted(i["slug"] for i in br["items"]), ["big", "m2"])   # nichts still dazu
+        self.assertEqual([i["slug"] for i in br["items"]], ["big"])   # nichts still dazu
 
     def test_without_limit_minis_enlarge_the_cards(self):
         self.settings["deal_eur"]["mini"] = 0
@@ -393,11 +395,12 @@ class MiniTest(unittest.TestCase):
         k = self.plan()
         self.assertEqual([p["code"] for p in k["steps"]], [])
         self.assertEqual(len(k["small"]), 3)
-        # Guthaben, das schon dort liegt, füllen sie aber
+        # Auch Guthaben, das schon dort liegt, füllen sie ab 0.98 nicht mehr von selbst
         self.settings["current_country"] = "BR"
         self.settings["countries"]["BR"]["balance"] = 7
         k = self.plan()
-        self.assertEqual(sorted(i["slug"] for p in k["steps"] for i in p["items"]), ["m1", "m2"])
+        self.assertEqual([p["code"] for p in k["steps"]], [])
+        self.assertEqual(len(k["small"]), 3)
 
     def test_minis_paid_by_card_stay(self):
         self.settings["countries"]["BR"]["pay"] = "card"
