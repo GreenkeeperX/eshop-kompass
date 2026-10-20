@@ -360,6 +360,14 @@ class MiniTest(unittest.TestCase):
         self.assertEqual(sorted(f["slug"] for f in br["fill"]), ["m2", "m3"])     # 3 R$ Rest
         self.assertNotIn("DE", [p["code"] for p in k["steps"]])
 
+    def test_mini_follows_best_price(self):
+        # Kleinkram nach dem Bestpreis wie beim Urteil, im Kaufplan nicht nach dem heutigen Preis (0.99.5)
+        ctx = planner.Context(self.data, self.settings, NOW)
+        ctx.champ_all.update(x=(1.80, None), y=(2.50, None))
+        self.assertTrue(ctx.mini("x", 2.40))
+        self.assertFalse(ctx.mini("y", 1.50))
+        self.assertTrue(ctx.mini("ohne-bestpreis", 1.50))
+
     def test_taken_filler_counts_like_a_big_title(self):
         # Selbst in den Schritt genommen: bleibt drin, und der Kleinkram füllt den Rest danach
         k = planner.purchase_plan(self.data, self.settings, now=NOW, fill={"BR": ["m1"]})
@@ -1979,6 +1987,17 @@ class SafetyTest(unittest.TestCase):
             c.close()
             self.assertEqual(r.status, 404)
             self.assertEqual(r.getheader("X-Content-Type-Options"), "nosniff")
+            # Fremde Adresse (0.99.5, DNS-Rebinding): abgewiesen; Namen im eigenen Netz und Eingetragenes gelten
+            c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+            c.request("GET", "/api/export", headers={"Host": "angreifer.example"})
+            r = c.getresponse()
+            r.read()
+            c.close()
+            self.assertEqual(r.status, 421)
+            self.assertTrue(server.host_allowed("kompass.home.arpa:8787", ""))
+            self.assertTrue(server.host_allowed("[::1]:8787", ""))
+            self.assertTrue(server.host_allowed("a.beispiel.de", ".beispiel.de"))
+            self.assertFalse(server.host_allowed("beispiel.de.angreifer.example", ".beispiel.de"))
             # Abgleichsdaten ohne Kaufverlauf (0.99.1)
             with mock.patch.object(store, "load_data", return_value={"_eshop": {"entries": [1]}, "items": {}}):
                 c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)

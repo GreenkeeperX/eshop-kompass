@@ -187,6 +187,11 @@ Er entscheidet nichts, „das Günstigere“ nimmt dann die Kreditkarte, und „
 das Land. Auch Kartenzahlung ist eine Näherung (Mittelkurs plus Fremdwährungsgebühr), die
 Bank rechnet mit ihrem eigenen Kurs.
 
+**„Das Günstigere“** vergleicht für den ganzen Korb eines Lands, was du heute zahlst: Kreditkarte
+gegen die günstigste Kartenkombination, deren Rest eingerechnet (Entscheidung 20.10.2026). Bleibt
+mit Guthabenkarten viel Rest, kann die Kreditkarte gewinnen, obwohl die Spiele mit Karten etwas
+günstiger wären; der Rest wäre erst beim nächsten Kauf im selben Land etwas wert.
+
 **Faktor:** Preis einer Guthabenkarte in Euro geteilt durch ihren Wert zum Mittelkurs. 1,00
 heißt zum Kurs, 1,08 heißt 8 % teurer, 0,85 heißt: 100 € Guthaben kosten 85 €. „Das
 Günstigere“ nimmt Guthabenkarten nur, wenn sie weniger kosten als die Kreditkarte. Bewertet
@@ -825,6 +830,12 @@ verschwindet beim ersten Abgleich, der sie wieder liest.
 Die Oberfläche nimmt Änderungen nur als JSON an; eine fremde Webseite kann so keine
 Einstellungen überschreiben. Eine Anmeldung gibt es nicht, nach außen freigeben solltest du das
 Tool deshalb nicht.
+
+Der Server antwortet nur unter Adressen, die er kennt (ab 0.99.5, gegen DNS-Rebinding: Sonst könnte
+eine fremde Webseite ihre Domain auf deinen Server zeigen lassen und so die Sicherung lesen): IP-Adressen,
+`localhost`, Namen ohne Punkt und Namen im eigenen Netz (`.home.arpa`, `.local`, `.lan`, `.internal`).
+Rufst du das Tool über eine andere Domain auf, trag sie in `ALLOWED_HOSTS` ein (mit Komma getrennt,
+„.beispiel.de“ gilt für alle Namen darunter); sonst antwortet er mit 421.
 
 Eigene Links (Kartenpreise, eigene Angebote) holt der Server nur von öffentlichen Adressen. Zeigt ein Link oder eine Weiterleitung auf eine private, lokale oder Loopback-Adresse, steht im Protokoll „Adresse nicht öffentlich“, und nichts wird abgerufen. Unerwartete Fehler zeigt die Oberfläche nur mit ihrer Art an, die Einzelheiten stehen im Protokoll des Containers (`docker logs`).
 

@@ -124,7 +124,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             c = ctx.countries[code]
             # Was du selbst in den Schritt genommen hast, zählt wie ein großer Titel
             mine = [s for s in fill.get(code, []) if s in c["offers"] and s not in done]
-            minis = [s for s in groups[code] if ctx.mini(ctx.oeur(c, c["offers"][s]))
+            minis = [s for s in groups[code] if ctx.mini(s, ctx.oeur(c, c["offers"][s]))
                      and c["offers"][s].get("direct") is None and s not in mine]
             if not minis:
                 continue

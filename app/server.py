@@ -1,5 +1,6 @@
 """Kleiner Webserver: liefert die Oberfläche und eine JSON-Schnittstelle."""
 import gzip
+import ipaddress
 import json
 import re
 import os
@@ -68,6 +69,39 @@ def _state():
     }
 
 
+# Namen, die nur im eigenen Netz aufgelöst werden (RFC 8375 und üblich): Eine fremde Domain kann
+# nicht auf sie zeigen, deshalb gelten sie ohne Eintrag
+LOCAL_SUFFIXES = (".home.arpa", ".local", ".lan", ".internal", ".localhost")
+
+
+def host_allowed(host, extra=None):
+    """Schutz gegen DNS-Rebinding (0.99.5): Eine fremde Webseite, deren Domain plötzlich auf den
+    Server im Heimnetz zeigt, wäre für den Browser dieselbe Seite und könnte die Sicherung lesen.
+    Angenommen werden nur IP-Adressen, localhost, Namen ohne Punkt, Namen im eigenen Netz
+    (LOCAL_SUFFIXES) und, was in ALLOWED_HOSTS steht (mit Komma getrennt; „.beispiel.de“ gilt für
+    alle Namen darunter)."""
+    if not host:
+        return True                    # ohne Host-Kopf: kein Browser
+    name = host.strip().lower()
+    if name.startswith("["):
+        name = name[1:].split("]")[0]  # IPv6 mit Port
+    elif name.count(":") == 1:
+        name = name.split(":")[0]
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    name = name.rstrip(".")
+    if "." not in name or name.endswith(LOCAL_SUFFIXES):
+        return True
+    extra = os.environ.get("ALLOWED_HOSTS", "") if extra is None else extra
+    for e in (x.strip().lower().rstrip(".") for x in extra.split(",")):
+        if e and (name == e or (e.startswith(".") and name.endswith(e))):
+            return True
+    return False
+
+
 def plaene(basket=..., overrides=None):
     """Länderkarten, Korb und Kaufplan. Korb und eigene Änderungen kommen aus der Anfrage, wie bei
     /api/plans, sonst aus der gespeicherten Auswahl."""
@@ -127,8 +161,16 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("JSON-Objekt erwartet")
         return body
 
+    def _foreign(self):
+        if host_allowed(self.headers.get("Host")):
+            return False
+        self._send(421, {"error": "Unbekannte Adresse. Erlaubte Namen stehen in ALLOWED_HOSTS (siehe README)."})
+        return True
+
     def do_GET(self):
         path = self.path.split("?")[0]
+        if self._foreign():
+            return
         try:
             if path in ("/", "/index.html"):
                 with open(os.path.join(STATIC, "index.html"), "rb") as f:
@@ -183,6 +225,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0]
+        if self._foreign():
+            return
         try:
             # Eine Sicherung wächst mit Preisaufzeichnung und Kaufverlauf über 1 MB (0.99.2)
             body = self._body(50_000_000 if path == "/api/import" else 1_000_000)

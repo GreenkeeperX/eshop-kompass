@@ -573,10 +573,13 @@ class Context:
     def deal(self):
         return dict({"buy": 0.5, "good": 2.0, "mini": 2.0}, **(self.settings.get("deal_eur") or {}))
 
-    def mini(self, eur):
-        """Kleinkram (0.92): Ein Einkaufspreis unter deal_eur.mini. Er macht im Kaufplan keine
-        Guthabenkarte größer, sondern füllt nur den Rest, der ohnehin bleibt (Entscheidung 19.10.2026)."""
-        return eur is not None and eur < self.deal()["mini"] - 1e-9
+    def mini(self, slug, eur=None):
+        """Kleinkram (0.92): Bestpreis unter deal_eur.mini, wie beim Urteil (ab 0.99.5, Entscheidung
+        20.10.2026; vorher nahm der Kaufplan den heutigen Preis). Ohne Bestpreis der Preis `eur`.
+        Er macht im Kaufplan keine Guthabenkarte größer (Entscheidung 19.10.2026)."""
+        best = self.champ_all.get(slug)
+        val = best[0] if best and best[0] else eur
+        return val is not None and val < self.deal()["mini"] - 1e-9
 
     def grade(self, eur, slug):
         """Preisgüte eines Europreises gegenüber dem Bestpreis, für jedes Land gleich:
