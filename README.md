@@ -330,8 +330,8 @@ und steht deshalb nicht zur Wahl.
 sind die Titel mit dem Urteil „kaufen“, per Schalter auch „gut“. Jeder Titel geht ins Land, wo
 er am wenigsten kostet. Ein Land bleibt nur im Plan, wenn sich der Wechsel lohnt (siehe
 [Wechsel und Stufen](#wechsel-und-stufen)); sonst wandern seine Titel ins nächstbeste Land.
-Sind sie dort kein Kauf mehr, stehen sie unter „Nicht im Plan“ (zugeklappt), mit Grund, jeder
-Titel nur einmal. Kommen sie anderswo in den Plan, bleibt das Land dort trotzdem sichtbar („kauft
+Sind sie dort kein Kauf mehr, stehen sie unter „Nicht im Plan“ (zugeklappt, direkt unter den
+Schritten), nach Grund gegliedert, jeder Titel nur einmal; die Kopfzeile nennt die Gruppen mit Zahl. Kommen sie anderswo in den Plan, bleibt das Land dort trotzdem sichtbar („kauft
 der Plan in Schweden; in Polen wären sie günstiger, aber Wechsel lohnt nicht: spart nur 2,10 €“),
 und der Grund am Titel sagt dasselbe. Was schon gekauft ist, steht dort mit Quelle: im Kaufplan
 vermerkt, in deiner Sammlung, laut eShop-Kaufverlauf oder „steckt in …, das du schon hast“.

@@ -599,6 +599,15 @@ class Context:
         """Was ein Titel ohne den Wechsel in ein Land der Stufe `tier` kostet: der günstigste
         zählende Preis jetzt in einem anderen Land gleicher oder leichterer Stufe oder in dem
         Land, in dem das Konto steht. (Euro, Land) oder None."""
+        # Gemerkt (0.96): Der Kaufplan fragt dieselbe Kombination tausendfach
+        key = (slug, tier, shop, None if allowed is None else tuple(allowed))
+        memo = self.__dict__.setdefault("_alt_memo", {})
+        if key in memo:
+            return memo[key]
+        memo[key] = best = self._alt_price(slug, tier, shop, allowed)
+        return best
+
+    def _alt_price(self, slug, tier, shop, allowed):
         current = self.settings.get("current_country") or ""
         best = None
         for code, c in self.countries.items():

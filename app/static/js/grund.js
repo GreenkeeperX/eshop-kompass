@@ -435,6 +435,18 @@ function copyNow(text){
   if(back && back.focus) back.focus();
   if(!ok) try{ navigator.clipboard.writeText(text); }catch(e){}
 }
+/* Karten ohne Lücken (0.96): Jede Karte belegt so viele 1-px-Zeilen, wie sie hoch ist. So rückt Schritt 3
+   direkt unter Schritt 1, auch wenn Schritt 2 daneben lang ist; die Reihenfolge bleibt 1, 2, 3 von links
+   nach rechts. Ändert sich eine Karte (Rechnung aufgeklappt), passt der ResizeObserver sie an. */
+const MASONRY_RO = typeof ResizeObserver === "function" ? new ResizeObserver(es => es.forEach(e => spanCard(e.target))) : null;
+function spanCard(el){
+  if(!el.parentElement || !el.parentElement.classList.contains("masonry")) return;
+  el.style.gridRowEnd = `span ${Math.max(1, Math.ceil(el.getBoundingClientRect().height) + 10)}`;
+}
+function masonry(){
+  if(MASONRY_RO) MASONRY_RO.disconnect();
+  document.querySelectorAll(".grid.masonry > *").forEach(el => { spanCard(el); if(MASONRY_RO) MASONRY_RO.observe(el); });
+}
 function render(){
   if(S.handover) return;          // Fenster für das JP-Lesezeichen, siehe jpHandOver
   renderHead();
@@ -455,6 +467,7 @@ function render(){
   m.querySelectorAll(".scroll,.fitbox").forEach((e, k) => { if(keep[k]){ e.scrollLeft = keep[k][0]; e.scrollTop = keep[k][1]; } });
   const grp = m.querySelector(".matrix tr.grp");
   if(grp) grp.closest(".matrix").style.setProperty("--grp", grp.getBoundingClientRect().height + "px");
+  masonry();
   navFade();
 }
 /* Reiterleiste schmaler als ihre Reiter (Handy): rechts ausblenden, damit man sieht, dass es weitergeht (0.65) */

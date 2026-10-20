@@ -280,6 +280,16 @@ günstigste), Titel mit „×“ und derselben Preiszelle `twoLine`/`cellMarks`,
 Zeilen; „Einkaufspreis“ ist eine Klappzeile mit der Rechnung aus `costTip()`, die sonst nur im
 Tooltip steht. Sortieren gibt es dort nicht.
 
+Karten ohne Lücken (ab 0.96): Schritte des Kaufplans und die Länderkarten in mehreren Spalten
+(`.grid.masonry`) belegen je so viele 1-px-Zeilen, wie sie hoch sind (`masonry()`, `spanCard()` in
+`grund.js`, nach jedem `render()`; ein ResizeObserver passt beim Auf- und Zuklappen an). Schritt 3 rückt
+so unter den kürzeren der beiden ersten. Die Liste „Nicht im Plan“ steht ab 0.96 direkt unter den
+Schritten, vor „alle Länderkarten“, und ist nach Grund gegliedert (`.np`): Wechsel lohnt nicht,
+Kleinkram, Lieber warten, Von dir geändert, Schon gekauft, Sonst nicht im Plan. Je Gruppe eine
+Überschrift und ein Satz, je Zeile links die Titel, rechts grau der Grund mit fettem Land und die
+Handlung („zurück“, „entfernen“, „in den Schritt nehmen“); am Handy untereinander. Zugeklappt nennt
+die Kopfzeile Titelzahl und Gruppen („9 Titel: Wechsel lohnt nicht 5 · Kleinkram 4“).
+
 Nichts still im Hintergrund (ab 0.95, Entscheidung 20.10.2026): Was das Tool von selbst entscheidet,
 steht sichtbar da. „Nicht im Plan“ (`notPlanned`) nennt ein Land, dessen Wechsel sich nicht lohnt, auch
 wenn seine Titel anderswo in den Plan kommen (`dropped[].moved`: „kauft der Plan in X; in Y wären sie

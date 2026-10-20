@@ -3,6 +3,7 @@
 Dazu der gemeinsame Zwischenspeicher einer Anfrage (shared_contexts).
 """
 import contextlib
+import functools
 import re
 import threading
 import unicodedata
@@ -28,7 +29,13 @@ def shared_contexts():
 
 def _tnorm(title):
     """Titel zum Vergleichen: ohne ™ ®, Satzzeichen und Groß-/Kleinschreibung."""
-    t = re.sub(r"[™®©]", "", str(title or ""))           # vorher: NFKC macht aus ™ „TM“
+    return _tnorm_str(str(title or ""))
+
+
+@functools.lru_cache(maxsize=50000)
+def _tnorm_str(t):
+    # Gemerkt (0.96): Eine Anfrage vergleicht dieselben Namen viele tausend Mal
+    t = re.sub(r"[™®©]", "", t)           # vorher: NFKC macht aus ™ „TM“
     # Akzente lateinischer Buchstaben fallen weg (0.76): „Pokemon“ im Kaufverlauf ist „Pokémon“.
     # Japanische Zeichen bleiben, wie sie sind (ズ ist nicht ス)
     t = re.sub(r"[\u0300-\u036f]", "", unicodedata.normalize("NFKD", t))

@@ -120,6 +120,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 /* Länderkarten: Raster (dicht) und Liste (groß) */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(350px,100%),1fr));gap:10px;align-items:start}
 .grid.steps{grid-template-columns:repeat(auto-fill,minmax(min(540px,100%),1fr))}
+.grid.masonry{grid-auto-rows:1px;row-gap:0}
 .pc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px 8px;font-size:13px;line-height:1.35;min-width:0}
 .pc.cur{border-color:var(--accent)}
 .pc>header{display:flex;align-items:baseline;justify-content:space-between;gap:7px}
@@ -526,3 +527,14 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 .radar tr.tgrp td{padding-top:10px;border-bottom:0}
 .mini-t tr.undec td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .chip.und{color:var(--warn);background:var(--warn-bg);border-color:transparent}
+/* Nicht im Plan (0.96): Gruppen nach Grund, je Zeile Titel links, Grund und Handlung rechts */
+.np section{border-top:1px solid var(--line);margin-top:8px;padding-top:6px}
+.np section:first-of-type{border-top:0}
+.np h4{margin:2px 0 0}
+.np .hint{margin:0 0 4px}
+.np ul{list-style:none;margin:0;padding:0}
+.np li{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:4px 16px;padding:4px 0;border-top:1px dashed var(--line)}
+.np li:first-child{border-top:0}
+.np .np-d{color:var(--muted)}
+.np .np-d b{color:var(--ink)}
+@media (max-width:640px){.np li{grid-template-columns:1fr;gap:0}}

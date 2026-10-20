@@ -83,7 +83,9 @@ def _membership_rows(data, settings, now, prices, lows, urls, current, v, extra=
     # Sprachregel sie nicht ausschließt
     items = {"nso": {"title": NSO_TITLE, "active": True, "order": 0, "ids": {},
                      "langs": {f: "german" for f in countries.FAMILIES}}}
-    ctx = _context(dict(data, items=items, prices=prices, lows={}), settings, now)
+    # Ohne Kaufverlauf (0.96): Besitz spielt für die Mitgliedschaft keine Rolle, und der Abgleich der
+    # Käufe kostete je Variante so viel wie der ganze Rest der Rechnung
+    ctx = _context(dict(data, items=items, prices=prices, lows={}, _eshop=None), settings, now)
     rows = []
     for code, c in ctx.countries.items():
         o = c["offers"].get("nso")
