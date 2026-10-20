@@ -544,6 +544,8 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 .zero>.fillrow{margin-top:4px;padding-left:12px}
 .radar tr.sub td.tn{padding-left:26px}
 .radar tr.tgrp td{padding-top:10px;border-bottom:0}
+.radar .dlctog{font-size:12px;color:var(--muted);font-weight:normal;margin-left:4px;white-space:nowrap}
+.radar .tgown{font-size:12px;color:var(--muted)}
 .mini-t tr.undec td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .chip.und{color:var(--warn);background:var(--warn-bg);border-color:transparent}
 /* Nicht im Plan (0.96; 0.98 neu): jede Ebene klappbar, alle Titel im selben Raster wie die Kopfzeile */
