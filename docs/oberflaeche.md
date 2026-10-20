@@ -48,7 +48,10 @@ zurück“ (`removedLine`; ohne Schritt unter „Nicht im Plan“), am Schritt �
 (Knöpfe, Paare, Mitgliedschaft, fehlende DLC, Auswahlfeld; ohne Treffer grau „nichts von deiner
 Wishlist …“), „Passt dazu:“ (bis zu zwei, Raster einer) und „Weglassen spart:“ (bis zu zwei). Im
 Schritt wirken sie auf den Plan, auf der Länderkarte auf ihren Korb. Die alte Knopfreihe der
-Länderkarten (`.sugg`) ist weg.
+Länderkarten (`.sugg`) ist weg. Was du an der Karte mit × herausgenommen hast, schlägt keine der
+drei Zeilen wieder vor (ab 0.95.1; Schritt `p.skipped`, Länderkarte `overrides.remove`). Die Zeile
+„Passt in den Rest“ gibt es nur mit Rest, also nie bei Kartenzahlung; „Passt dazu“ steht unabhängig
+davon.
 
 ## Käufe aus dem eShop
 

@@ -399,6 +399,8 @@ function suggestHtml(p, step){
   const verb2 = step ? "Klick nimmt beide in diesen Schritt." : "Klick legt beide in den Korb dieses Landes.";
   // Im Kaufplan nichts, was schon ein anderer Schritt kauft
   const planned = new Set(step && S.kauf ? S.kauf.steps.flatMap(x => x.items.map(i => i.slug)) : p.items.map(i => i.slug));
+  // Was du hier mit × herausgenommen hast, schlägt die Karte nicht gleich wieder vor (0.95.1)
+  (step ? (p.skipped || []).map(x => x.slug) : ((S.ui.overrides || {})[p.code] || {}).remove || []).forEach(x => planned.add(x));
   let h = "";
   if(p.rest > 0){
     // Mitgliedschaft passt in den Rest (0.57.1); die besten Treffer als Knöpfe, auch zwei Titel zusammen,
