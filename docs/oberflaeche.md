@@ -382,7 +382,8 @@ gerade nicht im Plan“ mit ×). Alte Preise eines Lands (`price_stale`, `price_
 „Preise nicht aktuell: Land vom …“ mit Link ins Protokoll, an Schritt und Länderkarte `.warnc` „Preise
 vom …“ (`hurdles`). Ein Urteil ohne DekuDeals-Tiefstpreis trägt `.nohist` „ohne Verlauf“ (grau,
 gestrichelt wie der Zielpreis) in der Wishlist neben dem Urteil, in den Einzelheiten und am
-„am Bestpreis“ der Plan-Tabelle. „gekauft“ nennt in der Rückfrage die Guthaben, die es auf 0 setzt.
+„am Bestpreis“ der Plan-Tabelle, dort ab 1.1.3 in einer eigenen Zeile darunter, damit „am Bestpreis“
+mit den anderen Zeilen bündig bleibt. „gekauft“ nennt in der Rückfrage die Guthaben, die es auf 0 setzt.
 „Zu erledigen“ und die Hürde am Schritt sagen nach Ursache „Guthabenkarte eintragen“, „keine Karte
 vorrätig“ oder „kein Kartenpreis“ (`no_cards_warning`).
 
