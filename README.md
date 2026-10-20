@@ -385,7 +385,8 @@ nimmt ihn heraus: im Kaufplan nur aus diesem Schritt (der Plan rechnet neu, der 
 nächstbeste Land oder wartet), auf der Länderkarte aus ihrem Korb. Herausgenommenes steht danach
 unter der Tabelle („Herausgenommen: Titel jetzt in Polen zurück“), fällt ein ganzer Schritt weg,
 unter „Nicht im Plan“; „zurück“ holt es wieder hinein, „zurücksetzen“ verwirft alles, was du an
-einem Schritt geändert hast. Darunter drei Zeilen Vorschläge: „Passt in den Rest“, „Passt dazu“
+einem Schritt geändert hast, „Plan zurücksetzen“ oben rechts das an allen Schritten (mit
+„Rückgängig“). Darunter drei Zeilen Vorschläge: „Passt in den Rest“, „Passt dazu“
 und „Weglassen spart“.
 
 **Füllartikel:** Bleibt in einem Schritt ein Rest, stehen darunter Wishlist-Titel, die

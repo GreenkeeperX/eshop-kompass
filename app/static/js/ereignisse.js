@@ -209,6 +209,13 @@ document.addEventListener("click", async e => {
       delete (S.ui.plan_skip || {})[d.c]; delete (S.ui.plan_fill || {})[d.c];
       await saveUi(); S.kauf = await api("/api/kaufplan"); render(); toast(`${country(d.c).name} wie vorgeschlagen`);
     }
+    else if(a === "planresetall"){
+      // Ganzer Plan wie vorgeschlagen (1.0.3), mit Rückgängig
+      const prev = {skip: S.ui.plan_skip || {}, fill: S.ui.plan_fill || {}};
+      S.ui.plan_skip = {}; S.ui.plan_fill = {};
+      await saveUi(); S.kauf = await api("/api/kaufplan"); render();
+      toast("Plan wie vorgeschlagen", async () => { S.ui.plan_skip = prev.skip; S.ui.plan_fill = prev.fill; await saveUi(); S.kauf = await api("/api/kaufplan"); render(); });
+    }
     else if(a === "undrop"){
       const name = (rowOf(d.s) || {}).title || d.s;
       await change(`${name} wieder im Korb`, () => { const o = ov(d.c); o.remove = o.remove.filter(x => x !== d.s); });
@@ -218,7 +225,7 @@ document.addEventListener("click", async e => {
       if(S.olInline && S.olInline.code === d.c && S.olInline.from === d.from){ S.olInline = null; render(); }
       else {
         const st = S.kauf.steps.findIndex(x => x.code === d.from);
-        const r = await api("/api/plans", {overrides: {}, must: [], basket: S.kauf.steps[st].items.map(i => i.slug)});
+        const r = await api("/api/plans", {overrides: {}, must: [], basket: S.kauf.steps[st].items.map(i => i.slug), only: [d.c]});
         const p = r.plans.find(x => x.code === d.c);
         S.olInline = p ? {code: d.c, from: d.from, p: Object.assign(p, {ro: true})} : null; render();
       }

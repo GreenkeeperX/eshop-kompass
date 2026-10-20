@@ -6,6 +6,8 @@ function planSums(steps){
   const gap = steps.reduce((a, p) => a + (p.opt_gap ?? 0), 0);
   return {opt, gap};
 }
+/* Eigene Änderungen am Kaufplan (× und dazugenommen), für „Plan zurücksetzen“ (1.0.3) */
+const planMine = () => [S.ui.plan_skip, S.ui.plan_fill].some(m => Object.values(m || {}).some(l => (l || []).length));
 function viewKauf(){
   const k = S.kauf;
   if(!k) return `<p class="hint">Kaufplan wird berechnet …</p>`;
@@ -15,6 +17,7 @@ function viewKauf(){
     : `<span>Gerade steht kein Titel auf „kaufen“${!S.ui.plan_good && k.good_left ? `, aber ${k.good_left} auf „gut“: rechts „auch gute Angebote“ anhaken` : ""}.</span>`;
   let h = `<div class="bar on"><b>Jetzt kaufen</b>${head}<span class="sp"></span>
     <label title="Neben „kaufen“ auch Titel mit dem Urteil „gut“ einplanen"><input type="checkbox" data-act="plangood" ${S.ui.plan_good ? "checked" : ""}> auch gute Angebote${!S.ui.plan_good && k.good_left ? ` (${k.good_left})` : ""}</label>
+    ${planMine() ? `<button class="link" data-act="planresetall" title="Alles, was du in den Schritten herausgenommen oder dazugenommen hast, verwerfen: der Plan wie vorgeschlagen">Plan zurücksetzen</button>` : ""}
     </div>`;
   if(k.lock) h += lockBox(k);
   // Alte Preise in einem Schritt (0.95): oben sagen, nicht nur an der Karte

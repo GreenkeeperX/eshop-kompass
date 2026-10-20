@@ -1271,6 +1271,15 @@ class PlanTest(unittest.TestCase):
         _, split = planner.plans(self.data, self.settings, now=NOW, with_mix=True)
         self.assertIsNone(split)                    # ohne gemeinsamen Korb
 
+    def test_plans_only_one_country(self):
+        # „Andere Länder“ am Schritt rechnet nur das eine Land (1.0.3), mit demselben Ergebnis
+        basket = ["hades", "spiritfarer"]
+        full, _ = planner.plans(self.data, self.settings, basket=basket, now=NOW, with_mix=True)
+        one, split = planner.plans(self.data, self.settings, basket=basket, now=NOW, with_mix=True, only=["NO"])
+        self.assertEqual(sorted(p["code"] for p in one), ["DE", "NO"])
+        self.assertIsNone(split)
+        self.assertEqual(self.by(one)["NO"], self.by(full)["NO"])
+
     def test_owned_flags(self):
         self.data["owned"] = ["hades", "vampire-survivors"]
         br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]

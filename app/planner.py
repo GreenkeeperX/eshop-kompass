@@ -1109,15 +1109,16 @@ def mix(ctx, basket):
     return {"cost": _r(total), "parts": sorted(parts.values(), key=lambda p: -p["cost"])}
 
 
-def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_mix=False):
+def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_mix=False, only=None):
     data, settings = with_added(data, settings, list(basket or []) + list(must or []) +
                               [s for o in (overrides or {}).values() for s in (o or {}).get("add") or []])
     ctx = _context(data, settings, now)
     overrides = overrides or {}
     must = [s for s in must if s in ctx.items]
     basket = [s for s in dict.fromkeys(basket or []) if s in ctx.items]
+    # only: nur diese Länder (und das Vergleichsland), etwa für „Andere Länder“ am Schritt (1.0.3)
     res = [plan_country(ctx, code, overrides.get(code), must, basket)
-           for code in ctx.countries]
+           for code in ctx.countries if not only or code in only or code == countries.REFERENCE]
     if with_mix:
         # Länderkarten und Korb zeigen „Passt in den Rest“ wie der Kaufplan (0.94)
         from .kaufplan import rest_suggestions
@@ -1126,7 +1127,7 @@ def plans(data, settings, overrides=None, must=(), basket=None, now=None, with_m
         rest = sorted((p for p in res if not p["is_ref"]),
                       key=lambda p: (bool(p.get("must_missing")), len(p["missing"]),
                                      p["saving"] is None, -(p["saving"] or 0), -p["available"]))
-        return rest + ref, (mix(ctx, basket) if basket else None)
+        return rest + ref, (mix(ctx, basket) if basket and not only else None)
     ref = [p for p in res if p["is_ref"]]
     rest = [p for p in res if not p["is_ref"]]
     # vollständige Körbe zuerst, dann nach Ersparnis

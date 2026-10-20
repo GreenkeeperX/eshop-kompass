@@ -235,7 +235,8 @@ class Handler(BaseHTTPRequestHandler):
                     res, split = planner.plans(store.load_data(), store.load_settings(),
                                                overrides=body.get("overrides") or {},
                                                must=body.get("must") or [],
-                                               basket=body.get("basket") or [], with_mix=True)
+                                               basket=body.get("basket") or [], with_mix=True,
+                                               only=[c for c in body.get("only") or [] if isinstance(c, str)] or None)
                 self._send(200, {"plans": res, "mix": split})
             elif path == "/api/plaene":
                 # Länderkarten, Korb und Kaufplan in einer Anfrage (0.99): ein Datenstand, ein

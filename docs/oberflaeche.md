@@ -73,7 +73,9 @@ Werkzeuge. Vor jedem Titel ein graues × (`xBtn`; wie im Korb, statt der Häkche
 im Schritt `planskip` (Titel nicht in diesem Schritt, `ui.plan_skip`), bei Dazugenommenem
 `planunfill`, auf der Länderkarte `drop`. Unter der Tabelle „Herausgenommen: Titel jetzt in Land
 zurück“ (`removedLine`; ab 0.99.4 mit vollem Namen und DLC-Marke, in Schritt und Länderkarte gleich; ohne Schritt unter „Nicht im Plan“), am Schritt „zurücksetzen“
-(`planreset`). Darunter bis zu drei Zeilen `.fillrow` (`suggestHtml`): „Passt in den Rest (x):“
+(`planreset`), für alle Schritte „Plan zurücksetzen“ rechts in der Kopfzeile des Kaufplans, nur wenn
+etwas geändert ist (`planresetall`, `planMine`, Hinweis mit „Rückgängig“, ab 1.0.3). Ein Land unter
+„Andere Länder“ rechnet der Server allein (`/api/plans` mit `only`, ab 1.0.3). Darunter bis zu drei Zeilen `.fillrow` (`suggestHtml`): „Passt in den Rest (x):“
 (Knöpfe, Paare, Mitgliedschaft, fehlende DLC, Auswahlfeld; ohne Treffer grau „nichts von deiner
 Wishlist …“), „Passt dazu:“ (bis zu zwei, Raster einer) und „Weglassen spart:“ (bis zu zwei). Im
 Schritt wirken sie auf den Plan, auf der Länderkarte auf ihren Korb. Die alte Knopfreihe der
