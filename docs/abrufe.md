@@ -8,7 +8,7 @@ Commit an. Stand: 0.68.0. Maßgeblich bleibt der Code; Konstanten stehen in `app
 
 - **Kennung:** Alle Abrufe des Servers tragen die ehrliche Kennung
   (`eshop-kompass/<Version> (privates Wishlist-Tool)`). Seiten laufen über `sources.request`
-  (gzip, 25 s Zeitlimit, ein Cookie-Speicher je Prozess), titledb gestreamt mit 60 s, Proben
+  (gzip, 25 s Zeitlimit, höchstens 20 MB gepackt wie entpackt, ein Cookie-Speicher je Prozess), titledb gestreamt mit 60 s, Proben
   des Verbindungstests mit 20 s, Kopfdaten über `sources.head`.
 - **Nur öffentliche Ziele:** `sources.blocked_target` lässt nur http und https ohne Zugangsdaten in der Adresse zu und nur Hosts, deren Adressen alle öffentlich sind. Weiterleitungen prüft `_SafeRedirect` genauso. Sonst heißt der Fehler „Adresse nicht öffentlich“.
 - **Sperren:** HTTP 403 und 429 beenden den betroffenen Schritt sofort, nie den ganzen

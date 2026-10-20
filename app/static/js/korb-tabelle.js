@@ -70,7 +70,7 @@ function viewCompare(){
           i.sale && i.end ? `Angebot bis ${dm(i.end)}` : "", gap > 0.005 ? `${eur(gap)} über dem Bestpreis ${eur(ch)} in ${country(r.champ.code).name}` : "",
           champHere ? "Hier gab es den Bestpreis" : "", need ? needTip(p.code, need) : "",
           i.own && i.own.url ? `Klick öffnet ${i.own.src}` : url ? `Klick öffnet den eShop ${country(p.code).name}` : "Klick öffnet den Verlauf bei DekuDeals"].filter(Boolean).join(" · ");
-        const price = `<a class="pl" href="${url || deku(slug, p.code)}" target="_blank" rel="noopener">${num(i.eur)}</a>`;
+        const price = `<a class="pl" href="${esc(url || deku(slug, p.code))}" target="_blank" rel="noopener">${num(i.eur)}</a>`;
         const marks = cellMarks(i, need ? needMark(p.code, need) : "");
         return `<td class="${cls(p)}${g} ${champHere ? "champ" : ""} ${counts ? "" : "nc"} ${need === "need" ? "needr" : ""}" title="${esc(tip)}">` +
           // ★ nach dem Preis im Korb, nicht dem eines Einzelkaufs: Guthabenkarten teilen sich hier auf (0.65)
@@ -132,7 +132,7 @@ function korbPhone(cols, win, order, rowOf, itemIn){
       const need = i.needs_parent ? needsRegion(r.dlc_of, pc.code, slug) : "";
       const url = i.own && i.own.url ? i.own.url : shopUrl(pc.code, i.nsuid);
       cell = `<td class="${g} ${counts ? "" : "nc"}">` + twoLine(`${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}`,
-        `<a class="pl" href="${url || deku(slug, pc.code)}" target="_blank" rel="noopener">${num(i.eur)}</a>`, gap, cellMarks(i, need ? needMark(pc.code, need) : "")) + `</td>`;
+        `<a class="pl" href="${esc(url || deku(slug, pc.code))}" target="_blank" rel="noopener">${num(i.eur)}</a>`, gap, cellMarks(i, need ? needMark(pc.code, need) : "")) + `</td>`;
     }
     m += `<tr><td><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>`}</td>${cell}</tr>`;
   }

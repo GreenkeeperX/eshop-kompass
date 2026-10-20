@@ -649,7 +649,7 @@ Angaben, deine Zuordnungen bleiben, kein Eintrag verschwindet. Der Abgleich läu
   Zuordnungen sowie die eigene Preisaufzeichnung als eine Datei. Beim Einlesen wird die
   Aufzeichnung ergänzt, nicht ersetzt; alles andere holt das Tool beim Abgleich neu.
   „Abgleichsdaten herunterladen“ lädt die gesamten Abgleichsdaten (IDs, Sprachen, Preise,
-  `data.json`) und das Protokoll als Datei, ohne Einstellungen.
+  `data.json`) und das Protokoll als Datei, ohne Einstellungen und ab 0.99.1 ohne Kaufverlauf.
 - **Protokoll:** läuft während eines Abgleichs mit, nennt oben Start und Version des Laufs und
   zeigt die Uhrzeit deines Browsers. Jeder Schritt schreibt eine Zeile, auch wenn nichts fällig
   ist („nichts fällig“, „alle aktuell“), damit sich Abgleiche vergleichen lassen. „Verbindung
@@ -846,7 +846,8 @@ und die Teile in `js/`, reines JavaScript ohne Build. Gerechnet wird in `app/pla
 `tools/replay.py` rechnet eine Momentaufnahme ohne Netz durch: Bewertung, Kaufplan, Sprachen
 prüfen und Sammlung, so wie die Oberfläche sie zeigt. Eingaben sind die Dateien aus
 „Abgleichsdaten herunterladen“ und „Sicherung herunterladen“. Die Abgleichsdaten enthalten auch
-die Verbindungen der Pakete, die DLC-Seiten und den Kaufverlauf aus dem eShop. Sie enthalten
+die Verbindungen der Pakete und die DLC-Seiten; den Kaufverlauf aus dem eShop liest die Prüfumgebung
+aus der Sicherung. Sie enthalten
 deine Wishlist und gehören nicht ins Repository.
 
     python3 -m tools.replay --abgleich abgleich.json --sicherung sicherung.json

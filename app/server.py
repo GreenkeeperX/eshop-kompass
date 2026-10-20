@@ -106,6 +106,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        # Nicht in fremde Seiten einbetten (eigene dürfen: Selbsttest), Typen nicht raten, keine Adresse an verlinkte Seiten (0.99.1)
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(body)
 
@@ -116,9 +120,12 @@ class Handler(BaseHTTPRequestHandler):
         if ctype != "application/json":
             raise ValueError("nur application/json")
         n = int(self.headers.get("Content-Length") or 0)
-        if n > 1_000_000:
+        if n < 0 or n > 1_000_000:          # negativ hieße: lesen bis zum Ende (0.99.1)
             raise ValueError("zu groß")
-        return json.loads(self.rfile.read(n) or b"{}")
+        body = json.loads(self.rfile.read(n) or b"{}")
+        if not isinstance(body, dict):
+            raise ValueError("JSON-Objekt erwartet")
+        return body
 
     def do_GET(self):
         path = self.path.split("?")[0]
@@ -157,13 +164,11 @@ class Handler(BaseHTTPRequestHandler):
                                           store.load_history(), slug)
                 out["version"] = sources.VERSION
                 self._send(200, out)
-            elif path == "/api/diag":
-                self._send(200, {"lines": sync.diagnose()})
             elif path == "/api/abgleich":
                 # Abgleichsdaten und Protokoll zum Nachprüfen; keine Einstellungen, also auch
-                # kein Wishlist- oder Sammlungslink
+                # kein Wishlist- oder Sammlungslink, und ab 0.99.1 ohne Kaufverlauf (steht in der Sicherung)
                 self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
-                                 "data": store.load_data(),
+                                 "data": {k: v for k, v in store.load_data().items() if k != "_eshop"},
                                  "log": [re.sub(r"/(wishlist|collection)/[^/?\s]+", r"/\1/…", line)
                                          for line in sync.status["log"]]})
             elif path == "/api/export":
@@ -238,6 +243,10 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/eshop_history/pick":
                 store.pick_eshop_history(str(body.get("key") or ""), str(body.get("slug") or ""))
                 self._send(200, {"eshop": planner.eshop_matches(store.load_data())["rows"]})
+            elif path == "/api/diag":
+                # POST (0.99.1): Der Verbindungstest fragt Quellen ab; eine fremde Seite soll ihn
+                # nicht über ein Bild auslösen können
+                self._send(200, {"lines": sync.diagnose()})
             elif path == "/api/sync":
                 self._send(200, {"started": sync.start_sync(by_hand=True)})
             else:

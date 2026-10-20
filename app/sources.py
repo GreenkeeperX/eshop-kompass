@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "0.99.0"
+VERSION = "0.99.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -73,14 +73,25 @@ class FetchError(Exception):
         self.url, self.status = url, status
 
 
+MAX_BODY = 20 << 20      # größte Antwort, gepackt und entpackt (0.99.1): Shopseiten haben unter 2 MB
+
+
+def _inflate(raw, wbits):
+    d = zlib.decompressobj(wbits)
+    out = d.decompress(raw, MAX_BODY + 1)
+    if len(out) > MAX_BODY:
+        raise ValueError("Antwort zu groß")
+    return out
+
+
 def _decode(raw, enc):
     if enc == "gzip":
-        return gzip.decompress(raw)
+        return _inflate(raw, 16 + zlib.MAX_WBITS)
     if enc == "deflate":
         try:
-            return zlib.decompress(raw)
+            return _inflate(raw, zlib.MAX_WBITS)
         except zlib.error:
-            return zlib.decompress(raw, -zlib.MAX_WBITS)
+            return _inflate(raw, -zlib.MAX_WBITS)
     return raw
 
 
@@ -108,7 +119,9 @@ def request(url, ua=None, timeout=25, encoding="gzip, deflate"):
         except urllib.error.HTTPError as e:
             resp = e                      # Fehlerseiten haben auch einen Inhalt
         with resp:
-            raw = resp.read()
+            raw = resp.read(MAX_BODY + 1)
+            if len(raw) > MAX_BODY:
+                raise ValueError("Antwort zu groß")
             out["status"] = getattr(resp, "status", None) or resp.getcode()
             out["enc"] = (resp.headers.get("Content-Encoding") or "").lower()
             out["server"] = resp.headers.get("Server") or ""

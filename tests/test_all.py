@@ -424,7 +424,9 @@ class OwnOfferTest(unittest.TestCase):
         data, settings = sample()
         raw = [{"slug": "spiritfarer", "code": "BR", "price": 30, "src": "Amazon", "url": "https://www.amazon.example/dp/1"},
                {"slug": "hades", "code": "BR", "price": 90, "src": "Amazon"},          # teurer als der eShop
-               {"slug": "Kein Slug!", "code": "BR", "price": 5}]
+               {"slug": "Kein Slug!", "code": "BR", "price": 5},
+               # Anführungszeichen im Link (0.99.1): käme sonst als Attribut in die Oberfläche
+               {"slug": "hades", "code": "BR", "price": 5, "url": 'https://a.example/" onmouseover="x'}]
         settings["own_offers"] = [x for x in (store._own_offer(e, settings["countries"]) for e in raw) if x]
         self.assertEqual(len(settings["own_offers"]), 2)
         ctx = planner.Context(data, settings, NOW)
@@ -1907,6 +1909,32 @@ class SafetyTest(unittest.TestCase):
             self.assertEqual(set(body), {"plans", "bplans", "mix", "kauf"})
             self.assertTrue(store.load_ui()["plan_good"])
             store.save_ui({"plan_good": False})
+            # Grenzen der Eingabe (0.99.1): negative Länge, kein JSON-Objekt, Verbindungstest nur per POST
+            for length, raw_body in (("-1", b'{"dense": true}'), (None, b"[]")):
+                c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+                c.putrequest("POST", "/api/ui")
+                c.putheader("Content-Type", "application/json")
+                c.putheader("Content-Length", length or str(len(raw_body)))
+                c.endheaders()
+                c.send(raw_body)
+                r = c.getresponse()
+                r.read()
+                c.close()
+                self.assertEqual(r.status, 400, length)
+            c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+            c.request("GET", "/api/diag")
+            r = c.getresponse()
+            r.read()
+            c.close()
+            self.assertEqual(r.status, 404)
+            self.assertEqual(r.getheader("X-Content-Type-Options"), "nosniff")
+            # Abgleichsdaten ohne Kaufverlauf (0.99.1)
+            with mock.patch.object(store, "load_data", return_value={"_eshop": {"entries": [1]}, "items": {}}):
+                c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+                c.request("GET", "/api/abgleich")
+                body = json.loads(c.getresponse().read())
+                c.close()
+            self.assertNotIn("_eshop", body["data"])
             # Unerwartete Fehler (0.82): an den Browser nur die Art, keine Pfade oder Innereien
             boom = mock.patch.object(planner, "case_export", side_effect=KeyError("/geheimer/pfad"))
             with boom, mock.patch.object(server.traceback, "print_exception"), mock.patch("builtins.print"):

@@ -145,7 +145,7 @@ def _nso_extra(e, known):
     except (TypeError, ValueError):
         return None
     url = str(e.get("url") or "").strip()
-    if price <= 0 or len(url) > 2000 or (url and not re.match(r"https?://", url)):
+    if price <= 0 or len(url) > 2000 or (url and not re.fullmatch(r"https?://[^\s\"'<>]+", url)):
         return None
     date = str(e.get("date") or "")
     return {"key": e["key"], "code": e["code"], "price": round(price, 2),
