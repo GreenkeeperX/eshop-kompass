@@ -177,7 +177,7 @@ function titleGroups(rows){
   if(s && ["price", "over", "end", "alt"].includes(s.k)) return rows.map(r => titleRow(r));
   // Eine Ausgabe des Spiels gilt als das Spiel (0.76): „Sparks of Hope + Rayman Edition“ nimmt den Season Pass zu sich
   const parents = [...new Set(rows.filter(r => r.dlc_of).map(r => r.dlc_of))].sort((a, b) => b.length - a.length);
-  const gameKey = t => parents.find(p => t === p || (t.toLowerCase().startsWith(p.toLowerCase()) && /^[\s:–\-+]/.test(t.slice(p.length)))) || t;
+  const gameKey = t => parents.find(p => t === p || (sameT(t).startsWith(sameT(p)) && /^[\s:–\-+]/.test(t.slice(p.length)))) || t;
   const units = new Map();
   for(const r of rows){
     const k = r.dlc_of || gameKey(r.title);
@@ -222,7 +222,7 @@ function titleRow(r, group){
     (r.target !== null ? ` <span class="tgtm ${hit ? "hit" : ""}" title="Dein Zielpreis">Ziel ${eur(r.target)}${hit ? " ✓" : ""}</span>` : "");
   const dlc = r.dlc_of ? `<span class="dlc ${r.parent_owned ? "has" : ""}" title="DLC zu ${esc(r.dlc_of)}${r.parent_owned ? ", das Hauptspiel steht in deiner Sammlung" : r.parent_owned === false ? ", das Hauptspiel steht nicht in deiner Sammlung" : ""}">DLC</span>` : "";
   // In der Gruppe ohne den Namen des Spiels davor („Vampire Survivors: Operation Guns“ → „Operation Guns“)
-  const name = group && r.title.toLowerCase().startsWith(group.toLowerCase()) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
+  const name = group && sameT(r.title).startsWith(sameT(group)) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
   let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${esc(name)}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>

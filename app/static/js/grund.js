@@ -146,6 +146,9 @@ const country = code => S.state.countries.find(c => c.code === code) || {name: c
 const shopOf = code => code ? (country(code).shop || code) : "DE";   // DG nutzt den deutschen eShop
 // Ohne Land (0.82.3) zeigt DekuDeals die dort eingestellte Länderansicht; mit Land (Preis in einer
 // Länderspalte) die Ansicht dieses Shops
+/* Namen vergleichen wie der Server (planner.short, 1.1.9): ohne Groß- und Kleinschreibung, typografische
+   und gerade Apostrophe gleich („Luigi’s“ und „Luigi's“) */
+const sameT = t => String(t || "").toLowerCase().replace(/[’‘`´]/g, "'");
 const deku = (slug, code) => `https://www.dekudeals.com/items/${encodeURIComponent(slug)}${code ? `?country=${shopOf(code).toLowerCase()}` : ""}`;
 // Suche bei eShop-Prices nur mit Buchstaben und Ziffern: Zeichen wie & oder : finden dort nichts
 const epSearch = title => `https://eshop-prices.com/games?q=${String(title).replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(" ").map(encodeURIComponent).join("+")}&currency=EUR`;

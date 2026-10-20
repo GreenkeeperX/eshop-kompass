@@ -108,7 +108,9 @@ Käufe“ steht; die Zahlenzeile nennt die Gruppen in derselben Reihenfolge (nic
 nachtragen, offen, Sammlung, Mitgliedschaft, erstattet).
 Spalten „Zählt als“ und „Titel“ (ab 1.1.8, `named`): DLC wie in Schritt und Länderkarte, DLC-Marke und
 Spiel (`small.gm`, grau) in der ersten Zeile, der DLC-Name als Link darunter; ein DLC ohne bekanntes
-Spiel trägt nur die Marke. Sortiert nach Titel zählt das Spiel mit (DLC stehen bei ihrem Spiel). Die
+Spiel trennt der erste Gedankenstrich, sonst der erste Doppelpunkt (Upgrade-Pässe zur Switch-2-Edition,
+ab 1.1.9), das Spiel steht ohne „– Nintendo Switch 2 Edition …“. Spiel und DLC vergleichen Oberfläche und
+Server ohne Groß- und Kleinschreibung und mit gleichen Apostrophen (`sameT`, `planner.short`). Sortiert nach Titel zählt das Spiel mit (DLC stehen bei ihrem Spiel). Die
 Spalte „Kauf“ bleibt der Text von Nintendo.
 „Welcher Titel ist das?“: eine Tabellenzeile je offenem Kauf, links Kauf mit grauer Zeile (Datum,
 Art, Plattform, Betrag), rechts die Kandidaten als kleine Knöpfe (`button.cand`, Spiel grau, DLC fett;

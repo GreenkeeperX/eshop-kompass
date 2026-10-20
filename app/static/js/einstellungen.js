@@ -287,11 +287,14 @@ function eshopBox(){
   const PLAT = {HAC: "Switch", BEE: "Switch 2"};
   const what = r => [r.date ? dmy(r.date) : "", KIND[r.item] || "", PLAT[r.plat] || "", r.amount || ""].filter(Boolean).map(esc).join(" · ");
   // DLC wie in den Karten (1.1.8): Marke und Spiel klein in der ersten Zeile, der DLC-Name als Link darunter
-  const same = t => String(t || "").toLowerCase().replace(/[’‘`´]/g, "'");
+  // Ohne bekanntes Spiel (Upgrade-Pass zur Switch-2-Edition, 1.1.9) trennt der erste Gedankenstrich oder Doppelpunkt
   const named = (slug, title, game, dlc) => {
-    const t = String(title || slug), cut = game && same(t).startsWith(same(game)) ? t.slice(game.length).replace(/^[\s:–-]+/, "") : t;
+    const t = String(title || slug), sep = dlc && !game ? t.match(/^(.+?) – (.{3,})$/) || t.match(/^(.+?): (.{3,})$/) : null;
+    if(sep) game = sep[1];
+    const cut = game && sameT(t).startsWith(sameT(game)) ? t.slice(game.length).replace(/^[\s:–-]+/, "") : t;
     const link = x => `<a href="${esc(deku(slug))}" target="_blank" rel="noopener" title="Bei DekuDeals ansehen">${esc(x)}</a>`;
-    if(game && cut.length > 2) return `<span class="dlc">DLC</span><small class="gm">${esc(game)}:</small><br>${link(cut)}`;
+    // Das Spiel ohne „– Nintendo Switch 2 Edition …“: Der Pass gehört zum Spiel, nicht zur Ausgabe
+    if(game && cut.length > 2) return `<span class="dlc">DLC</span><small class="gm">${esc(game.replace(/ – Nintendo Switch 2 Edition.*$/, ""))}:</small><br>${link(cut)}`;
     return `${dlc ? `<span class="dlc">DLC</span>` : ""}${link(t)}`;
   };
   const kauf = r => `${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}<br><small class="mut">${what(r)}</small>`;
