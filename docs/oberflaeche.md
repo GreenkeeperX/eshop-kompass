@@ -137,7 +137,10 @@ fehlt (ab 0.70). Preise in Auswahlfeldern „Titel dazunehmen …“ immer mit W
 
 Kleinkram (ab 0.92, Entscheidung 19.10.2026): Titel mit Bestpreis unter `deal_eur.mini` (2 €)
 füllen nur den Rest eines Schritts. Was nicht passt, steht unter „Nicht im Plan“ in einer Zeile
-„Kleinkram: wartet auf einen Rest …“ (`notPlanned`, Feld `small` des Kaufplans). Die Grenze steht
+„Kleinkram in Land: wartet auf einen Rest …“ je Land mit Summe und Anteil an der Karte (`notPlanned`,
+Felder `small` und `small_groups` des Kaufplans). Füllt er eine Karte bis auf höchstens 10 %, folgt fett
+„Reicht für eine eigene Karte.“ mit Link „in den Schritt nehmen“ (ohne Schritt: „in die Länderkarte“);
+ab 0.93, Entscheidung 19.10.2026: ein Vorschlag, nie still im Hintergrund. Die Grenze steht
 in Einstellungen, Regeln („Kleinkram unter … €“), im Regelsatz darüber und in der Legende bei „kaufen“.
 
 ## Kopfleiste

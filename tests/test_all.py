@@ -364,6 +364,22 @@ class MiniTest(unittest.TestCase):
         self.assertIn("m1", [i["slug"] for i in br["items"]])
         self.assertNotIn("m1", [x["slug"] for x in k["small"]])
 
+    def test_waiting_minis_are_grouped_as_a_suggestion(self):
+        # Je Land mit Summe; füllt der Kleinkram eine Karte fast ganz, ist das nur ein Vorschlag (0.93)
+        k = self.plan()
+        g = k["small_groups"][0]
+        self.assertEqual((g["code"], sorted(g["slugs"]), g["local"], g["step"]), ("BR", ["m1", "m3"], 6.5, True))
+        self.assertFalse(g["full"])                                   # 6,50 von 15: weit weg
+        for slug, brl in (("m4", 3.9), ("m5", 3.6)):                  # 6,5 + 7,5 = 14 von 15
+            self.data["items"][slug] = dict(self.data["items"]["m1"], title=slug)
+            self.data["prices"]["DE"][slug] = dict(self.data["prices"]["DE"]["m1"])
+            self.data["prices"]["BR"][slug] = dict(self.data["prices"]["BR"]["m1"], regular=brl)
+        g = self.plan()["small_groups"][0]
+        self.assertTrue(g["full"])
+        self.assertEqual([(c["face"], c["count"]) for c in g["cards"]], [(15.0, 1)])
+        br = next(p for p in self.plan()["steps"] if p["code"] == "BR")
+        self.assertEqual(sorted(i["slug"] for i in br["items"]), ["big", "m2"])   # nichts still dazu
+
     def test_without_limit_minis_enlarge_the_cards(self):
         self.settings["deal_eur"]["mini"] = 0
         k = self.plan()
@@ -4283,7 +4299,7 @@ class UiContractTest(unittest.TestCase):
                          "na", "nocard", "nsuid", "own", "pct", "sale"},
         "matrix.cols": {"code", "currency", "name", "tier"},
         "kaufplan": {"bought", "cost", "count", "dropped", "good_left", "held", "later", "lock", "packed",
-                     "s2_skip", "saving", "small", "steps"},
+                     "s2_skip", "saving", "small", "small_groups", "steps"},
         "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
                  "estimated", "family", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
                  "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "rate", "ref_total", "rest", "rest_eur",

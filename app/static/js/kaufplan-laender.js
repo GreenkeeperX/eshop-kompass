@@ -55,7 +55,20 @@ function notPlanned(k){
   for(const x of k.s2_skip || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">nur ein Weg zur Switch 2: ${esc(x.reason)}</td></tr>`);
   for(const x of k.packed || []) rows.push(`<tr><td>${esc(x.title)}</td><td class="l">steckt in <b>${esc(x.pack)}</b>, das ebenfalls zum Kauf ansteht: nicht doppelt kaufen</td></tr>`);
   // Kleinkram (0.92): wartet, bis ein Rest bleibt, statt eine Guthabenkarte größer zu machen
-  if((k.small || []).length) rows.push(`<tr><td>${k.small.map(x => esc(x.short)).join(", ")}</td><td class="l">Kleinkram: wartet auf einen Rest, statt eine Guthabenkarte größer zu machen; steht unter „Passt in den Rest“, sobald einer bleibt</td></tr>`);
+  // Je Land mit Summe; füllt er eine Karte fast ganz, ein Vorschlag zum Übernehmen, nie von selbst (0.93)
+  const grouped = new Set();
+  for(const g of k.small_groups || []){
+    g.slugs.forEach(x => grouped.add(x));
+    const faces = (g.cards || []).reduce((n, c) => n + c.face * c.count, 0);
+    const card = (g.cards || []).map(c => `${c.count > 1 ? c.count + "× " : ""}${money(c.face, g.currency)}`).join(" + ");
+    const of = g.smallest ? ` · zusammen ${money(g.local, g.currency)}${faces ? ` von ${card} (${Math.round(100 * g.local / faces)} %)` : ""}` : ` · zusammen ${money(g.local, g.currency)}`;
+    const take = !g.full ? "" : g.step
+      ? ` <b>Reicht für eine eigene Karte.</b> <button class="link" data-act="planfill" data-c="${g.code}" data-s="${esc(g.slugs.join(","))}" title="Nimmt den Kleinkram in den Schritt ${esc(g.name)}; der Plan kauft dafür ${esc(card)}">in den Schritt nehmen</button>`
+      : ` <b>Reicht für eine eigene Karte.</b> <button class="link" data-act="add" data-c="${g.code}" data-s="${esc(g.slugs.join(","))}" title="Legt den Kleinkram in den Korb der Länderkarte ${esc(g.name)}">in die Länderkarte</button>`;
+    rows.push(`<tr><td>${g.titles.map(esc).join(", ")}</td><td class="l">Kleinkram in <b>${esc(g.name)}</b>: wartet auf einen Rest, statt eine Guthabenkarte größer zu machen${of}.${take}</td></tr>`);
+  }
+  const loose = (k.small || []).filter(x => !grouped.has(x.slug));
+  if(loose.length) rows.push(`<tr><td>${loose.map(x => esc(x.short)).join(", ")}</td><td class="l">Kleinkram: wartet auf einen Rest, statt eine Guthabenkarte größer zu machen; steht unter „Passt in den Rest“, sobald einer bleibt</td></tr>`);
   for(const l of k.later) rows.push(`<tr><td>${esc(l.title)}</td><td class="l">lieber warten: ${esc(l.reason)}; in den Ländern, deren Wechsel sich rechnet, kein Kauf</td></tr>`);
   if(k.nowhere.length) rows.push(`<tr><td>${k.nowhere.map(esc).join(", ")}</td><td class="l">nirgends kaufbar, wo es zählt</td></tr>`);
   if(k.bought_waiting.length) rows.push(`<tr><td>${k.bought_waiting.map(esc).join(", ")}</td><td class="l">schon gekauft oder in deiner Sammlung, steht noch auf der Wishlist</td></tr>`);

@@ -111,6 +111,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         # Guthabenkarte größer. Sie kommen nur in den Rest, den die übrigen Titel ohnehin
         # lassen, die größten zuerst; der Rest wartet auf einen späteren Rest
         small = []
+        small_at.clear()
         for code in list(groups):
             c = ctx.countries[code]
             # Was du selbst in den Schritt genommen hast, zählt wie ein großer Titel
@@ -136,6 +137,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                     keep.append(s)
                     room -= c["offers"][s]["local"]
             small += [s for s in minis if s not in keep]
+            small_at.update({s: code for s in minis if s not in keep})
             groups[code] = [s for s in groups[code] if s not in minis or s in keep]
             if not groups[code]:
                 del groups[code]
@@ -179,7 +181,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         held = [s for s in wanted if everywhere[s] and everywhere[s][1] != cur_code
                 and fits(s, everywhere[s][0])]
 
-    pin, tried = {}, set()
+    pin, tried, small_at = {}, set(), {}
     for _round in range(4):
         while True:
             groups, nowhere, later, small = assign()
@@ -322,6 +324,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "later": [{"slug": s, "title": ctx.title(s), "reason": reasons.get(s, "")} for s in later],
             # Kleinkram, der in keinen Rest passte: wartet auf einen späteren Rest (0.92)
             "small": [{"slug": s, "title": ctx.title(s), "short": ctx.short(s)} for s in small],
+            "small_groups": _small_groups(ctx, small, small_at, steps, allowed),
             "s2_skip": [dict(x, title=ctx.title(x["slug"])) for x in s2_skip],
             "packed": packed,
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
@@ -338,6 +341,35 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "bought_saving": _r(sum((b.get("de") or 0) - _paid(b) for b in (bought or [])
                                     if b.get("de") is not None and _paid(b) is not None)),
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
+
+
+# Füllt wartender Kleinkram eines Landes eine Guthabenkarte bis auf höchstens diesen Anteil,
+# schlägt der Plan ihn als eigene Karte vor (0.93)
+SMALL_CARD_REST = 0.10
+
+
+def _small_groups(ctx, small, small_at, steps, allowed):
+    """Wartender Kleinkram je Land mit Summe, Karten und ob er eine Karte fast ganz füllt.
+    Nur ein Vorschlag: übernehmen musst du ihn selbst (Entscheidung 19.10.2026: nichts still)."""
+    by = {}
+    for s in small:
+        if small_at.get(s) in ctx.countries:
+            by.setdefault(small_at[s], []).append(s)
+    in_plan = {p["code"] for p in steps}
+    out = []
+    for code, slugs in by.items():
+        c = ctx.countries[code]
+        q = plan_country(ctx, code, basket=slugs, allowed=allowed)
+        faces = sum(x["face"] * x["count"] for x in q["cards"])
+        out.append({"code": code, "name": c["meta"]["name"], "currency": c["currency"],
+                    "slugs": slugs, "titles": [ctx.short(s) for s in slugs], "local": q["total"],
+                    "cards": q["cards"], "cost": q["cost"], "rest": q["rest"],
+                    "smallest": min((x["face"] / 100 for x in c["cards"]
+                                     if x["stock"] and ctx.face_cost(c, x) is not None), default=None),
+                    "full": bool(q["via"] == "giftcard" and faces and q["rest"] is not None
+                                 and q["rest"] <= faces * SMALL_CARD_REST + 1e-9),
+                    "step": code in in_plan})
+    return sorted(out, key=lambda g: (not g["full"], g["name"]))
 
 
 def _package_gain(ctx, p, allowed, current):
