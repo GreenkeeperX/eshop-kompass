@@ -159,7 +159,7 @@ function viewTitles(){
     over: r => off(r) && r.champ ? off(r).eur - r.champ.eur : null, end: r => off(r)?.sale && off(r).end ? +new Date(off(r).end) : null,
     alt: r => { const x = shownOffer(r); return x && x.tier >= 3 && r.easy ? r.easy.eur : null; }});
   let h = `<div class="tools">${searchBox("Titel filtern")}${titleSortSel()}${titleFilterBar()}${viewSeg()}</div>
-    <div class="radar"><table><thead><tr>${sth("titel", "title", "Titel")}${sth("titel", "verdict", "Urteil", "", "l")}${sth("titel", "price", "Einkaufspreis", "Was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr: im Land des Kaufplans, sonst im günstigsten zählenden Land")}
+    <div class="radar"><table><thead><tr>${sth("titel", "title", "Titel" + dlcAll(rows))}${sth("titel", "verdict", "Urteil", "", "l")}${sth("titel", "price", "Einkaufspreis", "Was du zahlst, mit Steuer, Kurs, Guthabenkarten und Gebühr: im Land des Kaufplans, sonst im günstigsten zählenden Land")}
     ${sth("titel", "over", "über Bestpreis", "Einkaufspreis minus Bestpreis. Bestpreis: der niedrigste Einkaufspreis der letzten 24 Monate über alle zählenden Länder, mit deinem heutigen Einkaufsweg gerechnet")}
     ${sth("titel", "alt", "Alternative", "Liegt das beste Angebot in einem Land der Stufe schwer: das beste Angebot in einem leichten oder mittleren Land")}<th>Korb</th></tr></thead><tbody>`;
   h += titleGroups(rows).join("");
@@ -198,6 +198,12 @@ function titleGroups(rows){
     if(!shut) for(const d of u.dlc) out.push(titleRow(d, k));
   }
   return out;
+}
+// Alle DLC-Gruppen auf einmal auf- oder zuklappen, im Kopf der Titelspalte, nur in der gruppierten Liste (1.1.14)
+function dlcAll(rows){
+  const s = S.sorts.titel;
+  if((s && ["price", "over", "end", "alt"].includes(s.k)) || !rows.some(r => r.dlc_of)) return "";
+  return `<span class="dlcall">alle DLC <button class="link" data-act="wlfoldall" data-v="1" title="Alle DLC-Gruppen aufklappen">aufklappen</button> · <button class="link" data-act="wlfoldall" data-v="" title="Alle DLC-Gruppen zuklappen">zuklappen</button></span>`;
 }
 // Zeile unter dem Spiel (1.1.13): „▾ 53 DLC, das Spiel hast du · 4 kaufen, 1 gut“; ein Klick klappt die DLC zu
 function dlcToggle(k, dlc, shut){

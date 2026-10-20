@@ -59,6 +59,7 @@ document.addEventListener("click", async e => {
     else if(a === "thmset"){ setTheme(d.v); }
     else if(a === "lgclose"){ $("legend").close(); }
     else if(a === "vf"){ S.vf = d.v; saveView(); render(); }
+    else if(a === "wlfoldall"){ document.querySelectorAll(".radar .dlctog").forEach(b => { const k = "wl:" + b.dataset.g; if(d.v) delete S.folds[k]; else S.folds[k] = 1; }); saveView(); render(); }
     else if(a === "wlfold"){ const k = "wl:" + d.g; if(S.folds[k]) delete S.folds[k]; else S.folds[k] = 1; saveView(); render(); }
     else if(a === "nodlcoff"){ S.noDlc = false; saveView(); render(); }
     else if(a === "tview"){ S.tview = d.v; saveView(); render(); }
