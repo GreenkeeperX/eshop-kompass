@@ -194,17 +194,16 @@ function titleGroups(rows){
     const shut = sub && !!S.folds["wl:" + k] && !S.rq;
     const tog = sub ? dlcToggle(k, u.dlc, shut) : "";
     for(const g of u.games) out.push(titleRow(g, undefined, u.games.length === 1 ? tog : ""));
-    if(!u.games.length && sub) out.push(`<tr class="tgrp"><td colspan="6"><b>${esc(k)}</b> ${tog}${u.dlc[0].parent_owned ? `<span class="tgown"> · das Spiel hast du</span>` : ""}</td></tr>`);
+    if(!u.games.length && sub) out.push(`<tr class="tgrp"><td colspan="6"><b>${esc(k)}</b>${tog}</td></tr>`);
     if(!shut) for(const d of u.dlc) out.push(titleRow(d, k));
   }
   return out;
 }
-// „▾ 3 DLC“ klappt die DLC eines Spiels zu; zugeklappt nennt es, wie viele davon kaufen oder gut sind
+// Zeile unter dem Spiel (1.1.13): „▾ 53 DLC, das Spiel hast du · 4 kaufen, 1 gut“; ein Klick klappt die DLC zu
 function dlcToggle(k, dlc, shut){
   const n = v => dlc.filter(d => d.verdict === v).length, b = n("buy"), g = n("good");
-  const tip = shut ? `${dlc.length} DLC aufklappen` : `${dlc.length} DLC zuklappen`;
-  const more = shut && (b || g) ? `: ${[b ? `${b} kaufen` : "", g ? `${g} gut` : ""].filter(Boolean).join(", ")}` : "";
-  return `<button class="link dlctog" data-act="wlfold" data-g="${esc(k)}" title="${tip}" aria-expanded="${!shut}">${shut ? "▸" : "▾"} ${dlc.length} DLC${more}</button>`;
+  const more = [b ? `<b class="g-buy">${b}</b> kaufen` : "", g ? `<b class="g-good">${g}</b> gut` : ""].filter(Boolean).join(", ");
+  return `<button class="link dlctog" data-act="wlfold" data-g="${esc(k)}" title="${dlc.length} DLC ${shut ? "aufklappen" : "zuklappen"}" aria-expanded="${!shut}">${shut ? "▸" : "▾"} <b>${dlc.length}</b> DLC${dlc[0].parent_owned ? ", das Spiel hast du" : ""}${more ? " · " + more : ""}</button>`;
 }
 const VORDER = {buy: 0, good: 1, wait: 2, none: 3};
 // Angebotsende hat keine eigene Spalte: Auswahl neben dem Filter, gemeinsam mit den Spaltenköpfen
@@ -236,7 +235,7 @@ function titleRow(r, group, tog){
   // In der flachen Liste (nach Preis, Abstand, Ende) zweizeilig wie in den Karten: Spiel klein, darunter der DLC (1.1.10)
   const rest = !group && r.dlc_of && sameT(r.title).startsWith(sameT(r.dlc_of)) ? r.title.slice(r.dlc_of.length).replace(/^[\s:–\-+]+/, "") : "";
   const label = rest.length > 2 ? `<small class="gm">${esc(r.dlc_of)}:</small><br>${esc(rest)}` : esc(name);
-  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${label}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}${tog ? ` ${tog}` : ""}</td>
+  let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${label}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}${tog || ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>
     <td class="kb-c"><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
