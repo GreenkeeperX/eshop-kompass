@@ -173,6 +173,8 @@ an der Zeile (`.cdr.undec`) und Chip „nicht auf der Wishlist“ (`.chip.und`, 
 Ein fehlender Pass, dessen Teile nicht alle einzeln einen Preis haben, zeigt statt „einzeln … · als Pass …“ grau
 „einzeln nicht alle kaufbar“ (ab 0.90). „Titel dazunehmen …“ bietet diese DLC in der Gruppe „Fehlende DLC deiner Spiele“ an („Spiel: DLC ·
 Preis“).
+Die Aktionen einer DLC-Zeile („habe ich · ignorieren“) stehen rechtsbündig, bündig unter „alle DLC
+ignorieren“ in der Kopfzeile des Spiels (ab 1.1.7); am Handy links in eigener Zeile.
 
 Ab 0.99.6 nach der Checkliste (Entscheidung 20.10.2026): je DLC eine Rasterzeile wie unter „Nicht im
 Plan“ (`.npr.cdr`, `collDlc`), Spalten Name (darunter klein Pass-Vergleich oder Paket), Stand („fehlt“

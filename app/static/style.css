@@ -339,7 +339,7 @@ details.cg > summary{cursor:pointer;font-size:14px}
 .cdr.undec{box-shadow:inset 3px 0 0 var(--warn);padding-left:12px}
 .cdr.ign .t,.cdr.ign .c-vd{color:var(--muted)}
 .npr.cdr.part{padding-left:24px}
-.cdr .c-act{font-size:12.5px}
+.cdr .c-act{font-size:12.5px;text-align:right}   /* bündig unter „alle DLC ignorieren“ (1.1.7) */
 button.vdb{border:0;background:none;padding:0;cursor:pointer;font:inherit}
 button.vdb:hover .vd{text-decoration:underline}
 details.cgo>summary{cursor:pointer;font-size:14px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
@@ -569,7 +569,7 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
   .npr.nph{display:none}
   .npr{display:flex;flex-wrap:wrap;gap:2px 12px;padding-left:6px}
   .npr .t{flex:1 0 100%}
-  .npr .c-act{flex:1 0 100%}
+  .npr .c-act{flex:1 0 100%;text-align:left}
   .npr .c-end:empty,.npr .c-pct:empty{display:none}
   .np details.npgrp details.npf{margin-left:0}
   .np details.npg .npr{padding-left:12px}
