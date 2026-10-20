@@ -4,6 +4,36 @@ Vergleicht die Titel deiner DekuDeals-Wishlist über mehrere Nintendo-eShops,
 rechnet in Euro um und schnürt je Land das günstigste Paket inklusive
 Guthabenkarten, Rest und Füllartikeln.
 
+![Reiter Jetzt: Kaufplan mit einem Schritt je Land](docs/bilder/jetzt.jpg)
+
+<details>
+<summary>Weitere Ansichten (Version 1.1.15, Darkmode)</summary>
+
+Die Bilder zeigen echte Preise und eine echte Wishlist; Konto, Guthaben, Käufe und eigene
+Angebote sind neutralisiert.
+
+**Wishlist** mit DLC beim Spiel, Urteil und Alternative:
+
+![Reiter Wishlist als Liste](docs/bilder/wishlist.jpg)
+
+**Einzelheiten** eines Titels mit Rechnung, Preis in allen Ländern und Angebotsrhythmus:
+
+![Einzelheiten eines Titels](docs/bilder/wishlist-einzelheiten.jpg)
+
+**Tabelle** aller Länder, nach Wechselstufe geordnet:
+
+![Wishlist als Tabelle aller Länder](docs/bilder/wishlist-tabelle.jpg)
+
+**Sammlung** mit fehlenden DLC, Preis und Urteil:
+
+![Reiter Sammlung](docs/bilder/sammlung.jpg)
+
+**Am Handy:**
+
+<img src="docs/bilder/handy.jpg" alt="Reiter Jetzt am Handy" width="390">
+
+</details>
+
 Diese Anleitung hat drei Teile: die **Kurzanleitung** für den Alltag, **Begriffe und
 Regeln**, nach denen das Tool rechnet, und **Nachschlagen** je Reiter. Am Ende stehen
 Betrieb, Abrufe und Prüfung. Was wann dazukam, steht in der Git-Geschichte, Geplantes in

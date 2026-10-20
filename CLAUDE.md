@@ -51,6 +51,8 @@ Zweck, Bedienung und Rechenregeln stehen in `README.md`, Geplantes in `ROADMAP.m
   „Eine Sache, mehrere Orte“ durchgehen und alle genannten Stellen prüfen
 - `docs/abrufe.md`: was das Tool woher, wann und wie oft holt und wo es die Daten ablegt; bei
   jeder Änderung an Abrufen, Grenzen, Zeitplan oder Ablage im selben Commit mitpflegen
+- `docs/bilder/`: Bilder der README. Nur mit neutralisiertem Konto: Guthaben 0, keine Käufe,
+  keine eigenen Angebote, kein Ablaufdatum der Mitgliedschaft, kein Wishlist- oder Sammlungslink
 - `tests/test_all.py`: alle Tests, `.github/workflows/image.yml`: Tests und Image bei Push auf `main`
 
 Lokal starten: `python3 -m app.server` (Port 8787, Daten in `./data/`, ignoriert).
