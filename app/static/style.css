@@ -317,6 +317,7 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .radar th,.radar td{padding:4px 9px;vertical-align:top}
 .radar thead th{position:sticky;top:var(--stick,0px);background:var(--card);z-index:1}
 .radar td:first-child{white-space:normal;min-width:200px;max-width:380px}
+.radar td.tn{vertical-align:middle}
 /* Das Urteil bricht seine kleine Zeile um, statt die Titel zu quetschen (1.1.1) */
 .radar td.vdc{white-space:normal;width:170px;min-width:150px}
 .radar td small{display:block;color:var(--muted);font-size:11px}

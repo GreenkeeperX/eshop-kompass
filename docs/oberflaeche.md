@@ -160,7 +160,7 @@ Länder ohne Guthabenkarte blass mit violettem Grund.
 DLC unter ihrem Spiel (ab 0.72, `titleGroups`): eingerückt (`tr.sub`), Name ohne Spiel davor; ohne Spiel
 auf der Wishlist eine Kopfzeile (`tr.tgrp`, Spiel fett, grau „n DLC, das Spiel hast du“), ab 0.77 auch
 für einen einzelnen DLC (0.76 schrieb ihn ohne Kopfzeile mit dem Spiel grau davor; das war unruhig).
-Gruppe an der Stelle ihres ersten Mitglieds; nach Preis, Abstand, Angebotsende oder Alternative flach, dort steht ein DLC zweizeilig wie in den Karten (Spiel grau `small.gm` mit Doppelpunkt, darunter der DLC-Name, ab 1.1.10).
+Gruppe an der Stelle ihres ersten Mitglieds; nach Preis, Abstand, Angebotsende oder Alternative flach, dort steht ein DLC zweizeilig wie in den Karten (Spiel grau `small.gm` mit Doppelpunkt, darunter der DLC-Name, ab 1.1.10). Die Titelspalte steht vertikal mittig (`td.tn`, ab 1.1.11), damit ein einzeiliges Spiel nicht direkt unter dem fetten DLC-Namen der Zeile darüber klebt.
 „ohne DLC“ (ab 1.1.8, Kästchen hinter den Urteilsfiltern, `S.noDlc`, gemerkt in `ek.view`): Liste und
 Tabelle nur mit Spielen, Kopfzeilen nur mit DLC fallen mit weg, die Zahlen der Filter zählen nur
 Spiele; darunter `.restline` „n DLC ausgeblendet · zeigen“ (`noDlcLine`), nichts verschwindet still.
