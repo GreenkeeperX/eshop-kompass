@@ -408,6 +408,22 @@ Korb; von selbst nimmt der Plan beides nie); „als Korb
 vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
 dazugenommenen Titel dieses Landes vergessen.
 
+**Auf Null:** Stört ein Rest, weil er beim nächsten Wechsel verfällt, das Land „schwer“ ist (Amerika:
+Wechsel nur mit 0) oder „Rest blockiert“ eingestellt ist, stehen darunter zwei Zeilen (ab 1.1.0):
+
+- **Genau Null:** der günstigste Weg, nach dem kein Cent Guthaben bleibt, auch mit weiteren
+  Guthabenkarten, ohne Grenze (Entscheidung 20.10.2026). Die Zeile nennt, was das mehr kostet als der
+  Schritt jetzt (Karten mit Karten), was sonst als Rest verfiele, die Titel mit Preis und wie viele davon
+  am Bestpreis sind. Gibt es keinen Weg, sagt sie das. Genau 0 klappt oft erst mit einer weiteren Karte,
+  weil Preise auf ,99 oder ,95 enden.
+- **Fast Null:** höchstens 0,50 € Rest für höchstens 10 € mehr, nur wenn das günstiger ist als genau
+  Null und eine Karte dazukommt (ohne Zuzahlung zeigt es „Passt in den Rest“). Beide Grenzen stehen
+  unter Regeln.
+
+In Frage kommen dieselben Titel wie bei den Füllartikeln, das Urteil zählt nicht. Die Karten rechnet
+derselbe Zahlweg wie der Schritt: Nach „alle dazunehmen“ steht genau das im Schritt. Bei gleichen
+Kosten gewinnt der kleinere Rest, dann die kleinere Summe. Von selbst kommt nichts hinein.
+
 **Passt dazu:** Ein Schritt und jede Länderkarte (der Korb je Land) schlagen bis zu zwei
 Wishlist-Titel vor, die zusätzlich am meisten sparen, auch wenn etwas in den Rest passt: Der Korb
 wird größer und lässt einen neuen Rest (Titel aus „Passt in den Rest“ stehen nicht noch einmal da); **Weglassen spart** nennt bis zu zwei Titel,
@@ -667,8 +683,8 @@ Angaben, deine Zuordnungen bleiben, kein Eintrag verschwindet. Der Abgleich läu
   Bewertung.
 - **Bezahlen:** Karte, Guthabenkarte oder das Günstigere von beiden.
 - **Steuer:** Aufschlag in Prozent, wo der Shop Preise ohne Steuer zeigt (USA, Kanada).
-- **Regeln:** Urteilsgrenzen, Mindestersparnis je Wechselstufe und die Sprachregel. Ein Satz
-  fasst die aktuellen Werte zusammen, die Felder stehen eingeklappt unter „Grenzen anpassen“.
+- **Regeln:** Urteilsgrenzen, Mindestersparnis je Wechselstufe, die Grenzen für „Fast Null“ und
+  die Sprachregel. Ein Satz fasst die aktuellen Werte zusammen, die Felder stehen eingeklappt unter „Grenzen anpassen“.
 - **Gebühren:** Fremdwährungsgebühr deiner Kreditkarte, Servicegebühr des Kartenshops,
   mögliches Cashback; unter „Erweitert“ die Schätzung ohne Kartenpreis und die Stufen für
   Euro-Guthaben.

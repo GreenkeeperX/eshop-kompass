@@ -44,6 +44,9 @@ DEFAULT_SETTINGS = {
     # Angebot als Kauf bzw. gutes Angebot, auch wenn es prozentual mehr ist
     # mini (0.92): Titel mit Bestpreis unter diesem Betrag sind Kleinkram, siehe planner.Context.mini
     "deal_eur": {"buy": 0.5, "good": 2.0, "mini": 2.0},
+    # Auf Null (1.1.0): „Fast Null“ lässt höchstens left € Rest und kostet höchstens near € mehr;
+    # „Genau Null“ hat keine Grenze (Entscheidung 20.10.2026)
+    "zero": {"near": 10.0, "left": 0.5},
     # Euro-Guthaben (Deutschland mit Guthaben): Faktor bis zu diesem Wert gilt als Top, gut,
     # okay; darüber teuer. Stufen wie bei Kenixa (Entscheidung 13.10.2026)
     "eur_card_steps": {"top": 0.81, "good": 0.83, "ok": 0.86},
@@ -105,7 +108,7 @@ def load_settings():
         s.pop("card_market", None)    # gg.deals ist seit 0.20 ausgebaut
         if s.get("current_country") in countries.BY_CODE:   # bis 0.62 war DG als Konto wählbar
             s["current_country"] = countries.BY_CODE[s["current_country"]]["shop"]
-        for group in ("tier_min_saving", "deal_eur", "eur_card_steps"):
+        for group in ("tier_min_saving", "deal_eur", "eur_card_steps", "zero"):
             for k, value in DEFAULT_SETTINGS[group].items():
                 s[group].setdefault(k, value)
         defaults = countries.default_country_settings()
@@ -241,6 +244,12 @@ def save_settings(new):
             if k in s["deal_eur"]:
                 try:
                     s["deal_eur"][k] = min(100.0, max(0.0, float(value)))
+                except (TypeError, ValueError):
+                    pass
+        for k, value in (new.get("zero") or {}).items():
+            if k in s["zero"]:
+                try:
+                    s["zero"][k] = min(1000.0, max(0.0, float(value)))
                 except (TypeError, ValueError):
                     pass
         for k, value in (new.get("eur_card_steps") or {}).items():

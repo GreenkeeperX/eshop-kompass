@@ -507,6 +507,7 @@ function suggestHtml(p, step){
     // Auch ohne Treffer sichtbar (0.94): Die Zeile fehlt nicht, sie sagt, dass nichts passt
     h += `<div class="fillrow"><span class="mut">Passt in den Rest (${money(p.rest, cur)}):</span> ` +
       (btns.length || sel ? btns.join(" ") + sel : `<small class="mut">nichts von deiner Wishlist oder den DLC deiner Spiele</small>`) + `</div>`;
+    h += zeroHtml(p, step, planned);
   }
   // Was dazu lohnt: Ein weiterer Titel spart hier gegenüber dem Kauf ohne diesen Wechsel (0.76)
   // Immer, als Alternative zum Auffüllen: Der Korb wird größer, der Rest ein anderer (0.98.1). Ohne Titel,
@@ -519,6 +520,30 @@ function suggestHtml(p, step){
   if(trims.length) h += `<div class="fillrow"><span class="mut">Weglassen spart:</span> ` + trims.map(t =>
     `<button class="sm" data-act="${step ? "planskip" : "trim"}" data-c="${p.code}" data-s="${esc(t.slug)}" title="Ohne ${esc(t.short)} kostet der Kauf hier ${eur(t.marginal)} weniger; ohne den Wechsel kostet der Titel ${eur(t.ref)}${t.rest === null ? "" : `, danach bleiben ${money(t.rest, cur)} Rest`}. ${step ? "Klick nimmt ihn aus diesem Schritt." : "Klick nimmt ihn aus dem Korb dieses Landes."}">− ${esc(t.short)} <b>spart ${eur(t.gain)}</b></button>`).join(" ") + `</div>`;
   return h;
+}
+/* Auf Null (1.1.0): wo ein Rest stört (verfällt, Stufe schwer, Rest blockiert), der günstigste Weg auf
+   genau 0 und, wenn günstiger, einer auf fast 0. Die Titel stehen offen da, ein Knopf nimmt alle dazu */
+function zeroHtml(p, step, planned){
+  const z = p.fill_zero;
+  if(!z) return "";
+  const cur = p.currency, act = step ? "planfill" : "add";
+  const lost = p.rest_lost ? ` statt ${eur(p.rest_lost)} Rest verfallen` : "";
+  const line = (x, label) => {
+    if(!x || x.slugs.some(s => planned.has(s))) return "";
+    const cards = x.cards.map(k => `${k.count}× ${money(k.face, cur)}`).join(" + ");
+    const cost = x.extra >= 0.005 ? `für <b>${eur(x.extra)}</b> mehr` : `<b>ohne Zuzahlung</b>`;
+    const best = x.known ? ` <small style="display:inline">· ${x.at_best} von ${x.known} am Bestpreis${x.over >= 0.005 ? `, zusammen <span class="abv">+${eur(x.over)}</span> über Bestpreis` : ""}</small>` : "";
+    // Preise als Link wie überall (in den eShop, ohne eShop-Seite zum Verlauf bei DekuDeals)
+    const price = i => { const r = rowOf(i.slug), cell = r && r.cells ? r.cells[p.code] : null;
+      return cell ? shopLink(i.slug, p.code, cell, money(i.local, cur), cur) : priceLink(i.slug, p.code, money(i.local, cur), null, cur); };
+    const names = x.items.map(i => `<span class="nw">${i.dlc ? `<span class="dlc">DLC</span>` : ""}${esc(i.extra && i.game ? i.game + ": " + i.short : i.short)} <small style="display:inline">${price(i)}</small></span>`).join(", ");
+    const tip = `Mit ${x.items.length === 1 ? "diesem Titel" : "diesen Titeln"} (zusammen ${money(x.local, cur)}) bleiben ${money(x.left, cur)}. Guthabenkarten dann: ${cards}. Das kostet ${eur(x.extra)} mehr als der Schritt jetzt${lost}. ${step ? "Klick nimmt alle in diesen Schritt." : "Klick legt alle in den Korb dieses Landes."}`;
+    // Ein Block für Titel und Bestpreis: .fillrow ist flex, sonst stünde jedes Stück einzeln
+    return `<div class="fillrow"><span class="mut">${label} ${cost}${lost ? `<small style="display:inline">${lost}</small>` : ""}:</span> <span>${names}${best}</span> ` +
+      `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(x.slugs.join(","))}" title="${esc(tip)}">alle dazunehmen</button></div>`;
+  };
+  const h = line(z.exact, "Genau Null") + line(z.near, `Fast Null (bleiben ${z.near ? money(z.near.left, cur) : ""})`);
+  return h || (!z.exact && !z.near ? `<div class="fillrow"><span class="mut">Genau Null:</span> <small class="mut">mit deiner Wishlist und den DLC deiner Spiele kein Weg</small></div>` : "");
 }
 /* Andere Länder an einem Schritt des Kaufplans (0.74): dieselben Titel dort, nach Mehrkosten.
    Ein Klick auf ein Land öffnet seine Karte. */

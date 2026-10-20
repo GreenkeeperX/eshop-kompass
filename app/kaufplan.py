@@ -1,11 +1,12 @@
 """Kaufplan: welches Land wann was kauft, mit Wechselgewinn, Paketprüfung und „Passt in den Rest“."""
 from itertools import combinations
+from math import gcd
 
 from . import countries
 from .cards import cents
 from .membership import membership
-from .planner import (_context, _r, _switch2_choice, extra_context, NSO_PREFIX, plan_country, radar,
-    with_added, _eur)
+from .planner import (_context, _r, _switch2_choice, cfg_balance, extra_context, make_payer, NSO_PREFIX,
+    plan_country, radar, with_added, _eur, BEST_TOLERANCE)
 from .titles import owned_sources, pack_block, pack_parts, pretty_slug, slug_names
 
 
@@ -498,6 +499,7 @@ def rest_suggestions(data, settings, ctx, plans_, planned, skip, now=None):
         p.setdefault("fill", [])
         p.setdefault("fill_pairs", [])
         p.setdefault("fill_nso", [])
+        p.setdefault("fill_zero", None)
     if not todo:
         return
     xctx = extra_context(data, settings, now)
@@ -508,6 +510,7 @@ def rest_suggestions(data, settings, ctx, plans_, planned, skip, now=None):
         mine = planned if planned is not None else {i["slug"] for i in p["items"]}
         p["fill"] = _rest_fill(ctx, ctx.countries[p["code"]], p, mine, skip, xctx=xctx)
         p["fill_pairs"] = _rest_pairs(p["fill"], p.get("rest") or 0)
+        p["fill_zero"] = _zero(ctx, ctx.countries[p["code"]], p, mine, skip, xctx, settings)
         rest = round((p.get("rest") or 0) * 100)
         fits = []
         for v in ms["variants"]:
@@ -535,12 +538,13 @@ def _bought_how(data, settings, ctx, bought, done):
     return out
 
 
-def _rest_fill(ctx, c, p, planned, skip, limit=60, xctx=None):
+def _rest_fill(ctx, c, p, planned, skip, limit=60, xctx=None, rest=None):
     """Wishlist-Titel, die in den Rest dieses Schritts passen, der kleinste Abstand zuerst.
     Ein DLC nur, wenn sein Hauptspiel in der Sammlung oder im Plan steht. Dazu fehlende
     DLC deiner Spiele (`xctx`), die nicht auf der Wishlist stehen. Kostenloses füllt
-    keinen Rest und fehlt (0.70)."""
-    rest = round((p.get("rest") or 0) * 100)
+    keinen Rest und fehlt (0.70). `rest` in Hundertstel ersetzt den Rest des Schritts
+    (für „Auf Null“: alles, was es dort gibt)."""
+    rest = round((p.get("rest") or 0) * 100) if rest is None else rest
     if rest <= 0 or p.get("is_ref"):
         return []
     out = []
@@ -569,6 +573,120 @@ def _rest_fill(ctx, c, p, planned, skip, limit=60, xctx=None):
                     "left": (rest - o["local"]) / 100, "sale": bool(o.get("sale")), "dlc": True,
                     "extra": True, "game": game})
     return sorted(out, key=lambda f: (f["left"], f["title"]))[:limit]
+
+
+ZERO_BITS = 2_000_000   # Teilsummen je Land für „Auf Null“, darüber zählen teurere Titel nicht mehr
+
+
+def _zero(ctx, c, p, planned, skip, xctx, settings):
+    """Auf Null kommen (1.1.0, Entscheidung 20.10.2026): Titel, nach denen in diesem Land kein
+    Guthaben bleibt, auch mit weiteren Guthabenkarten. Nur wo ein Rest stört: Er verfällt beim
+    nächsten Wechsel, das Land ist „schwer“ (Amerika: Wechsel nur mit 0) oder „Rest blockiert“.
+    exact: genau 0, der günstigste Weg ohne Grenze; near: höchstens zero.left € Rest für
+    höchstens zero.near € mehr, nur mit Zuzahlung und wenn günstiger als exact. Die Karten
+    rechnet derselbe Zahlweg wie der Schritt, nach dem Dazunehmen steht also genau das da.
+    Titel wie bei „Passt in den Rest“. Gleich teuer: der kleinere Rest, dann die kleinere Summe."""
+    if not p.get("rest") or p.get("is_ref") or not c.get("rate") or p.get("total") is None:
+        return None
+    if not (p.get("rest_lost") or c["tier"] >= 3 or c["cfg"].get("rest_blocks")):
+        return None
+    pay, _ = make_payer(ctx, c)
+    total = round(p["total"] * 100)
+    base = pay(total)
+    if base["estimated"] or not base["rest"]:
+        return None
+    # Billige zuerst: Reicht die Grenze der Teilsummen nicht, fehlen die teuren Titel, nicht die kleinen
+    cand = sorted(_rest_fill(ctx, c, p, planned, skip, limit=None, xctx=xctx, rest=10 ** 12),
+                  key=lambda f: (f["local"], f["title"]))
+    # Teilsummen als Bitfelder (Bit s: Summe s in Hundertstel, geteilt durch den ggT der Preise),
+    # je Titel eins: layers[i] kennt die Summen aus den ersten i Titeln, daraus folgt der Weg zurück
+    prices = [round(f["local"] * 100) for f in cand]
+    unit = 0
+    for x in prices:
+        unit = gcd(unit, x)
+    layers = [1]
+    for x in prices:
+        layers.append(layers[-1] | (layers[-1] << (x // unit)))
+        if layers[-1].bit_length() > ZERO_BITS:
+            break
+
+    def path(s):
+        out, k = [], s // unit
+        for i in range(len(layers) - 1, 0, -1):
+            if not (layers[i - 1] >> k) & 1:
+                out.append(i - 1)
+                k -= prices[i - 1] // unit
+        return out
+
+    zero = settings.get("zero") or {}
+    near_cap, left_cap = float(zero.get("near", 10.0)), float(zero.get("left", 0.5))
+    # Kartenpreise ohne den festen Teil der Gebühr: Er zählt je Bestellung nur einmal (make_payer)
+    stocked = [(x["face"], ctx.face_cost(c, x) - (x.get("fee_eur") or 0)) for x in c["cards"]
+               if x["stock"] and ctx.face_cost(c, x)]
+    # Mit Guthabenkarten bleibt ein Rest unter einem Kartenschritt nur, wenn der Bedarf fast ein
+    # Vielfaches davon ist: Das sortiert die meisten Summen aus, ohne die Karten zu rechnen
+    g = 0
+    for f, _ in stocked:
+        g = gcd(g, f)
+    gift, balance = c["cfg"]["pay"] == "giftcard" and g, cfg_balance(c)
+    left_local = left_cap * c["rate"] * 100
+    # Untergrenze der Kosten je Hundertstel: Liegt sie für eine Summe über dem besten Fund, kann
+    # keine größere Summe mehr günstiger sein, die Suche endet dort
+    low = max(0.0, min((cost / f for f, cost in stocked), default=0)) if gift else 0
+    exact = near = None
+    bits = bin(layers[-1])[:1:-1] if unit else ""
+    k = 0
+    while True:
+        k = bits.find("1", k + 1)
+        if k < 0:
+            break
+        s = k * unit
+        need = max(0, total + s - balance)
+        if low and need * low - base["cost"] > max(exact[0][0] if exact else float("inf"),
+                                                   near_cap if not exact else 0) + 0.005:
+            break
+        if gift:
+            m = need % g
+            if m and g - m > left_local:
+                continue
+        r = pay(total + s)
+        if r["estimated"] or r["rest"] is None:
+            continue
+        extra = max(0.0, r["cost"] - base["cost"])
+        key = (round(extra, 2), r["rest"])
+        if r["rest"] == 0:
+            if exact is None or key < exact[0]:
+                exact = (key, s, r)
+        elif r["rest"] <= left_local + 1e-9 and extra <= near_cap + 0.005:
+            if near is None or key < near[0]:
+                near = (key, s, r)
+    # Fast 0 ohne Zuzahlung nennt „Passt in den Rest“ schon; genau 0 ist nicht teurer
+    if near and (not near[0][0] or exact and exact[0][0] <= near[0][0]):
+        near = None
+
+    def one(x):
+        if not x:
+            return None
+        key, s, r = x
+        v = path(s)
+        items, over, at_best, known = [], 0.0, 0, 0
+        for i in sorted(v, key=lambda i: (-cand[i]["local"], cand[i]["title"])):
+            f = cand[i]
+            items.append({k: f[k] for k in ("slug", "title", "short", "local", "dlc", "extra", "game") if k in f})
+            o, best = c["offers"].get(f["slug"]), ctx.champ_all.get(f["slug"])
+            eur = ctx.oeur(c, o) if o and not f.get("extra") else None
+            if eur is not None and best and best[0]:
+                known += 1
+                if eur <= best[0] * (1 + BEST_TOLERANCE) + 0.005:
+                    at_best += 1
+                else:
+                    over += eur - best[0]
+        return {"slugs": [i["slug"] for i in items], "items": items,
+                "local": _r(sum(i["local"] for i in items)), "extra": _r(key[0]), "left": r["rest"] / 100,
+                "cards": [{"face": f / 100, "count": n} for f, n in r["cards"]],
+                "at_best": at_best, "known": known, "over": _r(over)}
+    out = {"exact": one(exact), "near": one(near)}
+    return out if out["exact"] or out["near"] else {"exact": None, "near": None}
 
 
 def _rest_pairs(fill, rest, limit=3):

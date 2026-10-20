@@ -79,7 +79,8 @@ zurück“ (`removedLine`; ab 0.99.4 mit vollem Namen und DLC-Marke, in Schritt 
 etwas geändert ist (`planresetall`, `planMine`, Hinweis mit „Rückgängig“, ab 1.0.3). Ein Land unter
 „Andere Länder“ rechnet der Server allein (`/api/plans` mit `only`, ab 1.0.3). Darunter bis zu drei Zeilen `.fillrow` (`suggestHtml`): „Passt in den Rest (x):“
 (Knöpfe, Paare, Mitgliedschaft, fehlende DLC, Auswahlfeld; ohne Treffer grau „nichts von deiner
-Wishlist …“), „Passt dazu:“ (bis zu zwei, Raster einer) und „Weglassen spart:“ (bis zu zwei). Im
+Wishlist …“), darunter, wo ein Rest stört, „Genau Null für x € mehr“ und „Fast Null (bleiben x)“
+(`zeroHtml`, ab 1.1.0), „Passt dazu:“ (bis zu zwei, Raster einer) und „Weglassen spart:“ (bis zu zwei). Im
 Schritt wirken sie auf den Plan, auf der Länderkarte auf ihren Korb. Die alte Knopfreihe der
 Länderkarten (`.sugg`) ist weg. „Passt dazu“ steht immer, als Alternative zum Auffüllen,
 aber ohne Titel, die schon unter „Passt in den Rest“ stehen (0.98.1). Was du an der Karte mit × herausgenommen hast, schlägt keine der
@@ -187,6 +188,16 @@ brechen die Zeilen um wie unter „Nicht im Plan“.
 dahinter klein grün „am Bestpreis“ oder rot „+x € über Bestpreis“ (`fillBest`, Preis hier gegen
 Bestpreis der letzten 24 Monate, ab 0.77). Der Tooltip (`fillTip`) nennt beide Beträge. Ab 0.77.1
 schlägt der Planer nur Titel vor, die höchstens „gut“ über ihrem Bestpreis liegen (`_fillers`, `ctx.grade`).
+
+„Genau Null für **x €** mehr“ und „Fast Null (bleiben x) für **x €** mehr“ (ab 1.1.0, `zeroHtml`, Daten
+`p.fill_zero`): nur bei Rest in einem Land, wo er stört (verfällt beim nächsten Wechsel, Stufe schwer,
+„Rest blockiert“). Der Betrag fett, klein dahinter „statt x € Rest verfallen“, wenn der Plan ihn als
+verfallen rechnet. Die Titel stehen offen da, nicht im Knopf, mit DLC-Marke und Preis als Link
+(`shopLink`), dahinter klein „n von m am Bestpreis, zusammen **+x €** über Bestpreis“ (nur der Betrag
+rot). Ein Knopf „alle dazunehmen“ (Schritt `planfill`, Länderkarte `add`). Ohne Zuzahlung steht
+„ohne Zuzahlung“ fett. Gibt es keinen Weg auf genau Null, sagt die Zeile das grau („mit deiner
+Wishlist und den DLC deiner Spiele kein Weg“). Fast Null ohne Zuzahlung fehlt, das zeigt schon
+„Passt in den Rest“.
 
 „Passt in den Rest (Betrag):“ zeigt höchstens vier Knöpfe, der kleinste verbleibende Rest zuerst:
 einzelne Titel und Paare („+ A + B“, ein Klick nimmt beide), dazu die passende Mitgliedschaft.
@@ -466,7 +477,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Urteil ohne Verlauf (`nohist`) | Wishlist-Liste (`titleRow`), Einzelheiten, Plan-Tabelle („am Bestpreis“), Legende |
 | Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`, am Handy `korbPhone`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
-| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml`, `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |
+| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“, „Genau Null“/„Fast Null“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml` (Null-Zeilen `zeroHtml`), `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest` |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |

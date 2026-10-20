@@ -4529,7 +4529,7 @@ class UiContractTest(unittest.TestCase):
         "kaufplan": {"bought", "bought_how", "cost", "nowhere_slugs", "count", "dropped", "good_left", "held", "later", "lock", "packed",
                      "s2_skip", "saving", "fill_idle", "skipped", "small", "small_groups", "steps"},
         "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
-                 "estimated", "family", "fill", "fill_nso", "fill_pairs", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
+                 "estimated", "family", "fill", "fill_nso", "fill_pairs", "fill_zero", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
                  "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "price_at", "price_stale", "rate", "ref_total", "rest", "rest_eur",
                  "saving", "threshold", "tier", "total", "trims", "warnings", "worth"},
         "plan.items": {"alt", "alt_code", "champ", "dlc_of", "end", "est", "eur", "lang", "local", "needs_parent",
@@ -4692,6 +4692,84 @@ class UiThemeTest(unittest.TestCase):
         self.assertEqual(tokens(auto.group(1)), tokens(chosen.group(1)))
         self.assertIn('localStorage.getItem("ek.theme")', page)   # vor dem ersten Zeichnen
 
+
+
+class ZeroTest(unittest.TestCase):
+    """Auf Null (1.1.0): wo ein Rest stört, der günstigste Weg auf genau 0 und einer auf fast 0."""
+    def setUp(self):
+        self.data, self.settings = sample()
+        self.settings["deal_eur"]["mini"] = 2.0
+        self.settings["current_country"] = "DE"
+        for code, c in self.settings["countries"].items():
+            c["enabled"] = code in ("DE", "BR")
+        items, de, br = {}, {}, {}
+        for i, (slug, eur, brl) in enumerate([("big", 49.99, 47), ("m1", 1.99, 4), ("m2", 1.99, 3),
+                                               ("m3", 1.99, 2.5), ("m4", 1.99, 8)]):
+            items[slug] = {"title": slug.title(), "parent": None, "active": True, "order": i,
+                           "ids": {"EU": ["1"]}, "ids_checked": {}}
+            de[slug] = {"status": "onsale", "currency": "EUR", "regular": eur}
+            br[slug] = {"status": "onsale", "currency": "BRL", "regular": brl}
+        self.data.update(items=items, prices={"DE": de, "BR": br})
+
+    def br(self, **kw):
+        return next(p for p in planner.purchase_plan(self.data, self.settings, now=NOW, **kw)["steps"]
+                    if p["code"] == "BR")
+
+    def test_exact_without_extra_cards(self):
+        # 50er Karte für 47 R$, 3 R$ Rest: m2 passt genau, ohne Zuzahlung
+        br = self.br()
+        self.assertEqual(br["rest"], 3.0)
+        z = br["fill_zero"]
+        self.assertEqual((z["exact"]["slugs"], z["exact"]["extra"], z["exact"]["left"]), (["m2"], 0.0, 0.0))
+        self.assertIsNone(z["near"])                  # genau 0 ist nicht teurer
+        # Dazugenommen bleibt nichts: Die Karten des Schritts ergeben genau den Vorschlag
+        after = self.br(fill={"BR": z["exact"]["slugs"]})
+        self.assertEqual(after["rest"], 0.0)
+        self.assertIsNone(after["fill_zero"])
+
+    def test_exact_with_more_cards_and_near(self):
+        # Nur in Brasilien und Kleinkram (unter 3 €): Sie warten und kommen nur als Vorschlag
+        self.settings["deal_eur"]["mini"] = 3.0
+        for slug in ("m2", "m3"):
+            del self.data["items"][slug], self.data["prices"]["BR"][slug], self.data["prices"]["DE"][slug]
+        for slug in ("m1", "m4"):
+            del self.data["prices"]["DE"][slug]
+        self.data["prices"]["BR"]["m1"]["regular"] = 7.6
+        self.data["prices"]["BR"]["m4"]["regular"] = 13
+        br = self.br()
+        z = br["fill_zero"]
+        # 47 + 13 = 60 R$ = 4 × 15: zwei Karten mehr (12,00 € statt 9,50 €), genau 0
+        self.assertEqual(z["exact"]["slugs"], ["m4"])
+        self.assertEqual([(c["face"], c["count"]) for c in z["exact"]["cards"]], [(15.0, 4)])
+        self.assertAlmostEqual(z["exact"]["extra"], 2.5, places=2)
+        after = self.br(fill={"BR": z["exact"]["slugs"]})
+        self.assertEqual(after["rest"], 0.0)
+        self.assertAlmostEqual(after["cost"] - br["cost"], z["exact"]["extra"], places=2)
+        # Fast 0: 47 + 7,60 = 54,60 R$ mit 15 + 15 + 25, bleiben 0,40 R$ für 1,30 € mehr
+        self.assertEqual((z["near"]["slugs"], z["near"]["left"]), (["m1"], 0.4))
+        self.assertAlmostEqual(z["near"]["extra"], 1.3, places=2)
+        self.settings["zero"]["near"] = 1.0
+        self.assertIsNone(self.br()["fill_zero"]["near"])
+        self.settings["zero"]["near"] = 10.0
+        self.settings["zero"]["left"] = 0.05          # 0,40 R$ sind etwa 0,07 €
+        self.assertIsNone(self.br()["fill_zero"]["near"])
+
+    def test_near_without_extra_is_left_to_rest_row(self):
+        # Fast 0 ohne Zuzahlung (m3 lässt 0,50 R$) zeigt schon „Passt in den Rest“
+        del self.data["prices"]["BR"]["m2"]
+        z = self.br()["fill_zero"]
+        self.assertEqual(z["exact"]["slugs"], ["m4"])            # 55 R$ = 15 + 15 + 25
+        self.assertIsNone(z["near"])
+
+    def test_no_way_and_not_where_rest_stays(self):
+        for s in ("m1", "m2", "m3", "m4"):
+            self.data["prices"]["BR"][s]["regular"] = 3.33
+        self.settings["zero"]["left"] = 0.1           # bestenfalls 1,34 R$ (0,24 €) übrig
+        z = self.br()["fill_zero"]
+        self.assertEqual(z, {"exact": None, "near": None})   # die Oberfläche sagt: kein Weg
+        # Mittlere Stufe, letzter Schritt: Der Rest bleibt als Guthaben, keine Zeile
+        self.settings["countries"]["BR"]["tier"] = 2
+        self.assertIsNone(self.br()["fill_zero"])
 
 
 class RestPairsTest(unittest.TestCase):
