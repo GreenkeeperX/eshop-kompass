@@ -315,7 +315,9 @@ pre.log{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .radar{background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px}
 .radar th,.radar td{padding:4px 9px;vertical-align:top}
 .radar thead th{position:sticky;top:var(--stick,0px);background:var(--card);z-index:1}
-.radar td:first-child{white-space:normal;min-width:200px;max-width:300px}
+.radar td:first-child{white-space:normal;min-width:200px;max-width:380px}
+/* Das Urteil bricht seine kleine Zeile um, statt die Titel zu quetschen (1.1.1) */
+.radar td.vdc{white-space:normal;width:170px;min-width:150px}
 .radar td small{display:block;color:var(--muted);font-size:11px}
 .radar td.na{color:var(--muted)}
 .radar tr.v-none td{opacity:.62}
@@ -535,6 +537,9 @@ button.mini{color:var(--muted);font-size:10px;margin-left:5px;border:1px solid v
 @media (max-width:375px){nav button{padding:6px 5px;font-size:13px}}
 th.grp{text-align:left;padding-top:12px;font-weight:600}
 .fillrow{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.zero{margin-top:8px;font-size:13px}
+.zero>summary{cursor:pointer}
+.zero>.fillrow{margin-top:4px;padding-left:12px}
 .radar tr.sub td.tn{padding-left:26px}
 .radar tr.tgrp td{padding-top:10px;border-bottom:0}
 .mini-t tr.undec td:first-child{box-shadow:inset 3px 0 0 var(--warn)}

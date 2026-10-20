@@ -527,23 +527,27 @@ function zeroHtml(p, step, planned){
   const z = p.fill_zero;
   if(!z) return "";
   const cur = p.currency, act = step ? "planfill" : "add";
-  const lost = p.rest_lost ? ` statt ${eur(p.rest_lost)} Rest verfallen` : "";
-  const line = (x, label) => {
+  // Was sonst bleibt: verfällt er im Plan, sein Wert in Euro, sonst der Rest in Landeswährung (1.1.1)
+  const was = p.rest_lost ? eur(p.rest_lost) : money(p.rest, cur);
+  // Klappbar wie „Rechnung“ (1.1.1): Kopfzeile mit Betrag, Titel und Knopf beim Aufklappen
+  const line = (x, kind) => {
     if(!x || x.slugs.some(s => planned.has(s))) return "";
+    const key = `zero:${p.code}:${kind}`;
     const cards = x.cards.map(k => `${k.count}× ${money(k.face, cur)}`).join(" + ");
     const cost = x.extra >= 0.005 ? `für <b>${eur(x.extra)}</b> mehr` : `<b>ohne Zuzahlung</b>`;
+    const head = `${kind === "exact" ? "Genau Null" : "Fast Null"} ${cost} (statt ${was} Rest${kind === "near" ? `, bleiben ${money(x.left, cur)}` : ""})`;
     const best = x.known ? ` <small style="display:inline">· ${x.at_best} von ${x.known} am Bestpreis${x.over >= 0.005 ? `, zusammen <span class="abv">+${eur(x.over)}</span> über Bestpreis` : ""}</small>` : "";
     // Preise als Link wie überall (in den eShop, ohne eShop-Seite zum Verlauf bei DekuDeals)
     const price = i => { const r = rowOf(i.slug), cell = r && r.cells ? r.cells[p.code] : null;
       return cell ? shopLink(i.slug, p.code, cell, money(i.local, cur), cur) : priceLink(i.slug, p.code, money(i.local, cur), null, cur); };
     const names = x.items.map(i => `<span class="nw">${i.dlc ? `<span class="dlc">DLC</span>` : ""}${esc(i.extra && i.game ? i.game + ": " + i.short : i.short)} <small style="display:inline">${price(i)}</small></span>`).join(", ");
-    const tip = `Mit ${x.items.length === 1 ? "diesem Titel" : "diesen Titeln"} (zusammen ${money(x.local, cur)}) bleiben ${money(x.left, cur)}. Guthabenkarten dann: ${cards}. Das kostet ${eur(x.extra)} mehr als der Schritt jetzt${lost}. ${step ? "Klick nimmt alle in diesen Schritt." : "Klick legt alle in den Korb dieses Landes."}`;
-    // Ein Block für Titel und Bestpreis: .fillrow ist flex, sonst stünde jedes Stück einzeln
-    return `<div class="fillrow"><span class="mut">${label} ${cost}${lost ? `<small style="display:inline">${lost}</small>` : ""}:</span> <span>${names}${best}</span> ` +
-      `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(x.slugs.join(","))}" title="${esc(tip)}">alle dazunehmen</button></div>`;
+    const tip = `Mit ${x.items.length === 1 ? "diesem Titel" : "diesen Titeln"} (zusammen ${money(x.local, cur)}) bleiben ${money(x.left, cur)}. Guthabenkarten dann: ${cards}. Das kostet ${eur(x.extra)} mehr als der Schritt jetzt${p.rest_lost ? `, statt ${eur(p.rest_lost)} Rest verfallen zu lassen` : ""}. ${step ? "Klick nimmt alle in diesen Schritt." : "Klick legt alle in den Korb dieses Landes."}`;
+    return `<details class="zero" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary class="mut">${head}</summary>` +
+      `<div class="fillrow"><span>${x.items.length} Titel: ${names}${best}</span> ` +
+      `<button class="sm" data-act="${act}" data-c="${p.code}" data-s="${esc(x.slugs.join(","))}" title="${esc(tip)}">alle dazunehmen</button></div></details>`;
   };
-  const h = line(z.exact, "Genau Null") + line(z.near, `Fast Null (bleiben ${z.near ? money(z.near.left, cur) : ""})`);
-  return h || (!z.exact && !z.near ? `<div class="fillrow"><span class="mut">Genau Null:</span> <small class="mut">mit deiner Wishlist und den DLC deiner Spiele kein Weg</small></div>` : "");
+  const h = line(z.exact, "exact") + line(z.near, "near");
+  return h || (!z.exact && !z.near ? `<div class="fillrow"><span class="mut">Genau Null</span> <small class="mut">mit deiner Wishlist und den DLC deiner Spiele kein Weg</small></div>` : "");
 }
 /* Andere Länder an einem Schritt des Kaufplans (0.74): dieselben Titel dort, nach Mehrkosten.
    Ein Klick auf ein Land öffnet seine Karte. */

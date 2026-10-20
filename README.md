@@ -409,7 +409,8 @@ vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“
 dazugenommenen Titel dieses Landes vergessen.
 
 **Auf Null:** Stört ein Rest, weil er beim nächsten Wechsel verfällt, das Land „schwer“ ist (Amerika:
-Wechsel nur mit 0) oder „Rest blockiert“ eingestellt ist, stehen darunter zwei Zeilen (ab 1.1.0):
+Wechsel nur mit 0) oder „Rest blockiert“ eingestellt ist, stehen darunter zwei klappbare Zeilen
+(ab 1.1.0), etwa „Genau Null für 12,00 € mehr (statt 0,50 € Rest)“; aufgeklappt stehen die Titel da:
 
 - **Genau Null:** der günstigste Weg, nach dem kein Cent Guthaben bleibt, auch mit weiteren
   Guthabenkarten, ohne Grenze (Entscheidung 20.10.2026). Die Zeile nennt, was das mehr kostet als der
