@@ -290,14 +290,14 @@ function migrateLocal(){   // frühere Versionen merkten sich den Korb im Browse
     localStorage.removeItem("ek.basket"); localStorage.removeItem("ek.overrides"); localStorage.removeItem("ek.dense");
   }catch(e){}
 }
-async function loadPlans(){
+async function loadPlans(save){
   // Länder zeigen immer die Körbe je Land; der gemeinsame Korb (Wishlist, Ansicht Korb) rechnet extra (0.59).
-  // Alle drei zugleich anfragen (0.77), nicht nacheinander
-  const [r, b, k] = await Promise.all([api("/api/plans", planBody()),
-    S.ui.basket ? api("/api/plans", planBody(S.ui.basket)) : null, api("/api/kaufplan")]);
+  // Alles in einer Anfrage (0.99): ein Datenstand für alle drei, und mit `save` speichert der Server
+  // die Auswahl vorher, statt dass Speichern und Rechnen gleichzeitig laufen
+  const r = await api("/api/plaene", Object.assign({basket: S.ui.basket, overrides: S.ui.overrides}, save ? {ui: S.ui} : {}));
   S.plans = r.plans;
-  S.bplans = b ? b.plans : []; S.mix = b ? b.mix : null;
-  S.kauf = k;
+  S.bplans = r.bplans; S.mix = r.mix;
+  S.kauf = r.kauf;
 }
 async function refresh(){
   S.state = await api("/api/state");
@@ -319,8 +319,7 @@ async function refresh(){
 }
 async function replan(){
   if(S.ui.basket && !S.ui.basket.length) S.ui.basket = null;
-  saveUi();
-  await loadPlans();
+  await loadPlans(true);
   render();
 }
 /* Änderung mit Rückweg: merkt sich den Stand davor */

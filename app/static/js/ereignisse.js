@@ -194,7 +194,7 @@ document.addEventListener("click", async e => {
       await api("/api/bought", {code: p.code, slugs: p.items.map(i => i.slug), titles: p.items.map(i => i.short),
         cost: p.cost, games: p.games_paid, de: p.de_now, rest: p.rest, currency: p.currency});
       if(S.ui.plan_fill && S.ui.plan_fill[p.code]){ delete S.ui.plan_fill[p.code]; await saveUi(); }
-      toast(`Kauf in ${p.name} vermerkt`); await refresh(); S.kauf = await api("/api/kaufplan"); render();
+      toast(`Kauf in ${p.name} vermerkt`); await refresh();
     }
     else if(a === "planskip" || a === "planunskip"){
       // Aus einem Schritt herausnehmen (0.94): der Plan kauft den Titel dort nicht, er steht unter der Tabelle
@@ -231,7 +231,7 @@ document.addEventListener("click", async e => {
       await saveUi(); S.kauf = await api("/api/kaufplan"); render();
       toast(a === "planfill" ? "Füllartikel im Plan" : "Füllartikel herausgenommen");
     }
-    else if(a === "unbought"){ await api("/api/bought/undo", {}); toast("Letzter Kauf zurückgenommen"); await refresh(); S.kauf = await api("/api/kaufplan"); render(); }
+    else if(a === "unbought"){ await api("/api/bought/undo", {}); toast("Letzter Kauf zurückgenommen"); await refresh(); }
     else if(a === "vlclose"){ $("verlauf").close(); }
     else if(a === "vltoggle"){ const sh = S.vl.show; sh.has(d.c) ? sh.delete(d.c) : sh.add(d.c); drawVerlauf(); }
     else if(a === "showlog"){ go("settings", false); const l = $("log"); if(l){ l.closest("details").open = true; l.scrollIntoView({block:"center"}); } }

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import countries
 from .cards import cents
+from .titles import _shared
 from .planner import (_context, _r, BEST_TOLERANCE, NSO_KEYS, NSO_PREFIX, nso_price, NSO_TITLE, NSO_VARIANTS,
     nso_variants, read_offer)
 
@@ -38,6 +39,21 @@ def until_suggest(settings, bought):
 
 
 def membership(data, settings, now=None, bought=None):
+    """Wie _membership; innerhalb von shared_contexts() einmal je Datenstand (0.99): Länderkarten,
+    Korb und Kaufplan fragten je einmal, und jede Variante baut ihre eigene Rechnung. Titel und ihre
+    Preise (items, prices) spielen hier keine Rolle, Korb und Kaufplan tauschen nur sie aus."""
+    cache = getattr(_shared, "cache", None)
+    if cache is None:
+        return _membership(data, settings, now, bought)
+    parts = (settings, now, bought) + tuple(v for k, v in sorted(data.items()) if k not in ("items", "prices"))
+    key = ("membership",) + tuple(map(id, parts))
+    hit = cache.get(key)
+    if hit is None or any(a is not b for a, b in zip(hit[0], parts)):
+        hit = cache[key] = (parts, _membership(data, settings, now, bought))
+    return hit[1]
+
+
+def _membership(data, settings, now=None, bought=None):
     """Online-Mitgliedschaft in allen Varianten (ab 0.57): je Variante der Einkaufspreis je aktivem
     Land mit demselben Zahlweg wie bei Spielen (Kreditkarte oder Guthabenkarten), Bestpreis, Güte
     und ★ wie bei Titeln. Die Sprachregel gilt hier nicht. Dazu deine Variante und Ablaufdatum aus

@@ -1,3 +1,4 @@
+import gzip
 import html
 import json
 import os
@@ -1892,6 +1893,20 @@ class SafetyTest(unittest.TestCase):
                 c.close()
                 self.assertEqual(r.status, 200, path)
                 self.assertIsInstance(body, dict)
+            # Pläne in einer Anfrage (0.99): speichert die mitgeschickte Auswahl vorher, packt auf Wunsch
+            c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+            c.request("POST", "/api/plaene", body=json.dumps({"ui": {"plan_good": True}}),
+                      headers={"Content-Type": "application/json", "Accept-Encoding": "gzip"})
+            r = c.getresponse()
+            raw = r.read()
+            c.close()
+            self.assertEqual(r.status, 200)
+            if r.getheader("Content-Encoding") == "gzip":
+                raw = gzip.decompress(raw)
+            body = json.loads(raw)
+            self.assertEqual(set(body), {"plans", "bplans", "mix", "kauf"})
+            self.assertTrue(store.load_ui()["plan_good"])
+            store.save_ui({"plan_good": False})
             # Unerwartete Fehler (0.82): an den Browser nur die Art, keine Pfade oder Innereien
             boom = mock.patch.object(planner, "case_export", side_effect=KeyError("/geheimer/pfad"))
             with boom, mock.patch.object(server.traceback, "print_exception"), mock.patch("builtins.print"):

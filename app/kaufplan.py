@@ -128,11 +128,11 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                      and c["offers"][s].get("direct") is None and s not in mine]
             if not minis:
                 continue
-            whole = plan_country(ctx, code, basket=groups[code], allowed=allowed)
+            whole = plan_country(ctx, code, basket=groups[code], allowed=allowed, fillers=False)
             if whole["via"] != "giftcard" or whole["estimated"]:
                 continue            # mit Kreditkarte wird keine Karte größer
             big = [s for s in groups[code] if s not in minis] + [s for s in mine if s not in groups[code]]
-            if big and plan_country(ctx, code, basket=big, allowed=allowed)["via"] != "giftcard":
+            if big and plan_country(ctx, code, basket=big, allowed=allowed, fillers=False)["via"] != "giftcard":
                 continue            # ohne den Kleinkram zahlt die Kreditkarte: keine Karte
             # Ab 0.98 nie von selbst in den Rest (Entscheidung 20.10.2026): Sonst nahm der Plan nach jedem ×
             # still anderen Kleinkram dazu. Er wartet unter „Nicht im Plan“ und steht unter „Passt in den
@@ -189,8 +189,10 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             if locked:
                 later = [s for s in later if s not in held]
                 nowhere = [s for s in nowhere if s not in held]
-            plans_by = {code: plan_country(ctx, code, basket=slugs, allowed=allowed)
+            # „Passt dazu“ kostet die meiste Zeit und ändert am Plan nichts: erst für die Schritte am Ende (0.99)
+            plans_by = {code: plan_country(ctx, code, basket=slugs, allowed=allowed, fillers=False)
                         for code, slugs in groups.items()}
+            made = {code: (slugs, list(allowed)) for code, slugs in groups.items()}
             for p in plans_by.values():
                 _package_gain(ctx, p, allowed, current)
             steps = sorted(plans_by.values(), key=order)
@@ -257,6 +259,10 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             if code not in allowed:
                 allowed.append(code)
             dropped[:] = [d for d in dropped if d["code"] != code]
+
+    for p in steps:
+        slugs, was = made[p["code"]]
+        p["fillers"] = plan_country(ctx, p["code"], basket=slugs, allowed=was)["fillers"]
 
     # Jeder Titel steht nur einmal unter "Nicht im Plan", mit dem Grund, der zählt: Fiel
     # sein günstigstes Land heraus und kam er nirgends sonst in den Plan, dort; sonst
@@ -376,7 +382,7 @@ def _small_groups(ctx, small, small_at, steps, allowed):
     out = []
     for code, slugs in by.items():
         c = ctx.countries[code]
-        q = plan_country(ctx, code, basket=slugs, allowed=allowed)
+        q = plan_country(ctx, code, basket=slugs, allowed=allowed, fillers=False)
         faces = sum(x["face"] * x["count"] for x in q["cards"])
         out.append({"code": code, "name": c["meta"]["name"], "currency": c["currency"],
                     "slugs": slugs, "titles": [ctx.short(s) for s in slugs], "local": q["total"],

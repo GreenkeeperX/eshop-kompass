@@ -151,9 +151,12 @@ auf der Wishlist eine Kopfzeile (`tr.tgrp`, Spiel fett, grau „n DLC, das Spiel
 für einen einzelnen DLC (0.76 schrieb ihn ohne Kopfzeile mit dem Spiel grau davor; das war unruhig).
 Gruppe an der Stelle ihres ersten Mitglieds; nach Preis, Abstand, Angebotsende oder Alternative flach.
 
-Laden (ab 0.77): Die Seite zeichnet, sobald `/api/state` da ist; Kaufplan und Länderpläne holt sie
-danach gleichzeitig und zeichnet noch einmal. Der Server rechnet die Länder je Anfrage nur einmal
-(`planner.shared_contexts`).
+Laden (ab 0.77): Die Seite zeichnet, sobald `/api/state` da ist; Länderpläne, Korb und Kaufplan holt
+sie danach und zeichnet noch einmal. Ab 0.99 in einer Anfrage (`POST /api/plaene`, `loadPlans`): ein
+Datenstand und ein Zwischenspeicher (`planner.shared_contexts`) für alle drei, und nach einer Änderung
+speichert dieselbe Anfrage die Auswahl vorher (`ui`). Drei gleichzeitige Anfragen bremsten sich im
+Server gegenseitig. Große Antworten kommen gepackt (gzip). Gemessen mit echten Daten: Seite bis
+fertig 1,7 s → 0,9 s, Neurechnen nach × 1,6 s → 0,4 s.
 
 ## Sammlung: unentschiedene DLC
 

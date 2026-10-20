@@ -1,4 +1,5 @@
 """Kleiner Webserver: liefert die Oberfläche und eine JSON-Schnittstelle."""
+import gzip
 import json
 import re
 import os
@@ -67,6 +68,24 @@ def _state():
     }
 
 
+def plaene(basket=..., overrides=None):
+    """Länderkarten, Korb und Kaufplan. Korb und eigene Änderungen kommen aus der Anfrage, wie bei
+    /api/plans, sonst aus der gespeicherten Auswahl."""
+    ui = store.load_ui()
+    data, settings = store.load_data(), store.load_settings()
+    basket = ui.get("basket") if basket is ... else basket
+    overrides = (ui.get("overrides") if overrides is None else overrides) or {}
+    basket = [str(x) for x in basket] if isinstance(basket, list) else None
+    overrides = overrides if isinstance(overrides, dict) else {}
+    with planner.shared_contexts():
+        res, _ = planner.plans(data, settings, overrides=overrides, with_mix=True)
+        bres, bmix = planner.plans(data, settings, overrides=overrides, basket=basket,
+                                   with_mix=True) if basket else ([], None)
+        kauf = planner.purchase_plan(data, settings, ui["targets"], include_good=ui["plan_good"],
+                                     bought=store.load_purchases(), fill=ui["plan_fill"], skip=ui["plan_skip"])
+    return {"plans": res, "bplans": bres, "mix": bmix, "kauf": kauf}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "eshop-kompass"
 
@@ -76,8 +95,15 @@ class Handler(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json; charset=utf-8"):
         if not isinstance(body, bytes):
             body = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        # Gepackt, wenn der Browser es kann (0.99): Zustand und Pläne sind über 1 MB, gepackt ein Zehntel
+        packed = len(body) > 20_000 and "gzip" in (self.headers.get("Accept-Encoding") or "")
+        if packed:
+            body = gzip.compress(body, compresslevel=5)
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        if packed:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -161,6 +187,13 @@ class Handler(BaseHTTPRequestHandler):
                                                must=body.get("must") or [],
                                                basket=body.get("basket") or [], with_mix=True)
                 self._send(200, {"plans": res, "mix": split})
+            elif path == "/api/plaene":
+                # Länderkarten, Korb und Kaufplan in einer Anfrage (0.99): ein Datenstand, ein
+                # gemeinsamer Zwischenspeicher, und die Oberfläche speichert vorher mit (`ui`), statt
+                # parallel zu speichern und zu rechnen
+                if isinstance(body.get("ui"), dict):
+                    store.save_ui(body["ui"])
+                self._send(200, plaene(body.get("basket", ...), body.get("overrides")))
             elif path == "/api/settings":
                 self._send(200, {"settings": store.save_settings(body)})
             elif path == "/api/ui":
