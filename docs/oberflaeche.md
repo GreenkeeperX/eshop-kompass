@@ -292,7 +292,8 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
   rotes „+x“ einer Zeile nie.
 - DLC mit gekürztem Namen tragen in den Tabellen der Plan-Schritte und Länderkarten und in Käufen
   das Hauptspiel klein und grau darüber (`small.gm`, ab 0.65), damit „Pixel Pack“ nicht allein
-  steht. Überall sonst (Korb, „Nicht im Plan“, Herausgenommen) steht der volle Name in normaler Größe
+  steht. In Schritt und Länderkarte steht ab 1.1.4 das Spiel immer in der ersten Zeile (mit DLC-Marke),
+  der DLC-Name in der zweiten. Überall sonst (Korb, „Nicht im Plan“, Herausgenommen) steht der volle Name in normaler Größe
   mit DLC-Marke davor (Checkliste, Punkt 1). In der Wishlist-Liste nicht: Dort stehen DLC immer unter einer Kopfzeile mit dem Namen
   des Spiels, auch ein einzelner DLC (ab 0.77).
 - Links sind ruhig in der Textfarbe (`a` mit `--accent`), nie browser-blau: Blau heißt Rabatt.
