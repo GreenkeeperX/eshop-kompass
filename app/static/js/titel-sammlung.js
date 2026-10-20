@@ -131,7 +131,8 @@ function viewCollection(){
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details></div>`;
   h += tools + `<div id="collopen">${games.map(collGame).join("")}</div>`;
   // Was nichts mehr braucht, steht zugeklappt darunter; die Suche klappt Treffer auf (0.53.1)
-  const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="mut">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
+  // Zahl grün: hier ist nichts mehr offen (ab 1.0.2, wie „vorhanden“ je Spiel)
+  const fold = (k, arr, head, note, inner) => arr.length ? `<details class="box cg fold" data-k="${k}" ${S.folds[k] || q ? "open" : ""}><summary><b>${head}</b> <span class="gn">${arr.length}</span></summary>${note ? `<p class="hint" style="margin:4px 0 6px">${note}</p>` : ""}${inner}</details>` : "";
   // Alle Spiele darin auf einmal auf- oder zuklappen, dezent hinter der Erklärung (0.91)
   const both = `<span class="foldall"><button class="link" data-act="foldall" data-v="1">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="">alle zuklappen</button></span>`;
   h += fold("colldone", done, "Ohne offene DLC", `Alle DLC da, ignoriert oder nicht mehr erhältlich. Klick auf ein Spiel zeigt seine DLC. ${both}`, `<div class="cgl">${done.map(collGame).join("")}</div>`);

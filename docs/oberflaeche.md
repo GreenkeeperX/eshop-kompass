@@ -303,7 +303,8 @@ Art, wie ein Satz aufgezählt und ohne Gesamtzahl („10 vorhanden und 7 ignorie
 2 fehlen und 1 ignoriert“; die Gesamtzahl steht im Tooltip), damit nichts wie „17,7“ liest. Der
 Betrag dahinter folgt mit „·“. Ist alles da, steht „5 von 5“ grün und
 „vorhanden“ grau; sonst die Zahl vorhandener grün, fehlender violett, ignorierter rot (`collSum`;
-Entscheidung 13.10.2026, Wortlaut ab 0.56.3, „fehlen“ violett auch bei offenen Spielen ab 0.99.6). Der Kopf der Sammlung steht als kompakter Kasten über den
+Entscheidung 13.10.2026, Wortlaut ab 0.56.3, „fehlen“ violett auch bei offenen Spielen ab 0.99.6).
+Die Zahlen hinter „Ohne offene DLC“ und „Ohne Zusatzinhalte“ sind grün, dort ist nichts offen (ab 1.0.2). Der Kopf der Sammlung steht als kompakter Kasten über den
 Gruppen: Zahlen fett in zwei kurzen Zeilen, die Erklärung eingeklappt darunter. Filter und
 Reihenfolge stehen direkt darunter, über den Spielen (ab 0.58).
 
