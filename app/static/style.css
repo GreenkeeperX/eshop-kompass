@@ -159,6 +159,7 @@ a.pl:hover{text-decoration:underline;text-decoration-color:var(--accent)}
 .list .pc th{font-size:11px;padding:3px 6px}
 .list .pc td.t{font-size:14.5px}
 .pc .nm small.gm,.nm small.gm{display:inline;color:var(--muted);font-size:.85em}
+.tbtn small.gm{display:inline;color:var(--muted);font-size:.85em;font-weight:normal}
 #eshophist .gm{color:var(--muted)}
 #eshophist .mini-t button.sm{margin:2px 0 2px 6px}
 #eshophist .eqa{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}

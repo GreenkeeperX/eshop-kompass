@@ -474,7 +474,7 @@ Alternative daneben. Unter dem Urteil steht, ob der Titel im Plan ist oder warum
 Filter nach Urteil und Suche stehen oben, dazu eine Sortierung, auch nach Angebotsende. DLC
 stehen direkt unter ihrem Spiel, eingerückt und ohne den Namen des Spiels davor; eine Ausgabe
 des Spiels („+ Rayman Edition“) gilt dabei als das Spiel. Steht das Spiel nicht auf der Wishlist,
-stehen seine DLC unter einer Kopfzeile mit seinem Namen, auch ein einzelner. Sortiert nach Preis, Abstand oder Angebotsende ist die Liste flach.
+stehen seine DLC unter einer Kopfzeile mit seinem Namen, auch ein einzelner. Sortiert nach Preis, Abstand oder Angebotsende ist die Liste flach; ein DLC zeigt dann oben klein sein Spiel und darunter seinen Namen.
 **ohne DLC** (ab 1.1.8, neben den Urteilsfiltern) zeigt in Liste und Tabelle nur Spiele, für den
 Überblick; die Zahlen an den Filtern zählen dann nur Spiele, unter der Liste steht „n DLC
 ausgeblendet · zeigen“. Korb, Kaufplan und Sammlung zeigen DLC immer.
