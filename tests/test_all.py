@@ -4539,7 +4539,7 @@ class UiContractTest(unittest.TestCase):
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "suggest", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
-        "eshop": {"amount", "coll", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
+        "eshop": {"amount", "coll", "coll_game", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
                   "plat", "slug", "suggest", "title"},
     }
 

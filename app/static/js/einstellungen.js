@@ -286,7 +286,14 @@ function eshopBox(){
   const KIND = {APPLICATION: "Spiel", DLC: "DLC", BUNDLE: "Paket", TICKET: "Mitgliedschaft", CATALOG_TICKET: "Spielegutschein"};
   const PLAT = {HAC: "Switch", BEE: "Switch 2"};
   const what = r => [r.date ? dmy(r.date) : "", KIND[r.item] || "", PLAT[r.plat] || "", r.amount || ""].filter(Boolean).map(esc).join(" · ");
-  const named = (slug, title, game) => `<a href="${esc(deku(slug))}" target="_blank" rel="noopener" title="Bei DekuDeals ansehen">${game && !String(title || "").toLowerCase().startsWith(game.toLowerCase()) ? `<span class="gm">${esc(game)}:</span> <b>${esc(title || slug)}</b>` : esc(title || slug)}</a>`;
+  // DLC wie in den Karten (1.1.8): Marke und Spiel klein in der ersten Zeile, der DLC-Name als Link darunter
+  const same = t => String(t || "").toLowerCase().replace(/[’‘`´]/g, "'");
+  const named = (slug, title, game, dlc) => {
+    const t = String(title || slug), cut = game && same(t).startsWith(same(game)) ? t.slice(game.length).replace(/^[\s:–-]+/, "") : t;
+    const link = x => `<a href="${esc(deku(slug))}" target="_blank" rel="noopener" title="Bei DekuDeals ansehen">${esc(x)}</a>`;
+    if(game && cut.length > 2) return `<span class="dlc">DLC</span><small class="gm">${esc(game)}:</small><br>${link(cut)}`;
+    return `${dlc ? `<span class="dlc">DLC</span>` : ""}${link(t)}`;
+  };
   const kauf = r => `${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}<br><small class="mut">${what(r)}</small>`;
   // „anderer …“ (ab 0.76): öffnet eine eigene Zeile unter dem Kauf, damit sich nichts seitlich verschiebt;
   // Treffer ohne Akzente wie in jedem Suchfeld, ein Klick ordnet zu
@@ -327,15 +334,15 @@ function eshopBox(){
   if(plan.length) h += `<details class="fold eqf" data-kc="eshopplan" ${S.folds.eshopplan ? "" : "open"}><summary>Bei DekuDeals nachtragen: ${N(plan.length, "warnc")}</summary><p class="hint">Gekauft, aber nicht in deiner DekuDeals-Sammlung. Sie zählen schon als Besitz und fallen aus dem Plan. Trägst du sie bei DekuDeals ein, verschwinden sie hier nach dem nächsten Abgleich.</p>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshop", "kauf", "Kauf", "", "l")}${sth("eshop", "name", "Zählt als", "", "l")}${sth("eshop", "how", "Woher", "", "l")}<th></th></tr></thead><tbody>${sortRows("eshop", plan, {
       kauf: r => r.title || "", name: r => (r.game ? r.game + " " : "") + (r.name || ""), how: r => how[r.how] || "", date: r => r.date || ""}).map(r =>
-      `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game)}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
+      `<tr><td class="l">${kauf(r)}</td><td class="l">${named(r.slug, r.name, r.game, r.item === "DLC")}</td><td class="l"><small class="mut">${how[r.how] || ""}</small></td><td>${undo(r)}</td></tr>`).join("")}</tbody></table></div></details>`;
   // Alle Käufe zum Nachsehen, nach Gruppe; „zuweisen“ ordnet jeden von Hand zu, „neu zuweisen“, wenn das
   // Tool ihn schon einem Titel der Sammlung zugeordnet hat (0.77, vorher „anderer …“)
   // Einordnung nach Dringlichkeit, nicht nach Alphabet (0.81.2): Offenes oben, Erledigtes unten
   const ESHOP_RANK = ["unknown", "plan", "ask", "coll", "ticket", "void"];
-  const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_RANK.indexOf(r.group), name: r => r.name || r.coll_name || "", date: r => r.date || ""});
+  const allRows = sortRows("eshopall", rows, {kauf: r => r.title || "", group: r => ESHOP_RANK.indexOf(r.group), name: r => [r.game || r.coll_game, r.name || r.coll_name].filter(Boolean).join(" "), date: r => r.date || ""});
   h += `<details class="fold eqf" data-k="eshopall" ${S.folds.eshopall ? "open" : ""}><summary>Alle Käufe: ${N(rows.length)} <span class="mut">(zum Nachsehen und Zuweisen)</span></summary>
     <div class="scroll"><table class="mini-t eqt"><thead><tr>${sth("eshopall", "kauf", "Kauf", "", "l")}${sth("eshopall", "group", "Einordnung", "", "l")}${sth("eshopall", "name", "Titel", "", "l")}${sth("eshopall", "date", "Datum", "", "num")}<th></th></tr></thead><tbody>${allRows.map(r =>
-      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small class="${ESHOP_CLS[r.group] || ""}">${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game) : r.coll ? named(r.coll, r.coll_name) : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r, "zuweisen")}` : r.group === "void" || r.group === "ticket" ? "" : own(r, r.coll ? "neu zuweisen" : "zuweisen")}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
+      `<tr class="${r.group === "coll" || r.group === "ticket" || r.group === "void" ? "mutr" : ""}"><td class="l">${esc(r.title)}${r.eng && r.eng !== r.title ? ` <small class="mut">(${esc(r.eng)})</small>` : ""}</td><td class="l"><small class="${ESHOP_CLS[r.group] || ""}">${ESHOP_GROUP[r.group] || ""}</small></td><td class="l">${r.slug ? named(r.slug, r.name, r.game, r.item === "DLC") : r.coll ? named(r.coll, r.coll_name, r.coll_game, r.item === "DLC") : ""}</td><td class="num nw">${r.date ? esc(dmy(r.date)) : ""}</td><td class="l">${r.slug ? undo(r) : r.how === "none" ? `<button class="link" data-act="eshoppick" data-k="${esc(r.key)}" data-v="" title="Wieder offen">zurücknehmen</button> · ${own(r, "zuweisen")}` : r.group === "void" || r.group === "ticket" ? "" : own(r, r.coll ? "neu zuweisen" : "zuweisen")}</td></tr>${ownRow(r, 5)}`).join("")}</tbody></table></div></details>`;
   return h;
 }
 /* Browser-Helfer für Japan: Ein Lesezeichen liest die Shopseiten in deinem Browser, der durch

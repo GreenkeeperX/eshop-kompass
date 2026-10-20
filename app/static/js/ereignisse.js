@@ -59,6 +59,7 @@ document.addEventListener("click", async e => {
     else if(a === "thmset"){ setTheme(d.v); }
     else if(a === "lgclose"){ $("legend").close(); }
     else if(a === "vf"){ S.vf = d.v; saveView(); render(); }
+    else if(a === "nodlcoff"){ S.noDlc = false; saveView(); render(); }
     else if(a === "tview"){ S.tview = d.v; saveView(); render(); }
     else if(a === "mdet"){ S.mDetails = !S.mDetails; saveView(); render(); }
     else if(a === "tsort"){
@@ -331,6 +332,7 @@ document.addEventListener("change", async e => {
     else if(a === "tsortsel"){ if(el.value){ const [k, dir] = el.value.split(":"); S.sorts[el.dataset.t] = {k, dir: +dir}; } else delete S.sorts[el.dataset.t]; saveView(); render(); }
     else if(a === "colorder"){ S.colOrder = el.value; saveView(); render(); }
     else if(a === "onlysale"){ S.onlySale = el.checked; render(); }
+    else if(a === "nodlc"){ S.noDlc = el.checked; saveView(); render(); }
     else if(a === "nsountil"){
       await api("/api/settings", {nso_until: el.value || ""}); await refresh();
       toast(el.value ? `Mitgliedschaft läuft bis ${dmy(el.value)}` : "Ablaufdatum entfernt");

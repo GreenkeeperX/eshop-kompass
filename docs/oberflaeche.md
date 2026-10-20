@@ -106,6 +106,10 @@ das?“ und „Bei DekuDeals nachtragen“ von Haus aus offen (gemerkt wird das 
 `data-kc` eshopunk) mit „zuweisen“ bzw. „zurücknehmen · zuweisen“, damit alles Offene über „Alle
 Käufe“ steht; die Zahlenzeile nennt die Gruppen in derselben Reihenfolge (nicht in der Sammlung,
 nachtragen, offen, Sammlung, Mitgliedschaft, erstattet).
+Spalten „Zählt als“ und „Titel“ (ab 1.1.8, `named`): DLC wie in Schritt und Länderkarte, DLC-Marke und
+Spiel (`small.gm`, grau) in der ersten Zeile, der DLC-Name als Link darunter; ein DLC ohne bekanntes
+Spiel trägt nur die Marke. Sortiert nach Titel zählt das Spiel mit (DLC stehen bei ihrem Spiel). Die
+Spalte „Kauf“ bleibt der Text von Nintendo.
 „Welcher Titel ist das?“: eine Tabellenzeile je offenem Kauf, links Kauf mit grauer Zeile (Datum,
 Art, Plattform, Betrag), rechts die Kandidaten als kleine Knöpfe (`button.cand`, Spiel grau, DLC fett;
 Klick = ja), „keiner“ und „anderer …“ (ab 0.76 eine eigene Zeile unter dem Kauf, `tr.eqrow`, damit sich nichts
@@ -155,6 +159,9 @@ DLC unter ihrem Spiel (ab 0.72, `titleGroups`): eingerückt (`tr.sub`), Name ohn
 auf der Wishlist eine Kopfzeile (`tr.tgrp`, Spiel fett, grau „n DLC, das Spiel hast du“), ab 0.77 auch
 für einen einzelnen DLC (0.76 schrieb ihn ohne Kopfzeile mit dem Spiel grau davor; das war unruhig).
 Gruppe an der Stelle ihres ersten Mitglieds; nach Preis, Abstand, Angebotsende oder Alternative flach.
+„ohne DLC“ (ab 1.1.8, Kästchen hinter den Urteilsfiltern, `S.noDlc`, gemerkt in `ek.view`): Liste und
+Tabelle nur mit Spielen, Kopfzeilen nur mit DLC fallen mit weg, die Zahlen der Filter zählen nur
+Spiele; darunter `.restline` „n DLC ausgeblendet · zeigen“ (`noDlcLine`), nichts verschwindet still.
 Spaltenbreiten (ab 1.1.1): Titel bis 380 px, das Urteil (`td.vdc`) etwa 170 px und bricht seine
 kleine Zeile („nicht im Plan: …“) um, damit Titel seltener umbrechen. Die kleine Zeile unter dem
 Einkaufspreis bleibt einzeilig.

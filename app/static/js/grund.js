@@ -2,7 +2,7 @@
 /* Grundlagen: Ansicht und Zustand im Browser, Zahlen, Zeiten, Links, Deal-Güte, Signale (Teil der Oberfläche, Reihenfolge in index.html) */
 /* Ansicht je Browser: Reiter, Titelansicht, Filter, aufgeklappte Kästen */
 function loadView(){ try{ return JSON.parse(localStorage.getItem("ek.view") || "{}") || {}; }catch(e){ return {}; } }
-function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder, dense:S.dense, lsort:S.lsort})); }catch(e){} }
+function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder, noDlc:S.noDlc, dense:S.dense, lsort:S.lsort})); }catch(e){} }
 /* Hell, dunkel oder wie das Gerät. Gemerkt je Browser (ek.theme); das Skript im Kopf setzt es
    vor dem ersten Zeichnen, damit nichts aufblitzt. */
 const ICO = d => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${d}</svg>`;
@@ -34,7 +34,7 @@ if(V0.tab === "korb"){ V0.tab = "titel"; V0.tview = "korb"; }
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
 const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? V0.tab : "jetzt",
            onlySale:false, collMissing:false, rq:"", vf:V0.vf || "all", tview:["table", "korb"].includes(V0.tview) ? V0.tview : "list",
-           openTitle:null, folds:V0.folds || {}, mDetails:!!V0.mDetails,
+           openTitle:null, folds:V0.folds || {}, mDetails:!!V0.mDetails, noDlc:!!V0.noDlc,
            sorts:V0.sorts && typeof V0.sorts === "object" ? V0.sorts : {}, colOrder:V0.colOrder || "tierbest",
            // Ansicht und Sortierung der Länder merkt sich der Browser (0.65), früher der Server
            dense:typeof V0.dense === "boolean" ? V0.dense : null, lsort:V0.lsort || null,

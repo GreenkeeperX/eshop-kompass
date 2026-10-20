@@ -160,8 +160,9 @@ function viewMatrix(){
   const mx = S.state.matrix, q = S.rq.toLowerCase(), f = S.vf || "all";
   const verdictOf = Object.fromEntries(S.state.radar.map(r => [r.slug, r.verdict]));
   const cellEur = (r, code) => { const x = r.cells[code]; return x && !x.na ? x.eur : null; };
-  const rows = sortRows("matrix", mx.rows.filter(r => hits(q, r.title) && (f === "all" || verdictOf[r.slug] === f) &&
-    (!S.onlySale || Object.values(r.cells).some(c => c.sale))), new Proxy({title: r => r.title, best: r => r.champ ? r.champ.eur : null},
+  const match = mx.rows.filter(r => hits(q, r.title) && (f === "all" || verdictOf[r.slug] === f) &&
+    (!S.onlySale || Object.values(r.cells).some(c => c.sale)));
+  const rows = sortRows("matrix", match.filter(dlcShown), new Proxy({title: r => r.title, best: r => r.champ ? r.champ.eur : null},
     {get: (o, k) => o[k] || (r => cellEur(r, k))}));
   // Mit „nur Angebote“ fallen auch Länder ohne ein Angebot in den gezeigten Zeilen weg
   let cols = S.onlySale ? mx.cols.filter(c => rows.some(r => r.cells[c.code] && r.cells[c.code].sale)) : mx.cols;
@@ -214,7 +215,7 @@ function viewMatrix(){
         (det ? `<small>Landestief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}</small>${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}${x.nocard ? `<small>ohne Karte</small>` : x.lang === "unknown" ? `<small><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">Sprache?</button></small>` : ""}` : "") + `</td>`;
     }).join("") + `</tr>`)).join("");
   if(!rows.length) h += `<tr><td colspan="${cols.length + 2}" class="mut">Kein Titel passt zum Filter.</td></tr>`;
-  return h + `</tbody></table></div><p class="hint" style="margin-top:6px">Zellfarbe für Angebote: dunkelgrün „kaufen“, hellgrün „gut“. Gold umrandet: hier gab es den Bestpreis. <span class="q">?</span> zählt nicht. Ein Klick auf den Preis öffnet den eShop des Lands, ohne eShop-Seite den Verlauf bei DekuDeals, auf den Titel die Einzelheiten.</p>`;
+  return h + `</tbody></table></div>${noDlcLine(match)}<p class="hint" style="margin-top:6px">Zellfarbe für Angebote: dunkelgrün „kaufen“, hellgrün „gut“. Gold umrandet: hier gab es den Bestpreis. <span class="q">?</span> zählt nicht. Ein Klick auf den Preis öffnet den eShop des Lands, ohne eShop-Seite den Verlauf bei DekuDeals, auf den Titel die Einzelheiten.</p>`;
 }
 function viewSeg(){
   const b = (v, l, tip) => `<button data-act="tview" data-v="${v}" class="${S.tview === v ? "on" : ""}" title="${tip}">${l}</button>`;

@@ -305,6 +305,7 @@ def _eshop_matches(data):
             owned.add(slug)
         rows.append({"key": key, "title": e.get("title"), "date": e.get("date"), "group": group,
                      "coll": in_c, "coll_name": known.get(in_c, (pretty_slug(in_c),))[0] if in_c else None,
+                     "coll_game": known.get(in_c, (None, None))[1] if in_c else None,     # 1.1.8
                      "eng": eng.get(e.get("title")) or _pass_label(more.get(e.get("title"))),
                      "type": e.get("type"), "slug": slug, "how": how, "suggest": suggest,
                      "item": e.get("item") or "", "plat": e.get("plat") or "", "amount": e.get("amount") or "",

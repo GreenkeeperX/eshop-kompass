@@ -475,6 +475,9 @@ Filter nach Urteil und Suche stehen oben, dazu eine Sortierung, auch nach Angebo
 stehen direkt unter ihrem Spiel, eingerückt und ohne den Namen des Spiels davor; eine Ausgabe
 des Spiels („+ Rayman Edition“) gilt dabei als das Spiel. Steht das Spiel nicht auf der Wishlist,
 stehen seine DLC unter einer Kopfzeile mit seinem Namen, auch ein einzelner. Sortiert nach Preis, Abstand oder Angebotsende ist die Liste flach.
+**ohne DLC** (ab 1.1.8, neben den Urteilsfiltern) zeigt in Liste und Tabelle nur Spiele, für den
+Überblick; die Zahlen an den Filtern zählen dann nur Spiele, unter der Liste steht „n DLC
+ausgeblendet · zeigen“. Korb, Kaufplan und Sammlung zeigen DLC immer.
 
 Ein Klick auf den Titel klappt die **Einzelheiten** auf:
 
@@ -669,6 +672,8 @@ Sammlung zugeordnet hat, „neu zuweisen“) öffnet unter dem Kauf eine Zeile m
 DLC erscheinen beim Tippen (ohne Akzente, „pokemon“ findet „Pokémon“), ein Klick ordnet zu; ein
 DekuDeals-Link geht immer. „zurücknehmen“ hebt deine Zuordnung sofort auf,
 „stimmt nicht“ eine automatische. „Alle Käufe“ zeigt jeden Kauf mit seiner Gruppe, sortierbar.
+DLC stehen in der Spalte „Titel“ wie in den Karten (ab 1.1.8): DLC-Marke und Spiel klein, der Name
+darunter; nach Titel sortiert stehen sie bei ihrem Spiel.
 Zuordnungen bleiben und stecken in der Sicherung. Der Link zur Kaufhistorie im Tool gibt den
 Stand des letzten lückenlosen Laufs mit; das Lesezeichen liest dann bis dorthin und zur
 Sicherheit eine ganze Seite bereits bekannter Käufe weiter. Bricht ein Lauf ab, übernimmt das

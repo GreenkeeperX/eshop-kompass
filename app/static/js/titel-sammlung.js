@@ -15,10 +15,18 @@ function planOffer(r){
 }
 const cheapestOffer = r => [r.easy, r.hard].filter(Boolean).sort((a, b) => a.eur - b.eur)[0] || null;
 function titleFilterBar(){
-  const n = v => S.state.radar.filter(r => r.verdict === v).length;
+  const all = S.state.radar.filter(dlcShown), n = v => all.filter(r => r.verdict === v).length;
   const f = S.vf || "all";
   const b = (v, l, c) => `<button class="fb ${f === v ? "on" : ""}" data-act="vf" data-v="${v}">${l} ${c}</button>`;
-  return b("buy", "kaufen", n("buy")) + b("good", "gut", n("good")) + b("wait", "warten", n("wait")) + b("all", "alle", S.state.radar.length);
+  return b("buy", "kaufen", n("buy")) + b("good", "gut", n("good")) + b("wait", "warten", n("wait")) + b("all", "alle", all.length) + noDlcBox();
+}
+/* „ohne DLC“ (1.1.8): nur Spiele in Liste und Tabelle der Wishlist, für den Überblick. Gilt nicht für Korb,
+   Kaufplan und Sammlung. Was ausgeblendet ist, nennt eine Zeile unter der Liste (noDlcLine) */
+const dlcShown = r => !S.noDlc || !r.dlc_of;
+const noDlcBox = () => `<label title="Nur Spiele zeigen, Zusatzinhalte ausblenden"><input type="checkbox" data-act="nodlc" ${S.noDlc ? "checked" : ""}> ohne DLC</label>`;
+function noDlcLine(rows){
+  const n = S.noDlc ? rows.filter(r => r.dlc_of).length : 0;
+  return n ? `<p class="restline">${n} DLC ausgeblendet · <button class="link" data-act="nodlcoff">zeigen</button></p>` : "";
 }
 /* ---------- Sammlung: Zusatzinhalte zu Spielen, die du hast ---------- */
 /* Ab 0.99.6 nach der Checkliste (Entscheidung 20.10.2026): je DLC eine Rasterzeile wie unter „Nicht im Plan“,
@@ -145,7 +153,8 @@ function viewCollection(){
 function viewTitles(){
   const q = S.rq.toLowerCase(), f = S.vf || "all";
   const off = r => planOffer(r) || shownOffer(r) || cheapestOffer(r);
-  const rows = sortRows("titel", S.state.radar.filter(r => hits(q, r.title) && (f === "all" || r.verdict === f)), {
+  const match = S.state.radar.filter(r => hits(q, r.title) && (f === "all" || r.verdict === f));
+  const rows = sortRows("titel", match.filter(dlcShown), {
     title: r => r.title, verdict: r => VORDER[r.verdict], price: r => off(r)?.eur,
     over: r => off(r) && r.champ ? off(r).eur - r.champ.eur : null, end: r => off(r)?.sale && off(r).end ? +new Date(off(r).end) : null,
     alt: r => { const x = shownOffer(r); return x && x.tier >= 3 && r.easy ? r.easy.eur : null; }});
@@ -155,7 +164,7 @@ function viewTitles(){
     ${sth("titel", "alt", "Alternative", "Liegt das beste Angebot in einem Land der Stufe schwer: das beste Angebot in einem leichten oder mittleren Land")}<th>Korb</th></tr></thead><tbody>`;
   h += titleGroups(rows).join("");
   if(!rows.length) h += `<tr><td colspan="6" class="mut">Kein Titel passt zum Filter.</td></tr>`;
-  h += `</tbody></table></div>`;
+  h += `</tbody></table></div>` + noDlcLine(match);
   if(S.ui.basket) h += `<p class="restline">${S.ui.basket.length} Titel im Korb. <button class="link" data-act="gokorb">Korb in allen Ländern vergleichen</button></p>`;
   return h;
 }
