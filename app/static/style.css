@@ -527,14 +527,28 @@ th.grp{text-align:left;padding-top:12px;font-weight:600}
 .radar tr.tgrp td{padding-top:10px;border-bottom:0}
 .mini-t tr.undec td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .chip.und{color:var(--warn);background:var(--warn-bg);border-color:transparent}
-/* Nicht im Plan (0.96): Gruppen nach Grund, je Zeile Titel links, Grund und Handlung rechts */
-.np section{border-top:1px solid var(--line);margin-top:8px;padding-top:6px}
+/* Nicht im Plan (0.96, 0.97): Gruppen nach Grund, darin Kopfzeilen je Land oder Quelle und Titel wie im Plan */
+.np section{border-top:1px solid var(--line);margin-top:10px;padding-top:6px}
 .np section:first-of-type{border-top:0}
 .np h4{margin:2px 0 0}
-.np .hint{margin:0 0 4px}
-.np ul{list-style:none;margin:0;padding:0}
-.np li{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:4px 16px;padding:4px 0;border-top:1px dashed var(--line)}
-.np li:first-child{border-top:0}
-.np .np-d{color:var(--muted)}
-.np .np-d b{color:var(--ink)}
-@media (max-width:640px){.np li{grid-template-columns:1fr;gap:0}}
+.np .hint{margin:0 0 2px}
+.np-tab{table-layout:fixed}
+.np-tab td{vertical-align:baseline;padding:4px 8px;overflow:hidden;text-overflow:ellipsis}
+.np-tab td.t{text-align:left;white-space:normal}
+.np-tab tr.np-h td{text-align:left;white-space:normal;padding-top:10px;border-top:0;font-size:13px}
+.np-tab tr.np-h + tr td{border-top:1px solid var(--line)}
+.np-tab td.c-vd{text-align:left}
+.np button.link.np-n{text-decoration:none;color:inherit;text-align:left;font:inherit;padding:0}
+.np button.link.np-n:hover{text-decoration:underline}
+.np .np-w{display:block;color:var(--muted)}
+.np-add{font-size:12px;width:100%}
+@media (max-width:640px){
+  .np .scroll{overflow:visible}
+  .np-tab,.np-tab tbody{display:block;width:100%}
+  .np-tab colgroup{display:none}
+  .np-tab tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .np-tab td{border:0!important;padding:0;width:auto!important;text-align:left;overflow:visible}
+  .np-tab td.t,.np-tab tr.np-h td{flex:1 0 100%}
+  .np-tab td.c-end:not([data-l]){display:none}
+  .np-tab td[data-l]::before{content:attr(data-l) " ";color:var(--muted);font-size:11px}
+}

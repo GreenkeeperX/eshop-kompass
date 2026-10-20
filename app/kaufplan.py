@@ -336,7 +336,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     total = sum(p["cost"] for p in steps if p["cost"] is not None)
     games = sum(p.get("games_cost", p["cost"]) for p in steps if p["cost"] is not None)
     ref_total = sum(p["de_now"] for p in steps)
-    return {"steps": steps, "dropped": dropped, "nowhere": [ctx.title(s) for s in nowhere],
+    return {"steps": steps, "dropped": dropped, "nowhere": [ctx.title(s) for s in nowhere], "nowhere_slugs": list(nowhere),
             "lock": lock, "held": [{"slug": s, "title": ctx.title(s), "short": ctx.short(s),
                                     "code": everywhere[s][1],
                                     "name": ctx.countries[everywhere[s][1]]["meta"]["name"]}

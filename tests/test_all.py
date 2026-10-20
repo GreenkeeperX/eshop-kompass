@@ -4390,7 +4390,7 @@ class UiContractTest(unittest.TestCase):
         "matrix.cells": {"alone", "champ", "end", "est", "eur", "gap", "grade", "lang", "local", "low", "low_eur",
                          "na", "nocard", "nsuid", "own", "pct", "sale"},
         "matrix.cols": {"code", "currency", "name", "tier"},
-        "kaufplan": {"bought", "bought_how", "cost", "count", "dropped", "good_left", "held", "later", "lock", "packed",
+        "kaufplan": {"bought", "bought_how", "cost", "nowhere_slugs", "count", "dropped", "good_left", "held", "later", "lock", "packed",
                      "s2_skip", "saving", "fill_idle", "skipped", "small", "small_groups", "steps"},
         "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
                  "estimated", "family", "fill", "fill_nso", "fill_pairs", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",

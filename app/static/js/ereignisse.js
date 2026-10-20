@@ -301,6 +301,14 @@ document.addEventListener("change", async e => {
         ["deal_buy", "deal_good", "tier1", "tier2", "tier3"].includes(el.name));
     }
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
+    else if(a === "npadd" && el.value){
+      // Aus „Nicht im Plan“ in einen Schritt (0.97): wie „Titel dazunehmen“ dort
+      const name = (rowOf(el.dataset.s) || {}).title || el.dataset.s, f = S.ui.plan_fill = S.ui.plan_fill || {};
+      f[el.value] = (f[el.value] || []).filter(x => x !== el.dataset.s).concat(el.dataset.s);
+      if((S.ui.plan_skip || {})[el.value]) S.ui.plan_skip[el.value] = S.ui.plan_skip[el.value].filter(x => x !== el.dataset.s);
+      await saveUi(); S.kauf = await api("/api/kaufplan"); render();
+      toast(`${name} im Schritt ${country(el.value).name}`);
+    }
     else if(a === "planpick" && el.value){
       const nm = el.selectedOptions[0].textContent.split(" · ")[0];
       const f = S.ui.plan_fill = S.ui.plan_fill || {};

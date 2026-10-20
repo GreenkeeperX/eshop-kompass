@@ -286,9 +286,17 @@ Karten ohne Lücken (ab 0.96): Schritte des Kaufplans und die Länderkarten in m
 so unter den kürzeren der beiden ersten. Die Liste „Nicht im Plan“ steht ab 0.96 direkt unter den
 Schritten, vor „alle Länderkarten“, und ist nach Grund gegliedert (`.np`): Wechsel lohnt nicht,
 Kleinkram, Lieber warten, Von dir geändert, Schon gekauft, Sonst nicht im Plan. Je Gruppe eine
-Überschrift und ein Satz, je Zeile links die Titel, rechts grau der Grund mit fettem Land und die
-Handlung („zurück“, „entfernen“, „in den Schritt nehmen“); am Handy untereinander. Zugeklappt nennt
-die Kopfzeile Titelzahl und Gruppen („9 Titel: Wechsel lohnt nicht 5 · Kleinkram 4“).
+Überschrift mit Zahl und ein Satz; darin Kopfzeilen je Land oder Quelle (`tr.np-h`: fettes Land,
+Stufe, „Wechsel spart nur …“ rot, „lohnt ab …“ grau, Link „Länderkarte“; Kleinkram mit Summe und grün
+„reicht für eine eigene Karte“ samt Knopf). Ab 0.97 ist jeder Titel eine Zeile wie in den Tabellen
+des Plans (`npRow`, Tabelle `.np-tab` mit festen Spalten): Name mit DLC-Marke und Spiel grau davor
+(Klick: Einzelheiten), darunter grau die Begründung oder Chip „im Plan“ mit Schritt, Urteil,
+günstigster Preis jetzt mit ★, Rabatt und Land (Link in den eShop), Abstand zum Bestpreis,
+Angebotsende und rechts die Handlung: Auswahl „in Schritt nehmen …“ mit jedem Schritt, in dem es den
+Titel gibt, Preis dort und Aufpreis (`npadd`, wie „Titel dazunehmen“), „zurück“, „entfernen“ oder bei
+Gekauftem „DekuDeals“. Titel, die der Plan in einem anderen Land kauft, stehen zur Erklärung unter
+ihrem Land, zählen aber nicht mit. Am Handy je Titel eine kleine Karte wie im Plan. Zugeklappt nennt
+die Kopfzeile Titelzahl und Gruppen („2 Titel: Kleinkram 2“).
 
 Nichts still im Hintergrund (ab 0.95, Entscheidung 20.10.2026): Was das Tool von selbst entscheidet,
 steht sichtbar da. „Nicht im Plan“ (`notPlanned`) nennt ein Land, dessen Wechsel sich nicht lohnt, auch
