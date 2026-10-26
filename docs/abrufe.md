@@ -96,6 +96,10 @@ fragt der Test DekuDeals nicht weiter an und sagt das je Probe:
 - erste Guthabenkarte mit Link
 - Wechselkurse und ihre Ersatzquelle
 - titledb, nur Kopfdaten (Größe, Stand), ohne die Datei zu laden
+- Spielinfos (ab 1.4.1): eine Abfrage der Europa-Suche mit allen Feldern für bis zu drei Spiele der
+  Sammlung (gezeigt werden Felder zu Kategorien, Spielern, Spielweise, Koop, Online, Teilen), dann
+  nach 1 s die Shopseite des ersten Treffers, nur auf nintendo.com, mit Fundstellen zu Koop, Online,
+  lokal, Spielern und GameShare
 - Online-Mitgliedschaft: Nintendos Mitgliedschaftsseite für JP, DE und US (je eine Seite: erkannte Varianten mit ihrer eShop-ID, dazu eine Preisabfrage für diese IDs), DekuDeals für DE, BR, JP und US (mit allen dort genannten Ländern und verlinkten Varianten), damit die Nintendo-Preise der dort genannten eShop-IDs
 - Eigene Angebote (Mitgliedschaft ab 0.60, Titel ab 0.62): höchstens vier Links im Verbindungstest, je einer ein Abruf: gelesener Preis mit Fundstelle, Beträge auf der Seite, eingetragener Preis; eine Prüfseite (Captcha) wird gemeldet, nicht umgangen. Seit 0.61 liest auch der Abgleich diese Links (Zeile 6a).
 

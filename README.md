@@ -871,7 +871,9 @@ Was das Tool woher, wann und wie oft holt und wo es die Daten ablegt, steht ausf
 
 „Verbindung testen“ zeigt je Quelle, was zurückkommt, auch für die erste Guthabenkarte mit Link
 (liest die Seite einen Preis?) und für die Online-Mitgliedschaft (DekuDeals und Nintendos
-Mitgliedschaftsseiten für Japan, Deutschland und die USA). Gespeichert wird dabei nichts.
+Mitgliedschaftsseiten für Japan, Deutschland und die USA) und für Spielinfos der Sammlung (welche
+Felder die Europa-Suche nennt, was die Shopseite zu Koop, Online und GameShare sagt). Gespeichert
+wird dabei nichts.
 
 ### Datenquellen
 

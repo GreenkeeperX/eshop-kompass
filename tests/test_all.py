@@ -2160,6 +2160,41 @@ class SafetyTest(unittest.TestCase):
             sync.diagnose(sleep=lambda s: None)
         self.assertFalse(any("nintendo.co.jp" in u for u in urls))
 
+    def test_diagnose_probes_game_infos(self):
+        # 1.4.1: Spielinfos für die Sammlung. Felder der Europa-Suche zu Spielen der Sammlung und
+        # Fundstellen auf der Shopseite des ersten; Adressen außerhalb von nintendo.com nicht
+        store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})
+        data = store.load_data()
+        saved = json.loads(json.dumps(data))
+        data["owned"] = ["snipperclips"]
+        data["items"]["snipperclips"] = {"ids": {"EU": ["70010000000038"]}}
+        store.save_data(data)
+        self.addCleanup(store.save_data, saved)
+        urls = []
+        solr = json.dumps({"response": {"docs": [{
+            "title": "Snipperclips", "nsuid_txt": ["70010000000038"], "players_to": 4,
+            "pretty_game_categories_txt": ["Puzzle"], "url": "/de-de/Spiele/snipperclips"}]}})
+
+        def request(url, ua=None, timeout=25):
+            urls.append(url)
+            text = solr if "fl=%2A" in url else \
+                "<title>Snipperclips</title><p>Bis zu 4 Spieler im Koop, GameShare</p>" if "/de-de/" in url else ""
+            return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
+        with mock.patch.object(sources, "request", request):
+            text = "\n".join(sync.diagnose(sleep=lambda s: None))
+        self.assertTrue(any("nsuid_txt%3A%2870010000000038%29" in u for u in urls))
+        self.assertIn("„Snipperclips“: players_to=4; pretty_game_categories_txt=['Puzzle']", text)
+        self.assertIn("Spielinfos Shopseite: HTTP 200", text)
+        self.assertIn("4 Spieler im Koop, GameShare", text)
+        self.assertIn("https://www.nintendo.com/de-de/Spiele/snipperclips", urls)
+        # Fremde Adresse in der Antwort: nicht abrufen
+        solr = solr.replace("/de-de/Spiele/snipperclips", "https://example.org/x")
+        urls.clear()
+        with mock.patch.object(sources, "request", request):
+            text = "\n".join(sync.diagnose(sleep=lambda s: None))
+        self.assertIn("außerhalb von nintendo.com (example.org), nicht angefragt", text)
+        self.assertNotIn("https://example.org/x", urls)
+
     def test_diagnose_reads_history_from_item_page(self):
         # Bis 0.37 suchte der Verbindungstest den Verlauf in robots.txt statt in der Artikelseite
         store.save_settings({"wishlist_url": "https://www.dekudeals.com/wishlist/abc"})

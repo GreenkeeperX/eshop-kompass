@@ -68,6 +68,10 @@ Derzeit nichts offen.
   wegen Punkten und Codes oft zu keiner Variante), ein Rückblick über die Ersparnis, weitere
   Bezugsquellen wie Händler-Codes und das Alter der Angaben direkt an der Rechnung (der Tooltip
   genügt). Ebenso Käufe mit anderer Programm-ID in Japan und Amerika; „zuweisen“ genügt.
+- **Woanders (Entscheidung 26.10.2026):** die Retro-Sammlung älterer Spiele aller Systeme. Sie
+  kommt in den [VR-Navigator](https://github.com/GreenkeeperX/vr-navigator), dessen Reiter
+  „Entdecken“ schon die ganze Sammlung mit Genre, Spielerzahl und Filtern zeigt; mit Preisen und
+  Ländern hat sie nichts zu tun.
 - **Gestrichen (Entscheidung 13.10.2026):** Das Tool bleibt ein privates Werkzeug auf dem
   eigenen Server. Damit entfallen:
   - die Sprache der Oberfläche,
@@ -79,15 +83,10 @@ Derzeit nichts offen.
 
 Neue Wünsche, noch nicht eingeordnet.
 
-- **Sammlung mit Spielinfos:** eine zusätzliche Ansicht der Sammlung mit Genre, Spielerzahl,
-  lokal oder online, Koop, GameShare und Ähnlichem, automatisch gelesen. Machbarkeit: Genre und
-  Spielerzahl stehen in titledb, die das Tool schon wöchentlich streamt; die Nintendo-Europa-Suche
-  (schon für Sprachen genutzt) führt Spielerzahl und Kategorien. Koop und GameShare stehen dort nicht
-  verlässlich als Feld, eher auf den Shopseiten von Nintendo; das wäre ein neuer, langsamer Abruf je
-  Titel. Vor der Umsetzung mit einer Probe in „Verbindung testen“ prüfen, welche Felder wirklich kommen.
-- **Retro-Sammlung, eher ein eigenes Tool:** die eigene Sammlung älterer Spiele mit Unterreitern je
-  System (3DS, DS/DSi, GBA, GBC, GB, VB, NES, SNES, N64, GameCube, Wii, PS, PS2, PS3, PS4), mit
-  zusammengetragenen Spielinfos und Filtern. Hat mit Preisen und Ländern nichts zu tun, deshalb
-  getrennt. Mögliche Quellen für Spielinfos: offene Datenbanken wie die libretro-database
-  (Genre, Spielerzahl, Erscheinungsjahr für die meisten dieser Systeme, PS4 fehlt dort).
-
+- **Sammlung mit Spielinfos:** eine zweite Ansicht der Sammlung neben den DLC, mit Genre,
+  Spielerzahl, lokal oder online, Koop, GameShare und Ähnlichem, automatisch gelesen. Switch 2 als
+  Filter und Marke am Titel, kein eigener Reiter: Es sind dieselben Spiele. titledb (schon
+  wöchentlich gestreamt) führt je Titel Kategorien, Spielerzahl, Verlag und Erscheinungsdatum,
+  ohne neuen Abruf. Welche Felder die Nintendo-Europa-Suche dazu liefert und was die Shopseiten zu
+  Koop und GameShare sagen, zeigt seit 1.4.1 „Verbindung testen“ (Spielinfos). Danach entscheiden,
+  ob ein langsamer Nachlauf je Shopseite nötig ist.

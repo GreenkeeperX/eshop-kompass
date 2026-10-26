@@ -2245,6 +2245,7 @@ def diagnose(sleep=time.sleep):
     lines.append(f"titledb (JP.ja): keine Verbindung ({h['error']})" if h["error"] else
                  f"titledb (JP.ja): HTTP {h['status']}, Größe {int(h['size']) // 1_000_000 if (h['size'] or '').isdigit() else '?'} MB, "
                  f"Stand {h['modified'] or '?'}")
+    lines.extend(info_probe(probe, data, sleep))
     lines.extend(membership_probe(probe, sleep))
     # Angebote der Mitgliedschaft von Hand (ab 0.60): Ließe sich der Preis lesen? Je Link ein Abruf
     # mit ehrlicher Kennung; eine Prüfseite (Captcha) wird nur gemeldet, nicht umgangen.
@@ -2262,6 +2263,59 @@ def diagnose(sleep=time.sleep):
         probe(f"Mitgliedschaft {x['src']} ({x['code']}, {x['key']})" if x.get("key") else
               f"Eigenes Angebot {x['src']} ({x['code']}, {x['slug']})", x["url"], None, shop_info)
         sleep(2)
+    return lines
+
+
+# Felder der Europa-Suche, die nach Spielinfos klingen (Genre, Spieler, Spielweise, Koop, Teilen)
+INFO_FIELD = re.compile(r"(?i)categor|genre|player|play_?mode|coop|co_op|multi|online|local|share|feature|publisher|age_rating")
+
+
+def info_probe(probe, data, sleep=time.sleep):
+    """Spielinfos für die Sammlung (Eingang der Roadmap, 1.4.1): Welche Felder nennt die
+    Nintendo-Europa-Suche zu bis zu drei Spielen der Sammlung, und was steht zu Koop, Online und
+    GameShare auf der Shopseite des ersten? Nur Probe, nichts wird gespeichert."""
+    lines, ids, page = [], [], []
+    for slug in data.get("owned") or []:
+        eu = (((data["items"].get(slug) or {}).get("ids") or {}).get("EU") or [None])[0]
+        if eu and str(eu) not in ids:
+            ids.append(str(eu))
+        if len(ids) == 3:
+            break
+    ids = ids or ["70010000000038"]
+
+    def solr_info(t):
+        if not t.strip():
+            return "leere Antwort"
+        docs = (json.loads(t).get("response") or {}).get("docs") or []
+        out = [f"{len(docs)} Treffer für {len(ids)} IDs"]
+        for d in docs:
+            if not page and isinstance(d.get("url"), str):
+                page.append(d["url"])
+            found = {k: v for k, v in sorted(d.items()) if INFO_FIELD.search(k)}
+            out.append(f"„{str(d.get('title') or '?')[:40]}“: "
+                       + ("; ".join(f"{k}={str(v)[:80]}" for k, v in found.items()) or "keine passenden Felder")
+                       + f" (alle Felder: {len(d)})")
+        return " | ".join(out)
+    q = urllib.parse.urlencode({"q": "*", "fq": "nsuid_txt:(" + " OR ".join(ids) + ")", "fl": "*",
+                                "rows": 3, "wt": "json"})
+    probe("Spielinfos Europa", f"{sources.SOLR_URL}?{q}", None, solr_info)
+    if not page:
+        lines.append("Spielinfos Shopseite: keine Adresse aus der Europa-Suche, nicht angefragt")
+        return lines
+    url = "https://www.nintendo.com" + page[0] if page[0].startswith("/") else page[0]
+    host = urllib.parse.urlsplit(url).hostname or ""
+    if not (host == "nintendo.com" or host.endswith(".nintendo.com")):   # nur Nintendos eigene Seiten
+        lines.append(f"Spielinfos Shopseite: Adresse außerhalb von nintendo.com ({host or '?'}), nicht angefragt")
+        return lines
+
+    def shop_info(t):
+        text = sources.visible_text(t)
+        spots = [text[max(0, m.start() - 60):m.start() + 120]
+                 for m in re.finditer(r"(?i)co-?op|koop|game ?share|online|lokal|local|players|spieler", text)][:6]
+        return (f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Fundstellen: "
+                + (" | ".join(spots) or "keine"))
+    sleep(1)
+    probe("Spielinfos Shopseite", url, None, shop_info)
     return lines
 
 
