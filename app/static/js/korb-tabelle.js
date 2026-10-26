@@ -50,7 +50,7 @@ function viewCompare(){
   for(const slug of order){
     const r = rowOf(slug);
     const cells = cols.map(p => itemIn(p, slug));
-    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft unter Jetzt">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${dlcLabel(r)}</a>`}</td>` +
+    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft unter Jetzt">${esc(r.title)}</button>` : (isWish(slug) ? titleBtn(slug, dlcLabel(r)) : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${dlcLabel(r)}</a>`)}</td>` +
       `<td class="bp">${r.champ ? `${ax(r.champ)}<b title="Bestpreis in ${esc(country(r.champ.code).name)}">${eur(r.champ.eur)}</b> <small class="inl">${r.champ.code}</small>` : `<span class="mut">–</span>`}</td>` +
       cols.map((p, k) => {
         const i = cells[k];
@@ -135,7 +135,7 @@ function korbPhone(cols, win, order, rowOf, itemIn){
       cell = `<td class="${g} ${counts ? "" : "nc"}">` + twoLine(`${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}`,
         `<a class="pl" href="${esc(url || deku(slug, pc.code))}" target="_blank" rel="noopener">${num(i.eur)}</a>`, gap, cellMarks(i, need ? needMark(pc.code, need) : ""), gapTip(r, i.eur)) + `</td>`;
     }
-    m += `<tr><td><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${dlcLabel(r)}</a>`}</td>${cell}</tr>`;
+    m += `<tr><td><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso">${esc(r.title)}</button>` : (isWish(slug) ? titleBtn(slug, dlcLabel(r)) : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${dlcLabel(r)}</a>`)}</td>${cell}</tr>`;
   }
   const line = (k, v) => v ? `<div><span class="mut">${k}</span> ${v}</div>` : "";
   const gain = pc.is_ref ? `<span class="mut">Basis</span>` : pc.gain === null || pc.gain === undefined ? "" :
@@ -153,7 +153,7 @@ function korbPhone(cols, win, order, rowOf, itemIn){
    gibt es keinen, bekommt das Land einen. Danach zeigt „Jetzt“ den Schritt mit „Auf Null“ und allem anderen */
 function jetztBtn(p){
   if(!p.items.length) return "";
-  return `<button class="sm" data-act="tojetzt" data-c="${p.code}" title="Die ${p.items.length === 1 ? "Titel" : `${p.items.length} Titel`} dieses Lands in den Kaufplan unter Jetzt übernehmen, als Schritt ${esc(p.name)}. Titel aus anderen Schritten ziehen dorthin um.">In Jetzt übernehmen</button>`;
+  return `<button class="sm" data-act="tojetzt" data-c="${p.code}" title="Die ${p.items.length === 1 ? "Titel" : `${p.items.length} Titel`} dieses Lands in den Kaufplan unter „Jetzt“ übernehmen, als Schritt ${esc(p.name)}. Titel aus anderen Schritten ziehen dorthin um.">In „Jetzt“ übernehmen</button>`;
 }
 /* Preiszelle in Tabelle und Korb (0.81, im Korb seit 0.70): oben Preis | rotes „+x“ über dem Bestpreis,
    die Fuge mittig, damit Preise und Abstände untereinander stehen; darunter Rabatt und Marken.

@@ -82,15 +82,25 @@ Ab 1.3.0:
 - **Hinweise** (`saleNews`) als `p.restline.news` unter der Zusammenfassung, nur mit Inhalt: „n Angebote
   enden bald:“ fett, Titel als Link zu den Einzelheiten mit `endCell` (heute/morgen/bis TT.MM.), Angebote im
   Plan und mit Urteil kaufen/gut, weniger als 7 Tage; „Neu im Angebot“ mit grauem „seit höchstens drei
-  Tagen“, Titel mit Urteil-Pill und blauem Rabatt (Beginn aus `start` der Zelle). Ab fünf Einträgen
-  stehen vier, der Rest unter „und n weitere“ (`details.inl`).
+  Tagen“ (Beginn aus `start` der Zelle). Ab 1.3.1 ist jede Zeile selbst klappbar (`details.newsd`,
+  gemerkt unter `newssoon`/`newsfresh`): zu nennt sie fett die Überschrift, dahinter grau die ersten drei
+  Titel (DLC ohne Spielnamen) und „und n weitere“; auf verschwindet diese Aufzählung, und alle Titel stehen
+  im Raster von „Nicht im Plan“ (`npRow`, `NP_COLS`), geplante mit Chip „im Plan“ und Schritt. Abstand
+  oben 6 px, unten 10 px (vorher klebte „Neu im Angebot“ an den Karten). Vorher eine zweite, auffälligere
+  Zeile „und n weitere“ mit unterstrichenen Links.
+- **Verweise ohne Unterstreichung** (ab 1.3.1, `.plain`, unterstrichen erst beim Darüberfahren wie
+  `a.pl`): Titelname in Schritt, Länderkarte und Korb öffnet die Einzelheiten (`titleBtn`, ein `span`
+  mit `role=link`, weil ein Knopf den zweizeiligen DLC-Namen umbrach; Enter und Leertaste gehen),
+  „normal“ und Angebotsende in der Spalte „bis“ öffnen den Preisverlauf (`endBtn`; `endCell` hängt
+  „· Klick öffnet den Preisverlauf“ an das genaue Ende im Tooltip). Der Einkaufspreis eines DLC ohne
+  eShop-Seite führt wie überall zu DekuDeals (`shopLink` statt `buyLink`).
 - **Was wäre, wenn** (`assumeBtn`, `assumedLine`): graues ✎ (`.asmb`) hinter dem Einkaufspreis im Schritt
   und vor „dazunehmen …“ unter „Nicht im Plan“; es fragt mit `prompt` nach dem Preis in Landeswährung
   (Vorschlag: Tiefstpreis dort). Angenommene Preise violett (`.asm`, `--warn`, prüfen), ohne Link, mit
   kleinem „angenommen“ und ×; oben `p.restline.asmline` mit violettem „Was wäre, wenn:“, je Annahme
   Titel, Preis, Land, „(nicht im Plan)“ wenn sie in keinen Schritt kam, × und „alle verwerfen“. „gekauft“
   meldet bei angenommenen Preisen nur einen Hinweis. Gespeichert in `ui.plan_assume`.
-- **Korb in Jetzt** (`jetztBtn`): Fußzeile „Jetzt“ im Korb (am Handy unter den Summen) mit „In Jetzt
+- **Korb in Jetzt** (`jetztBtn`): Fußzeile „Jetzt“ im Korb (am Handy unter den Summen) mit „In „Jetzt“
   übernehmen“ je Land; nimmt dessen Titel per `fillStep` in den Plan, wechselt zu Jetzt und rollt zur Karte.
 
 Eine Karte überall (ab 0.94, Entscheidung 20.10.2026): Schritt und Länderkarte haben dieselben
@@ -524,7 +534,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Urteil ohne Verlauf (`nohist`) | Wishlist-Liste (`titleRow`), Einzelheiten, Plan-Tabelle („am Bestpreis“), Legende |
 | Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`, am Handy `korbPhone`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
-| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“, „Genau Null“/„Fast Null“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml` (Null-Zeilen `zeroHtml`), `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf, „In Jetzt übernehmen“ `jetztBtn`), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest`; Suchfeld vor jeder Auswahl `pickWrap` |
+| Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“, „Genau Null“/„Fast Null“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml` (Null-Zeilen `zeroHtml`), `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf, „In „Jetzt“ übernehmen“ `jetztBtn`), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest`; Suchfeld vor jeder Auswahl `pickWrap` |
 | Angenommener Preis (Was wäre, wenn) | Plan-Schritt (`planCard`, Zelle Einkaufspreis), „Nicht im Plan“ (`npRow`), Zeile oben (`assumedLine`), Legende (`openLegend`) |
 | Angebotsende und Angebotsbeginn | Hinweise oben im Kaufplan (`saleNews`), Plan-Schritt (`endCell`), Tabelle mit „Details“, Tooltips in Tabelle und Korb, „Nicht im Plan“ (`npRow`) |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |

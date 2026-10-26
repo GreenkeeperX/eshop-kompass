@@ -490,7 +490,7 @@ document.addEventListener("keydown", e => { if(e.key === "Escape") themeMenu(fal
 // Tastatur und Bildschirmleser (0.89): Spaltenköpfe zum Sortieren reagieren auf Enter und Leertaste,
 // Knöpfe nur mit Zeichen (+, ✓, ×, ↺, ✎, Symbol) bekommen ihren Tooltip als Namen
 document.addEventListener("keydown", e => {
-  if((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("th[data-act]")){ e.preventDefault(); e.target.click(); }
+  if((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("th[data-act], span.plain[data-act]")){ e.preventDefault(); e.target.click(); }
 });
 function nameButtons(){
   for(const b of document.querySelectorAll("button[title]:not([aria-label])"))

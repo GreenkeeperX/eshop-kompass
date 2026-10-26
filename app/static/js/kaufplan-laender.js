@@ -32,31 +32,39 @@ function viewKauf(){
   return h;
 }
 /* Hinweise oben im Kaufplan (1.3.0): Angebote, die in weniger als einer Woche enden (im Plan oder mit Urteil
-   kaufen/gut), und Angebote, die in den letzten drei Tagen begonnen haben (jede Wishlist) */
+   kaufen/gut), und Angebote, die in den letzten drei Tagen begonnen haben (jede Wishlist). Ab 1.3.1 ist jede
+   Zeile selbst klappbar: zu nennt sie die ersten Titel und „und n weitere“, auf zeigt sie alle im Raster von
+   „Nicht im Plan“ (Urteil, Preis, Rabatt, Land, über Bestpreis, bis, dazunehmen) */
 function saleNews(k){
   const now = Date.now(), day = 864e5, soon = new Map(), fresh = new Map();
+  const where = {};
+  k.steps.forEach((p, n) => p.items.forEach(i => { where[i.slug] = {n: n + 1, code: p.code}; }));
   const ends = (slug, title, end) => {
     const t = +new Date(end || "");
     if(isNaN(t) || t < now || t - now > 7 * day) return;
     if(!soon.has(slug) || t < soon.get(slug).t) soon.set(slug, {slug, title, t, end});
   };
-  for(const p of k.steps) for(const i of p.items) if(i.sale) ends(i.slug, i.short, i.end);
+  for(const p of k.steps) for(const i of p.items) if(i.sale) ends(i.slug, i.title, i.end);
   for(const r of S.state.radar){
     const o = shownOffer(r);
     if(!o || !o.sale) continue;
     if(r.verdict === "buy" || r.verdict === "good") ends(r.slug, r.title, o.end);
     const t = +new Date(o.start || "");
-    if(!isNaN(t) && now - t <= 3 * day && t <= now) fresh.set(r.slug, {slug: r.slug, title: r.title, t, r, o});
+    if(!isNaN(t) && now - t <= 3 * day && t <= now) fresh.set(r.slug, {slug: r.slug, title: r.title, t});
   }
-  const btn = x => `<button class="link" data-act="gotitle" data-s="${esc(x.slug)}" title="Einzelheiten zu ${esc(x.title)}">${esc(x.title)}</button>`;
-  const list = (xs, one, key) => xs.length <= 5 ? xs.map(one).join(", ")
-    : xs.slice(0, 4).map(one).join(", ") + ` <details class="inl" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>und ${xs.length - 4} weitere</summary>${xs.slice(4).map(one).join("<br>")}</details>`;
+  const short = x => { const r = S.state.radar.find(y => y.slug === x.slug) || {}; return r.dlc_of && sameT(x.title).startsWith(sameT(r.dlc_of)) ? x.title.slice(r.dlc_of.length).replace(/^[\s:–\-+]+/, "") || x.title : x.title; };
+  const inPlan = s => { const w = where[s]; return w ? `<span class="chip">im Plan</span> Schritt ${w.n}, ${esc(country(w.code).name)}` : ""; };
+  const line = (key, head, xs, one) => {
+    const lead = xs.slice(0, 3).map(one).join(", ") + (xs.length > 3 ? ` und ${xs.length - 3} weitere` : "");
+    return `<details class="newsd np" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>${head} <span class="lead">${lead}</span></summary>` +
+      `<div class="np-grid">${NP_COLS}${xs.map(x => npRow(x.slug, where[x.slug] ? {note: inPlan(x.slug), act: ""} : {})).join("")}</div></details>`;
+  };
   let h = "";
   const a = [...soon.values()].sort((x, y) => x.t - y.t);
-  if(a.length) h += `<p class="restline news"><b>${a.length === 1 ? "1 Angebot endet bald" : `${a.length} Angebote enden bald`}:</b> ${list(a, x => `${btn(x)} ${endCell(x.end, "bis ")}`, "newssoon")}</p>`;
+  if(a.length) h += line("newssoon", `<b>${a.length === 1 ? "1 Angebot endet bald:" : `${a.length} Angebote enden bald:`}</b>`, a, x => `${esc(short(x))} ${endCell(x.end, "bis ")}`);
   const b = [...fresh.values()].sort((x, y) => y.t - x.t);
-  if(b.length) h += `<p class="restline news"><b>Neu im Angebot</b> <small class="mut">seit höchstens drei Tagen</small>: ${list(b, x => `${btn(x)} ${pill(x.r.verdict)} <span class="pct">−${x.o.pct} %</span>`, "newsfresh")}</p>`;
-  return h;
+  if(b.length) h += line("newsfresh", `<b>Neu im Angebot</b> <span class="mut">seit höchstens drei Tagen:</span>`, b, x => esc(short(x)));
+  return h ? `<div class="news">${h}</div>` : "";
 }
 /* Angenommene Preise (1.3.0, „Was wäre, wenn“): oben im Kaufplan, damit niemand sie für echte Preise hält */
 function assumedLine(k){
@@ -147,7 +155,7 @@ function notPlanned(k){
     : `Wechsel ${d.gain >= 0 ? `spart nur <span class="bad">${eur(d.gain)}</span>` : `kostet <span class="bad">${eur(-d.gain)}</span> mehr`}${d.threshold !== null && d.threshold !== undefined ? `, lohnt ab ${eur(d.threshold)} Ersparnis` : ""}`;
   const sums = [];
   // Wechsel: Konto gesperrt oder Land lohnt nicht. Je Land klappbar; was der Plan woanders kauft, steht zur Erklärung dabei
-  let sw = "", nsw = 0;
+  let sw = "", nsw = 0, nmv = 0;
   if((k.held || []).length){
     const list = k.held.map(h => h.slug); mark(list); nsw += list.length;
     sw += npFold("np:c:lock", `Konto in <b>${esc(k.lock.name)}</b>: <span class="bad">Wechsel blockiert</span>, bis das Guthaben dort aufgebraucht ist`,
@@ -156,12 +164,15 @@ function notPlanned(k){
   for(const d of k.dropped){
     const open = d.open_slugs || [], moved = d.moved || [];
     if(!open.length && !moved.length) continue;
-    mark(open); nsw += open.length;
+    mark(open); nsw += open.length; nmv += moved.length;
     const note = s => { const m = moved.find(x => x.slug === s); if(!m) return skippedFrom(s) || "wartet"; const n = S.kauf.steps.findIndex(p => p.code === m.to); return `<span class="chip">im Plan</span> Schritt ${n + 1}, ${esc(country(m.to).name)}`; };
     sw += npFold(`np:c:${d.code}`, `<b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))} <span class="mut">${open.length ? `${open.length} wartet` : ""}${open.length && moved.length ? ", " : ""}${moved.length ? `${moved.length} im Plan` : ""}</span> · ${gap(d)} · <button class="link" data-act="goland" data-c="${d.code}" title="Die Länderkarte von ${esc(d.name)} mit eigenem Korb öffnen">Länderkarte</button>`,
       npTitles(open.concat(moved.map(m => m.slug)), d.code, {note, act: s => moved.some(m => m.slug === s) ? "" : undefined}));
   }
-  if(add("sw", "Wechsel lohnt nicht", "Im günstigsten Land spart der Kauf zu wenig, um den Wechsel dorthin zu rechtfertigen. Was wartet, kannst du trotzdem dazunehmen; was „im Plan“ trägt, kauft der Plan in einem anderen Land.", sw, nsw)) sums.push(`Wechsel lohnt nicht ${nsw}`);
+  // Die Zahl am Kopf nennt beides (1.3.1; vorher nur, was wartet: „1“ über 60 Zeilen ergab keinen Sinn)
+  if(sw) groups.push(npFold("np:g:sw", `Wechsel lohnt nicht <span class="mut">${[nsw ? `${nsw} wartet` : "", nmv ? `${nmv} kauft der Plan anderswo` : ""].filter(Boolean).join(", ")}</span>`,
+    `<p class="hint">Im günstigsten Land spart der Kauf zu wenig, um den Wechsel dorthin zu rechtfertigen. Was wartet, kannst du trotzdem dazunehmen; was „im Plan“ trägt, kauft der Plan in einem anderen Land.</p>` + sw, "npgrp"));
+  if(nsw) sums.push(`Wechsel lohnt nicht ${nsw}`);
   // Kleinkram (0.92): wartet, bis du ihn über „Passt in den Rest“ dazunimmst (0.98). Je Land mit Summe;
   // füllt er eine Karte fast ganz, ein Vorschlag (0.93)
   let sm = "", nsm = 0;
@@ -448,13 +459,13 @@ function planCard(p, step){
         over: i => i.champ === null || i.champ === undefined ? null : i.eur - i.champ, alt: i => i.alt}).map(i => {
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
         const need = i.needs_parent ? needsRegion(i.dlc_of, p.code, i.slug) : "";
-        const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${need || (i.parent_owned ? "has" : "")}"${need ? ` title="${esc(needTip(p.code, need))}"` : ""}>DLC${need === "open" ? "?" : ""}</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${i.dlc_of && i.short !== i.title ? `<small class="gm">${esc(i.dlc_of)}:</small><br>` : ""}${esc(i.short)}${i.own ? " " + ownMark(i) : ""}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
+        const nm = `<span class="nm">${i.dlc_of ? `<span class="dlc ${need || (i.parent_owned ? "has" : "")}"${need ? ` title="${esc(needTip(p.code, need))}"` : ""}>DLC${need === "open" ? "?" : ""}</span>` : ""}${i.owned ? `<span class="dlc own">✓</span>` : ""}${titleBtn(i.slug, `${i.dlc_of && i.short !== i.title ? `<small class="gm">${esc(i.dlc_of)}:</small><br>` : ""}${esc(i.short)}`)}${i.own ? " " + ownMark(i) : ""}${i.lang === "unknown" ? ` <span class="q" title="Sprache ungeprüft, zählt nicht">?</span>` : ""}${langTag(i, false)}</span>`;
         const filled = step && (p.fill_slugs || []).includes(i.slug) ? ` <small class="mut">dazugenommen</small>` : "";
         // Überall dasselbe × (0.94): im Kaufplan „nicht in diesem Schritt“, auf der Länderkarte aus dem Korb
         const first = `<td class="t" title="${esc(tip)}">${xBtn(p, i, step)}${nm}${filled}</td>`;
         // Klassen c-… ordnen die Zellen am Handy zu einer Karte je Titel (0.75)
-        return `<tr>${first}${wide ? `<td class="c-loc" data-l="Shop">${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td class="c-end"${i.sale ? ` data-l="bis"` : ""}>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
-          <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${i.assumed ? `<span class="asm" title="Angenommener Preis (Was wäre, wenn), kein echtes Angebot">${num(i.eur)}</span> <small class="asm">angenommen</small><button class="x" data-act="unassume" data-c="${p.code}" data-s="${esc(i.slug)}" title="Annahme verwerfen">×</button>` : buyLink(p.code, i, num(i.eur))}${i.sale && !i.assumed ? ` <span class="pct">−${i.pct} %</span>` : ""}${step && !i.assumed && !p.ro ? assumeBtn(p.code, i.slug) : ""}</td>
+        return `<tr>${first}${wide ? `<td class="c-loc" data-l="Shop">${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td class="c-end"${i.sale ? ` data-l="bis"` : ""}>${endBtn(i.slug, i)}</td>
+          <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${i.assumed ? `<span class="asm" title="Angenommener Preis (Was wäre, wenn), kein echtes Angebot">${num(i.eur)}</span> <small class="asm">angenommen</small><button class="x" data-act="unassume" data-c="${p.code}" data-s="${esc(i.slug)}" title="Annahme verwerfen">×</button>` : shopLink(i.slug, p.code, i, num(i.eur), cur)}${i.sale && !i.assumed ? ` <span class="pct">−${i.pct} %</span>` : ""}${step && !i.assumed && !p.ro ? assumeBtn(p.code, i.slug) : ""}</td>
           <td class="c-best">${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>${(S.state.radar.find(r => r.slug === i.slug) || {}).nohist ? `<br><span class="nohist" title="DekuDeals hat für diesen Titel noch keinen Tiefstpreis geliefert: Der Bestpreis stützt sich nur auf heutige Preise und die eigene Aufzeichnung">ohne Verlauf</span>` : ""}` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
           ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
       }).join("") + `</tbody></table></div>`;

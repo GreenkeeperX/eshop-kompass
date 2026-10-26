@@ -101,7 +101,7 @@ function langTag(x, all){
   if(x.lang === "no") return `<span class="lgt no" title="Andere Fassung als im deutschen eShop, ohne Deutsch">andere Fassung</span>`;
   return "";
 }
-function endCell(iso, prefix){
+function endCell(iso, prefix, more){
   if(!iso) return "";
   const d = new Date(iso);
   if(isNaN(d)) return "";
@@ -112,7 +112,7 @@ function endCell(iso, prefix){
   if(diff <= 0){ text = "heute"; cls = "today"; }
   else if(diff === 1){ text = "morgen"; cls = "soon"; }
   else if(diff === 2){ cls = "soon"; }
-  return `<span class="${cls}" title="Angebot endet ${esc(full)}">${diff <= 1 ? "" : (prefix || "")}${text}</span>`;
+  return `<span class="${cls}" title="Angebot endet ${esc(full)}${esc(more || "")}">${diff <= 1 ? "" : (prefix || "")}${text}</span>`;
 }
 function ago(iso){
   if(!iso) return "noch nie";
@@ -512,6 +512,13 @@ function pickFirst(inp){
   sel.value = o.value;
   sel.dispatchEvent(new Event("change", {bubbles: true}));
 }
+/* Unauffällige Verweise (1.3.1, ohne Unterstreichung, wie Preise): Titelname zu den Einzelheiten der
+   Wishlist, wie in der Tabelle; Angebotsende oder „normal“ zum Preisverlauf, das genaue Ende bleibt im Tooltip */
+const isWish = slug => S.state.radar.some(r => r.slug === slug);
+// Als Span mit Rolle Link, nicht als Knopf: Ein Knopf ist ein Block und brach den zweizeiligen DLC-Namen um die Marken herum
+const titleBtn = (slug, inner) => isWish(slug) ? `<span class="plain" role="link" tabindex="0" data-act="gotitle" data-s="${esc(slug)}" title="Einzelheiten in der Liste">${inner}</span>` : inner;
+const endBtn = (slug, x) => String(slug).startsWith("nso-") ? (x.sale ? endCell(x.end) : `<span class="mut">normal</span>`)
+  : `<button class="plain" data-act="verlauf" data-s="${esc(slug)}" title="Klick öffnet den Preisverlauf">${x.sale ? endCell(x.end, "", " · Klick öffnet den Preisverlauf") : `<span class="mut">normal</span>`}</button>`;
 /* Titel- und Bestpreisspalte bleiben stehen (1.2.0): Die zweite braucht die Breite der ersten */
 function stickCols(){
   document.querySelectorAll("#main .matrix, #main .cmp").forEach(box => {

@@ -392,14 +392,21 @@ keinem Schritt“. Was du mit × herausgenommen hast, sagt das am Titel. Kommen 
 der Plan in Schweden; in Polen wären sie günstiger, aber Wechsel lohnt nicht: spart nur 2,10 €“),
 und der Grund am Titel sagt dasselbe. Was schon gekauft ist, steht dort mit Quelle: im Kaufplan
 vermerkt, in deiner Sammlung, laut eShop-Kaufverlauf oder „steckt in …, das du schon hast“.
-Nimmst du Titel in ein Land, in dem gerade kein Schritt kauft (etwa mit „In Jetzt übernehmen“
+Nimmst du Titel in ein Land, in dem gerade kein Schritt kauft (etwa mit „In „Jetzt“ übernehmen“
 im Korb), bekommt es einen Schritt, auch wenn sich der Wechsel nicht lohnt; die Karte sagt dann
 „lohnt nicht“. Geht das nicht, etwa weil ein blockierender Rest den Plan in deinem Kontoland
 hält, stehen die Titel als „übernommen, gerade nicht im Plan“ mit ×.
 **Hinweise** stehen oben unter der Zusammenfassung, nur wenn es etwas gibt: „2 Angebote enden
 bald“ für Angebote im Plan oder mit Urteil „kaufen“ oder „gut“, die in weniger als einer Woche
 enden, und „Neu im Angebot“ für Wishlist-Titel, deren günstigstes Angebot vor höchstens drei Tagen
-begann. Ein Klick auf einen Titel öffnet seine Einzelheiten.
+begann. Jede Zeile nennt die ersten drei Titel und „und n weitere“; ein Klick klappt sie auf und
+zeigt alle im Raster von „Nicht im Plan“: Urteil, Einkaufspreis, Rabatt, Land, Abstand zum Bestpreis,
+Ende, und „im Plan“ mit Schritt oder „dazunehmen …“.
+
+**Verweise in Schritten, Länderkarten und Korb:** Der Titelname öffnet seine Einzelheiten in der
+Wishlist (wie in der Tabelle), „normal“ oder das Angebotsende öffnet den Preisverlauf (das genaue
+Ende steht im Tooltip), der Einkaufspreis den eShop. DLC haben im eShop keine eigene feste Seite,
+die das Tool kennt; ihr Einkaufspreis öffnet deshalb wie der Landespreis den Verlauf bei DekuDeals.
 
 **Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Nicht im Plan“)
 fragt nach einem angenommenen Preis in der Landeswährung, wie im Shop; vorgeschlagen ist der
@@ -594,7 +601,7 @@ Auswahl des Landes mit seinem Einkaufspreis, vorgewählt das günstigste, darunt
 derselben Preiszelle und die Summen (Preis, Wechsel, Rest, Shop, Karten, Hinweise). Ein Tipp auf
 „Einkaufspreis“ klappt die Rechnung auf, die am Rechner im Tooltip steht.
 
-„In Jetzt übernehmen“ unter jeder Länderspalte (am Handy unter den Summen) nimmt die Titel des
+„In „Jetzt“ übernehmen“ unter jeder Länderspalte (am Handy unter den Summen) nimmt die Titel des
 Korbs, die es dort gibt, in den Kaufplan, als Schritt dieses Lands, und wechselt zu Jetzt. Dort
 gehen „Auf Null“, ×, „Andere Länder“ und alles andere wie an jedem Schritt; Titel aus anderen
 Schritten ziehen um.
