@@ -39,6 +39,14 @@ function addTo(code, slugs){
     if(!o.add.includes(s)) o.add.push(s);
   }
 }
+/* In einen Schritt des Kaufplans nehmen (1.2.0): Der Titel steht danach nur in diesem Schritt, auch
+   wenn er vorher in einem anderen stand oder hier herausgenommen war */
+function fillStep(code, slugs){
+  const f = S.ui.plan_fill = S.ui.plan_fill || {}, k = S.ui.plan_skip || {};
+  for(const c of Object.keys(f)) if(c !== code){ f[c] = f[c].filter(x => !slugs.includes(x)); if(!f[c].length) delete f[c]; }
+  f[code] = (f[code] || []).filter(x => !slugs.includes(x)).concat(slugs);
+  if(k[code]){ k[code] = k[code].filter(x => !slugs.includes(x)); if(!k[code].length) delete k[code]; }
+}
 function dropFrom(code, s){
   if(!code){ S.ui.basket = (S.ui.basket || []).filter(x => x !== s); return; }
   const o = ov(code);
@@ -236,10 +244,9 @@ document.addEventListener("click", async e => {
       }
     }
     else if(a === "planfill" || a === "planunfill"){
-      const f = S.ui.plan_fill = S.ui.plan_fill || {}, list = f[d.c] || [];
-      f[d.c] = a === "planfill" ? list.concat(d.s.split(",")) : list.filter(x => x !== d.s);
-      if(a === "planfill" && (S.ui.plan_skip || {})[d.c]) S.ui.plan_skip[d.c] = S.ui.plan_skip[d.c].filter(x => !d.s.split(",").includes(x));
-      if(!f[d.c].length) delete f[d.c];
+      const f = S.ui.plan_fill = S.ui.plan_fill || {};
+      if(a === "planfill") fillStep(d.c, d.s.split(","));
+      else { f[d.c] = (f[d.c] || []).filter(x => x !== d.s); if(!f[d.c].length) delete f[d.c]; }
       await saveUi(); S.kauf = await api("/api/kaufplan"); render();
       toast(a === "planfill" ? "Füllartikel im Plan" : "Füllartikel herausgenommen");
     }
@@ -315,18 +322,17 @@ document.addEventListener("change", async e => {
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if(a === "npadd" && el.value){
       // Aus „Nicht im Plan“ in einen Schritt (0.97): wie „Titel dazunehmen“ dort
-      const name = (rowOf(el.dataset.s) || {}).title || el.dataset.s, f = S.ui.plan_fill = S.ui.plan_fill || {};
-      f[el.value] = (f[el.value] || []).filter(x => x !== el.dataset.s).concat(el.dataset.s);
-      if((S.ui.plan_skip || {})[el.value]) S.ui.plan_skip[el.value] = S.ui.plan_skip[el.value].filter(x => x !== el.dataset.s);
+      const name = (rowOf(el.dataset.s) || {}).title || el.dataset.s;
+      fillStep(el.value, [el.dataset.s]);
       await saveUi(); S.kauf = await api("/api/kaufplan"); render();
       toast(`${name} im Schritt ${country(el.value).name}`);
     }
     else if(a === "planpick" && el.value){
       const nm = el.selectedOptions[0].textContent.split(" · ")[0];
-      const f = S.ui.plan_fill = S.ui.plan_fill || {};
-      f[el.dataset.c] = (f[el.dataset.c] || []).concat(el.value);
+      const from = (S.kauf.steps || []).find(p => p.code !== el.dataset.c && p.items.some(i => i.slug === el.value));
+      fillStep(el.dataset.c, [el.value]);
       await saveUi(); S.kauf = await api("/api/kaufplan"); render();
-      toast(`${nm} im Plan`);
+      toast(from ? `${nm} von ${from.name} nach ${country(el.dataset.c).name} verschoben` : `${nm} im Plan`);
     }
     else if((a === "pick" || a === "bpick") && el.value){ addTo(el.dataset.c, [el.value]); await replan(); }
     else if(a === "korbland"){ S.korbLand = el.value; render(); }

@@ -79,3 +79,27 @@ Derzeit nichts offen.
 
 Neue Wünsche, noch nicht eingeordnet.
 
+Rückmeldung vom 23.10.2026, Vorschläge zur Abstimmung:
+
+- **Korb weiter in „Jetzt“:** Titel aus dem Korb landen bisher nicht im Kaufplan, wo „Auf Null“
+  rechnet. Entweder den Korb als Schritt eines Lands in den Plan übernehmen oder „Auf Null“ auch im
+  Korb anbieten.
+- **Was wäre, wenn:** in „Jetzt“ für einzelne Titel einen angenommenen Preis eintragen (etwa den
+  letzten Angebotspreis) und sehen, was sich an Plan und „Auf Null“ ändert. Angenommene Preise sind
+  als solche gekennzeichnet und lassen sich mit einem Klick verwerfen. Ein freier Rechner zum
+  Verschieben wäre ein eigener, größerer Schritt.
+- **Hinweise in „Jetzt“:** „1 Angebot endet morgen“, wenn ein Angebot im Plan oder mit Urteil
+  „kaufen“ in weniger als einer Woche endet, und neue Angebote seit dem letzten Abgleich.
+- **Suche in „Titel dazunehmen …“:** Die Auswahllisten sind lang; ein Feld, das beim Tippen filtert.
+- **Sammlung mit Spielinfos:** eine zusätzliche Ansicht der Sammlung mit Genre, Spielerzahl,
+  lokal oder online, Koop, GameShare und Ähnlichem, automatisch gelesen. Machbarkeit: Genre und
+  Spielerzahl stehen in titledb, die das Tool schon wöchentlich streamt; die Nintendo-Europa-Suche
+  (schon für Sprachen genutzt) führt Spielerzahl und Kategorien. Koop und GameShare stehen dort nicht
+  verlässlich als Feld, eher auf den Shopseiten von Nintendo; das wäre ein neuer, langsamer Abruf je
+  Titel. Vor der Umsetzung mit einer Probe in „Verbindung testen“ prüfen, welche Felder wirklich kommen.
+- **Retro-Sammlung, eher ein eigenes Tool:** die eigene Sammlung älterer Spiele mit Unterreitern je
+  System (3DS, DS/DSi, GBA, GBC, GB, VB, NES, SNES, N64, GameCube, Wii, PS, PS2, PS3, PS4), mit
+  zusammengetragenen Spielinfos und Filtern. Hat mit Preisen und Ländern nichts zu tun, deshalb
+  getrennt. Mögliche Quellen für Spielinfos: offene Datenbanken wie die libretro-database
+  (Genre, Spielerzahl, Erscheinungsjahr für die meisten dieser Systeme, PS4 fehlt dort).
+

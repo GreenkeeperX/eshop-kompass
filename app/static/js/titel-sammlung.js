@@ -239,8 +239,7 @@ function titleRow(r, group, tog){
   // In der Gruppe ohne den Namen des Spiels davor („Vampire Survivors: Operation Guns“ → „Operation Guns“)
   const name = group && sameT(r.title).startsWith(sameT(group)) ? r.title.slice(group.length).replace(/^[\s:–\-+]+/, "") || r.title : r.title;
   // In der flachen Liste (nach Preis, Abstand, Ende) zweizeilig wie in den Karten: Spiel klein, darunter der DLC (1.1.10)
-  const rest = !group && r.dlc_of && sameT(r.title).startsWith(sameT(r.dlc_of)) ? r.title.slice(r.dlc_of.length).replace(/^[\s:–\-+]+/, "") : "";
-  const label = rest.length > 2 ? `<small class="gm">${esc(r.dlc_of)}:</small><br>${esc(rest)}` : esc(name);
+  const label = group ? esc(name) : dlcLabel(r);
   let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${label}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}${tog || ""}</td>
     <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>

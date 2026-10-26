@@ -149,6 +149,14 @@ const shopOf = code => code ? (country(code).shop || code) : "DE";   // DG nutzt
 /* Namen vergleichen wie der Server (planner.short, 1.1.9): ohne Groß- und Kleinschreibung, typografische
    und gerade Apostrophe gleich („Luigi’s“ und „Luigi's“) */
 const sameT = t => String(t || "").toLowerCase().replace(/[’‘`´]/g, "'");
+/* DLC zweizeilig wie in Liste und Karten (in der Liste seit 1.1.10, in Tabelle und Korb seit 1.2.0):
+   oben klein das Spiel, darunter der DLC ohne den Namen des Spiels davor */
+function dlcLabel(r){
+  const t = r.title || "", g = r.dlc_of;
+  if(!g) return esc(t);
+  const rest = sameT(t).startsWith(sameT(g)) ? t.slice(g.length).replace(/^[\s:–\-+]+/, "") : "";
+  return rest.length > 2 ? `<small class="gm">${esc(g)}:</small><br>${esc(rest)}` : r.extra ? `<small class="gm">${esc(g)}:</small><br>${esc(t)}` : esc(t);
+}
 const deku = (slug, code) => `https://www.dekudeals.com/items/${encodeURIComponent(slug)}${code ? `?country=${shopOf(code).toLowerCase()}` : ""}`;
 // Suche bei eShop-Prices nur mit Buchstaben und Ziffern: Zeichen wie & oder : finden dort nichts
 const epSearch = title => `https://eshop-prices.com/games?q=${String(title).replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(" ").map(encodeURIComponent).join("+")}&currency=EUR`;
@@ -473,9 +481,18 @@ function render(){
   m.querySelectorAll(".scroll,.fitbox").forEach((e, k) => { if(keep[k]){ e.scrollLeft = keep[k][0]; e.scrollTop = keep[k][1]; } });
   const grp = m.querySelector(".matrix tr.grp");
   if(grp) grp.closest(".matrix").style.setProperty("--grp", grp.getBoundingClientRect().height + "px");
+  stickCols();
   masonry();
   navFade();
 }
+/* Titel- und Bestpreisspalte bleiben stehen (1.2.0): Die zweite braucht die Breite der ersten */
+function stickCols(){
+  document.querySelectorAll("#main .matrix, #main .cmp").forEach(box => {
+    const c = box.querySelector("tr > :first-child");
+    if(c) box.style.setProperty("--c1", c.getBoundingClientRect().width + "px");
+  });
+}
+addEventListener("resize", stickCols);
 /* Reiterleiste schmaler als ihre Reiter (Handy): rechts ausblenden, damit man sieht, dass es weitergeht (0.65) */
 function navFade(){
   const n = $("nav");

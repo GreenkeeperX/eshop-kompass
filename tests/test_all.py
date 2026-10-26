@@ -1381,6 +1381,17 @@ class PlanTest(unittest.TestCase):
         # Jeder Titel nur einmal
         self.assertEqual(sum(1 for d in plan["dropped"] for m in d["moved"] if m["slug"] == "vs-foscari"), 1)
 
+    def test_taken_fill_item_moves_out_of_another_step(self):
+        # 1.2.0: Steht ein Titel schon in einem anderen Schritt, zieht er beim Dazunehmen um.
+        # Vorher blieb er dort, und das Dazunehmen zeigte keine Wirkung
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True)
+        self.assertIn("vs-foscari", [i["slug"] for i in self.by(plan["steps"])["BR"]["items"]])
+        moved = self.by(planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True,
+                                              fill={"DE": ["vs-foscari"]})["steps"])
+        self.assertEqual([i["slug"] for i in moved["DE"]["items"]], ["spiritfarer", "vs-foscari"])
+        self.assertEqual(moved["DE"]["fill_slugs"], ["vs-foscari"])
+        self.assertNotIn("vs-foscari", [i["slug"] for i in moved["BR"]["items"]])
+
     def test_taken_fill_items_without_step_stay_visible(self):
         # 0.95: Übernommenes für ein Land ohne Schritt verschwindet nicht still
         self.without_lasting()

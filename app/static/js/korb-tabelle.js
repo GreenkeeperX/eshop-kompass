@@ -50,7 +50,7 @@ function viewCompare(){
   for(const slug of order){
     const r = rowOf(slug);
     const cells = cols.map(p => itemIn(p, slug));
-    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft unter Jetzt">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${r.extra && r.dlc_of ? `<small class="gm">${esc(r.dlc_of)}:</small> ` : ""}${esc(r.title)}</a>`}</td>` +
+    h += `<tr><td title="${esc(r.title)}"><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft unter Jetzt">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${dlcLabel(r)}</a>`}</td>` +
       `<td class="bp">${r.champ ? `${ax(r.champ)}<b title="Bestpreis in ${esc(country(r.champ.code).name)}">${eur(r.champ.eur)}</b> <small class="inl">${r.champ.code}</small>` : `<span class="mut">–</span>`}</td>` +
       cols.map((p, k) => {
         const i = cells[k];
@@ -67,7 +67,7 @@ function viewCompare(){
         const need = i.needs_parent ? needsRegion(r.dlc_of, p.code, slug) : "";
         const url = i.own && i.own.url ? i.own.url : shopUrl(p.code, i.nsuid);
         const tip = [compose(p.code, i), p.currency === "EUR" ? "" : `im Shop ${money(i.local, p.currency)}`,
-          i.sale && i.end ? `Angebot bis ${dm(i.end)}` : "", gap > 0.005 ? `${eur(gap)} über dem Bestpreis ${eur(ch)} in ${country(r.champ.code).name}` : "",
+          i.sale && i.end ? `Angebot bis ${dm(i.end)}` : "",
           champHere ? "Hier gab es den Bestpreis" : "", need ? needTip(p.code, need) : "",
           i.own && i.own.url ? `Klick öffnet ${i.own.src}` : url ? `Klick öffnet den eShop ${country(p.code).name}` : "Klick öffnet den Verlauf bei DekuDeals"].filter(Boolean).join(" · ");
         const price = `<a class="pl" href="${esc(url || deku(slug, p.code))}" target="_blank" rel="noopener">${num(i.eur)}</a>`;
@@ -76,7 +76,7 @@ function viewCompare(){
           // ★ nach dem Preis im Korb, nicht dem eines Einzelkaufs: Guthabenkarten teilen sich hier auf (0.65)
           // Zwei Zeilen (0.70): oben Preis | Abstand, die Fuge mittig in der Spalte, damit Preise und
           // Abstände untereinander stehen; darunter Rabatt und Marken
-          twoLine(`${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}`, price, gap, marks) + `</td>`;
+          twoLine(`${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}`, price, gap, marks, gapTip(r, i.eur)) + `</td>`;
       }).join("") + `</tr>`;
   }
   const row = (label, fn, extra) => `<tr class="${extra || ""}"><td>${label}</td><td></td>${cols.map(p => `<td class="${cls(p)}">${fn(p)}</td>`).join("")}</tr>`;
@@ -132,9 +132,9 @@ function korbPhone(cols, win, order, rowOf, itemIn){
       const need = i.needs_parent ? needsRegion(r.dlc_of, pc.code, slug) : "";
       const url = i.own && i.own.url ? i.own.url : shopUrl(pc.code, i.nsuid);
       cell = `<td class="${g} ${counts ? "" : "nc"}">` + twoLine(`${counts && ch !== null && atBest(i.eur, ch) ? star({mark: "best"}) : ""}${ax(i)}${counts ? "" : `<span class="q">?</span>`}`,
-        `<a class="pl" href="${esc(url || deku(slug, pc.code))}" target="_blank" rel="noopener">${num(i.eur)}</a>`, gap, cellMarks(i, need ? needMark(pc.code, need) : "")) + `</td>`;
+        `<a class="pl" href="${esc(url || deku(slug, pc.code))}" target="_blank" rel="noopener">${num(i.eur)}</a>`, gap, cellMarks(i, need ? needMark(pc.code, need) : ""), gapTip(r, i.eur)) + `</td>`;
     }
-    m += `<tr><td><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${esc(r.title)}</a>`}</td>${cell}</tr>`;
+    m += `<tr><td><button class="x" data-act="bdrop" data-s="${esc(slug)}" title="aus dem Korb nehmen">×</button>${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${r.nso ? `<button class="link" data-act="gonso">${esc(r.title)}</button>` : `<a class="tl" href="${deku(slug)}" target="_blank" rel="noopener">${dlcLabel(r)}</a>`}</td>${cell}</tr>`;
   }
   const line = (k, v) => v ? `<div><span class="mut">${k}</span> ${v}</div>` : "";
   const gain = pc.is_ref ? `<span class="mut">Basis</span>` : pc.gain === null || pc.gain === undefined ? "" :
@@ -149,10 +149,24 @@ function korbPhone(cols, win, order, rowOf, itemIn){
 }
 
 /* Preiszelle in Tabelle und Korb (0.81, im Korb seit 0.70): oben Preis | rotes „+x“ über dem Bestpreis,
-   die Fuge mittig, damit Preise und Abstände untereinander stehen; darunter Rabatt und Marken */
-function twoLine(lead, price, gap, marks){
-  return `<span class="kc"><span class="kp">${lead}${price}</span><span class="kg">${gap > 0.005 ? `<span class="abv gap">+${num(gap)}</span>` : ""}</span></span>` +
+   die Fuge mittig, damit Preise und Abstände untereinander stehen; darunter Rabatt und Marken.
+   Das „+x“ hat einen eigenen Tooltip (1.2.0), der Preis den seines Links, die Zelle den Rest */
+function twoLine(lead, price, gap, marks, gtip){
+  return `<span class="kc"><span class="kp">${lead}${price}</span><span class="kg">${gap > 0.005 ? `<span class="abv gap"${gtip ? ` title="${esc(gtip)}"` : ""}>+${num(gap)}</span>` : ""}</span></span>` +
     (marks.length ? `<span class="kl">${marks.join("")}</span>` : "");
+}
+/* Tooltip am „+x“ (1.2.0): wo es den Bestpreis gab, darunter die Tiefstpreise der Länder der letzten
+   24 Monate, günstigste zuerst, mit dem Abstand dieses Preises dazu. Vorher wiederholte der Tooltip
+   die Rechnung des Preises */
+function gapTip(r, price){
+  if(!r.champ) return "";
+  const lows = Object.entries(r.cells || {}).filter(([, x]) => x && !x.na && !x.nocard && x.lang !== "unknown" && x.low_eur !== null && x.low_eur !== undefined)
+    .sort((a, b) => a[1].low_eur - b[1].low_eur);
+  const diff = d => d > 0.005 ? `+${eur(d)}` : d < -0.005 ? `−${eur(-d)}` : "gleich";
+  return [`${eur(price - r.champ.eur)} über dem Bestpreis ${r.champ.est ? "ca. " : ""}${eur(r.champ.eur)} in ${country(r.champ.code).name}`]
+    .concat(lows.length > 1 ? ["", "Tiefstpreise der Länder, 24 Monate:"].concat(lows.slice(0, 10).map(([c, x]) =>
+      `${country(c).name} ${x.est ? "ca. " : ""}${eur(x.low_eur)} (${diff(price - x.low_eur)})`)) : [])
+    .concat(lows.length > 10 ? [`und ${lows.length - 10} weitere`] : []).join("\n");
 }
 const cellMarks = (x, need) => [x.sale ? `<span class="pct">−${x.pct} %</span>` : "", x.own ? ownMark(x) : "", need, langTag(x, false)].filter(Boolean);
 /* ---------- Titel als Tabelle (bisher Preisvergleich) ---------- */
@@ -188,7 +202,7 @@ function viewMatrix(){
     <label title="Landestief, Angebotsende und Sprache in jeder Zelle"><input type="checkbox" data-act="mdet" ${det ? "checked" : ""}> Details</label>${viewSeg()}</div>
     <div class="matrix scroll fitbox ${det ? "" : "compact"}"><table><thead><tr class="grp"><th></th><th></th>${groups.map(([g, n]) => `<th colspan="${n}">${g}</th>`).join("")}</tr>
     <tr>${sth("matrix", "title", "Titel")}${sth("matrix", "best", "Bestpreis", "Niedrigster Einkaufspreis der letzten 24 Monate über alle zählenden Länder. Das Land ist in der Zeile gold umrandet.")}${cols.map(c => sth("matrix", c.code, `${c.code}${bests[c.code] ? `<small class="bc">${bests[c.code]}★</small>` : ""}`, `${c.name} · ${bests[c.code] === 1 ? "1 Bestpreis" : `${bests[c.code]} Bestpreise`} in den gezeigten Titeln`)).join("")}</tr></thead><tbody>`;
-  h += rows.map(r => `<tr><td><div class="tl"><button class="kb sm ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="${inBasket(r.slug) ? "aus dem Korb nehmen" : "in den Korb"}">${inBasket(r.slug) ? "✓" : "+"}</button><button class="tbtn" data-act="gotitle" data-s="${esc(r.slug)}" title="Einzelheiten in der Liste">${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${esc(r.title)}</button></div>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
+  h += rows.map(r => `<tr><td><div class="tl"><button class="kb sm ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="${inBasket(r.slug) ? "aus dem Korb nehmen" : "in den Korb"}">${inBasket(r.slug) ? "✓" : "+"}</button><button class="tbtn" data-act="gotitle" data-s="${esc(r.slug)}" title="Einzelheiten in der Liste">${r.dlc_of ? `<span class="dlc">DLC</span>` : ""}${dlcLabel(r)}</button></div>${r.no_ids ? ` <small class="hint">nicht im eShop gefunden</small>` : ""}</td>` +
     ((() => {
       // Zeilen ohne Unterschied (0.65): kostenlos überall oder nirgends ein Preis, dann eine Zeile mit Grund statt lauter gleicher Zellen
       const cs = cols.map(c => r.cells[c.code]).filter(Boolean), priced = cs.filter(x => !x.na);
@@ -206,12 +220,12 @@ function viewMatrix(){
       const tip = compose(c.code, x) + (champ ? " · Hier gab es den Bestpreis" : "") +
         (x.lang === "unknown" ? " · Sprache ungeprüft: zählt nicht" : "") + (x.nocard ? " · ohne Guthabenkarte mit Preis: zählt nicht" : "") +
         (needsRegion(r.dlc_of, c.code, r.slug) ? " · " + needTip(c.code, needsRegion(r.dlc_of, c.code, r.slug)) : "") +
-        (r.champ && !atBest(x.eur, r.champ.eur) ? ` · ${eur(x.eur - r.champ.eur)} über dem Bestpreis ${eur(r.champ.eur)} in ${country(r.champ.code).name}` : "") + (x.low_eur !== null && x.low_eur !== undefined ? ` · Landestief ${eur(x.low_eur)}` : "") + (x.sale && x.end ? ` · Angebot bis ${dm(x.end)}` : "");
+(x.low_eur !== null && x.low_eur !== undefined ? ` · Landestief ${eur(x.low_eur)}` : "") + (x.sale && x.end ? ` · Angebot bis ${dm(x.end)}` : "");
       // Zwei Zeilen wie im Korb (0.81; vorher eine Zeile ohne Abstand zum Bestpreis): oben Preis | +x,
       // darunter Rabatt und Marken
       const need = needsRegion(r.dlc_of, c.code, r.slug), gap = r.champ && !atBest(x.eur, r.champ.eur) ? x.eur - r.champ.eur : 0;
       return `<td class="${g} ${champ ? "champ" : ""} ${counts ? "" : "nc"} ${need === "need" ? "needr" : ""}" title="${esc(tip)}">` +
-        twoLine(`${star(x)}${ax(x)}${counts ? "" : `<span class="q">?</span>`}`, shopLink(r.slug, c.code, x, num(x.eur), c.currency), gap, cellMarks(x, "")) +
+        twoLine(`${star(x)}${ax(x)}${counts ? "" : `<span class="q">?</span>`}`, shopLink(r.slug, c.code, x, num(x.eur), c.currency), gap, cellMarks(x, ""), gapTip(r, x.eur)) +
         (det ? `<small>Landestief ${x.low_eur === null || x.low_eur === undefined ? "?" : eur(x.low_eur)}</small>${x.sale && x.end ? `<small>${endCell(x.end, "bis ")}</small>` : ""}${x.nocard ? `<small>ohne Karte</small>` : x.lang === "unknown" ? `<small><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">Sprache?</button></small>` : ""}` : "") + `</td>`;
     }).join("") + `</tr>`)).join("");
   if(!rows.length) h += `<tr><td colspan="${cols.length + 2}" class="mut">Kein Titel passt zum Filter.</td></tr>`;

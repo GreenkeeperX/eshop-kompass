@@ -68,7 +68,10 @@ steht sie direkt unter der Zeile des Landes (`tr.olrow`) und rollt ins Bild; am 
 unter langen Listen außer Sicht, der Klick schien nichts zu tun.
 
 Jeder Schritt hat unten wie die Länderkarten „als Korb vergleichen“ und „Titel
-dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedschaft“ bietet alle Varianten an). Dazugenommenes ist ein Füllartikel des Schritts und trägt klein grau „dazugenommen“.
+dazunehmen …“ (ab 0.68, Name ab 0.69; die letzte Gruppe „Online-Mitgliedschaft“ bietet alle Varianten an). Dazugenommenes ist ein Füllartikel des Schritts und trägt klein grau „dazugenommen“. Steht ein Titel schon in
+einem anderen Schritt, nennt die Auswahl „, jetzt in Land“, und er zieht um (ab 1.2.0, `fillStep`, Hinweis
+„… von A nach B verschoben“); er steht danach nur in einem `plan_fill`, ein früheres × in diesem Schritt gilt nicht mehr.
+Vorher nahm die Auswahl ihn an, der Plan ließ ihn aber im anderen Schritt.
 
 Eine Karte überall (ab 0.94, Entscheidung 20.10.2026): Schritt und Länderkarte haben dieselben
 Werkzeuge. Vor jedem Titel ein graues × (`xBtn`; wie im Korb, statt der Häkchen der Länderkarten):
@@ -464,7 +467,12 @@ dem dunklen Grün sonst nicht lesbar sind; im dunklen Thema ist die Füllung hel
 Grund (`--go-mark` transparent, ab 0.82.1). 0.81.0 nahm die weiße Schrift der Zelle und brach damit
 die Farbregel. DLC-Marken ohne Violett („DLC“, „DLC?“) stehen dort in der Zellschrift (ab 0.99.7, vorher
 grau auf dunkelgrün kaum lesbar); „braucht Hauptspiel“ behält Violett auf hellem Grund. Zellen oben ausgerichtet, Titelspalte 210 bis 260 px
-breit, in beiden Ansichten gleich. Eine Zeile mit Grund statt Zellen („noch nicht erschienen“) steht
+breit, in beiden Ansichten gleich. Ab 1.2.0 bleibt neben ihr die Bestpreisspalte stehen (zweite Spalte
+`position:sticky`, `left` aus `--c1`, der gemessenen Breite der Titelspalte, `stickCols`; nur ab 641 px).
+Das rote „+x“ hat einen eigenen Tooltip (`gapTip`): „x € über dem Bestpreis y € in Land“, darunter
+„Tiefstpreise der Länder, 24 Monate:“ je Land mit Landestief und Abstand, günstigste zuerst, höchstens
+zehn; der Zell-Tooltip nennt den Abstand nicht mehr (vorher deckten sich Preis-, Zell- und Abstandstooltip
+größtenteils). DLC-Namen stehen in Tabelle und Korb wie in der flachen Liste zweizeilig (`dlcLabel`). Eine Zeile mit Grund statt Zellen („noch nicht erschienen“) steht
 links (bis 0.80 rechtsbündig und damit außerhalb des Bildes). Wo nur ein Land gezeigt wird (Plan-Schritt,
 Länderkarte), stehen dieselben Angaben in eigenen Spalten (Einkaufspreis mit Rabatt, „über Bestpreis“), in
 der Wishlist-Liste zweizeilig je Spalte.
@@ -492,7 +500,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 
 | Was | Wo es vorkommt |
 |---|---|
-| Titelname mit DLC-Marke, Spiel grau davor (nicht in der Wishlist-Liste), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
+| Titelname mit DLC-Marke, Spiel grau zweizeilig davor (`dlcLabel`: flache Wishlist-Liste, Tabelle, Korb; gruppiert in der Liste ohne Spiel), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
 | Urteil ohne Verlauf (`nohist`) | Wishlist-Liste (`titleRow`), Einzelheiten, Plan-Tabelle („am Bestpreis“), Legende |
 | Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`, am Handy `korbPhone`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |

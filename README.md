@@ -432,7 +432,8 @@ DLC deiner Spiele, die nicht auf der Wishlist stehen, erscheinen dahinter: die z
 Knopf, alle im selben Auswahlfeld „alles, was passt …“ unter „DLC deiner Spiele, nicht auf der
 Wishlist“; ein Klick nimmt auch sie in den Schritt. Passt eine Online-Mitgliedschaft (nicht die Familie) in den Rest,
 steht sie dort als Hinweis, mit ihrem eShop-Preis. Jeden anderen Wishlist-Titel, den es dort
-gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt, ebenso fehlende DLC deiner
+gibt, nimmt „Titel dazunehmen …“ unter der Karte in den Schritt; steht er schon in einem anderen
+Schritt, zieht er um (die Auswahl nennt „jetzt in …“), ebenso fehlende DLC deiner
 Spiele, die nicht auf der Wishlist stehen, und jede Variante der Online-Mitgliedschaft (auch im
 Korb; von selbst nimmt der Plan beides nie); „als Korb
 vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
@@ -544,7 +545,10 @@ Stufe; Deutschland bleibt vorn, Länder, in denen gerade nichts zählt, am Ende.
 dem Urteil „kaufen“ sind dunkelgrün hinterlegt, „gut“ hellgrün; gold umrandet ist das Land, in
 dem es den Bestpreis gab. Jede Zelle hat zwei Zeilen wie im Korb: oben Preis und rot der
 Abstand zum Bestpreis, darunter Rabatt und Marken. „Details“ zeigt in jeder Zelle Landestief, Angebotsende und Sprache.
-Die Tabelle füllt das Fenster und scrollt in sich, Kopfzeile und Titelspalte bleiben stehen.
+Der Tooltip am roten Abstand nennt das Land mit dem Bestpreis und darunter die Tiefstpreise der Länder
+der letzten 24 Monate, günstigste zuerst, mit dem Abstand dieses Preises dazu; die Rechnung des Preises
+steht im Tooltip am Preis. Ein DLC steht wie in der Liste zweizeilig: klein das Spiel, darunter der DLC.
+Die Tabelle füllt das Fenster und scrollt in sich, Kopfzeile, Titel- und Bestpreisspalte bleiben stehen.
 „nur Angebote“ blendet auch Länder ohne Angebot aus. Ist ein Titel überall kostenlos oder
 nirgends zu haben, steht statt lauter gleicher Zellen eine Zeile mit dem Grund. Ein Klick auf den
 Preis öffnet den eShop des Lands (ab 0.99.4, wie überall), ohne eShop-Seite den Verlauf bei DekuDeals.
@@ -560,8 +564,9 @@ Titel (der Kaufplan kauft in mehreren Ländern nacheinander und ist deshalb kein
 „Korb leeren“ löst nur den gemeinsamen Korb auf. Die Länder stehen von leicht nach schwer,
 darin vorn, wer mehr Titel anbietet und günstiger ist.
 
-Die Tabelle ist fensterhoch mit fester Kopfzeile wie die Titel-Tabelle: Spalte Bestpreis,
-je Zelle oben Preis und Abstand zum Bestpreis, darunter Rabatt und Marken; Preise grün nach
+Die Tabelle ist fensterhoch mit fester Kopfzeile wie die Titel-Tabelle: Titel- und Bestpreisspalte
+bleiben beim seitlichen Scrollen stehen, DLC stehen zweizeilig,
+je Zelle oben Preis und Abstand zum Bestpreis (Tooltip wie in der Tabelle), darunter Rabatt und Marken; Preise grün nach
 Urteil, rot nur der Abstand. Der Stern gilt dem Preis im Korb, denn die Titel teilen sich die Karten.
 Landeswährung, Zahlweg und Angebotsende stehen im Tooltip. Der Preis öffnet den eShop, bei DLC
 den Verlauf bei DekuDeals, weil es für DLC keinen festen eShop-Link gibt.

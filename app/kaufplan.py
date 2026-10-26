@@ -34,7 +34,8 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
 
     Füllartikel: Bleibt in einem Schritt ein Rest, nennt der Plan bis zu drei
     Wishlist-Titel, die hineinpassen, möglichst nahe am Rest, egal welches Urteil.
-    Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt.
+    Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt, auch aus
+    einem anderen Schritt heraus (1.2.0).
 
     Herausgenommen (`skip`: {Land: [Titel]}, 0.94): Dort kauft der Plan den Titel nicht, er geht
     ins nächstbeste Land oder wartet. Der Schritt nennt ihn mit einem Weg zurück.
@@ -143,18 +144,29 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             groups[code] = [s for s in groups[code] if s not in minis]
             if not groups[code]:
                 del groups[code]
-        # Übernommene Füllartikel kommen in ihren Schritt, solange es ihn gibt
-        taken = {x for g in groups.values() for x in g}
+        # Übernommene Füllartikel kommen in ihren Schritt, solange es ihn gibt. Steht der Titel schon
+        # in einem anderen Schritt, zieht er um (1.2.0; vorher blieb „Titel dazunehmen“ dann ohne Wirkung)
+        where_now = {x: code for code, g in groups.items() for x in g}
+        mine = set()
         for code, slugs in fill.items():
             if code not in groups:
                 continue
             offers = ctx.countries[code]["offers"]
             for s in slugs:
                 # Die Mitgliedschaft kaufst du immer wieder: ein früherer Kauf hält sie nicht ab (0.69)
-                if s not in taken and (s not in done or s.startswith(NSO_PREFIX)) and s in offers and ctx.decides(offers[s]) \
+                if s not in mine and (s not in done or s.startswith(NSO_PREFIX)) and s in offers and ctx.decides(offers[s]) \
                         and offers[s].get("direct") is None:
+                    mine.add(s)
+                    old = where_now.get(s)
+                    if old == code:
+                        continue
+                    if old in groups:
+                        groups[old].remove(s)
+                        if not groups[old]:
+                            del groups[old]
                     groups[code].append(s)
-                    taken.add(s)
+                    where_now[s] = code
+        taken = {x for g in groups.values() for x in g}
         later = [s for s in later if s not in taken]
         nowhere = [s for s in nowhere if s not in taken]
         small[:] = [s for s in small if s not in taken]

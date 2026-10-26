@@ -441,11 +441,13 @@ function planCard(p, step){
     // Im Kaufplan wie auf den Länderkarten (0.68): Korb vergleichen und Titel dazunehmen. Dazugenommenes
     // kommt als Füllartikel in diesen Schritt (S.ui.plan_fill), der Plan rechnet neu.
     const inPlan = new Set(p.items.map(i => i.slug));
+    // Titel aus einem anderen Schritt ziehen um (1.2.0), die Auswahl sagt, woher
+    const elsewhere = Object.fromEntries(((S.kauf || {}).steps || []).filter(x => x.code !== p.code).flatMap(x => x.items.map(i => [i.slug, x.name])));
     const opts = wishOpts(S.state.matrix.rows.filter(r => r.cells[p.code] && !r.cells[p.code].na && !inPlan.has(r.slug) && !r.cells[p.code].own),
-      r => money(r.cells[p.code].local, cur), {code: p.code, skip: inPlan});
+      r => money(r.cells[p.code].local, cur) + (elsewhere[r.slug] ? `, jetzt in ${elsewhere[r.slug]}` : ""), {code: p.code, skip: inPlan});
     const mine = ((S.ui.plan_fill || {})[p.code] || []).length + ((S.ui.plan_skip || {})[p.code] || []).length;
     foot += (has ? `<button data-act="share" data-c="${p.code}" data-step="1" title="Die Titel dieses Schritts als Korb übernehmen und in allen Ländern vergleichen (Wishlist, Ansicht Korb)">als Korb vergleichen</button>` : "") +
-      (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu."><option value="">Titel dazunehmen …</option>${opts}</select>` : "") +
+      (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu; steht ein Titel in einem anderen Schritt, zieht er hierher um."><option value="">Titel dazunehmen …</option>${opts}</select>` : "") +
       (mine ? `<button class="link" data-act="planreset" data-c="${p.code}" title="Was du in diesem Schritt dazugenommen oder herausgenommen hast, verwerfen">zurücksetzen</button>` : "");
   }
   if(foot) h += `<div class="foot">${foot}</div>`;
