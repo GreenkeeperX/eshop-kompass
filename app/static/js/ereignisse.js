@@ -196,6 +196,8 @@ document.addEventListener("click", async e => {
     else if(a === "tgtfill"){ S.ui.targets[d.s] = parseFloat(d.v); await saveUi(); await refresh(); toast("Zielpreis übernommen"); }
     else if(a === "bought"){
       const p = S.kauf.steps.find(x => x.code === d.c);
+      // Mit angenommenen Preisen ist es kein echter Kauf (1.3.0)
+      if(p.items.some(i => i.assumed)){ toast("Erst die angenommenen Preise in diesem Schritt verwerfen, dann „gekauft“"); return; }
       // Auch nennen, welches Guthaben dabei auf 0 geht (0.95): Nintendo nimmt es beim Wechsel nicht mit
       const gone = Object.entries(S.state.settings.countries).filter(([c, v]) => c !== p.code && v.balance > 0)
         .map(([c, v]) => { const cur = ((S.plans || []).find(x => x.code === c) || {}).currency;
@@ -219,6 +221,42 @@ document.addEventListener("click", async e => {
     else if(a === "planreset"){
       delete (S.ui.plan_skip || {})[d.c]; delete (S.ui.plan_fill || {})[d.c];
       await saveUi(); S.kauf = await api("/api/kaufplan"); render(); toast(`${country(d.c).name} wie vorgeschlagen`);
+    }
+    else if(a === "tojetzt"){
+      // Korb in den Kaufplan (1.3.0): als dazugenommene Titel in den Schritt dieses Lands
+      const p = (S.bplans || []).find(x => x.code === d.c), slugs = p ? p.items.map(i => i.slug) : [];
+      if(!slugs.length) return;
+      fillStep(d.c, slugs);
+      await saveUi(); S.kauf = await api("/api/kaufplan"); go("jetzt");
+      const st = S.kauf.steps.find(x => x.code === d.c), got = st ? st.items.filter(i => slugs.includes(i.slug)).length : 0;
+      toast(got === slugs.length ? `${got} Titel im Schritt ${country(d.c).name}`
+        : `${got} von ${slugs.length} Titeln im Schritt ${country(d.c).name}; die übrigen stehen unter „Nicht im Plan“`);
+      const card = [...document.querySelectorAll(".steps .pc h2")].find(h => h.textContent.includes(country(d.c).name));
+      if(card) card.scrollIntoView({block: "start", behavior: "smooth"});
+    }
+    else if(a === "assume"){
+      // Was wäre, wenn (1.3.0): angenommener Preis im Shop dieses Lands, mit Steuer
+      const r = rowOf(d.s) || {}, x = (r.cells || {})[d.c] || {}, pay = S.state.pay[d.c] || {}, cur = pay.currency || "EUR";
+      const lowG = x.low !== null && x.low !== undefined ? x.low * (1 + (pay.tax || 0) / 100) : null;
+      const hint = [x.local !== undefined ? `jetzt ${money(x.local, cur)}` : "", x.regular !== undefined ? `normal ${money(x.regular, cur)}` : "",
+        lowG !== null ? `Tiefstpreis dort 24 Monate ${money(lowG, cur)}` : ""].filter(Boolean).join(", ");
+      const prev = ((S.ui.plan_assume || {})[d.c] || {})[d.s];
+      const def = prev ?? (lowG !== null ? Math.round(lowG * 100) / 100 : x.local);
+      const v = prompt(`Was wäre, wenn: Preis für ${r.title || d.s} in ${country(d.c).name}, wie im Shop (${cur}).${hint ? `\n${hint}` : ""}\nDer Plan rechnet damit, bis du die Annahme verwirfst.`, def === undefined || def === null ? "" : String(def).replace(".", ","));
+      if(v === null) return;
+      const n = num0(v);
+      if(!(n >= 0)){ toast("Kein gültiger Preis"); return; }
+      const m = S.ui.plan_assume = S.ui.plan_assume || {};
+      (m[d.c] = m[d.c] || {})[d.s] = n;
+      await saveUi(); S.kauf = await api("/api/kaufplan"); render();
+      toast(`${r.title || d.s}: Plan rechnet mit ${money(n, cur)} in ${country(d.c).name}`);
+    }
+    else if(a === "unassume" || a === "unassumeall"){
+      const m = S.ui.plan_assume = S.ui.plan_assume || {};
+      if(a === "unassumeall") S.ui.plan_assume = {};
+      else if(m[d.c]){ delete m[d.c][d.s]; if(!Object.keys(m[d.c]).length) delete m[d.c]; }
+      await saveUi(); S.kauf = await api("/api/kaufplan"); render();
+      toast(a === "unassumeall" ? "Angenommene Preise verworfen" : "Annahme verworfen");
     }
     else if(a === "planresetall"){
       // Ganzer Plan wie vorgeschlagen (1.0.3), mit Rückgängig
@@ -375,6 +413,7 @@ document.addEventListener("input", e => {
       (q.length >= 2 && !found.length && !/\/items\//.test(q) ? `<small class="mut">Nichts gefunden. Ein DekuDeals-Link geht immer: Titel dort suchen, Adresse hier einfügen.</small>` : "");
     return;
   }
+  if(el.classList.contains("pkq")){ pickFilter(el); return; }
   if(el.id !== "rq") return;
   S.rq = el.value;
   const pos = el.selectionStart, id = el.id;
@@ -382,6 +421,12 @@ document.addEventListener("input", e => {
   const q = $(id); q.focus(); q.setSelectionRange(pos, pos);
 });
 document.addEventListener("keydown", e => {
+  const el = e.target;
+  if(el.classList && el.classList.contains("pkq")){
+    if(e.key === "Enter"){ e.preventDefault(); pickFirst(el); }
+    else if(e.key === "Escape" && el.value){ e.preventDefault(); el.value = ""; pickFilter(el); }
+    return;
+  }
   if(e.key !== "Escape" || e.target.id !== "rq" || !S.rq) return;
   e.preventDefault(); S.rq = ""; render(); $("rq").focus();
 });

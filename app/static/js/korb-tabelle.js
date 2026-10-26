@@ -32,7 +32,7 @@ function viewCompare(){
     verdict = `<span class="hint">Nur ${esc(complete[0].name)} bietet den ganzen Korb.</span>`;
   }
   // Werkzeugzeile wie in den anderen Reitern: links dazunehmen, rechts Korb leeren; das Ergebnis darunter (0.60)
-  let h = `<div class="tools"><select data-act="bpick" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit noch nicht im Korb"><option value="">Titel dazunehmen …</option>${opts}</select>
+  let h = `<div class="tools">${pickWrap(`<select data-act="bpick" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit noch nicht im Korb"><option value="">Titel dazunehmen …</option>${opts}</select>`)}
     <button class="sm" data-act="unshare" title="Korb leeren; die Länder behalten ihre eigenen Körbe">Korb leeren</button>${viewSeg()}</div>
     <div class="bar on">${verdict}</div>
     <details class="fold" data-k="korbhow" ${S.folds.korbhow ? "open" : ""}><summary class="hint">So liest du den Korb</summary><p class="hint" style="margin:2px 0 8px">Was genau diese Titel in jedem Land kosten, mit Guthabenkarten und Rest wie auf den Länderkarten. Zellfarbe wie in der Titel-Tabelle: dunkelgrün „kaufen“, hellgrün „gut“, gold umrandet der Bestpreis; rot nur der Betrag darüber. Ein Klick auf den Preis öffnet die Seite im eShop, bei DLC den Verlauf bei DekuDeals (für DLC gibt es keinen festen eShop-Link); ein Klick auf den Ländernamen sortiert.</p></details>`;
@@ -99,6 +99,7 @@ function viewCompare(){
       return `<button class="fl" data-act="add" data-c="${p.code}" data-s="${esc(f.slugs.join(","))}" title="${esc(fillTip(f, p.currency, "Klick legt ihn für alle Länder in den Korb."))}">+ ${f.shorts.map(esc).join(" + ")} <b>spart ${eur(f.gain)}</b>${fillBest(f)}</button>`;
     }) +
     row("Hinweise", p => { const c = hurdles(p); return c.length ? c.join("<br>") : ""; }) +
+    row("Jetzt", p => jetztBtn(p)) +
     `</tfoot></table></div>`;
   h += korbPhone(cols, win, order, rowOf, itemIn);
   if(mixWins)
@@ -144,10 +145,16 @@ function korbPhone(cols, win, order, rowOf, itemIn){
     `<details><summary><b>Einkaufspreis ${pc.estimated ? "ca. " : ""}${eur(pc.cost)}</b> <span class="mut">Rechnung</span></summary><p class="hint">${esc(costTip(pc))}</p></details>` +
     line("Preis", pc.opt_gap === null || pc.opt_gap === undefined ? "" : atBest(pc.optimum + pc.opt_gap, pc.optimum) ? `<span class="g-${pc.grade || "buy"}">am Bestpreis</span>` : `<span class="abv">+${eur(pc.opt_gap)}</span> <small>über der Bestpreis-Summe ${eur(pc.optimum)}</small>`) +
     line("Wechsel", gain) + line("Rest", pc.is_ref ? "" : restHtml(pc, true)) + line("Shop", money(pc.total, pc.currency)) +
-    line("Karten", pc.cards.length ? cardsHtml(pc) : "") + line("Hinweise", hs.length ? hs.join("<br>") : "") + `</div></div>`;
+    line("Karten", pc.cards.length ? cardsHtml(pc) : "") + line("Hinweise", hs.length ? hs.join("<br>") : "") + line("Jetzt", jetztBtn(pc)) + `</div></div>`;
   return m;
 }
 
+/* Korb in den Kaufplan (1.3.0): Die Titel dieses Lands kommen als dazugenommene Titel in seinen Schritt;
+   gibt es keinen, bekommt das Land einen. Danach zeigt „Jetzt“ den Schritt mit „Auf Null“ und allem anderen */
+function jetztBtn(p){
+  if(!p.items.length) return "";
+  return `<button class="sm" data-act="tojetzt" data-c="${p.code}" title="Die ${p.items.length === 1 ? "Titel" : `${p.items.length} Titel`} dieses Lands in den Kaufplan unter Jetzt übernehmen, als Schritt ${esc(p.name)}. Titel aus anderen Schritten ziehen dorthin um.">In Jetzt übernehmen</button>`;
+}
 /* Preiszelle in Tabelle und Korb (0.81, im Korb seit 0.70): oben Preis | rotes „+x“ über dem Bestpreis,
    die Fuge mittig, damit Preise und Abstände untereinander stehen; darunter Rabatt und Marken.
    Das „+x“ hat einen eigenen Tooltip (1.2.0), der Preis den seines Links, die Zelle den Rest */

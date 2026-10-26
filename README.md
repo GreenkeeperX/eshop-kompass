@@ -392,8 +392,24 @@ keinem Schritt“. Was du mit × herausgenommen hast, sagt das am Titel. Kommen 
 der Plan in Schweden; in Polen wären sie günstiger, aber Wechsel lohnt nicht: spart nur 2,10 €“),
 und der Grund am Titel sagt dasselbe. Was schon gekauft ist, steht dort mit Quelle: im Kaufplan
 vermerkt, in deiner Sammlung, laut eShop-Kaufverlauf oder „steckt in …, das du schon hast“.
-Titel, die du für ein Land übernommen hast, in dem gerade kein Schritt kauft, stehen dort als
-„übernommen, gerade nicht im Plan“ mit ×; sie kommen wieder dazu, sobald es den Schritt gibt.
+Nimmst du Titel in ein Land, in dem gerade kein Schritt kauft (etwa mit „In Jetzt übernehmen“
+im Korb), bekommt es einen Schritt, auch wenn sich der Wechsel nicht lohnt; die Karte sagt dann
+„lohnt nicht“. Geht das nicht, etwa weil ein blockierender Rest den Plan in deinem Kontoland
+hält, stehen die Titel als „übernommen, gerade nicht im Plan“ mit ×.
+**Hinweise** stehen oben unter der Zusammenfassung, nur wenn es etwas gibt: „2 Angebote enden
+bald“ für Angebote im Plan oder mit Urteil „kaufen“ oder „gut“, die in weniger als einer Woche
+enden, und „Neu im Angebot“ für Wishlist-Titel, deren günstigstes Angebot vor höchstens drei Tagen
+begann. Ein Klick auf einen Titel öffnet seine Einzelheiten.
+
+**Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Nicht im Plan“)
+fragt nach einem angenommenen Preis in der Landeswährung, wie im Shop; vorgeschlagen ist der
+Tiefstpreis dort aus den letzten 24 Monaten. Der Plan rechnet dann so, als gäbe es den Titel dort
+zu diesem Preis, samt Urteil, Schritten und „Auf Null“. Angenommene Preise stehen violett mit
+„angenommen“, oben nennt eine Zeile alle mit × und „alle verwerfen“. Sie gelten nur im Kaufplan,
+bis du sie verwirfst; ein Schritt mit angenommenem Preis lässt sich nicht als gekauft vermerken.
+Ein angenommener Preis unter der Grenze für Kleinkram macht den Titel zu Kleinkram, der dann
+wie sonst auch auf „Passt in den Rest“ wartet.
+
 Scheiterte der letzte Preisabruf in einem Land, steht oben „Preise nicht aktuell“ und an der
 Karte „Preise vom …“; es gelten dann die alten Preise. Reihenfolge: zuerst das Land, in dem dein Konto steht (ohne Angabe
 Deutschland), dann leicht, mittel, schwer, innerhalb einer Stufe nach Angebotsende. Ist heute
@@ -437,7 +453,9 @@ Schritt, zieht er um (die Auswahl nennt „jetzt in …“), ebenso fehlende DLC
 Spiele, die nicht auf der Wishlist stehen, und jede Variante der Online-Mitgliedschaft (auch im
 Korb; von selbst nimmt der Plan beides nie); „als Korb
 vergleichen“ übernimmt die Titel des Schritts in den Korb. Nach „gekauft“ sind die
-dazugenommenen Titel dieses Landes vergessen.
+dazugenommenen Titel dieses Landes vergessen. Vor jeder Auswahl „Titel dazunehmen …“ und
+„alles, was passt …“ (auch auf Länderkarten und im Korb) steht ein Suchfeld: Tippen zeigt nur die
+Treffer als Liste darunter, Enter nimmt den ersten, Esc leert das Feld.
 
 **Auf Null:** Stört ein Rest, weil er beim nächsten Wechsel verfällt, das Land „schwer“ ist (Amerika:
 Wechsel nur mit 0) oder „Rest blockiert“ eingestellt ist, stehen darunter zwei klappbare Zeilen
@@ -575,6 +593,11 @@ Am Handy (schmaler als 641 px) steht statt der breiten Tabelle ein Land nach dem
 Auswahl des Landes mit seinem Einkaufspreis, vorgewählt das günstigste, darunter die Titel mit
 derselben Preiszelle und die Summen (Preis, Wechsel, Rest, Shop, Karten, Hinweise). Ein Tipp auf
 „Einkaufspreis“ klappt die Rechnung auf, die am Rechner im Tooltip steht.
+
+„In Jetzt übernehmen“ unter jeder Länderspalte (am Handy unter den Summen) nimmt die Titel des
+Korbs, die es dort gibt, in den Kaufplan, als Schritt dieses Lands, und wechselt zu Jetzt. Dort
+gehen „Auf Null“, ×, „Andere Länder“ und alles andere wie an jedem Schritt; Titel aus anderen
+Schritten ziehen um.
 
 Unter dem Korb steht, was er kostet, wenn jeder Titel im günstigsten Land mit Kartenzahlung
 gekauft wird, sofern das günstiger ist als alles in einem Land. Dort kostet der Wechsel nichts,

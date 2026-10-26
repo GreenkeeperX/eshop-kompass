@@ -79,18 +79,6 @@ Derzeit nichts offen.
 
 Neue Wünsche, noch nicht eingeordnet.
 
-Rückmeldung vom 23.10.2026, Vorschläge zur Abstimmung:
-
-- **Korb weiter in „Jetzt“:** Titel aus dem Korb landen bisher nicht im Kaufplan, wo „Auf Null“
-  rechnet. Entweder den Korb als Schritt eines Lands in den Plan übernehmen oder „Auf Null“ auch im
-  Korb anbieten.
-- **Was wäre, wenn:** in „Jetzt“ für einzelne Titel einen angenommenen Preis eintragen (etwa den
-  letzten Angebotspreis) und sehen, was sich an Plan und „Auf Null“ ändert. Angenommene Preise sind
-  als solche gekennzeichnet und lassen sich mit einem Klick verwerfen. Ein freier Rechner zum
-  Verschieben wäre ein eigener, größerer Schritt.
-- **Hinweise in „Jetzt“:** „1 Angebot endet morgen“, wenn ein Angebot im Plan oder mit Urteil
-  „kaufen“ in weniger als einer Woche endet, und neue Angebote seit dem letzten Abgleich.
-- **Suche in „Titel dazunehmen …“:** Die Auswahllisten sind lang; ein Feld, das beim Tippen filtert.
 - **Sammlung mit Spielinfos:** eine zusätzliche Ansicht der Sammlung mit Genre, Spielerzahl,
   lokal oder online, Koop, GameShare und Ähnlichem, automatisch gelesen. Machbarkeit: Genre und
   Spielerzahl stehen in titledb, die das Tool schon wöchentlich streamt; die Nintendo-Europa-Suche

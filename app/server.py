@@ -116,7 +116,8 @@ def plaene(basket=..., overrides=None):
         bres, bmix = planner.plans(data, settings, overrides=overrides, basket=basket,
                                    with_mix=True) if basket else ([], None)
         kauf = planner.purchase_plan(data, settings, ui["targets"], include_good=ui["plan_good"],
-                                     bought=store.load_purchases(), fill=ui["plan_fill"], skip=ui["plan_skip"])
+                                     bought=store.load_purchases(), fill=ui["plan_fill"], skip=ui["plan_skip"],
+                                     assume=ui["plan_assume"])
     return {"plans": res, "bplans": bres, "mix": bmix, "kauf": kauf}
 
 
@@ -190,7 +191,7 @@ class Handler(BaseHTTPRequestHandler):
                     out = planner.purchase_plan(store.load_data(), store.load_settings(), ui["targets"],
                                                 include_good=ui["plan_good"],
                                                 bought=store.load_purchases(), fill=ui["plan_fill"],
-                                                skip=ui["plan_skip"])
+                                                skip=ui["plan_skip"], assume=ui["plan_assume"])
                 self._send(200, out)
             elif path == "/api/verlauf":
                 q = urllib.parse.parse_qs(self.path.partition("?")[2])

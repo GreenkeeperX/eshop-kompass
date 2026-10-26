@@ -15,7 +15,8 @@ def _paid(b):
     return b.get("games") if b.get("games") is not None else b.get("cost")
 
 
-def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None, fill=None, skip=None):
+def purchase_plan(data, settings, targets=None, include_good=False, now=None, bought=None, fill=None, skip=None,
+                  assume=None):
     """Ein Gesamtvorschlag: welche Titel jetzt in welchem Land, in welcher Reihenfolge.
 
     Kandidaten sind die Titel mit dem Urteil "kaufen" (wahlweise auch "gutes Angebot").
@@ -35,12 +36,17 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
     Füllartikel: Bleibt in einem Schritt ein Rest, nennt der Plan bis zu drei
     Wishlist-Titel, die hineinpassen, möglichst nahe am Rest, egal welches Urteil.
     Was du davon übernimmst (`fill`: {Land: [Titel]}), kommt in diesen Schritt, auch aus
-    einem anderen Schritt heraus (1.2.0).
+    einem anderen Schritt heraus (1.2.0). Gibt es in dem Land keinen Schritt, bekommt es einen
+    (1.3.0, etwa „In Jetzt übernehmen“ im Korb), und es fällt nicht an der Schwelle heraus.
+
+    Angenommene Preise (`assume`: {Land: {Titel: Preis im Shop}}, 1.3.0): „Was wäre, wenn“; der
+    Plan rechnet, als gäbe es den Titel dort zu diesem Preis.
 
     Herausgenommen (`skip`: {Land: [Titel]}, 0.94): Dort kauft der Plan den Titel nicht, er geht
     ins nächstbeste Land oder wartet. Der Schritt nennt ihn mit einem Weg zurück.
     """
     data, settings = with_added(data, settings, [s for slugs in (fill or {}).values() for s in slugs])
+    data = with_assumed(data, settings, assume)
     ctx = _context(data, settings, now)
     fill = {code: [s for s in slugs if s in ctx.items] for code, slugs in (fill or {}).items()}
     skip = {code: set(slugs) for code, slugs in (skip or {}).items() if code in ctx.countries}
@@ -150,7 +156,9 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         mine = set()
         for code, slugs in fill.items():
             if code not in groups:
-                continue
+                if code not in allowed:
+                    continue
+                groups[code] = []           # Land ohne Schritt: Was du dorthin nimmst, bekommt einen (1.3.0)
             offers = ctx.countries[code]["offers"]
             for s in slugs:
                 # Die Mitgliedschaft kaufst du immer wieder: ein früherer Kauf hält sie nicht ab (0.69)
@@ -166,6 +174,10 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                             del groups[old]
                     groups[code].append(s)
                     where_now[s] = code
+        for code in [c for c, g in groups.items() if not g]:
+            del groups[code]
+        forced.clear()
+        forced.update(c for c, g in groups.items() if any(s in fill.get(c, ()) for s in g))
         taken = {x for g in groups.values() for x in g}
         later = [s for s in later if s not in taken]
         nowhere = [s for s in nowhere if s not in taken]
@@ -195,7 +207,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
         held = [s for s in wanted if everywhere[s] and everywhere[s][1] != cur_code
                 and fits(s, everywhere[s][0])]
 
-    pin, tried, small_at = {}, set(), {}
+    pin, tried, small_at, forced = {}, set(), {}, set()
     for _round in range(4):
         while True:
             groups, nowhere, later, small = assign()
@@ -242,11 +254,13 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             # lohnte: Es fällt nicht an der Schwelle heraus
             moved_to = set(pin.values())
             weak = [(p["gain"] - p.get("threshold", 0), code) for code, p in plans_by.items()
-                    if not p["home"] and not p["current"] and not p.get("worth") and code not in moved_to]
+                    if not p["home"] and not p["current"] and not p.get("worth") and code not in moved_to
+                    and code not in forced]           # von dir gewählt (1.3.0)
             # Zwei Länder mit blockierendem Rest gehen nicht nacheinander: Das schwächere fällt heraus
             stuck_steps = [p for p in steps if stuck(p)]
             if not weak and len(stuck_steps) > 1:
-                p = min(stuck_steps, key=lambda p: (p["gain"] - p.get("threshold", 0), p["code"]))
+                p = min([x for x in stuck_steps if x["code"] not in forced] or stuck_steps,
+                        key=lambda p: (p["gain"] - p.get("threshold", 0), p["code"]))
                 weak = [(None, p["code"])]
                 p["blocked_by"] = [x["name"] for x in stuck_steps if x is not p]
             if not weak:
@@ -345,6 +359,18 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
                 for s in sorted(slugs) if s in ctx.items and s not in done]
     for p in steps:
         p["others"] = [] if locked else _other_countries(ctx, p, every)
+    # Angenommene Preise (1.3.0): am Titel markiert und oben als Liste, auch was nicht in den Plan kam
+    shops = {code: countries.BY_CODE[code]["shop"] for code in countries.BY_CODE}
+    took = {(shops.get(code), s) for code, m in (assume or {}).items() for s in (m or {})}
+    for p in steps:
+        for i in p["items"]:
+            if (shops.get(p["code"]), i["slug"]) in took:
+                i["assumed"] = True
+    assumed = [{"code": code, "name": countries.BY_CODE[code]["name"], "slug": s, "short": ctx.short(s),
+                "title": ctx.title(s), "local": v, "currency": (ctx.countries.get(code) or {}).get("currency"),
+                "to": where.get(s)}
+               for code, m in (assume or {}).items() if code in countries.BY_CODE
+               for s, v in (m or {}).items() if s in ctx.items]
     total = sum(p["cost"] for p in steps if p["cost"] is not None)
     games = sum(p.get("games_cost", p["cost"]) for p in steps if p["cost"] is not None)
     ref_total = sum(p["de_now"] for p in steps)
@@ -359,6 +385,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "small_groups": _small_groups(ctx, small, small_at, steps, allowed),
             "skipped": out_skip,
             "fill_idle": fill_idle,
+            "assumed": assumed,
             "s2_skip": [dict(x, title=ctx.title(x["slug"])) for x in s2_skip],
             "packed": packed,
             "count": sum(len(p["items"]) for p in steps), "cost": _r(total),
@@ -377,6 +404,31 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "bought_saving": _r(sum((b.get("de") or 0) - _paid(b) for b in (bought or [])
                                     if b.get("de") is not None and _paid(b) is not None)),
             "good_left": 0 if include_good else sum(1 for r in rows if r["verdict"] == "good")}
+
+
+def with_assumed(data, settings, assume):
+    """Daten mit angenommenen Preisen (1.3.0, „Was wäre, wenn“): {Land: {Titel: Preis im Shop mit
+    Steuer}} gilt als Angebot ohne Ende. Nur für den Kaufplan, die gespeicherten Daten bleiben."""
+    if not assume:
+        return data
+    prices = dict(data.get("prices") or {})
+    for code, m in assume.items():
+        meta, cfg = countries.BY_CODE.get(code), settings["countries"].get(code)
+        if not meta or not cfg or not m:
+            continue
+        tax = 0.0 if code == countries.REFERENCE else float(cfg.get("tax_pct") or 0)
+        shop = dict(prices.get(meta["shop"]) or {})
+        for slug, v in m.items():
+            p = shop.get(slug)
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                continue
+            if not p or p.get("status") != "onsale" or "regular" not in p or v < 0:
+                continue
+            shop[slug] = dict(p, discount=round(v / (1 + tax / 100), 2), start=None, end=None)
+        prices[meta["shop"]] = shop
+    return dict(data, prices=prices)
 
 
 # Füllt wartender Kleinkram eines Landes eine Guthabenkarte bis auf höchstens diesen Anteil,

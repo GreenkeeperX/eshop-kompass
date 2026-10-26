@@ -485,6 +485,33 @@ function render(){
   masonry();
   navFade();
 }
+/* Suche in „Titel dazunehmen …“ (1.3.0): Ein Feld vor der Auswahl filtert beim Tippen ihre Einträge und
+   zeigt die Treffer als offene Liste darunter; Enter nimmt den ersten, Esc leert. Ohne Eingabe bleibt die
+   Auswahl, wie sie war (nach Urteil gruppiert) */
+const pickWrap = sel => `<span class="pk"><input type="search" class="pkq" placeholder="suchen …" aria-label="Titel suchen" title="Tippen filtert die Auswahl daneben; Enter nimmt den ersten Treffer, Esc leert">${sel}</span>`;
+function pickFilter(inp){
+  const box = inp.closest(".pk"), sel = box && box.querySelector("select");
+  if(!sel) return;
+  const q = inp.value.trim();
+  let n = 0;
+  for(const o of sel.options){
+    o.hidden = q ? !o.value || !hits(q, o.textContent) : false;
+    if(!o.hidden && o.value) n++;
+  }
+  for(const g of sel.querySelectorAll("optgroup")) g.hidden = ![...g.children].some(o => !o.hidden);
+  // Ohne Treffer bleibt die Liste zu, das Feld wird rot umrandet
+  box.classList.toggle("open", !!q && n > 0);
+  box.classList.toggle("none", !!q && !n);
+  inp.title = q && !n ? "Nichts gefunden" : "Tippen filtert die Auswahl daneben; Enter nimmt den ersten Treffer, Esc leert";
+  sel.size = q && n ? Math.max(2, Math.min(8, n)) : 1;
+  sel.selectedIndex = -1;
+}
+function pickFirst(inp){
+  const sel = inp.closest(".pk").querySelector("select"), o = [...sel.options].find(x => x.value && !x.hidden);
+  if(!o) return;
+  sel.value = o.value;
+  sel.dispatchEvent(new Event("change", {bubbles: true}));
+}
 /* Titel- und Bestpreisspalte bleiben stehen (1.2.0): Die zweite braucht die Breite der ersten */
 function stickCols(){
   document.querySelectorAll("#main .matrix, #main .cmp").forEach(box => {

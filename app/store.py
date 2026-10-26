@@ -56,7 +56,7 @@ DEFAULT_SETTINGS = {
 # Was die Oberfläche sich merkt, für alle Geräte gleich
 DEFAULT_UI = {"basket": None, "overrides": {}, "targets": {}, "hidden": [],
               "sort": "optimum", "dense": True, "plan_good": False, "plan_fill": {},
-              "plan_skip": {}}
+              "plan_skip": {}, "plan_assume": {}}
 
 EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {},
               "fx": {"rates": {"EUR": 1.0}, "updated": ""}, "last_sync": None}
@@ -467,9 +467,26 @@ def save_ui(new):
                                for code, slugs in new["plan_skip"].items()
                                if isinstance(slugs, list) and slugs}
         if isinstance(new.get("plan_fill"), dict):
-            ui["plan_fill"] = {str(code): [str(x) for x in slugs][:20]
+            # ab 1.3.0 bis 100 je Land: „In Jetzt übernehmen“ bringt einen ganzen Korb
+            ui["plan_fill"] = {str(code): [str(x) for x in slugs][:100]
                                for code, slugs in new["plan_fill"].items()
                                if isinstance(slugs, list) and slugs}
+        # Angenommene Preise (1.3.0): {Land: {Titel: Preis im Shop}}
+        if isinstance(new.get("plan_assume"), dict):
+            ui["plan_assume"] = {}
+            for code, m in list(new["plan_assume"].items())[:60]:
+                if not isinstance(m, dict):
+                    continue
+                keep = {}
+                for slug, v in list(m.items())[:50]:
+                    try:
+                        v = float(v)
+                    except (TypeError, ValueError):
+                        continue
+                    if 0 <= v < 1e9:
+                        keep[str(slug)] = v
+                if keep:
+                    ui["plan_assume"][str(code)] = keep
         _save("ui.json", ui)
         return ui
 

@@ -52,13 +52,14 @@ def offer(price, now):
     if not price or price.get("status") != "onsale" or "regular" not in price:
         return None
     regular = cents(price["regular"])
-    local, sale, end = regular, False, None
+    local, sale, end, since = regular, False, None, None
     if "discount" in price:
         start, stop = _parse_dt(price.get("start")), _parse_dt(price.get("end"))
         if (start is None or start <= now) and (stop is None or now <= stop):
-            local, sale, end = cents(price["discount"]), True, price.get("end")
+            local, sale, end, since = cents(price["discount"]), True, price.get("end"), price.get("start")
+    # start (1.3.0): seit wann das Angebot läuft, für „Neu im Angebot“ in Jetzt
     return {"local": local, "regular": regular, "sale": sale and local < regular,
-            "end": end, "currency": price.get("currency")}
+            "end": end, "start": since if sale and local < regular else None, "currency": price.get("currency")}
 
 
 def read_offer(x, offer_prices, currency, now_ts):
@@ -673,7 +674,7 @@ class Context:
         return {"low_eur": self.low_eur(c, slug, o),"local": o["local"] / 100, "regular": o["regular"] / 100, "sale": o["sale"],
                 "net": o.get("net", o["local"]) / 100,
                 "pct": round(100 * (1 - o["local"] / o["regular"])) if o["regular"] else 0,
-                "end": o["end"], "eur": _r(self.oeur(c, o)), "est": c["estimated"],
+                "end": o["end"], "start": o.get("start"), "eur": _r(self.oeur(c, o)), "est": c["estimated"],
                 "lang": o.get("lang"), "nocard": bool(o.get("nocard")), "nsuid": o.get("nsuid"),
                 "alone": None if o.get("direct") is not None else self.alone(c, o["local"]), "own": o.get("own"),
                 **self.low(c["code"], slug, o), **self.mark(c, slug, o)}

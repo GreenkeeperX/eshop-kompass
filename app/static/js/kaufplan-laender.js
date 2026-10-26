@@ -22,6 +22,7 @@ function viewKauf(){
   if(k.lock) h += lockBox(k);
   // Alte Preise in einem Schritt (0.95): oben sagen, nicht nur an der Karte
   const stale = k.steps.filter(p => p.price_stale);
+  h += assumedLine(k) + saleNews(k);
   if(stale.length) h += `<p class="restline"><span class="bad">Preise nicht aktuell:</span> ${stale.map(p => `${esc(p.name)} vom ${esc(dmy(p.price_at))}`).join(", ")}. Der letzte Abruf dort scheiterte, Angebote können inzwischen geendet haben. <button class="link" data-act="showlog">Protokoll</button></p>`;
   if(k.steps.length) h += `<div class="grid steps masonry">` + k.steps.map((p, n) => planCard(p, n + 1)).join("") + `</div>`;
   else h += emptyPlan();
@@ -30,6 +31,42 @@ function viewKauf(){
   h += boughtBox(k);
   return h;
 }
+/* Hinweise oben im Kaufplan (1.3.0): Angebote, die in weniger als einer Woche enden (im Plan oder mit Urteil
+   kaufen/gut), und Angebote, die in den letzten drei Tagen begonnen haben (jede Wishlist) */
+function saleNews(k){
+  const now = Date.now(), day = 864e5, soon = new Map(), fresh = new Map();
+  const ends = (slug, title, end) => {
+    const t = +new Date(end || "");
+    if(isNaN(t) || t < now || t - now > 7 * day) return;
+    if(!soon.has(slug) || t < soon.get(slug).t) soon.set(slug, {slug, title, t, end});
+  };
+  for(const p of k.steps) for(const i of p.items) if(i.sale) ends(i.slug, i.short, i.end);
+  for(const r of S.state.radar){
+    const o = shownOffer(r);
+    if(!o || !o.sale) continue;
+    if(r.verdict === "buy" || r.verdict === "good") ends(r.slug, r.title, o.end);
+    const t = +new Date(o.start || "");
+    if(!isNaN(t) && now - t <= 3 * day && t <= now) fresh.set(r.slug, {slug: r.slug, title: r.title, t, r, o});
+  }
+  const btn = x => `<button class="link" data-act="gotitle" data-s="${esc(x.slug)}" title="Einzelheiten zu ${esc(x.title)}">${esc(x.title)}</button>`;
+  const list = (xs, one, key) => xs.length <= 5 ? xs.map(one).join(", ")
+    : xs.slice(0, 4).map(one).join(", ") + ` <details class="inl" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>und ${xs.length - 4} weitere</summary>${xs.slice(4).map(one).join("<br>")}</details>`;
+  let h = "";
+  const a = [...soon.values()].sort((x, y) => x.t - y.t);
+  if(a.length) h += `<p class="restline news"><b>${a.length === 1 ? "1 Angebot endet bald" : `${a.length} Angebote enden bald`}:</b> ${list(a, x => `${btn(x)} ${endCell(x.end, "bis ")}`, "newssoon")}</p>`;
+  const b = [...fresh.values()].sort((x, y) => y.t - x.t);
+  if(b.length) h += `<p class="restline news"><b>Neu im Angebot</b> <small class="mut">seit höchstens drei Tagen</small>: ${list(b, x => `${btn(x)} ${pill(x.r.verdict)} <span class="pct">−${x.o.pct} %</span>`, "newsfresh")}</p>`;
+  return h;
+}
+/* Angenommene Preise (1.3.0, „Was wäre, wenn“): oben im Kaufplan, damit niemand sie für echte Preise hält */
+function assumedLine(k){
+  const xs = k.assumed || [];
+  if(!xs.length) return "";
+  return `<p class="restline asmline"><span class="warnc"><b>Was wäre, wenn:</b> Der Plan rechnet mit ${xs.length === 1 ? "einem angenommenen Preis" : `${xs.length} angenommenen Preisen`}.</span> ` +
+    xs.map(x => `${esc(x.short)} <span class="asm">${money(x.local, x.currency || "EUR")}</span> in ${esc(x.name)}${x.to ? "" : ` <small class="mut">(nicht im Plan)</small>`}<button class="x" data-act="unassume" data-c="${x.code}" data-s="${esc(x.slug)}" title="Annahme verwerfen">×</button>`).join(" · ") +
+    ` · <button class="link" data-act="unassumeall">alle verwerfen</button></p>`;
+}
+const assumeBtn = (code, slug) => `<button class="link asmb" data-act="assume" data-c="${code}" data-s="${esc(slug)}" title="Preis annehmen: rechnen, als gäbe es den Titel hier zu einem anderen Preis (Was wäre, wenn)" aria-label="Preis annehmen">✎</button>`;
 function emptyPlan(){
   // Die nächsten Chancen: Angebote mit dem kleinsten Abstand zum Bestpreis
   const near = S.state.radar.filter(r => r.verdict === "good" || r.verdict === "wait")
@@ -77,7 +114,7 @@ function npRow(slug, o){
     `<span class="c-pct">${x && x.sale ? `<span class="pct">−${x.pct} %</span>` : ""}</span>` +
     `<span class="c-land">${x ? priceLink(slug, x.code, esc(x.name), x, x.currency) : ""}</span>` +
     `<span class="r c-best">${x && ce ? overBest(x.eur, ce.eur, r.verdict === "none" ? null : r.verdict) : `<span class="mut">–</span>`}</span>` +
-    `<span class="c-end">${x && x.sale && x.end ? endCell(x.end) : ""}</span><span class="c-act">${act}</span></div>`;
+    `<span class="c-end">${x && x.sale && x.end ? endCell(x.end) : ""}</span><span class="c-act">${x && S.kauf && o.act === undefined ? assumeBtn(x.code, slug) + " " : ""}${act}</span></div>`;
 }
 /* Titel eines Blocks nach Spiel: zwei und mehr Titel eines Spiels unter einer klappbaren Zeile mit seinem Namen,
    wie die Gruppen der Wishlist; ein einzelner mit vollem Namen */
@@ -417,7 +454,7 @@ function planCard(p, step){
         const first = `<td class="t" title="${esc(tip)}">${xBtn(p, i, step)}${nm}${filled}</td>`;
         // Klassen c-… ordnen die Zellen am Handy zu einer Karte je Titel (0.75)
         return `<tr>${first}${wide ? `<td class="c-loc" data-l="Shop">${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td class="c-end"${i.sale ? ` data-l="bis"` : ""}>${i.sale ? endCell(i.end) : `<span class="mut">normal</span>`}</td>
-          <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${buyLink(p.code, i, num(i.eur))}${i.sale ? ` <span class="pct">−${i.pct} %</span>` : ""}</td>
+          <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${i.assumed ? `<span class="asm" title="Angenommener Preis (Was wäre, wenn), kein echtes Angebot">${num(i.eur)}</span> <small class="asm">angenommen</small><button class="x" data-act="unassume" data-c="${p.code}" data-s="${esc(i.slug)}" title="Annahme verwerfen">×</button>` : buyLink(p.code, i, num(i.eur))}${i.sale && !i.assumed ? ` <span class="pct">−${i.pct} %</span>` : ""}${step && !i.assumed && !p.ro ? assumeBtn(p.code, i.slug) : ""}</td>
           <td class="c-best">${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>${(S.state.radar.find(r => r.slug === i.slug) || {}).nohist ? `<br><span class="nohist" title="DekuDeals hat für diesen Titel noch keinen Tiefstpreis geliefert: Der Bestpreis stützt sich nur auf heutige Preise und die eigene Aufzeichnung">ohne Verlauf</span>` : ""}` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
           ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
       }).join("") + `</tbody></table></div>`;
@@ -434,7 +471,7 @@ function planCard(p, step){
     const ov = S.ui.overrides[p.code];
     const changed = ov && ((ov.add||[]).length || (ov.remove||[]).length);
     foot += (has ? `<button data-act="share" data-c="${p.code}" title="Diesen Warenkorb als Korb übernehmen und in allen Ländern vergleichen (Wishlist, Ansicht Korb)">als Korb vergleichen</button>` : "") +
-      (opts ? `<select data-act="pick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht im Korb dieses Landes sind. Andere Titel kennt das Tool nicht: Preise holt es nur für die Wishlist."><option value="">Titel dazunehmen …</option>${opts}</select>` : "") +
+      (opts ? pickWrap(`<select data-act="pick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht im Korb dieses Landes sind. Andere Titel kennt das Tool nicht: Preise holt es nur für die Wishlist."><option value="">Titel dazunehmen …</option>${opts}</select>`) : "") +
       (changed ? `<button class="link" data-act="reset" data-c="${p.code}">zurücksetzen</button>` : "");
   }
   if(p.rate && step){
@@ -447,7 +484,7 @@ function planCard(p, step){
       r => money(r.cells[p.code].local, cur) + (elsewhere[r.slug] ? `, jetzt in ${elsewhere[r.slug]}` : ""), {code: p.code, skip: inPlan});
     const mine = ((S.ui.plan_fill || {})[p.code] || []).length + ((S.ui.plan_skip || {})[p.code] || []).length;
     foot += (has ? `<button data-act="share" data-c="${p.code}" data-step="1" title="Die Titel dieses Schritts als Korb übernehmen und in allen Ländern vergleichen (Wishlist, Ansicht Korb)">als Korb vergleichen</button>` : "") +
-      (opts ? `<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu; steht ein Titel in einem anderen Schritt, zieht er hierher um."><option value="">Titel dazunehmen …</option>${opts}</select>` : "") +
+      (opts ? pickWrap(`<select data-act="planpick" data-c="${p.code}" title="Deine Wishlist-Titel und die Online-Mitgliedschaft, soweit es sie hier gibt und sie noch nicht in diesem Schritt sind. Sie kommen als Füllartikel dazu; steht ein Titel in einem anderen Schritt, zieht er hierher um."><option value="">Titel dazunehmen …</option>${opts}</select>`) : "") +
       (mine ? `<button class="link" data-act="planreset" data-c="${p.code}" title="Was du in diesem Schritt dazugenommen oder herausgenommen hast, verwerfen">zurücksetzen</button>` : "");
   }
   if(foot) h += `<div class="foot">${foot}</div>`;
@@ -501,9 +538,9 @@ function suggestHtml(p, step){
       .concat(xs.slice(0, 2).map(f => ({h: one(f)})));
     const optOf = (f, name) => `<option value="${esc(f.slug)}">${esc(name)} · ${esc(money(f.local, cur))} · bleiben ${esc(money(f.left, cur))}</option>`;
     const xsSorted = [...xs].sort((a, b) => (a.game || "").localeCompare(b.game || "", "de") || a.short.localeCompare(b.short, "de"));
-    const sel = more.length + xs.length > 1 ? ` <select data-act="${step ? "planpick" : "pick"}" data-c="${p.code}" title="Alles, was in den Rest passt, mit dem, was danach bleibt: deine Wishlist und die DLC deiner Spiele, die nicht auf der Wishlist stehen"><option value="">alles, was passt (${more.length + xs.length}) …</option>` +
+    const sel = more.length + xs.length > 1 ? " " + pickWrap(`<select data-act="${step ? "planpick" : "pick"}" data-c="${p.code}" title="Alles, was in den Rest passt, mit dem, was danach bleibt: deine Wishlist und die DLC deiner Spiele, die nicht auf der Wishlist stehen"><option value="">alles, was passt (${more.length + xs.length}) …</option>` +
       (more.length ? `<optgroup label="Wishlist">${more.map(f => optOf(f, f.title + (f.dlc ? " (DLC)" : ""))).join("")}</optgroup>` : "") +
-      (xs.length ? `<optgroup label="DLC deiner Spiele, nicht auf der Wishlist">${xsSorted.map(f => optOf(f, (f.game ? f.game + ": " : "") + f.short)).join("")}</optgroup>` : "") + `</select>` : "";
+      (xs.length ? `<optgroup label="DLC deiner Spiele, nicht auf der Wishlist">${xsSorted.map(f => optOf(f, (f.game ? f.game + ": " : "") + f.short)).join("")}</optgroup>` : "") + `</select>`) : "";
     const btns = nsoFit.concat(top.map(x => x.h));
     fill.forEach(f => inRest.add(f.slug));
     // Auch ohne Treffer sichtbar (0.94): Die Zeile fehlt nicht, sie sagt, dass nichts passt

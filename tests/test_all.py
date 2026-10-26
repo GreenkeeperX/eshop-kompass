@@ -1392,6 +1392,30 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(moved["DE"]["fill_slugs"], ["vs-foscari"])
         self.assertNotIn("vs-foscari", [i["slug"] for i in moved["BR"]["items"]])
 
+    def test_taken_fill_creates_its_own_step(self):
+        # 1.3.0: Titel, die du in ein Land ohne Schritt nimmst (etwa „In Jetzt übernehmen“ im Korb),
+        # bekommen dort einen Schritt, und der fällt nicht an der Schwelle heraus
+        plan = self.by(planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True,
+                                             fill={"NO": ["hades", "spiritfarer", "vs-foscari"]})["steps"])
+        self.assertEqual([i["slug"] for i in plan["NO"]["items"]], ["hades", "spiritfarer", "vs-foscari"])
+        self.assertFalse(plan["NO"]["worth"])
+        self.assertNotIn("DE", plan)
+        self.assertEqual([i["slug"] for i in plan["BR"]["items"]], ["good-job", "nidhogg-2"])
+
+    def test_assumed_price_changes_the_plan(self):
+        # 1.3.0: „Was wäre, wenn“: ein angenommener Preis gilt wie ein Angebot, der Titel ist markiert
+        before = json.dumps(self.data["prices"], sort_keys=True)
+        plan = planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True,
+                                     assume={"NO": {"spiritfarer": 10}})
+        no = self.by(plan["steps"])["NO"]
+        self.assertEqual([(i["slug"], i["local"], i.get("assumed")) for i in no["items"]], [("spiritfarer", 10, True)])
+        self.assertEqual([(x["code"], x["slug"], x["to"]) for x in plan["assumed"]], [("NO", "spiritfarer", "NO")])
+        self.assertEqual(json.dumps(self.data["prices"], sort_keys=True), before)
+        # Ohne Annahme wie bisher, die Daten bleiben unverändert
+        plain = planner.purchase_plan(self.data, self.settings, now=NOW, include_good=True)
+        self.assertNotIn("NO", self.by(plain["steps"]))
+        self.assertEqual(plain["assumed"], [])
+
     def test_taken_fill_items_without_step_stay_visible(self):
         # 0.95: Übernommenes für ein Land ohne Schritt verschwindet nicht still
         self.without_lasting()
@@ -1858,6 +1882,10 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(s["lang_confirm"], {})
         self.assertEqual(ui["overrides"], {"BR": {"add": ["x"], "remove": []}})
         self.assertIsNone(store.save_ui({"basket": []})["basket"])
+        # Angenommene Preise (1.3.0): nur Zahlen ab 0, leere Länder fallen weg
+        ui = store.save_ui({"plan_assume": {"BR": {"hades": "12.5", "x": "nein", "y": -1}, "JP": {}, "NO": "x"}})
+        self.assertEqual(ui["plan_assume"], {"BR": {"hades": 12.5}})
+        self.assertEqual(store.save_ui({"plan_fill": {"BR": [str(n) for n in range(150)]}})["plan_fill"]["BR"][-1], "99")
         s = store.save_settings({"countries": {"US": {"tier": "9", "tax_pct": "7.5", "pay": "auto",
                                                       "cards": "50=41"}},
                                  "lang_rule": "nein", "tier_min_saving": {"3": "25", "9": 1}})
@@ -4534,11 +4562,11 @@ class UiContractTest(unittest.TestCase):
         "radar": {"at", "cashback", "champ", "de", "diff", "dlc_of", "easy", "gap", "hard", "no_ids", "nohist", "owned",
                   "parent_owned", "reason", "rhythm", "shown", "slug", "target", "title", "typical", "verdict"},
         "matrix.rows": {"best", "cells", "champ", "dlc_of", "no_ids", "owned", "parent_owned", "slug", "title", "typical"},
-        "matrix.cells": {"alone", "champ", "end", "est", "eur", "gap", "grade", "lang", "local", "low", "low_eur",
+        "matrix.cells": {"alone", "champ", "end", "est", "eur", "gap", "grade", "lang", "local", "low", "low_eur", "start", "regular",
                          "na", "nocard", "nsuid", "own", "pct", "sale"},
         "matrix.cols": {"code", "currency", "name", "tier"},
         "kaufplan": {"bought", "bought_how", "cost", "nowhere_slugs", "count", "dropped", "good_left", "held", "later", "lock", "packed",
-                     "s2_skip", "saving", "fill_idle", "skipped", "small", "small_groups", "steps"},
+                     "s2_skip", "saving", "fill_idle", "skipped", "small", "small_groups", "steps", "assumed"},
         "plan": {"alt_codes", "alt_total", "cards", "code", "cost", "currency", "current", "direct", "direct_n",
                  "estimated", "family", "fill", "fill_nso", "fill_pairs", "fill_zero", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
                  "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "price_at", "price_stale", "rate", "ref_total", "rest", "rest_eur",
