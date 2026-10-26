@@ -49,6 +49,7 @@ def _state():
         "offer_checks": planner.offer_checks(data, settings, pay),
         "card_status": planner.card_status(data, settings),
         "owned_count": len(data.get("owned") or []),
+        "keys": store.keys_view(),
         "countries": [dict(countries.BY_CODE[c], family_name=countries.FAMILIES[
             countries.BY_CODE[c]["family"]]) for c in countries.ORDER],
         "status": sync.status,
@@ -248,6 +249,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, plaene(body.get("basket", ...), body.get("overrides")))
             elif path == "/api/settings":
                 self._send(200, {"settings": store.save_settings(body)})
+            elif path == "/api/keys":
+                self._send(200, {"keys": store.keys_view(store.save_keys(body))})
             elif path == "/api/ui":
                 self._send(200, {"ui": store.save_ui(body)})
             elif path == "/api/import":

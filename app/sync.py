@@ -1,6 +1,5 @@
 """Abgleich: Wishlist -> Titel-IDs je Region -> Preise je Land -> Wechselkurse."""
 import json
-import os
 import re
 import threading
 import time
@@ -2381,13 +2380,13 @@ IGDB_FIELDS = ("fields name,genres.name,game_modes.name,platforms.name,multiplay
                "multiplayer_modes.offlinemax; limit 2;")
 
 
-def igdb_probe(names, sleep=time.sleep, env=None):
-    """IGDB (Twitch-Schlüssel, optional über IGDB_CLIENT_ID und IGDB_CLIENT_SECRET im Container):
-    Genres, Spielmodi und Koop-Angaben je Plattform. Der Schlüssel steht nie in der Ausgabe."""
-    env = os.environ if env is None else env
-    cid, secret = env.get("IGDB_CLIENT_ID", "").strip(), env.get("IGDB_CLIENT_SECRET", "").strip()
+def igdb_probe(names, sleep=time.sleep, keys=None):
+    """IGDB (Twitch-Schlüssel, optional, unter Einstellungen > Quellen): Genres, Spielmodi und
+    Koop-Angaben je Plattform. Der Schlüssel steht nie in der Ausgabe."""
+    keys = store.load_keys() if keys is None else keys
+    cid, secret = keys.get("igdb_id", ""), keys.get("igdb_secret", "")
     if not (cid and secret):
-        return ["IGDB: kein Schlüssel (IGDB_CLIENT_ID und IGDB_CLIENT_SECRET), nicht angefragt"]
+        return ["IGDB: kein Schlüssel eingetragen (Einstellungen, Quellen), nicht angefragt"]
     r = sources.request("https://id.twitch.tv/oauth2/token", data=urllib.parse.urlencode(
         {"client_id": cid, "client_secret": secret, "grant_type": "client_credentials"}).encode())
     try:

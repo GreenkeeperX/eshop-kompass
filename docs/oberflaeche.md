@@ -520,7 +520,9 @@ Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel dazunehmen �
 „Rechnung“ darunter in eigener Zeile; Aufklappen schiebt so nichts zur Seite (ab 0.58).
 
 Einstellungen: Jeder Bereich (Länder, Regeln, Gebühren, Sprachen prüfen, Quellen, Sicherung und
-Protokoll) ist eine eigene Karte (`.setc`), damit klar bleibt, wozu Eingeklapptes gehört.
+Protokoll) ist eine eigene Karte (`.setc`), damit klar bleibt, wozu Eingeklapptes gehört. In „Quellen“
+steht der IGDB-Schlüssel in einer eigenen Klappe (`data-k` igdbkey, ab 1.4.3): Kopf „eingetragen“ (grün)
+oder „keiner“, Felder als Passwortfelder, die nie einen gespeicherten Wert zeigen.
 Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Jede Klappe und jeder Kasten einer Karte
 hat 10 px Abstand zum Inhalt darüber (`.setc details`, ab 0.78; nicht in Listen und Tabellen). Das Protokollfeld steht unter der Zeile
 „Protokoll des letzten Abgleichs · kopieren“ in einer Klappe „Protokoll anzeigen“ (offen von Haus aus,

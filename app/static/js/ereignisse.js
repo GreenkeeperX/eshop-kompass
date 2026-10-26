@@ -332,6 +332,15 @@ document.addEventListener("click", async e => {
         document.body.appendChild(ta); ta.select(); try{ ok = document.execCommand("copy"); }catch(e){} ta.remove(); }
       toast(ok ? "Kopiert" : "Kopieren nicht möglich, bitte markieren");
     }
+    else if(a === "savekeys" || a === "dropkeys"){
+      // Eigene Schnittstelle (1.4.3): Schlüssel gehören nicht in die Einstellungen und die Sicherung
+      const id = a === "dropkeys" ? "" : $("igdbId").value.trim(), sec = a === "dropkeys" ? "" : $("igdbSecret").value.trim();
+      if(a === "savekeys" && !(id && sec)){ toast("Bitte Client-ID und Secret eintragen"); return; }
+      const r = await api("/api/keys", {igdb_id: id, igdb_secret: sec});
+      S.state.keys = r.keys;
+      render();
+      toast(a === "dropkeys" ? "Schlüssel entfernt" : "Schlüssel gespeichert");
+    }
     else if(a === "diag"){
       // Eigene Box: Das Protokoll des Abgleichs läuft daneben weiter
       const l = $("diag");

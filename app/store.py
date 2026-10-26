@@ -181,6 +181,32 @@ def _own_offer(e, known):
     return x and {"slug": e["slug"], **{k: v for k, v in x.items() if k != "key"}}
 
 
+# Schlüssel für Quellen (ab 1.4.3): eigene Datei, nicht in den Einstellungen, damit sie weder in
+# der Sicherung noch im Browser landen. Die Oberfläche erfährt nur, ob einer eingetragen ist.
+KEYS = {"igdb_id": "", "igdb_secret": ""}
+
+
+def load_keys():
+    k = _load("keys.json", KEYS)
+    return {n: k[n] if isinstance(k.get(n), str) else "" for n in KEYS}
+
+
+def save_keys(new):
+    """Übernimmt nur bekannte Schlüssel als Text; leer löscht."""
+    with lock:
+        k = load_keys()
+        for n in KEYS:
+            if isinstance(new.get(n), str):
+                k[n] = new[n].strip()[:200]
+        _save("keys.json", k)
+        return k
+
+
+def keys_view(k=None):
+    k = load_keys() if k is None else k
+    return {"igdb": bool(k["igdb_id"] and k["igdb_secret"])}
+
+
 def save_settings(new):
     """Übernimmt nur bekannte Felder mit passendem Typ."""
     with lock:

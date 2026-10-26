@@ -874,9 +874,10 @@ Was das Tool woher, wann und wie oft holt und wo es die Daten ablegt, steht ausf
 Mitgliedschaftsseiten für Japan, Deutschland und die USA) und für Spielinfos der Sammlung (welche
 Felder die Europa-Suche nennt, was die Shopseite, DekuDeals, Nintendos GameShare-Liste, Wikidata
 und, mit eigenem Schlüssel, IGDB zu Koop, Online und GameShare sagen). Gespeichert wird dabei
-nichts. Den IGDB-Schlüssel gibt es kostenlos als Twitch-Entwickler-App; er kommt als
-`IGDB_CLIENT_ID` und `IGDB_CLIENT_SECRET` in die Umgebung des Containers (siehe
-`docker-compose.yml`), ohne ihn fragt der Test IGDB nicht an.
+nichts. Den IGDB-Schlüssel gibt es kostenlos als Twitch-Entwickler-App; Client-ID und Secret
+kommen unter Einstellungen, Quellen, „IGDB-Schlüssel für Spielinfos“ hinein. Sie liegen in einer
+eigenen Datei (`keys.json` im Datenordner), nicht in der Sicherung, und gehen nie zurück an den
+Browser. Ohne Schlüssel fragt der Test IGDB nicht an.
 
 ### Datenquellen
 

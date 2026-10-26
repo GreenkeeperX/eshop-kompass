@@ -2186,7 +2186,7 @@ class SafetyTest(unittest.TestCase):
             return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
         wiki = json.dumps({"results": {"bindings": [{"name": {"value": "Snipperclips"}, "modes": {"value": "multiplayer video game, co-op"},
                                                       "maxp": {"value": "4"}}]}})
-        with mock.patch.object(sources, "request", request), mock.patch.dict(os.environ, {"IGDB_CLIENT_ID": ""}):
+        with mock.patch.object(sources, "request", request), mock.patch.object(store, "load_keys", lambda: dict(store.KEYS)):
             text = "\n".join(sync.diagnose(sleep=lambda s: None))
         self.assertTrue(any("nsuid_txt%3A%2870010000000038%29" in u for u in urls))
         self.assertIn("Spielinfos DekuDeals (snipperclips, schon gelesen): Genre Puzzle Players 1-4", text)
@@ -2221,7 +2221,7 @@ class SafetyTest(unittest.TestCase):
             return {"url": url, "status": 200, "text": json.dumps(games), "enc": "", "server": "t", "error": ""}
         with mock.patch.object(sources, "request", request):
             lines = sync.igdb_probe(["Snipperclips™"], sleep=lambda s: None,
-                                    env={"IGDB_CLIENT_ID": "cid", "IGDB_CLIENT_SECRET": "geheim123"})
+                                    keys={"igdb_id": "cid", "igdb_secret": "geheim123"})
         text = "\n".join(lines)
         self.assertIn("Modi ['Co-operative']; Genres ['Puzzle']", text)
         self.assertIn("'offlinecoopmax': 4", text)
@@ -2230,7 +2230,20 @@ class SafetyTest(unittest.TestCase):
         self.assertIn(b"client_secret=geheim123", calls[0][1])
         self.assertEqual(calls[1][1], b'search "Snipperclips"; ' + sync.IGDB_FIELDS.encode())
         self.assertEqual(calls[1][2]["Authorization"], "Bearer tok")
-        self.assertEqual(sync.igdb_probe(["x"], env={}), ["IGDB: kein Schlüssel (IGDB_CLIENT_ID und IGDB_CLIENT_SECRET), nicht angefragt"])
+        self.assertEqual(sync.igdb_probe(["x"], keys={}), ["IGDB: kein Schlüssel eingetragen (Einstellungen, Quellen), nicht angefragt"])
+
+    def test_keys_stay_out_of_settings_and_backup(self):
+        # 1.4.3: Schlüssel in keys.json, nicht in den Einstellungen; die Oberfläche sieht nur „eingetragen“
+        self.addCleanup(store.save_keys, {"igdb_id": "", "igdb_secret": ""})
+        self.assertEqual(store.keys_view(), {"igdb": False})
+        store.save_keys({"igdb_id": " cid ", "igdb_secret": "geheim123", "other": "x"})
+        self.assertEqual(store.load_keys(), {"igdb_id": "cid", "igdb_secret": "geheim123"})
+        self.assertEqual(store.keys_view(), {"igdb": True})
+        store.save_settings({"igdb_secret": "nein"})
+        self.assertNotIn("igdb_secret", store.load_settings())
+        self.assertNotIn("geheim123", json.dumps(store.load_settings()))
+        store.save_keys({"igdb_secret": ""})
+        self.assertEqual(store.keys_view(), {"igdb": False})
 
     def test_diagnose_reads_history_from_item_page(self):
         # Bis 0.37 suchte der Verbindungstest den Verlauf in robots.txt statt in der Artikelseite
