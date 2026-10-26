@@ -1434,12 +1434,16 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
             continue
         todo = [(it, it["ids"][fam][0]) for it in items.values()
                 if it["ids"].get(fam) and due(it, fam) and not it.get("parent")]
-        # Nur Spiele, deren DLC noch fehlen, wie in „Sprachen prüfen“: Bis 1.4.3 zählte der Abgleich
-        # auch Spiele, deren DLC du schon hast, als offene Seiten, die Ansicht aber nicht
-        for game, nsuid in game_ids(data, fam, planner.extra_dlc(data, settings)).items():
+        # Auch Spiele, deren DLC du schon hast: Ihre Seite bestätigt, was titledb sagt (Entscheidung
+        # 26.10.2026: lieber prüfen). Wo DLC noch fehlen, hängt etwas daran; die kommen zuerst (1.4.5)
+        needed = set(game_ids(data, fam, planner.extra_dlc(data, settings)))
+        confirm = set()
+        for game, nsuid in game_ids(data, fam).items():
             rec = glangs.setdefault(game, {})
             if due(rec, fam):
                 todo.append((rec, nsuid))
+                if game not in needed:
+                    confirm.add(id(rec))
         # Nach einem Warteraum ruht store-jp JP_WAIT_SECONDS: Japan kommt aus titledb und vom
         # Browser-Helfer, ein Versuch je Abgleich brachte nur den Warteraum (0.54)
         wait_until = (data.get("lang_wait") or {}).get(fam, 0)
@@ -1451,14 +1455,17 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                 tdb = sum(1 for r, _ in todo if (r.get("langs") or {}).get(fam))
                 wish = sum(1 for r, _ in todo if id(r) in mine)
                 bare = sum(1 for r, _ in todo if id(r) in mine and not (r.get("langs") or {}).get(fam))
+                need = len(todo) - wish - len(confirm)
                 parts = [f"{wish} Wishlist-Titel, {bare} davon ohne Angabe" if wish else "",
-                         f"{len(todo) - wish} Spiele der Sammlung (Sprache für fehlende DLC)" if len(todo) > wish else "",
-                         f"davon {tdb} schon aus titledb, nur zur Bestätigung" if tdb else ""]
+                         f"{need} Spiele der Sammlung mit fehlenden DLC" if need else "",
+                         f"{len(confirm)} Spiele der Sammlung ohne fehlende DLC, nur zur Bestätigung" if confirm else "",
+                         f"{tdb} davon schon aus titledb" if tdb else ""]
                 _log(f"Sprachen {name}: {len(todo)} Seiten offen ({', '.join(x for x in parts if x)}), der Store zeigte zuletzt den Warteraum; nächster Versuch ab "
                      f"{datetime.fromtimestamp(wait_until).strftime('%d.%m., %H:%M')}, bis dahin titledb und Browser-Helfer")
             continue
         # Schonend: ungeprüfte zuerst, höchstens LANG_PER_SYNC Seiten, der Rest beim nächsten Abgleich
-        todo.sort(key=lambda t: (t[0].get("langs_tries") or {}).get(fam, 0))
+        # Was nur bestätigt, kommt nach dem, woran etwas hängt (1.4.5)
+        todo.sort(key=lambda t: (id(t[0]) in confirm, (t[0].get("langs_tries") or {}).get(fam, 0)))
         # `budget` teilt die Seiten auf beide Aufrufe eines Abgleichs auf
         n = LANG_PER_SYNC if budget is None else budget.setdefault(fam, LANG_PER_SYNC)
         rest, todo = max(0, len(todo) - n), todo[:n]

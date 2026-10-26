@@ -3882,6 +3882,31 @@ class ExtraDlcTest(unittest.TestCase):
         self.assertEqual(sources.fetch_titledb(["70010000000123"], fetch=lambda u: doc),
                          {"70010000000123": {"langs": "japanese, english", "app": None}})
 
+    def test_confirm_pages_after_needed_ones(self):
+        # 1.4.5: Spiele ohne fehlende DLC bestätigt der Abgleich weiter (Entscheidung 26.10.2026),
+        # aber nach denen, deren DLC fehlen, und das Protokoll nennt sie getrennt
+        settings = store.load_settings()
+        for code in settings["countries"]:
+            settings["countries"][code]["enabled"] = code in ("DE", "JP")
+        data = {"items": {}, "prices": {}, "langs_jp_reset": 1, "lang_wait": {"JP": 2e9},
+                "extra": {"d1": {"parent": "b", "ids": {"JP": ["22"]}}, "d2": {"parent": "a", "ids": {"JP": ["11"]}}},
+                "glangs": {"b": {"langs": {"JP": "japanese, german"}, "langs_src": {"JP": "titledb"}}}}
+        calls = []
+
+        def jp(n, fetch=None):
+            calls.append(n)
+            return "japanese, german"
+        sync.status["log"].clear()
+        with mock.patch.object(planner, "extra_dlc", lambda d, s: {"d2": ("D2", "a")}), \
+                mock.patch.object(sources, "fetch_langs_jp", jp):
+            sync.sync_langs(data, settings, None, lambda s: None, now=1e9)
+            line = next(l for l in sync.status["log"] if "Sprachen Japan" in l)
+            self.assertIn("1 Spiele der Sammlung mit fehlenden DLC, 1 Spiele der Sammlung ohne fehlende DLC, "
+                          "nur zur Bestätigung, 1 davon schon aus titledb", line)
+            data["lang_wait"] = {}
+            sync.sync_langs(data, settings, None, lambda s: None, now=1e9)
+        self.assertEqual(calls, ["11", "22"])                          # erst, woran etwas hängt
+
     def test_japan_waiting_room_stops_store_and_titledb_fills(self):
         # store-jp zeigt dem Tool den Warteraum: eine Probe, dann Schluss für diesen Abgleich.
         # titledb füllt die Lücken, gekennzeichnet; Nintendo geht vor, sobald es durchkommt.
