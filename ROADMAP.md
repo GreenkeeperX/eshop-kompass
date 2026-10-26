@@ -90,5 +90,8 @@ Neue Wünsche, noch nicht eingeordnet.
   ohne neuen Abruf. Welche Felder die Nintendo-Europa-Suche dazu liefert und was die Shopseiten zu
   Koop und GameShare sagen, zeigt seit 1.4.1 „Verbindung testen“ (Spielinfos), seit 1.4.2 auch
   DekuDeals, Nintendos GameShare-Liste, Wikidata und IGDB (mit eigenem Schlüssel). Wie bei den
-  Sprachen: eine offene Quelle liefert, Nintendo bestätigt, nur eine Quelle heißt „≈“. Danach
-  entscheiden, welche Quellen der Abgleich nutzt.
+  Sprachen: eine offene Quelle liefert, Nintendo bestätigt, nur eine Quelle heißt „≈“.
+  Entschieden (26.10.2026): Umschalter „DLC | Spiele“ im Reiter Sammlung, alle Angaben erst einmal
+  zeigen, Mischungen wie vorgeschlagen. Schritte: 1.6.0 Daten (DekuDeals beim DLC-Schritt, Nintendo
+  bestätigt, erledigt), 1.6.1 Ansicht „Spiele“ mit Filtern, Sortierung und „≈“, 1.6.2 IGDB für Koop,
+  GameShare, Mischungen und „Überrasch mich“.

@@ -2194,6 +2194,7 @@ class SafetyTest(unittest.TestCase):
             text = "\n".join(sync.diagnose(sleep=lambda s: None))
         self.assertTrue(any("nsuid_txt%3A%2870010000000038%29" in u for u in urls))
         self.assertIn("Spielinfos DekuDeals (snipperclips, schon gelesen): Genre Puzzle Players 1-4", text)
+        self.assertIn('Spielinfos DekuDeals gelesen: {}', text)          # dt/dd ohne Doppelpunkt: kein Kasten „Details“
         self.assertIn("GameShare-Liste: HTTP 404", text)            # erst Deutschland, dann Spanien
         self.assertIn("Tabellenzeilen 2, Anfang der Tabelle: Spiel Local Mario Sí", text)
         self.assertIn("Wikidata: HTTP 200", text)
@@ -2247,7 +2248,9 @@ class SafetyTest(unittest.TestCase):
             "23:08:25 Kartenpreise: Shop lehnt Abrufe ab (429 bei https://shop.example/x), Werte von Hand gelten weiter",
             "23:08:25 Kartenpreise: 10 von 12 gelesen",
             "23:09:19 Sprachen Japan: 2 Seiten offen, der Store zeigte zuletzt den Warteraum",
-            "23:09:19 Sprachen Europa: nichts fällig"], now=1e9)
+            "23:09:19 Sprachen Europa: nichts fällig",
+            "23:09:20 Spielinfos DekuDeals: 40 von 108 Spielen der Sammlung, 68 folgen",
+            "23:09:21 Spielinfos Nintendo nicht abrufbar (HTTP 503)"], now=1e9)
         src = data["sources"]
         self.assertEqual((src["deku"]["ok"], src["deku"]["note"]), (False, "Wishlist: HTTP 403 bei https://www.dekudeals.com/wishlist/…"))
         self.assertTrue(src["prices"]["ok"])
@@ -2257,6 +2260,7 @@ class SafetyTest(unittest.TestCase):
         self.assertTrue(src["lang_eu"]["ok"])
         self.assertEqual(src["titledb"]["note"], "titledb: nicht abrufbar")       # nichts gesagt: bleibt
         self.assertNotIn("fx", src)
+        self.assertFalse(src["ginfo"]["ok"])
 
     def test_wishlist_env_only_as_start_value(self):
         # 1.5.0: WISHLIST_URL füllt nur eine frische Installation, ein geleertes Feld bleibt leer
@@ -3009,6 +3013,76 @@ class CollectionTest(unittest.TestCase):
             raise sources.FetchError(url, 429)
         sync.sync_related(data, settings, deny, lambda s: None, now=t0)
         self.assertEqual(len(calls), 1)
+
+    def test_game_info_from_item_page(self):
+        # 1.6.0: Kasten „Details“ einer DekuDeals-Artikelseite, gelesen aus dem sichtbaren Text
+        page = ("<title>X | Deku Deals</title><h4>Details</h4><ul><li><b>MSRP:</b> €59,99</li>"
+                "<li><b>Release date:</b> March 20, 2020</li><li><b>Genre:</b> <a>Simulation</a>, <a>Party</a></li>"
+                "<li><b>Number of players:</b><ul><li>Offline: 1 - 4</li><li>Local Wireless: 1 - 8</li>"
+                "<li>Online: 1 - 8</li></ul></li><li>Developer: Nintendo</li><li>Publisher: Nintendo</li>"
+                "<li>Download size: 10.576 GB</li><li>Metacritic: <span>90</span> <span>6.0</span></li>"
+                "<li>OpenCritic: 88</li><li>How Long To Beat : <ul><li>Solo: 109½ hours</li><li>Co-op: 18 hours</li>"
+                "</ul></li><li>USK Rating: 6</li><li>Play modes: TV, Tabletop, Handheld</li>"
+                "<li>Languages: English, German</li></ul><p>Online: 1 - 99 in der Beschreibung zählt nicht</p>")
+        self.assertEqual(sources.parse_game_info(page), {
+            "genre": ["Simulation", "Party"], "players": {"offline": [1, 4], "local": [1, 8], "online": [1, 8]},
+            "modes": ["tv", "tabletop", "handheld"], "mc": 90, "mcu": 6.0, "oc": 88,
+            "hltb": {"solo": 109.5, "coop": 18.0}, "released": "2020-03-20", "developer": "Nintendo",
+            "publisher": "Nintendo", "age": "USK 6", "size_gb": 10.58})
+        self.assertEqual(sources.parse_game_info("<li>Genre: Puzzle</li><li>Number of players: 1-2</li>"),
+                         {"genre": ["Puzzle"], "players": {"offline": [1, 2]}})
+        self.assertEqual(sources.parse_game_info("<h3>DLC</h3>"), {})
+
+    def test_game_info_for_collection_first(self):
+        # 1.6.0: Spiele der Sammlung ohne Spielinfos kommen vor der monatlichen Auffrischung dran, mit
+        # europäischer ID; Nintendo bestätigt 40 je Abruf, monatlich, ohne Treffer {"none": true}
+        data, settings = sample()
+        data["owned"] = ["game-a", "game-b"]
+        t0 = NOW.timestamp()
+        data["rel"] = {s: {"checked": t0, "v": sync.REL_V, "title": s, "dlc": [], "in": [], "has": []}
+                       for s in ("game-a", "game-b") + tuple(data["items"])}
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            if "/items/game-a?" in url:
+                return ('<title>A | Deku Deals</title><li>Genre: Puzzle</li>'
+                        '<a class="eshop_de:70010000000001" href="https://www.nintendo.com/de-de/x">eShop</a>')
+            return "<title>B | Deku Deals</title>"
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 3600)
+        self.assertEqual(len(calls), 2)                    # nur die beiden Spiele, die Wishlist ist frisch
+        a, b = data["rel"]["game-a"], data["rel"]["game-b"]
+        self.assertEqual((a["info"], a["eu"], a["iv"]), ({"genre": ["Puzzle"]}, "70010000000001", sync.INFO_V))
+        self.assertEqual((b["info"], b["iv"]), ({}, sync.INFO_V))
+        self.assertNotIn("eu", b)
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 7200)
+        self.assertEqual(len(calls), 2)
+        asked = []
+
+        def solr(url, ua=None):
+            asked.append(url)
+            return json.dumps({"response": {"docs": [{
+                "nsuid_txt": ["70010000000001"], "pretty_game_categories_txt": ["Action", "Puzzle"],
+                "players_from": 1, "players_to": 4, "play_mode_tv_mode_b": True, "play_mode_handheld_mode_b": True,
+                "multiplayer_mode": "simultaneous", "paid_subscription_online_play_b": False,
+                "publisher": "Nintendo", "age_rating_type": "pegi", "age_rating_value": 3}]}})
+        sync.sync_game_info_eu(data, solr, lambda s: None, now=t0)
+        self.assertEqual(len(asked), 1)
+        self.assertIn("nsuid_txt", asked[0])
+        self.assertEqual(a["nin"], {"genre": ["Action", "Puzzle"], "players": [1, 4], "modes": ["tv", "handheld"],
+                                    "mm": "simultaneous", "online": False, "publisher": "Nintendo",
+                                    "age": "PEGI 3", "at": t0})
+        sync.sync_game_info_eu(data, solr, lambda s: None, now=t0 + 86400)
+        self.assertEqual(len(asked), 1)                    # monatlich
+        a["eu"] = "70010000000002"
+        a.pop("nin")
+        sync.sync_game_info_eu(data, solr, lambda s: None, now=t0)
+        self.assertEqual(a["nin"], {"none": True, "at": t0})
+        # Eine neue Seite ohne Kasten behält die alten Angaben, ebenso die Bestätigung
+        a["iv"] = 0
+        a["info"] = {"genre": ["Puzzle"]}
+        sync.sync_related(data, settings, lambda u, ua=None: "<title>A | Deku Deals</title>", lambda s: None, now=t0 + 9000)
+        self.assertEqual((data["rel"]["game-a"]["info"], data["rel"]["game-a"]["nin"]["none"]), ({"genre": ["Puzzle"]}, True))
 
     def test_collection_view(self):
         data, settings = sample()

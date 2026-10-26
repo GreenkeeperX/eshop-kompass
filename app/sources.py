@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.5.3"
+VERSION = "1.6.0"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -545,9 +545,114 @@ def parse_item_page(page_html):
     return {"title": title, "parent": parent, "parent_title": parent_title,
             "nsuids": nsuids, "eshop_ids": eshop_ids, "eshop_urls": eshop_urls, "low": low, "lows": parse_lows(page_html),
             "history": parse_history(page_html), "related": parse_related(page_html),
+            "info": parse_game_info(page_html),
             # Hat die Seite den Abschnitt der Tiefstpreise überhaupt? Ohne ihn bleibt der alte
             # Wert stehen, statt still zu verschwinden (0.64: ein geänderter Seitenaufbau löscht nichts)
             "low_found": bool(_LOW_RE.search(page_html))}
+
+
+# Spielinfos einer Artikelseite (1.6.0): Kasten „Details“ mit „Bezeichnung: Wert“. Gelesen wird der
+# sichtbare Text, damit ein anderes HTML drumherum nichts ändert; jede Angabe reicht bis zur nächsten
+# bekannten Bezeichnung
+_INFO_LABELS = ("MSRP", "Release date", "Genres?", "Number of players", "Developers?", "Publishers?",
+                "Download size", "Metacritic", "OpenCritic", "How Long To Beat", "ESRB Rating", "PEGI Rating",
+                "USK Rating", "Play modes", "Languages", "Platforms?", "Supported play modes")
+_INFO_LABEL_RE = re.compile(r"(?<![\w-])(" + "|".join(_INFO_LABELS) + r")\s*:")
+_INFO_OTHER_RE = re.compile(r"\s[A-Z][A-Za-z+ ]{0,24}:\s")     # unbekannte Bezeichnung beendet einfache Werte
+_MONTHS = {m: n for n, m in enumerate(("january", "february", "march", "april", "may", "june", "july", "august",
+                                         "september", "october", "november", "december"), 1)}
+_HLTB_KEYS = {"solo": "solo", "co-op": "coop", "coop": "coop", "main story": "main", "main": "main",
+              "main + extras": "extra", "main + sides": "extra", "completionist": "complete", "vs.": "vs",
+              "vs": "vs", "all styles": "all"}
+_MODE_KEYS = {"tv": "tv", "tabletop": "tabletop", "handheld": "handheld"}
+
+
+def _hours(v):
+    v = v.replace("½", ".5").replace("¼", ".25").replace("¾", ".75")
+    try:
+        return round(float(v), 2)
+    except ValueError:
+        return None
+
+
+def parse_game_info(page_html):
+    """Genre, Spieler, Spielmodi, Wertungen, Spielzeit, Erscheinen und Verlag einer DekuDeals-Artikelseite.
+    {} ohne Kasten „Details“. Spieler {"offline"|"local"|"online": [von, bis]}, Spielzeit in Stunden je Art
+    (solo, coop, main, extra, complete), Wertungen als Zahl, Erscheinen als JJJJ-MM-TT oder JJJJ."""
+    # Zeilen der Seite (li, dd, p, br …) bleiben als „\n“ erhalten: Ein einfacher Wert endet an seiner Zeile
+    text = re.sub(r"(?i)<(?:/?(?:li|ul|ol|dd|dt|dl|p|div|tr|td|th|h[1-6]|section)\b[^>]*|br\s*/?)>", "\n",
+                  re.sub(r"\s+", " ", _SCRIPT_RE.sub(" ", _norm(page_html or ""))))
+    text = html.unescape(_TAG_RE.sub(" ", text))
+    text = re.sub(r"[ \t\r\f\v]+", " ", re.sub(r"\s*\n\s*", "\n", text))
+    marks = list(_INFO_LABEL_RE.finditer(text))
+    if not marks:
+        return {}
+    first = marks[0].start()
+    marks = [m for m in marks if m.start() - first < 3000]
+    vals = {}
+    for n, m in enumerate(marks):
+        key = m.group(1).lower()
+        key = {"genres": "genre", "developers": "developer", "publishers": "publisher", "platforms": "platform"}.get(key, key)
+        end = marks[n + 1].start() if n + 1 < len(marks) else min(len(text), m.end() + 300)
+        if key not in vals:
+            vals[key] = text[m.end():end].strip(" ·|\n")
+
+    def simple(key, n=80):
+        v = (vals.get(key) or "").split("\n")[0]
+        o = _INFO_OTHER_RE.search(" " + v)
+        return (v[:o.start()] if o else v).strip(" ·|,")[:n]
+    out = {}
+    genre = simple("genre", 200)
+    if genre:
+        out["genre"] = [g.strip() for g in re.split(r"\s*[,/]\s*", genre) if g.strip()][:6]
+    pl = vals.get("number of players") or ""
+    players = {}
+    for lab, a, b in re.findall(r"(?i)(offline|local wireless|local|online)\s*:\s*(\d+)(?:\s*[-–]\s*(\d+))?", pl):
+        k = {"offline": "offline", "online": "online"}.get(lab.lower(), "local")
+        players.setdefault(k, [int(a), int(b or a)])
+    if not players:
+        m = re.match(r"\s*(\d+)(?:\s*[-–]\s*(\d+))?", pl)
+        if m:
+            players["offline"] = [int(m.group(1)), int(m.group(2) or m.group(1))]
+    if players:
+        out["players"] = players
+    modes = [_MODE_KEYS[x.strip().lower()] for x in re.split(r"\s*,\s*", simple("play modes", 120) or simple("supported play modes", 120))
+             if x.strip().lower() in _MODE_KEYS]
+    if modes:
+        out["modes"] = modes
+    m = re.match(r"\s*(\d{1,3})(?:\s+(\d{1,2}(?:\.\d)?))?", vals.get("metacritic") or "")
+    if m and int(m.group(1)) <= 100:
+        out["mc"] = int(m.group(1))
+        if m.group(2) and float(m.group(2)) <= 10:
+            out["mcu"] = float(m.group(2))
+    m = re.match(r"\s*(\d{1,3})\b", vals.get("opencritic") or "")
+    if m and int(m.group(1)) <= 100:
+        out["oc"] = int(m.group(1))
+    hltb = {}
+    for lab, v in re.findall(r"([A-Za-z][A-Za-z +.\-]{0,20}?)\s*:\s*([\d½¼¾.]+)\s*(?:hours?|hrs?|h)\b", vals.get("how long to beat") or ""):
+        k, h = _HLTB_KEYS.get(lab.strip().lower()), _hours(v)
+        if k and h is not None:
+            hltb.setdefault(k, h)
+    if hltb:
+        out["hltb"] = hltb
+    rd = simple("release date", 40)
+    m = re.match(r"([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})", rd)
+    if m and m.group(1).lower() in _MONTHS:
+        out["released"] = f"{m.group(3)}-{_MONTHS[m.group(1).lower()]:02d}-{int(m.group(2)):02d}"
+    elif re.search(r"\b(19|20)\d\d\b", rd):
+        out["released"] = re.search(r"\b(19|20)\d\d\b", rd).group(0)
+    for key in ("developer", "publisher"):
+        if simple(key):
+            out[key] = simple(key)
+    for org in ("usk", "pegi", "esrb"):
+        v = simple(org + " rating", 20)
+        if v:
+            out["age"] = f"{org.upper()} {v}"
+            break
+    m = re.match(r"\s*([\d.]+)\s*(GB|MB)", vals.get("download size") or "")
+    if m:
+        out["size_gb"] = round(float(m.group(1)) / (1024 if m.group(2) == "MB" else 1), 2)
+    return out
 
 
 # Während eines Abgleichs ein Dict: Jede Artikelseite kommt höchstens einmal, auch wenn
@@ -691,6 +796,59 @@ def fetch_langs_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
             "q": "*", "fq": "nsuid_txt:(" + " OR ".join(nsuids[i:i + 40]) + ")",
             "fl": "nsuid_txt,language_availability", "rows": 200, "wt": "json"})
         out.update(parse_langs_eu(json.loads(fetch(f"{SOLR_URL}?{q}"))))
+        if done is not None:
+            done.extend(nsuids[i:i + 40])
+    return out
+
+
+INFO_EU_FIELDS = ("nsuid_txt,title,pretty_game_categories_txt,players_from,players_to,play_mode_tv_mode_b,"
+                  "play_mode_tabletop_mode_b,play_mode_handheld_mode_b,multiplayer_mode,paid_subscription_online_play_b,"
+                  "publisher,dates_released_dts,age_rating_type,age_rating_value")
+
+
+def parse_info_eu(payload):
+    """Spielinfos der Nintendo-Europa-Suche (1.6.0) -> {nsuid: {genre, players, modes, mm, online, publisher,
+    released, age}}; nur, was die Suche wirklich nennt."""
+    out = {}
+    for d in (payload.get("response") or {}).get("docs", []):
+        x = {}
+        g = d.get("pretty_game_categories_txt")
+        if isinstance(g, list) and g:
+            x["genre"] = [str(v) for v in g][:6]
+        a, b = d.get("players_from"), d.get("players_to")
+        if isinstance(b, int) and b > 0:
+            x["players"] = [a if isinstance(a, int) and a > 0 else 1, b]
+        modes = [m for m in ("tv", "tabletop", "handheld") if d.get(f"play_mode_{m}_mode_b") is True]
+        if modes:
+            x["modes"] = modes
+        if isinstance(d.get("multiplayer_mode"), str) and d["multiplayer_mode"]:
+            x["mm"] = d["multiplayer_mode"]
+        if isinstance(d.get("paid_subscription_online_play_b"), bool):
+            x["online"] = d["paid_subscription_online_play_b"]
+        if isinstance(d.get("publisher"), str) and d["publisher"]:
+            x["publisher"] = d["publisher"][:80]
+        r = d.get("dates_released_dts")
+        r = r[0] if isinstance(r, list) and r else r
+        if isinstance(r, str) and re.match(r"\d{4}-\d\d-\d\d", r):
+            x["released"] = r[:10]
+        if d.get("age_rating_type") and d.get("age_rating_value") is not None:
+            x["age"] = f"{str(d['age_rating_type']).upper()} {d['age_rating_value']}"
+        for n in d.get("nsuid_txt") or []:
+            out[str(n)] = x
+    return out
+
+
+def fetch_info_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
+    """Spielinfos der europäischen Fassungen, 40 Titel je Abruf, wie fetch_langs_eu."""
+    out = {} if out is None else out
+    nsuids = list(dict.fromkeys(nsuids))
+    for i in range(0, len(nsuids), 40):
+        if i and pause:
+            pause()
+        q = urllib.parse.urlencode({
+            "q": "*", "fq": "nsuid_txt:(" + " OR ".join(nsuids[i:i + 40]) + ")",
+            "fl": INFO_EU_FIELDS, "rows": 200, "wt": "json"})
+        out.update(parse_info_eu(json.loads(fetch(f"{SOLR_URL}?{q}"))))
         if done is not None:
             done.extend(nsuids[i:i + 40])
     return out

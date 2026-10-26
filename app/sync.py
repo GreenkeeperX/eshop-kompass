@@ -47,6 +47,8 @@ FX_RECHECK = 20 * 3600               # höchstens so oft selbst nachfragen, auch
 CARD_PAUSE = 3.0
 REL_RECHECK_SECONDS = 30 * 24 * 3600  # DLC und Pakete eines Titels monatlich auffrischen
 REL_PER_SYNC = 40                     # höchstens so viele Artikelseiten je Abgleich
+INFO_V = 1                            # Spielinfos der Sammlung (1.6.0): Seiten ohne diese Fassung vorziehen
+EU_SHOPS = ("DE", "AT", "GB", "FR", "ES", "IT", "NL", "PT", "BE", "CH", "PL")
 LINK_MISSES = 2                       # so oft muss eine Verbindung fehlen, bis sie wegfällt
 LINKS_RECHECK_SECONDS = 90 * 24 * 3600  # Pakete fehlender DLC vierteljährlich nachsehen
 REL_V = 1                             # erhöht sich, wenn alle Seiten neu zu lesen sind
@@ -1721,12 +1723,14 @@ def sync_related(data, settings, fetch, sleep, now=None):
     owned += [s for s in sorted(planner.pack_parts(data, set(owned) | planner.eshop_matches(data)["owned"],
                                                      planner.pack_block(settings)))
               if s not in known_dlc]
-    todo = []
+    todo, games = [], set(owned)
     for pos, slug in enumerate(dict.fromkeys(owned + wished)):
         e = rel.get(slug)
-        if e and e.get("v", 0) >= REL_V and now - e.get("checked", 0) < REL_RECHECK_SECONDS:
+        # Spiele der Sammlung ohne Spielinfos (1.6.0) kommen gleich nach den nie gelesenen dran
+        no_info = slug in games and not (e or {}).get("parent") and (e or {}).get("iv", 0) < INFO_V
+        if e and e.get("v", 0) >= REL_V and now - e.get("checked", 0) < REL_RECHECK_SECONDS and not no_info:
             continue
-        todo.append((e is not None, e.get("checked", 0) if e else 0, pos, slug))
+        todo.append((e is not None, not no_info, e.get("checked", 0) if e else 0, pos, slug))
     todo.sort()
     todo = todo[:REL_PER_SYNC]
     # Fehlende DLC: ihre Pakete kennt das Tool aus der ID-Suche; wessen Seite länger nicht
@@ -1741,6 +1745,13 @@ def sync_related(data, settings, fetch, sleep, now=None):
              f"{sum(1 for s in games if rel[s]['dlc'])} davon mit Zusatzinhalten"
              + (f", {sum(1 for s in owned if s not in rel)} folgen" if any(s not in rel for s in owned) else "")
              + (f"; Pakete bekannt: {len(data.get('links') or {})}" if data.get("links") else ""))
+        read = [s for s in games if rel[s].get("iv", 0) >= INFO_V]
+        if games:
+            _log(f"Spielinfos DekuDeals: {sum(1 for s in read if rel[s].get('info'))} von {len(games)} Spielen der Sammlung"
+                 + (f", {len(games) - len(read)} folgen" if len(read) < len(games) else "")
+                 + (f"; Warnung, {len(blank)} gelesene Seiten ohne Kasten „Details“ (hat DekuDeals die Seite umgebaut?)"
+                    if len(blank) >= 3 else ""))
+    blank = []
     if not todo and not links_todo:
         summary("nichts fällig")
         return
@@ -1777,11 +1788,24 @@ def sync_related(data, settings, fetch, sleep, now=None):
             # Spiel ohne DLC. Die alte Liste bleibt, sonst fielen fehlende DLC samt IDs weg (0.64)
             dlc = rel[slug]["dlc"]
             kept.append(info.get("title") or slug)
+        old = rel.get(slug) or {}
         rel[slug] = {"checked": now, "v": REL_V, "title": info.get("title"),
                      "parent": info.get("parent"),
                      "dlc": dlc,
                      "in": [list(x) for x in r.get("included_in", []) if x[0] != slug],
                      "has": [list(x) for x in r.get("contains", []) if x[0] != slug]}
+        # Spielinfos (1.6.0) nur für Spiele der Sammlung; eine Seite ohne Kasten behält die alten Angaben
+        if slug in games and not info.get("parent"):
+            gi = info.get("info") or {}
+            if not gi:
+                blank.append(slug)
+            rel[slug].update(info=gi or old.get("info") or {}, iv=INFO_V)
+            eu = next((n for cc in EU_SHOPS for n in (info.get("eshop_ids") or {}).get(cc) or []), None)
+            if eu or old.get("eu"):
+                rel[slug]["eu"] = eu or old["eu"]
+            for k in ("nin",):
+                if k in old:
+                    rel[slug][k] = old[k]
         notes += update_links(data, slug, r, now)
         status["done"] += 1
         if status["done"] % 10 == 0:
@@ -1793,6 +1817,38 @@ def sync_related(data, settings, fetch, sleep, now=None):
         _log(f"DLC und Pakete: Warnung, {len(kept)} Seiten ohne DLC-Abschnitt, bekannte DLC behalten "
              f"(hat DekuDeals die Seite umgebaut?): {', '.join(kept[:5])}")
     summary(f"{status['done']} Seiten gelesen")
+
+
+def sync_game_info_eu(data, fetch, sleep, now=None):
+    """Bestätigung der Spielinfos durch die Nintendo-Europa-Suche (1.6.0): für Spiele der Sammlung mit
+    europäischer ID von ihrer DekuDeals-Seite, 40 je Abruf, monatlich. Ablage unter rel[Spiel].nin;
+    ohne Treffer {"none": true}, damit das Spiel nicht jeden Abgleich wiederkommt."""
+    now = now or time.time()
+    rel = data.get("rel") or {}
+    games = [s for s in dict.fromkeys(data.get("owned") or []) if (rel.get(s) or {}).get("eu")]
+    due = {}
+    for s in games:
+        if now - ((rel[s].get("nin") or {}).get("at") or 0) >= REL_RECHECK_SECONDS:
+            due.setdefault(str(rel[s]["eu"]), []).append(s)
+    if not due:
+        if games:
+            _log(f"Spielinfos Nintendo: nichts fällig, {sum(1 for s in games if (rel[s].get('nin') or {}).get('at') and not rel[s]['nin'].get('none'))} "
+                 f"von {len(games)} Spielen bestätigt")
+        return
+    found, done = {}, []
+    try:
+        sources.fetch_info_eu(list(due), fetch=fetch, pause=lambda: sleep(NINTENDO_PAUSE), out=found, done=done)
+    except Exception as e:
+        _log(f"Spielinfos Nintendo nicht abrufbar ({e})" + (f", {len(done)} IDs vorher gelesen" if done else ""))
+    for n in done:
+        for s in due[n]:
+            rel[s]["nin"] = dict(found.get(n) or {"none": True}, at=now)
+    if done:
+        hit = sum(1 for n in done if n in found)
+        _log(f"Spielinfos Nintendo: {hit} von {len(done)} Spielen gefunden, "
+             f"{sum(1 for s in games if (rel[s].get('nin') or {}).get('at') and not rel[s]['nin'].get('none'))} "
+             f"von {len(games)} mit europäischer ID bestätigt")
+    store.save_data(data)
 
 
 def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
@@ -2092,6 +2148,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
             _log("Tiefstpreise werden neu geladen (Lesefehler bei Spielen für Switch und Switch 2 behoben)")
         safe(sync_lows, data, settings, fetch, sleep)
         safe(sync_related, data, settings, fetch, sleep)
+        safe(sync_game_info_eu, data, fetch, sleep)    # Spielinfos von Nintendo bestätigen (1.6.0)
         safe(sync_extra_ids, data, settings, fetch, sleep, report=False)
         safe(sync_titledb, data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
         safe(sync_eshop_names, data, fetch)           # Kauftitel aus Japan und anderen Ländern zuordnen (0.72)
@@ -2134,6 +2191,7 @@ SOURCE_LINES = (
     ("lang_eu", "Sprachen Europa", r"^Sprachen Europa"),
     ("lang_jp", "Sprachen Japan", r"^Sprachen Japan"),
     ("lang_am", "Sprachen Amerika", r"^Sprachen Amerika"),
+    ("ginfo", "Spielinfos", r"^Spielinfos (DekuDeals|Nintendo)"),
     ("titledb", "titledb", r"^(titledb|IDs fehlender DLC aus titledb|Englische Namen gekaufter Titel)"),
     ("fx", "Wechselkurse", r"^Wechselkurse"),
     ("cards", "Kartenshops", r"^Kartenpreise"),
@@ -2368,6 +2426,8 @@ def info_probe(probe, data, sleep=time.sleep, deku=None):
     if deku and deku[1]:
         lines.append(f"Spielinfos DekuDeals ({deku[0]}, schon gelesen): "
                      + spots(deku[1], r"(?i)genre|players|play modes?|co-?op|online|game ?share"))
+        # Was der Abgleich davon ablegt (1.6.0), zum Vergleich mit den Fundstellen
+        lines.append(f"Spielinfos DekuDeals gelesen: {json.dumps(sources.parse_game_info(deku[1]), ensure_ascii=False) or '{}'}")
     # GameShare: eine Sammelseite je Region mit Spalten lokal und online (Spanien gesehen 26.10.2026)
     for gs in GAMESHARE_URLS:
         sleep(1)

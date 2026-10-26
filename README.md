@@ -685,6 +685,13 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
   Region, jeweils zweimal, gibt es ihn meist nur im Spiel oder nicht mehr im eShop. Er zählt
   nicht als fehlend und steht eingeklappt unter „nicht mehr erhältlich“. Was in einer Region
   gerade nicht kaufbar ist, zählt dort ebenfalls nicht als offen.
+- **Spielinfos (ab 1.6.0, Ansicht „Spiele“ folgt):** Beim Lesen der DLC nimmt der Abgleich von der
+  DekuDeals-Seite jedes Spiels der Sammlung auch Genre, Spieler (offline, lokal drahtlos, online),
+  Spielmodi (TV, Tisch, Handheld), Wertung (Metacritic, OpenCritic), Spielzeit (How Long To Beat),
+  Erscheinen, Entwickler, Verlag, Altersfreigabe und Größe mit, ohne zusätzlichen Abruf. Die
+  Nintendo-Europa-Suche bestätigt Genre, Spielerzahl, Spielmodi, Verlag und Erscheinen, monatlich, 40
+  Spiele je Anfrage. Spiele ohne diese Angaben kommen im DLC-Schritt zuerst dran, bei 40 Seiten je
+  Abgleich ist eine Sammlung von gut hundert Spielen nach drei Abgleichen vollständig.
 
 ### Einstellungen
 
@@ -694,7 +701,7 @@ zugeklappt das Wichtigste. Die Leiste oben springt zu den Karten und zeigt eine 
 etwas offen ist: alte Kartenpreise, offene Sprachen, offene Käufe, Quellen mit Problem.
 
 **Zustand der Quellen** (unter Quellen und Abgleich, eingeklappt): je Quelle (DekuDeals,
-Nintendo-Preise, Sprachen Europa, Japan, Amerika, titledb, Wechselkurse, Kartenshops, eigene
+Nintendo-Preise, Sprachen Europa, Japan, Amerika, Spielinfos, titledb, Wechselkurse, Kartenshops, eigene
 Angebote) „ok“ oder „Problem“ mit Zeit und der Zeile aus dem Protokoll des letzten Abgleichs, der sie
 gebraucht hat. Ein Problem ist eine Sperre, ein Warteraum oder ein Fehler.
 
