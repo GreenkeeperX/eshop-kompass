@@ -616,3 +616,22 @@ span.plain{cursor:pointer}
 .news details.newsd>summary{cursor:pointer}
 .news details.newsd[open]>summary .lead{display:none}
 .news .np-grid{margin:4px 0 8px;color:var(--ink)}
+/* „Wartet“ und „Gekauft“ (1.4.0) */
+.np .wf{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.bk-grid{margin-top:4px}
+.bkr{display:grid;grid-template-columns:90px 130px minmax(0,1fr) 90px 110px 100px;gap:0 10px;align-items:baseline;padding:4px 0 4px 18px;border-top:1px dashed var(--line);font-size:13px}
+.bkr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.bkr .r{text-align:right;white-space:nowrap}
+.np details.bkf>summary.bkr{padding:4px 0 4px 18px;list-style:none}
+.np details.bkf>summary.bkr::-webkit-details-marker{display:none}
+.bkr .bk-n::after{content:" ▾";color:var(--muted)}
+.bkf[open] .bk-n::after{content:" ▴"}
+.bkf[open] .bk-n{font-weight:600}
+.bk-t{margin:0 0 6px;padding:2px 0 2px 276px;font-size:13px}
+.bk-h{margin:12px 0 0;font-size:13px}
+@media (max-width:640px){
+  .bkr{grid-template-columns:auto minmax(0,1fr) auto;padding-left:6px}
+  .bkr.nph{display:none}
+  .np details.bkf>summary.bkr{padding-left:6px}
+  .bk-t{padding-left:18px}
+}

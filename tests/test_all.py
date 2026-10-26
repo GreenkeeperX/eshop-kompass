@@ -2802,6 +2802,8 @@ class PurchaseLogTest(unittest.TestCase):
         self.assertEqual(plan["bought_slugs"], ["hades"])
         self.assertEqual(plan["bought_how"], [{"slug": "hades", "title": "Hades", "how": "plan", "via": None}])
         self.assertAlmostEqual(plan["bought_saving"], 16.99)
+        # „Gekauft“ verlinkt die Titel eines Kaufs über ihre Kennung (1.4.0)
+        self.assertEqual(plan["bought"][0]["slugs"], ["hades"])
         # Mit dem Preis der Spiele (ohne den Rest, der als Guthaben bleibt) rechnet die
         # Ersparnis wie der Kaufplan
         bought.append({"at": "2026-10-12T20:00:00+00:00", "code": "BR", "slugs": ["good-job"],

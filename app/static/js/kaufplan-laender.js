@@ -26,7 +26,7 @@ function viewKauf(){
   if(stale.length) h += `<p class="restline"><span class="bad">Preise nicht aktuell:</span> ${stale.map(p => `${esc(p.name)} vom ${esc(dmy(p.price_at))}`).join(", ")}. Der letzte Abruf dort scheiterte, Angebote können inzwischen geendet haben. <button class="link" data-act="showlog">Protokoll</button></p>`;
   if(k.steps.length) h += `<div class="grid steps masonry">` + k.steps.map((p, n) => planCard(p, n + 1)).join("") + `</div>`;
   else h += emptyPlan();
-  h += notPlanned(k);
+  h += waitBox(k);
   h += `<p class="restline">Jedes Land mit seinem eigenen Korb, zum Durchspielen: <button class="link" data-act="allland">alle Länderkarten</button></p>`;
   h += boughtBox(k);
   return h;
@@ -34,7 +34,7 @@ function viewKauf(){
 /* Hinweise oben im Kaufplan (1.3.0): Angebote, die in weniger als einer Woche enden (im Plan oder mit Urteil
    kaufen/gut), und Angebote, die in den letzten drei Tagen begonnen haben (jede Wishlist). Ab 1.3.1 ist jede
    Zeile selbst klappbar: zu nennt sie die ersten Titel und „und n weitere“, auf zeigt sie alle im Raster von
-   „Nicht im Plan“ (Urteil, Preis, Rabatt, Land, über Bestpreis, bis, dazunehmen) */
+   „Wartet“ (Urteil, Preis, Rabatt, Land, über Bestpreis, bis, dazunehmen) */
 function saleNews(k){
   const now = Date.now(), day = 864e5, soon = new Map(), fresh = new Map();
   const where = {};
@@ -95,8 +95,8 @@ function lockBox(k){
     (l.fits.length ? ` Passt hinein: ${l.fits.map(esc).join(", ")}.` : "") +
     ((k.held || []).length ? ` Wartet deshalb: ${k.held.map(h => esc(h.short)).join(", ")}.` : "") + `</p>`;
 }
-/* Nicht im Plan (0.96, 0.98 neu gebaut): nach Grund, darin nach Land oder Quelle, darin nach Spiel; jede Ebene
-   klappbar (data-kc: offen, gemerkt wird das Zuklappen; „alle aufklappen · alle zuklappen“ oben). Jeder Titel
+/* Raster für „Wartet“, „Noch auf der Wishlist“ und die Hinweise oben (0.96 für „Nicht im Plan“, 1.4.0 umgebaut);
+   Spielgruppen klappbar (data-kc: offen, gemerkt wird das Zuklappen). Jeder Titel
    eine Zeile im selben Raster wie die Kopfzeile, damit Preise untereinander stehen (`.npr`): Name wie in der
    Wishlist (voller Name, in einer Spielgruppe ohne Spielnamen), Urteil, Einkaufspreis mit ★ (Link in den
    eShop, ohne eShop-Seite wie bei DLC zu DekuDeals), Rabatt, Land (Link zum Preisverlauf bei DekuDeals),
@@ -140,101 +140,91 @@ function npTitles(slugs, key, o){
     ? npRow(list[0], opt(list[0]))
     : npFold(`np:t:${key}:${g}`, `<b>${esc(g)}</b> <small class="mut">${list.length} Titel</small>`, list.map(s => npRow(s, Object.assign(opt(s), {game: g}))).join(""), "npg")).join("");
 }
-/* Mit × aus einem Schritt genommen (0.99.4): Der Grund steht am Titel, wo er auch landet */
-function skippedFrom(slug){
-  const from = Object.entries(S.ui.plan_skip || {}).filter(([, l]) => (l || []).includes(slug)).map(([c]) => country(c).name);
-  return from.length ? `von dir aus ${esc(from.join(", "))} herausgenommen, wartet` : "";
-}
 function npFold(k, head, body, cls){
   return `<details class="npf ${cls || ""}" data-kc="${esc(k)}" ${S.folds[k] ? "" : "open"}><summary>${head}</summary>${body}</details>`;
 }
-function notPlanned(k){
-  const groups = [], seen = new Set(), mark = list => list.forEach(s => seen.add(s));
-  const add = (key, label, why, body, n) => { if(body) groups.push(npFold(`np:g:${key}`, `${esc(label)}${n ? ` <span class="mut">${n}</span>` : ""}`, (why ? `<p class="hint">${why}</p>` : "") + body, "npgrp")); return n; };
-  const gap = d => d.blocked_by ? `<span class="bad">nur ein Land mit blockierendem Rest je Plan</span>, ${esc(d.blocked_by.join(", "))} bringt mehr`
-    : `Wechsel ${d.gain >= 0 ? `spart nur <span class="bad">${eur(d.gain)}</span>` : `kostet <span class="bad">${eur(-d.gain)}</span> mehr`}${d.threshold !== null && d.threshold !== undefined ? `, lohnt ab ${eur(d.threshold)} Ersparnis` : ""}`;
-  const sums = [];
-  // Wechsel: Konto gesperrt oder Land lohnt nicht. Je Land klappbar; was der Plan woanders kauft, steht zur Erklärung dabei
-  let sw = "", nsw = 0, nmv = 0;
-  if((k.held || []).length){
-    const list = k.held.map(h => h.slug); mark(list); nsw += list.length;
-    sw += npFold("np:c:lock", `Konto in <b>${esc(k.lock.name)}</b>: <span class="bad">Wechsel blockiert</span>, bis das Guthaben dort aufgebraucht ist`,
-      npTitles(list, "lock", {note: s => `günstiger in ${esc((k.held.find(h => h.slug === s) || {}).name || "")}`}));
-  }
-  for(const d of k.dropped){
-    const open = d.open_slugs || [], moved = d.moved || [];
-    if(!open.length && !moved.length) continue;
-    mark(open); nsw += open.length; nmv += moved.length;
-    const note = s => { const m = moved.find(x => x.slug === s); if(!m) return skippedFrom(s) || "wartet"; const n = S.kauf.steps.findIndex(p => p.code === m.to); return `<span class="chip">im Plan</span> Schritt ${n + 1}, ${esc(country(m.to).name)}`; };
-    sw += npFold(`np:c:${d.code}`, `<b>${esc(d.name)}</b> ${tierTag(TIER_OF(d))} <span class="mut">${open.length ? `${open.length} wartet` : ""}${open.length && moved.length ? ", " : ""}${moved.length ? `${moved.length} im Plan` : ""}</span> · ${gap(d)} · <button class="link" data-act="goland" data-c="${d.code}" title="Die Länderkarte von ${esc(d.name)} mit eigenem Korb öffnen">Länderkarte</button>`,
-      npTitles(open.concat(moved.map(m => m.slug)), d.code, {note, act: s => moved.some(m => m.slug === s) ? "" : undefined}));
-  }
-  // Die Zahl am Kopf nennt beides (1.3.1; vorher nur, was wartet: „1“ über 60 Zeilen ergab keinen Sinn)
-  if(sw) groups.push(npFold("np:g:sw", `Wechsel lohnt nicht <span class="mut">${[nsw ? `${nsw} wartet` : "", nmv ? `${nmv} kauft der Plan anderswo` : ""].filter(Boolean).join(", ")}</span>`,
-    `<p class="hint">Im günstigsten Land spart der Kauf zu wenig, um den Wechsel dorthin zu rechtfertigen. Was wartet, kannst du trotzdem dazunehmen; was „im Plan“ trägt, kauft der Plan in einem anderen Land.</p>` + sw, "npgrp"));
-  if(nsw) sums.push(`Wechsel lohnt nicht ${nsw}`);
-  // Kleinkram (0.92): wartet, bis du ihn über „Passt in den Rest“ dazunimmst (0.98). Je Land mit Summe;
-  // füllt er eine Karte fast ganz, ein Vorschlag (0.93)
-  let sm = "", nsm = 0;
-  const grouped = new Set();
-  for(const g of k.small_groups || []){
-    g.slugs.forEach(x => grouped.add(x)); mark(g.slugs); nsm += g.slugs.length;
-    const faces = (g.cards || []).reduce((n, c) => n + c.face * c.count, 0);
-    const card = (g.cards || []).map(c => `${c.count > 1 ? c.count + "× " : ""}${money(c.face, g.currency)}`).join(" + ");
-    const of = g.smallest && faces ? `zusammen ${money(g.local, g.currency)} von ${card} <span class="mut">(${Math.round(100 * g.local / faces)} %)</span>` : `zusammen ${money(g.local, g.currency)}`;
-    const take = !g.full ? "" : ` · <span class="gn">reicht für eine eigene Karte</span> ` + (g.step
-      ? `<button class="sm" data-act="planfill" data-c="${g.code}" data-s="${esc(g.slugs.join(","))}" title="Nimmt den Kleinkram in den Schritt ${esc(g.name)}; der Plan kauft dafür ${esc(card)}">alle dazunehmen</button>`
-      : `<button class="sm" data-act="add" data-c="${g.code}" data-s="${esc(g.slugs.join(","))}" title="Legt den Kleinkram in den Korb der Länderkarte ${esc(g.name)}">in die Länderkarte</button>`);
-    sm += npFold(`np:k:${g.code}`, `<b>${esc(g.name)}</b> <span class="mut">${g.slugs.length} Titel</span> · ${of}${take}`, npTitles(g.slugs, "k" + g.code));
-  }
-  const loose = (k.small || []).filter(x => !grouped.has(x.slug)).map(x => x.slug);
-  if(loose.length){ mark(loose); nsm += loose.length; sm += npTitles(loose, "kx"); }
-  if(add("small", "Kleinkram", `Unter ${eur(S.state.settings.deal_eur.mini)} macht ein Titel keine Guthabenkarte größer. Er wartet und steht unter „Passt in den Rest“ zur Auswahl, sobald ein Rest bleibt.`, sm, nsm)) sums.push(`Kleinkram ${nsm}`);
-  const later = k.later.map(l => l.slug); mark(later);
-  if(add("later", "Lieber warten", "Den guten Preis gibt es nur in einem Land, dessen Wechsel sich nicht rechnet; in den übrigen ist es kein Kauf.",
-    later.length ? npTitles(later, "later", {note: s => esc((k.later.find(l => l.slug === s) || {}).reason || "")}) : "", later.length)) sums.push(`Lieber warten ${later.length}`);
-  // Was du geändert hast: herausgenommen aus einem Land ohne Schritt (0.94), übernommen ohne Schritt (0.95)
+/* „Wartet“ (1.4.0, ersetzt „Nicht im Plan“): was du kaufen würdest, der Plan aber gerade nicht kauft. Jeder Titel
+   genau einmal, nach Spiel; der Grund steht klein am Titel, mehrere Gründe hintereinander. Oben Filter nach Grund
+   (S.wf, nur für diese Sitzung). Was der Plan in einem anderen Land kauft, steht hier nicht; Gekauftes steht unter
+   „Gekauft“. Die Rechnung ist dieselbe wie vorher, nur die Darstellung ist neu. */
+const WAIT_KEYS = [["wechsel", "Wechsel"], ["kleinkram", "Kleinkram"], ["warten", "Lieber warten"], ["mine", "von dir"], ["sonst", "sonst"]];
+function waitBox(k){
+  const why = new Map(), acts = new Map();
+  const put = (s, key, note, act) => {
+    if(!why.has(s)) why.set(s, []);
+    why.get(s).push({key, note});
+    if(act !== undefined && !acts.has(s)) acts.set(s, act);
+  };
+  const gap = d => d.blocked_by ? `nur ein Land mit blockierendem Rest je Plan, ${esc(d.blocked_by.join(", "))} bringt mehr`
+    : `${d.gain >= 0 ? `spart ${eur(d.gain)}` : `kostet ${eur(-d.gain)} mehr`}${d.threshold !== null && d.threshold !== undefined ? `, lohnt ab ${eur(d.threshold)}` : ""}`;
+  const land = d => `<button class="link" data-act="goland" data-c="${d.code}" title="Die Länderkarte von ${esc(d.name)} mit eigenem Korb öffnen">Länderkarte</button>`;
+  for(const h of k.held || [])
+    put(h.slug, "wechsel", `Konto in ${esc(k.lock.name)}: Wechsel nach ${esc(h.name || "")} blockiert, bis das Guthaben aufgebraucht ist`);
+  for(const d of k.dropped)
+    for(const s of d.open_slugs || []) put(s, "wechsel", `Wechsel nach ${esc(d.name)} ${tierTag(TIER_OF(d))} lohnt nicht: ${gap(d)} · ${land(d)}`);
+  const mini = eur(S.state.settings.deal_eur.mini);
+  for(const x of k.small || []) put(x.slug, "kleinkram", `Kleinkram unter ${mini}: kommt über „Passt in den Rest“ dazu`);
+  for(const l of k.later) put(l.slug, "warten", `Lieber warten: ${esc(l.reason || "der gute Preis nur in einem Land, dessen Wechsel sich nicht rechnet")}`);
+  // Von dir: herausgenommen (auch aus einem Land mit Schritt, solange der Titel wartet) und übernommen ohne Schritt
   const skipped = k.skipped || [], idle = k.fill_idle || [];
-  mark(skipped.map(x => x.slug)); mark(idle.map(x => x.slug));
-  const mine = (skipped.length ? npTitles(skipped.map(x => x.slug), "skip", {
-      note: s => { const x = skipped.find(y => y.slug === s); return `aus ${esc(x.name)} herausgenommen${x.to ? `, jetzt in ${esc(country(x.to).name)}` : ""}`; },
-      act: s => { const x = skipped.find(y => y.slug === s); return `<button class="sm" data-act="planunskip" data-c="${x.code}" data-s="${esc(s)}">zurück</button>`; }}) : "") +
-    (idle.length ? npTitles(idle.map(x => x.slug), "idle", {
-      note: s => { const x = idle.find(y => y.slug === s); return `für ${esc(x.name)} übernommen${x.to ? `, gerade in ${esc(country(x.to).name)}` : ""}${x.step ? "" : "; kommt dazu, sobald dort ein Schritt kauft"}`; },
-      act: s => { const x = idle.find(y => y.slug === s); return `<button class="sm" data-act="planunfill" data-c="${x.code}" data-s="${esc(s)}" title="Nicht mehr für ${esc(x.name)} vormerken">entfernen</button>`; }}) : "");
-  if(add("mine", "Von dir geändert", "Steht hier, solange es dazu keinen Schritt gibt.", mine, skipped.length + idle.length)) sums.push(`Von dir geändert ${skipped.length + idle.length}`);
-  // Schon gekauft, mit Quelle (0.95); entfernen geht nur bei DekuDeals
-  const HOW = {plan: "Im Kaufplan als gekauft vermerkt", collection: "In deiner Sammlung", eshop: "Laut eShop-Kaufverlauf gekauft"};
-  const how = k.bought_how || [], dk = s => `<a class="pl" href="${esc(deku(s))}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen und von der Wishlist nehmen">bei DekuDeals</a>`;
-  let ow = "";
-  for(const key of ["plan", "collection", "eshop"]){
-    const list = how.filter(x => x.how === key).map(x => x.slug);
-    if(list.length) ow += npFold(`np:o:${key}`, `${HOW[key]} <span class="mut">${list.length}</span>`, npTitles(list, "o" + key, {act: dk}));
+  for(const x of skipped) put(x.slug, "mine", `von dir aus ${esc(x.name)} genommen${x.to ? `, jetzt in ${esc(country(x.to).name)}` : ""}`,
+    `<button class="sm" data-act="planunskip" data-c="${x.code}" data-s="${esc(x.slug)}">zurück</button>`);
+  for(const x of idle) put(x.slug, "mine", `für ${esc(x.name)} übernommen${x.to ? `, gerade in ${esc(country(x.to).name)}` : ""}${x.step ? "" : "; kommt dazu, sobald dort ein Schritt kauft"}`,
+    `<button class="sm" data-act="planunfill" data-c="${x.code}" data-s="${esc(x.slug)}" title="Nicht mehr für ${esc(x.name)} vormerken">entfernen</button>`);
+  for(const s of [...why.keys()]){
+    if(skipped.some(x => x.slug === s)) continue;
+    const from = Object.entries(S.ui.plan_skip || {}).filter(([, l]) => (l || []).includes(s)).map(([c]) => c);
+    if(from.length) put(s, "mine", `von dir aus ${esc(from.map(c => country(c).name).join(", "))} genommen`,
+      `<button class="sm" data-act="planunskip" data-c="${from[0]}" data-s="${esc(s)}">zurück</button>`);
   }
-  const packs = {};
-  for(const x of how.filter(x => x.how === "pack")) (packs[x.via] = packs[x.via] || []).push(x.slug);
-  for(const [via, list] of Object.entries(packs)) ow += npFold(`np:o:p:${via}`, `Steckt in <b>${esc(via)}</b>, das du schon hast <span class="mut">${list.length}</span>`, npTitles(list, "op", {act: dk}));
-  mark(how.map(x => x.slug));
-  if(add("owned", "Schon gekauft", "Steht noch auf der Wishlist; entfernen kannst du es bei DekuDeals.", ow, how.length)) sums.push(`Schon gekauft ${how.length}`);
-  const s2 = k.s2_skip || [], packed = k.packed || [], nowhere = k.nowhere_slugs || [];
-  mark(s2.map(x => x.slug)); mark(packed.map(x => x.slug)); mark(nowhere);
-  const other = (s2.length ? npTitles(s2.map(x => x.slug), "s2", {note: s => `nur ein Weg zur Switch 2: ${esc((s2.find(x => x.slug === s) || {}).reason || "")}`, act: () => ""}) : "") +
-    (packed.length ? npTitles(packed.map(x => x.slug), "pk", {note: s => `steckt in ${esc((packed.find(x => x.slug === s) || {}).pack || "")}, das ebenfalls zum Kauf ansteht`, act: () => ""}) : "") +
-    (nowhere.length ? npTitles(nowhere, "nw", {note: () => "nirgends kaufbar, wo es zählt", act: () => ""}) : "");
-  const nother = s2.length + packed.length + nowhere.length;
-  if(add("other", "Sonst nicht im Plan", "", other, nother)) sums.push(`Sonst ${nother}`);
-  if(!groups.length) return "";
-  const n = seen.size;      // nur was wirklich nicht im Plan ist; „im Plan“-Zeilen sind nicht markiert
-  return `<details class="box fold np" data-k="notplan" ${S.folds.notplan ? "open" : ""}><summary>Nicht im Plan <span class="mut">· ${n ? `${n} Titel: ${sums.join(" · ")}` : "alles im Plan, hier nur günstigere Länder ohne lohnenden Wechsel"}</span></summary>` +
-    `<p class="hint np-tools"><span class="foldall"><button class="link" data-act="foldall" data-v="1">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="">alle zuklappen</button></span></p>` +
-    `<div class="np-grid">${NP_COLS}${groups.join("")}</div></details>`;
+  for(const x of k.s2_skip || []) put(x.slug, "sonst", `nur ein Weg zur Switch 2: ${esc(x.reason || "")}`, "");
+  for(const x of k.packed || []) put(x.slug, "sonst", `steckt in ${esc(x.pack || "")}, das ebenfalls zum Kauf ansteht`, "");
+  for(const s of k.nowhere_slugs || []) put(s, "sonst", "nirgends kaufbar, wo es zählt", "");
+  if(!why.size) return "";
+  const count = key => [...why.values()].filter(l => l.some(w => w.key === key)).length;
+  const keys = WAIT_KEYS.filter(([key]) => count(key));
+  const f = keys.some(([key]) => key === S.wf) ? S.wf : "";
+  const list = [...why.keys()].filter(s => !f || why.get(s).some(w => w.key === f));
+  const sums = keys.map(([key, l]) => `${l} ${count(key)}`).join(" · ");
+  const chips = keys.length < 2 ? "" : `<p class="np-tools wf"><button class="fb ${f ? "" : "on"}" data-act="waitf" data-v="">alle ${why.size}</button>` +
+    keys.map(([key, l]) => `<button class="fb ${f === key ? "on" : ""}" data-act="waitf" data-v="${key}">${l} ${count(key)}</button>`).join("") + `</p>`;
+  // Kleinkram, der allein eine Karte füllt (0.93): ein Vorschlag als Zeile über den Titeln
+  const full = (!f || f === "kleinkram") ? (k.small_groups || []).filter(g => g.full).map(g => {
+    const card = (g.cards || []).map(c => `${c.count > 1 ? c.count + "× " : ""}${money(c.face, g.currency)}`).join(" + ");
+    return `<p class="hint">Kleinkram in <b>${esc(g.name)}</b>: ${g.slugs.length} Titel, zusammen ${money(g.local, g.currency)}, <span class="gn">reicht für eine eigene Karte</span> ${g.step
+      ? `<button class="sm" data-act="planfill" data-c="${g.code}" data-s="${esc(g.slugs.join(","))}" title="Nimmt den Kleinkram in den Schritt ${esc(g.name)}; der Plan kauft dafür ${esc(card)}">alle dazunehmen</button>`
+      : `<button class="sm" data-act="add" data-c="${g.code}" data-s="${esc(g.slugs.join(","))}" title="Legt den Kleinkram in den Korb der Länderkarte ${esc(g.name)}">in die Länderkarte</button>`}</p>`;
+  }).join("") : "";
+  return `<details class="box fold np" data-k="notplan" ${S.folds.notplan ? "open" : ""}><summary>Wartet <span class="mut">· ${why.size} Titel: ${sums}</span></summary>` +
+    `<p class="hint">Würdest du kaufen, der Plan kauft es gerade nicht; der Grund steht am Titel. Dazunehmen geht trotzdem.</p>` + chips + full +
+    `<div class="np-grid">${NP_COLS}${npTitles(list, "w", {note: s => why.get(s).map(w => w.note).join(" · "), act: s => acts.get(s)})}</div></details>`;
 }
 const TIER_OF = d => ({leicht:1, mittel:2, schwer:3})[d.tier_name];
+/* „Gekauft“ (1.4.0): das Protokoll als Raster, je Kauf eine Zeile, die Titel aufklappbar; darunter, was noch auf der
+   Wishlist steht, mit Quelle (vorher die Gruppe „Schon gekauft“ in „Nicht im Plan“). Entfernen geht nur bei DekuDeals */
 function boughtBox(k){
-  if(!k.bought.length) return "";
-  return `<details class="box fold" data-k="bought" ${S.folds.bought ? "open" : ""}><summary>Gekauft (${k.bought.length}) <span class="mut">· insgesamt ${eur(k.bought_saving)} unter dem deutschen Preis</span></summary><table class="mini-t">` +
-    k.bought.map(b => `<tr><td>${dmy(b.at)}</td><td class="l">${esc(country(b.code).name)}: ${b.titles.map(esc).join(", ")}</td><td title="${b.games !== null && b.games !== undefined ? `Spiele ${eur(b.games)}, Karten ${eur(b.cost)}: der Rest bleibt als Guthaben` : `Kartenkosten`}">${eur(b.games ?? b.cost)}${b.de !== null && b.de !== undefined ? ` <small style="display:inline" class="mut">statt ${eur(b.de)} in DE</small>` : ""}</td><td>${b.rest ? `Rest ${money(b.rest, b.currency)}` : ""}</td></tr>`).join("") +
-    `</table><p class="hint" style="margin-top:6px"><button class="link" data-act="unbought" title="Den letzten Kauf zurücknehmen, Land und Guthaben wie vorher">letzten Kauf zurücknehmen</button></p></details>`;
+  const how = k.bought_how || [];
+  if(!k.bought.length && !how.length) return "";
+  const dk = s => `<a class="pl" href="${esc(deku(s))}" target="_blank" rel="noopener" title="Bei DekuDeals öffnen und von der Wishlist nehmen">bei DekuDeals</a>`;
+  const rows = k.bought.map(b => {
+    const slugs = b.slugs || [], titles = b.titles || [];
+    const names = (slugs.length === titles.length ? slugs : titles).map((s, j) => slugs.length === titles.length
+      ? `<li>${titleBtn(s, esc(titles[j]))}</li>` : `<li>${esc(s)}</li>`).join("");
+    const paid = `<span title="${b.games !== null && b.games !== undefined ? `Spiele ${eur(b.games)}, Karten ${eur(b.cost)}: der Rest bleibt als Guthaben` : `Kartenkosten`}">${eur(b.games ?? b.cost)}</span>`;
+    return `<details class="npf bkf" data-k="bk:${esc(b.at)}" ${S.folds["bk:" + b.at] ? "open" : ""}><summary class="bkr"><span>${dmy(b.at)}</span><span>${esc(country(b.code).name)}</span>` +
+      `<span class="bk-n">${titles.length} Titel</span><span class="r">${paid}</span><span class="r mut">${b.de !== null && b.de !== undefined ? `statt ${eur(b.de)}` : ""}</span>` +
+      `<span class="r">${b.rest ? money(b.rest, b.currency) : ""}</span></summary><ul class="bk-t">${names}</ul></details>`;
+  }).join("");
+  const log = k.bought.length ? `<div class="bk-grid"><div class="bkr nph"><span>Datum</span><span>Land</span><span>Titel</span><span class="r">bezahlt</span><span class="r">in DE</span><span class="r">Rest</span></div>${rows}</div>` +
+    `<p class="hint" style="margin-top:6px"><button class="link" data-act="unbought" title="Den letzten Kauf zurücknehmen, Land und Guthaben wie vorher">letzten Kauf zurücknehmen</button></p>` : "";
+  // Noch auf der Wishlist, nach Quelle (0.95)
+  const HOW = {plan: "im Kaufplan als gekauft vermerkt", collection: "in deiner Sammlung", eshop: "laut eShop-Kaufverlauf gekauft"};
+  const src = s => { const x = how.find(y => y.slug === s) || {}; return x.how === "pack" ? `steckt in ${esc(x.via || "")}, das du schon hast` : HOW[x.how] || ""; };
+  const wish = how.length ? `<p class="bk-h"><b>Noch auf der Wishlist: ${how.length}</b> <span class="mut">· entfernen kannst du es bei DekuDeals</span></p>` +
+    `<div class="np-grid">${NP_COLS}${npTitles(how.map(x => x.slug), "own", {note: src, act: dk})}</div>` : "";
+  const head = [k.bought.length ? `${k.bought.length} ${k.bought.length === 1 ? "Kauf" : "Käufe"}, insgesamt ${eur(k.bought_saving)} unter dem deutschen Preis` : "",
+    how.length ? `${how.length} noch auf der Wishlist` : ""].filter(Boolean).join(" · ");
+  return `<details class="box fold np" data-k="bought" ${S.folds.bought ? "open" : ""}><summary>Gekauft <span class="mut">· ${head}</span></summary>${log}${wish}</details>`;
 }
 function altNames(codes){
   return (codes || []).length ? codes.map(c => country(c).name).join(", ") : "Deutschland";

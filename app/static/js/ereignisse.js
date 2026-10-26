@@ -67,6 +67,7 @@ document.addEventListener("click", async e => {
     else if(a === "thmset"){ setTheme(d.v); }
     else if(a === "lgclose"){ $("legend").close(); }
     else if(a === "vf"){ S.vf = d.v; saveView(); render(); }
+    else if(a === "waitf"){ S.wf = d.v; render(); }
     else if(a === "wlfoldall"){ document.querySelectorAll(".radar .dlctog").forEach(b => { const k = "wl:" + b.dataset.g; if(d.v) delete S.folds[k]; else S.folds[k] = 1; }); saveView(); render(); }
     else if(a === "wlfold"){ const k = "wl:" + d.g; if(S.folds[k]) delete S.folds[k]; else S.folds[k] = 1; saveView(); render(); }
     else if(a === "nodlcoff"){ S.noDlc = false; saveView(); render(); }
@@ -230,7 +231,7 @@ document.addEventListener("click", async e => {
       await saveUi(); S.kauf = await api("/api/kaufplan"); go("jetzt");
       const st = S.kauf.steps.find(x => x.code === d.c), got = st ? st.items.filter(i => slugs.includes(i.slug)).length : 0;
       toast(got === slugs.length ? `${got} Titel im Schritt ${country(d.c).name}`
-        : `${got} von ${slugs.length} Titeln im Schritt ${country(d.c).name}; die übrigen stehen unter „Nicht im Plan“`);
+        : `${got} von ${slugs.length} Titeln im Schritt ${country(d.c).name}; die übrigen stehen unter „Wartet“`);
       const card = [...document.querySelectorAll(".steps .pc h2")].find(h => h.textContent.includes(country(d.c).name));
       if(card) card.scrollIntoView({block: "start", behavior: "smooth"});
     }
@@ -359,7 +360,7 @@ document.addEventListener("change", async e => {
     }
     else if(a === "drop"){ const name = rowOf(el.dataset.s).title; await change(`${name} entfernt`, () => dropFrom(el.dataset.c, el.dataset.s)); }
     else if(a === "npadd" && el.value){
-      // Aus „Nicht im Plan“ in einen Schritt (0.97): wie „Titel dazunehmen“ dort
+      // Aus „Wartet“ (bis 1.3 „Nicht im Plan“) in einen Schritt (0.97): wie „Titel dazunehmen“ dort
       const name = (rowOf(el.dataset.s) || {}).title || el.dataset.s;
       fillStep(el.value, [el.dataset.s]);
       await saveUi(); S.kauf = await api("/api/kaufplan"); render();
@@ -435,7 +436,7 @@ $("verlauf").addEventListener("click", e => {   // Klick neben das Fenster schli
   if(e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) d.close();
 });
 $("legend").addEventListener("click", e => { if(e.target === e.currentTarget) e.currentTarget.close(); });
-// Aufgeklappte Kästen (Rechnung, Nicht im Plan, Gekauft) bleiben beim Neuzeichnen offen
+// Aufgeklappte Kästen (Rechnung, Wartet, Gekauft) bleiben beim Neuzeichnen offen
 document.addEventListener("toggle", e => {
   // data-kc: von Haus aus offen, gemerkt wird das Zuklappen (0.76)
   const kc = e.target.dataset && e.target.dataset.kc;

@@ -85,7 +85,7 @@ Ab 1.3.0:
   Tagen“ (Beginn aus `start` der Zelle). Ab 1.3.1 ist jede Zeile selbst klappbar (`details.newsd`,
   gemerkt unter `newssoon`/`newsfresh`): zu nennt sie fett die Überschrift, dahinter grau die ersten drei
   Titel (DLC ohne Spielnamen) und „und n weitere“; auf verschwindet diese Aufzählung, und alle Titel stehen
-  im Raster von „Nicht im Plan“ (`npRow`, `NP_COLS`), geplante mit Chip „im Plan“ und Schritt. Abstand
+  im Raster von „Wartet“ (`npRow`, `NP_COLS`), geplante mit Chip „im Plan“ und Schritt. Abstand
   oben 6 px, unten 10 px (vorher klebte „Neu im Angebot“ an den Karten). Vorher eine zweite, auffälligere
   Zeile „und n weitere“ mit unterstrichenen Links.
 - **Verweise ohne Unterstreichung** (ab 1.3.1, `.plain`, unterstrichen erst beim Darüberfahren wie
@@ -95,7 +95,7 @@ Ab 1.3.0:
   „· Klick öffnet den Preisverlauf“ an das genaue Ende im Tooltip). Der Einkaufspreis eines DLC ohne
   eShop-Seite führt wie überall zu DekuDeals (`shopLink` statt `buyLink`).
 - **Was wäre, wenn** (`assumeBtn`, `assumedLine`): graues ✎ (`.asmb`) hinter dem Einkaufspreis im Schritt
-  und vor „dazunehmen …“ unter „Nicht im Plan“; es fragt mit `prompt` nach dem Preis in Landeswährung
+  und vor „dazunehmen …“ unter „Wartet“; es fragt mit `prompt` nach dem Preis in Landeswährung
   (Vorschlag: Tiefstpreis dort). Angenommene Preise violett (`.asm`, `--warn`, prüfen), ohne Link, mit
   kleinem „angenommen“ und ×; oben `p.restline.asmline` mit violettem „Was wäre, wenn:“, je Annahme
   Titel, Preis, Land, „(nicht im Plan)“ wenn sie in keinen Schritt kam, × und „alle verwerfen“. „gekauft“
@@ -107,7 +107,7 @@ Eine Karte überall (ab 0.94, Entscheidung 20.10.2026): Schritt und Länderkarte
 Werkzeuge. Vor jedem Titel ein graues × (`xBtn`; wie im Korb, statt der Häkchen der Länderkarten):
 im Schritt `planskip` (Titel nicht in diesem Schritt, `ui.plan_skip`), bei Dazugenommenem
 `planunfill`, auf der Länderkarte `drop`. Unter der Tabelle „Herausgenommen: Titel jetzt in Land
-zurück“ (`removedLine`; ab 0.99.4 mit vollem Namen und DLC-Marke, in Schritt und Länderkarte gleich; ohne Schritt unter „Nicht im Plan“), am Schritt „zurücksetzen“
+zurück“ (`removedLine`; ab 0.99.4 mit vollem Namen und DLC-Marke, in Schritt und Länderkarte gleich; ohne Schritt unter „Wartet“), am Schritt „zurücksetzen“
 (`planreset`), für alle Schritte „Plan zurücksetzen“ rechts in der Kopfzeile des Kaufplans, nur wenn
 etwas geändert ist (`planresetall`, `planMine`, Hinweis mit „Rückgängig“, ab 1.0.3). Ein Land unter
 „Andere Länder“ rechnet der Server allein (`/api/plans` mit `only`, ab 1.0.3). Darunter bis zu drei Zeilen `.fillrow` (`suggestHtml`): „Passt in den Rest (x):“
@@ -227,7 +227,7 @@ eingerückt unter ihm (`.cdr.part`, `collBlocks`). Je Spiel mit offenen DLC ein 
 (`details.cgo`, von Haus aus offen, gemerkt wird das Zuklappen); oben das Offene, darunter
 eingeklappt „x vorhanden“, „x ignoriert“, „x nicht mehr erhältlich“ (`details.cgs`). „alle aufklappen
 · alle zuklappen“ in der Werkzeugzeile gilt für diese Kästen (`data-scope="#collopen"`). Am Handy
-brechen die Zeilen um wie unter „Nicht im Plan“.
+brechen die Zeilen um wie unter „Wartet“.
 
 ## Rest füllen (Kaufplan)
 
@@ -262,10 +262,11 @@ fehlt (ab 0.70). Preise in Auswahlfeldern „Titel dazunehmen …“ immer mit W
 Kleinkram (ab 0.92, Entscheidung 19.10.2026): Titel mit Bestpreis unter `deal_eur.mini` (2 €)
 machen keine Karte größer. Ab 0.98 (Entscheidung 20.10.2026) kommen sie nie von selbst in einen
 Schritt: Lässt ein Schritt Rest, stehen sie unter „Passt in den Rest“ zur Auswahl; sonst unter
-„Nicht im Plan“, Gruppe „Kleinkram“, je Land einklappbar mit Summe, Anteil an der Karte und „alle
-„dazunehmen …“ je Titel (Felder `small` und `small_groups`). Füllt er eine Karte bis auf höchstens
-10 %, folgt grün „reicht für eine eigene Karte“ mit Knopf „alle dazunehmen“ (ohne Schritt: „in die
-Länderkarte“). Die Grenze steht
+„Wartet“ mit dem Grund „Kleinkram unter 2,00 €: kommt über „Passt in den Rest“ dazu“ und „dazunehmen …“
+je Titel (Felder `small` und `small_groups`; ab 1.4.0 ohne eigene Gruppe, Entscheidung 26.10.2026: Regel
+bleibt, nur als Grund). Füllt er in einem Land eine Karte bis auf höchstens 10 %, steht oben in „Wartet“
+eine Zeile „Kleinkram in Land: n Titel, zusammen …“ mit grün „reicht für eine eigene Karte“ und Knopf
+„alle dazunehmen“ (ohne Schritt: „in die Länderkarte“). Die Grenze steht
 in Einstellungen, Regeln („Kleinkram unter … €“), im Regelsatz darüber und in der Legende bei „kaufen“.
 
 ## Kopfleiste
@@ -328,8 +329,8 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
 - ✱ (blau, `.cb`, ab 0.99.4 nicht mehr gold): mit Cashback des Kartenshops wäre es der Bestpreis.
 - Preise sind überall Links in den eShop des Lands (`shopLink`, ab 0.99.4 auch in der Tabelle), ohne
   eShop-Seite zum Verlauf bei DekuDeals.
-- Titel, die du mit × aus einem Schritt genommen hast, tragen unter „Nicht im Plan“ den Grund „von dir
-  aus Land herausgenommen, wartet“ (`skippedFrom`).
+- Titel, die du mit × aus einem Schritt genommen hast, tragen unter „Wartet“ den Grund „von dir
+  aus Land genommen“ mit „zurück“ (`waitBox`).
 - Nicht zählende Zeilen sind blass (`opacity`), nicht farbig.
 - Violett: Angabe aus titledb, nicht von Nintendo (bis 0.81.1 zusätzlich gepunktet unterstrichen).
 - „am Bestpreis“ (grün) an einem Schritt oder Land steht nur, wenn jeder Titel darin am
@@ -338,7 +339,7 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
 - DLC mit gekürztem Namen tragen in den Tabellen der Plan-Schritte und Länderkarten und in Käufen
   das Hauptspiel klein und grau darüber (`small.gm`, ab 0.65), damit „Pixel Pack“ nicht allein
   steht. In Schritt und Länderkarte steht ab 1.1.4 das Spiel immer in der ersten Zeile (mit DLC-Marke),
-  der DLC-Name in der zweiten. Überall sonst (Korb, „Nicht im Plan“, Herausgenommen) steht der volle Name in normaler Größe
+  der DLC-Name in der zweiten. Überall sonst (Korb, „Wartet“, „Gekauft“, Herausgenommen) steht der volle Name in normaler Größe
   mit DLC-Marke davor (Checkliste, Punkt 1). In der Wishlist-Liste nicht: Dort stehen DLC immer unter einer Kopfzeile mit dem Namen
   des Spiels, auch ein einzelner DLC (ab 0.77).
 - Links sind ruhig in der Textfarbe (`a` mit `--accent`), nie browser-blau: Blau heißt Rabatt.
@@ -402,26 +403,34 @@ Tooltip steht. Sortieren gibt es dort nicht.
 Karten ohne Lücken (ab 0.96): Schritte des Kaufplans und die Länderkarten in mehreren Spalten
 (`.grid.masonry`) belegen je so viele 1-px-Zeilen, wie sie hoch sind (`masonry()`, `spanCard()` in
 `grund.js`, nach jedem `render()`; ein ResizeObserver passt beim Auf- und Zuklappen an). Schritt 3 rückt
-so unter den kürzeren der beiden ersten. Die Liste „Nicht im Plan“ steht ab 0.96 direkt unter den
-Schritten, vor „alle Länderkarten“, und ist nach Grund gegliedert (`.np`): Wechsel lohnt nicht,
-Kleinkram, Lieber warten, Von dir geändert, Schon gekauft, Sonst nicht im Plan. Ab 0.98 ist jede
-Ebene klappbar (Gruppe, Land oder Quelle, Spiel; `details.npf` mit `data-kc`, oben „alle aufklappen ·
-alle zuklappen“). Kopfzeile je Land: fettes Land, Stufe, grau „n wartet, n im Plan“, „Wechsel spart nur
-**1,50 €**, lohnt ab 20,00 € Ersparnis“ (nur der Betrag rot), Link „Länderkarte“; Kleinkram mit Summe und grün
-„reicht für eine eigene Karte“ samt Knopf „alle dazunehmen“. Jeder Titel ist eine Zeile im Raster der
+so unter den kürzeren der beiden ersten. „Wartet“ (`waitBox`, ab 1.4.0, Entscheidung 26.10.2026; vorher „Nicht im Plan“ mit sechs Gruppen, darin Länder,
+darin Spiele) steht direkt unter den Schritten, vor „alle Länderkarten“ (`.np`, gemerkt unter `notplan`):
+was du kaufen würdest, der Plan aber gerade nicht kauft. Jeder Titel genau einmal, nach Spiel (`npTitles`:
+voller Name, zwei und mehr Titel eines Spiels unter klappbarer Spielzeile ohne Spielnamen), im Raster der
 Kopfzeile (`npRow`, `.npr`; Spalten Titel, Urteil, Einkaufspreis, Rabatt, Land, über Bestpreis, bis,
-Handlung), Namen wie in der Wishlist (`npTitles`: voller Name, zwei und mehr Titel eines Spiels unter
-klappbarer Spielzeile ohne Spielnamen), darunter grau die Begründung oder Chip „im Plan“ mit Schritt.
-Preis mit ★ als Link in den eShop, bei DLC zu DekuDeals; Land als Link zum Preisverlauf. Handlung:
-Auswahl „dazunehmen …“ mit „Schritt n, Land · Preis (+Aufpreis)“ (`npadd`), sonst grau „in keinem
-Schritt“, „zurück“, „entfernen“ oder „bei DekuDeals“. Titel, die der Plan in einem anderen Land kauft,
-stehen zur Erklärung unter ihrem Land, zählen aber nicht mit. Am Handy je Titel eine kleine Karte.
-Zugeklappt nennt die Kopfzeile Titelzahl und Gruppen („5 Titel: Kleinkram 5“).
+Handlung). Darunter klein grau der Grund, mehrere mit „·“: „Wechsel nach Land [Stufe] lohnt nicht: spart
+1,52 €, lohnt ab 20,00 € · Länderkarte“, „Kleinkram unter 2,00 €: kommt über „Passt in den Rest“ dazu“,
+„Lieber warten: …“, „von dir aus Land genommen“ (mit „zurück“), „für Land übernommen …“ (mit „entfernen“),
+„nur ein Weg zur Switch 2: …“, „steckt in …, das ebenfalls zum Kauf ansteht“, „nirgends kaufbar, wo es
+zählt“. Oben Filterknöpfe nach Grund mit Zahl (`.fb` wie in der Wishlist, `waitf`, `S.wf` nur für die
+Sitzung; erst ab zwei Gründen): Wechsel, Kleinkram, Lieber warten, von dir, sonst. Preis mit ★ als Link in
+den eShop, bei DLC zu DekuDeals; Land als Link zum Preisverlauf. Handlung: Auswahl „dazunehmen …“ mit
+„Schritt n, Land · Preis (+Aufpreis)“ (`npadd`), sonst grau „in keinem Schritt“, „zurück“ oder
+„entfernen“. Am Handy je Titel eine kleine Karte. Zugeklappt nennt die Kopfzeile Titelzahl und Gründe
+(„7 Titel: Wechsel 2 · Kleinkram 3 · von dir 4“; ein Titel mit zwei Gründen zählt bei beiden).
+
+„Gekauft“ (`boughtBox`, ab 1.4.0, gemerkt unter `bought`): die letzten fünf Käufe als Raster (`.bk-grid`,
+`.bkr`; Datum, Land, „n Titel ▾“, bezahlt mit Tooltip Spiele/Karten, grau „statt … in DE“, Rest in
+Landeswährung), jede Zeile klappt die Titel auf (`details.bkf`, Namen als `titleBtn`), darunter „letzten
+Kauf zurücknehmen“. Dann „Noch auf der Wishlist: n“ im Raster von „Wartet“, Grund grau: „im Kaufplan
+als gekauft vermerkt“, „in deiner Sammlung“, „laut eShop-Kaufverlauf gekauft“, „steckt in …, das du
+schon hast“; Handlung „bei DekuDeals“. Zugeklappt: „n Käufe, insgesamt x € unter dem deutschen Preis ·
+m noch auf der Wishlist“. Am Handy bricht eine Kaufzeile in zwei Zeilen um.
 
 Nichts still im Hintergrund (ab 0.95, Entscheidung 20.10.2026): Was das Tool von selbst entscheidet,
-steht sichtbar da. „Nicht im Plan“ (`notPlanned`) nennt ein Land, dessen Wechsel sich nicht lohnt, auch
-wenn seine Titel anderswo in den Plan kommen (`dropped[].moved`: „kauft der Plan in X; in Y wären sie
-günstiger, aber Wechsel lohnt nicht …“; der Grund am Titel sagt dasselbe), Besitz mit Quelle
+steht sichtbar da. „Wartet“ (`waitBox`) nennt am Titel, warum der Plan ihn nicht kauft; was der Plan
+in einem anderen Land kauft (`dropped[].moved`), steht ab 1.4.0 nicht mehr dort, sondern am Titel im Schritt
+und unter „Andere Länder“. „Gekauft“ (`boughtBox`) nennt Besitz, der noch auf der Wishlist steht, mit Quelle
 (`bought_how`: im Kaufplan vermerkt, Sammlung, eShop-Kaufverlauf, „steckt in …, das du schon hast“;
 ebenso `planState` in der Wishlist) und übernommene Füllartikel ohne Schritt (`fill_idle`, „übernommen,
 gerade nicht im Plan“ mit ×). Alte Preise eines Lands (`price_stale`, `price_at`): oben im Kaufplan
@@ -530,13 +539,13 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 
 | Was | Wo es vorkommt |
 |---|---|
-| Titelname mit DLC-Marke, Spiel grau zweizeilig davor (`dlcLabel`: flache Wishlist-Liste, Tabelle, Korb; gruppiert in der Liste ohne Spiel), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Nicht im Plan“ (`notPlanned`), Zu erledigen (`todos`) |
+| Titelname mit DLC-Marke, Spiel grau zweizeilig davor (`dlcLabel`: flache Wishlist-Liste, Tabelle, Korb; gruppiert in der Liste ohne Spiel), Sprach- und Regionsmarke, eigenes Angebot | Wishlist-Liste (`titleRow`, `titleGroups`), Tabelle (`viewMatrix`), Korb (`viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`), „Passt in den Rest“ und „Passt dazu“, Auswahl „Titel dazunehmen …“ (`wishOpts`, `extraOpts`, `nsoOpts`), Sammlung (`collGame`, `collDlc`), Käufe (`eshopBox`), „Wartet“ (`waitBox`), „Gekauft“ (`boughtBox`), Zu erledigen (`todos`) |
 | Urteil ohne Verlauf (`nohist`) | Wishlist-Liste (`titleRow`), Einzelheiten, Plan-Tabelle („am Bestpreis“), Legende |
 | Preis eines Titels: Einkaufspreis, ★, Rabatt, „ca.“, Abstand zum Bestpreis, Urteilsfarbe | Wishlist-Liste (`titleRow`), Tabelle und Korb (Preiszelle `twoLine`/`cellMarks` in `viewMatrix`, `viewCompare`, am Handy `korbPhone`), Plan-Schritt und Länderkarte (`planCard`, `priceLine`), Mitgliedschaft (`nsoPrice`), Verlauf (`drawVerlauf`), Legende (`openLegend`) |
 | Summe eines Landes: Preis, Wechsel, Rest, Karten | Plan-Schritt und Länderkarte (`planCard`, `switchLine`, `restLine`, `billHtml`), Korb-Fußzeilen (`viewCompare`, am Handy `korbPhone`), Kopf des Kaufplans (`viewKauf`), „Andere Länder“ (`othersHtml`) |
 | Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“, „Genau Null“/„Fast Null“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml` (Null-Zeilen `zeroHtml`), `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf, „In „Jetzt“ übernehmen“ `jetztBtn`), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest`; Suchfeld vor jeder Auswahl `pickWrap` |
-| Angenommener Preis (Was wäre, wenn) | Plan-Schritt (`planCard`, Zelle Einkaufspreis), „Nicht im Plan“ (`npRow`), Zeile oben (`assumedLine`), Legende (`openLegend`) |
-| Angebotsende und Angebotsbeginn | Hinweise oben im Kaufplan (`saleNews`), Plan-Schritt (`endCell`), Tabelle mit „Details“, Tooltips in Tabelle und Korb, „Nicht im Plan“ (`npRow`) |
+| Angenommener Preis (Was wäre, wenn) | Plan-Schritt (`planCard`, Zelle Einkaufspreis), „Wartet“ (`npRow`), Zeile oben (`assumedLine`), Legende (`openLegend`) |
+| Angebotsende und Angebotsbeginn | Hinweise oben im Kaufplan (`saleNews`), Plan-Schritt (`endCell`), Tabelle mit „Details“, Tooltips in Tabelle und Korb, „Wartet“ und „Noch auf der Wishlist“ (`npRow`) |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |

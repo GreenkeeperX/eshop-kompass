@@ -139,8 +139,8 @@ Rabatt, mit denselben Grenzen für jedes Land:
 ihn gilt die Euro-Grenze bei „kaufen“ nicht, nur die 2 %; 0,50 € wären bei 1 € schon 50 %. Im
 Kaufplan macht er keine Guthabenkarte größer und kommt auch nie von selbst in einen Schritt
 (ab 0.98): Er steht unter „Passt in den Rest“ zur Auswahl, sobald ein Schritt Rest lässt, und
-unter „Nicht im Plan“ je Land mit Summe („zusammen 11,20 R$ von 30 R$ (37 %)“) und „alle
-dazunehmen“. Füllt er zusammen eine Karte bis auf höchstens 10 %, steht dort „Reicht für eine
+unter „Wartet“ mit dem Grund „Kleinkram unter 2 €: kommt über „Passt in den Rest“ dazu“. Füllt er
+in einem Land zusammen eine Karte bis auf höchstens 10 %, steht dort oben „reicht für eine
 eigene Karte“ mit einem Knopf, der ihn in den Schritt nimmt. Mit Kreditkarte bezahlt, ändert sich nichts.
 
 Ein dauerhaft günstiger Normalpreis am Bestpreis ist also „kaufen“ wie ein Angebot (der Grund
@@ -384,14 +384,15 @@ und steht deshalb nicht zur Wahl.
 sind die Titel mit dem Urteil „kaufen“, per Schalter auch „gut“. Jeder Titel geht ins Land, wo
 er am wenigsten kostet. Ein Land bleibt nur im Plan, wenn sich der Wechsel lohnt (siehe
 [Wechsel und Stufen](#wechsel-und-stufen)); sonst wandern seine Titel ins nächstbeste Land.
-Sind sie dort kein Kauf mehr, stehen sie unter „Nicht im Plan“ (zugeklappt, direkt unter den
-Schritten), nach Grund gegliedert, jeder Titel nur einmal; die Kopfzeile nennt die Gruppen mit Zahl.
-Jeder Titel steht dort mit Urteil, günstigstem Preis jetzt, Abstand zum Bestpreis und Angebotsende;
-„dazunehmen …“ nimmt ihn mit dem Preis dort in einen Schritt; geht das nirgends, steht dort „in
-keinem Schritt“. Was du mit × herausgenommen hast, sagt das am Titel. Kommen sie anderswo in den Plan, bleibt das Land dort trotzdem sichtbar („kauft
-der Plan in Schweden; in Polen wären sie günstiger, aber Wechsel lohnt nicht: spart nur 2,10 €“),
-und der Grund am Titel sagt dasselbe. Was schon gekauft ist, steht dort mit Quelle: im Kaufplan
-vermerkt, in deiner Sammlung, laut eShop-Kaufverlauf oder „steckt in …, das du schon hast“.
+Sind sie dort kein Kauf mehr, stehen sie unter „Wartet“ (zugeklappt, direkt unter den
+Schritten; bis 1.3 „Nicht im Plan“): jeder Titel genau einmal, nach Spiel, mit Urteil, günstigstem
+Preis jetzt, Abstand zum Bestpreis und Angebotsende. Der Grund steht klein am Titel, etwa „Wechsel
+nach Mexiko lohnt nicht: spart 1,52 €, lohnt ab 20,00 €“ mit Link zur Länderkarte, „Kleinkram unter
+2 €“, „Lieber warten: …“, „von dir aus Brasilien genommen“ mit „zurück“, „nur ein Weg zur Switch 2“,
+„steckt in …“ oder „nirgends kaufbar“. Oben filtern Knöpfe nach Grund, mit Zahl. „dazunehmen …“
+nimmt einen Titel mit dem Preis dort in einen Schritt; geht das nirgends, steht dort „in keinem
+Schritt“. Was der Plan in einem anderen Land kauft, steht hier nicht; dass ein anderes Land
+günstiger wäre, sagt der Titel im Schritt und „Andere Länder“.
 Nimmst du Titel in ein Land, in dem gerade kein Schritt kauft (etwa mit „In „Jetzt“ übernehmen“
 im Korb), bekommt es einen Schritt, auch wenn sich der Wechsel nicht lohnt; die Karte sagt dann
 „lohnt nicht“. Geht das nicht, etwa weil ein blockierender Rest den Plan in deinem Kontoland
@@ -400,7 +401,7 @@ hält, stehen die Titel als „übernommen, gerade nicht im Plan“ mit ×.
 bald“ für Angebote im Plan oder mit Urteil „kaufen“ oder „gut“, die in weniger als einer Woche
 enden, und „Neu im Angebot“ für Wishlist-Titel, deren günstigstes Angebot vor höchstens drei Tagen
 begann. Jede Zeile nennt die ersten drei Titel und „und n weitere“; ein Klick klappt sie auf und
-zeigt alle im Raster von „Nicht im Plan“: Urteil, Einkaufspreis, Rabatt, Land, Abstand zum Bestpreis,
+zeigt alle im Raster von „Wartet“: Urteil, Einkaufspreis, Rabatt, Land, Abstand zum Bestpreis,
 Ende, und „im Plan“ mit Schritt oder „dazunehmen …“.
 
 **Verweise in Schritten, Länderkarten und Korb:** Der Titelname öffnet seine Einzelheiten in der
@@ -408,7 +409,7 @@ Wishlist (wie in der Tabelle), „normal“ oder das Angebotsende öffnet den Pr
 Ende steht im Tooltip), der Einkaufspreis den eShop. DLC haben im eShop keine eigene feste Seite,
 die das Tool kennt; ihr Einkaufspreis öffnet deshalb wie der Landespreis den Verlauf bei DekuDeals.
 
-**Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Nicht im Plan“)
+**Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Wartet“)
 fragt nach einem angenommenen Preis in der Landeswährung, wie im Shop; vorgeschlagen ist der
 Tiefstpreis dort aus den letzten 24 Monaten. Der Plan rechnet dann so, als gäbe es den Titel dort
 zu diesem Preis, samt Urteil, Schritten und „Auf Null“. Angenommene Preise stehen violett mit
@@ -438,7 +439,7 @@ Rechnung; „Länderkarte von … öffnen“ führt zu seinem eigenen Korb.
 nimmt ihn heraus: im Kaufplan nur aus diesem Schritt (der Plan rechnet neu, der Titel geht ins
 nächstbeste Land oder wartet), auf der Länderkarte aus ihrem Korb. Herausgenommenes steht danach
 unter der Tabelle („Herausgenommen: Titel jetzt in Polen zurück“), fällt ein ganzer Schritt weg,
-unter „Nicht im Plan“; „zurück“ holt es wieder hinein, „zurücksetzen“ verwirft alles, was du an
+unter „Wartet“; „zurück“ holt es wieder hinein, „zurücksetzen“ verwirft alles, was du an
 einem Schritt geändert hast, „Plan zurücksetzen“ oben rechts das an allen Schritten (mit
 „Rückgängig“). Darunter drei Zeilen Vorschläge: „Passt in den Rest“, „Passt dazu“
 und „Weglassen spart“.
@@ -497,8 +498,11 @@ was heute spart, aber weit darüber liegt, wäre im nächsten Angebot günstiger
 **Gekauft:** „gekauft“ an einem Land vermerkt den Kauf im Kaufprotokoll
 (`data/purchases.json`): Dein Konto steht danach dort, ein Rest bleibt dort als Guthaben,
 Guthaben anderer Länder gilt als weg; die Rückfrage nennt es mit Land und Betrag. Gekaufte Titel verschwinden aus dem Plan. Unter
-„Gekauft“ stehen die letzten Käufe; die Ersparnis rechnet wie der Plan mit dem, was die Spiele
-kosten. „letzten Kauf zurücknehmen“ stellt Land und Guthaben wieder her. „als Korb
+„Gekauft“ stehen die letzten fünf Käufe je in einer Zeile (Datum, Land, „n Titel“ zum Aufklappen,
+bezahlt, statt … in DE, Rest); die Ersparnis rechnet wie der Plan mit dem, was die Spiele
+kosten. Darunter „Noch auf der Wishlist“: Gekauftes, das dort noch steht, mit Quelle (im Kaufplan
+vermerkt, in deiner Sammlung, laut eShop-Kaufverlauf oder „steckt in …, das du schon hast“) und
+„bei DekuDeals“ zum Entfernen. „letzten Kauf zurücknehmen“ stellt Land und Guthaben wieder her. „als Korb
 vergleichen“ übernimmt die Titel in den gemeinsamen Korb.
 
 **Online-Mitgliedschaft** (unter dem Kaufplan, zugeklappt; 30 Tage vor Ablauf offen): sechs
@@ -562,7 +566,7 @@ bei DekuDeals um „nintendo-switch-2-edition“ verlängert; das Paket ist ein 
 Der Kaufplan kauft nur einen Weg zur Switch 2: Hast du das Spiel, lässt er die Edition weg und
 plant das Upgrade-Paket wie jeden Wishlist-Titel. Stehen Edition und Switch-1-Fassung beide
 zum Kauf an, bleibt der günstigere Weg; ist der Preis des Pakets unbekannt, bleibt die
-Edition. Was wegfällt, steht unter „Nicht im Plan“.
+Edition. Was wegfällt, steht unter „Wartet“.
 
 **Tabelle:** alle Titel mal alle Länder in Euro, Spalten nach Stufe gruppiert und darin nach
 der Zahl der Bestpreise (im Spaltenkopf mit ★), wahlweise nur nach Bestpreisen oder nur nach
@@ -674,7 +678,7 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
   vergleicht „einzeln … · als Pass …“ für die noch fehlenden Teile; ist ein Teil einzeln nicht
   kaufbar oder noch ohne Preis, steht dort „einzeln nicht alle kaufbar“. „fehlen“ zählt Inhalte,
   nicht Kaufwege; in die Summe geht der günstigere Weg. Stehen ein Pass und seine Teile zum
-  Kauf an, kauft der Kaufplan den Pass, die Teile stehen unter „Nicht im Plan“ („steckt in …“).
+  Kauf an, kauft der Kaufplan den Pass, die Teile stehen unter „Wartet“ („steckt in …“).
 - **Nicht mehr erhältlich:** Findet die ID-Suche einen fehlenden DLC in keiner gesuchten
   Region, jeweils zweimal, gibt es ihn meist nur im Spiel oder nicht mehr im eShop. Er zählt
   nicht als fehlend und steht eingeklappt unter „nicht mehr erhältlich“. Was in einer Region

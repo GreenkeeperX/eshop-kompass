@@ -397,7 +397,7 @@ def purchase_plan(data, settings, targets=None, include_good=False, now=None, bo
             "bought_slugs": [s for s in ctx.order if s in done],
             # Woher (0.95): im Kaufplan gekauft, Sammlung, eShop-Kauf oder über ein Paket
             "bought_how": _bought_how(data, settings, ctx, bought, done),
-            "bought": [{k: b.get(k) for k in ("at", "code", "titles", "cost", "games", "de", "rest", "currency")}
+            "bought": [{k: b.get(k) for k in ("at", "code", "titles", "slugs", "cost", "games", "de", "rest", "currency")}
                        for b in (bought or [])[-5:]][::-1],
             # Ein Rest bleibt als Guthaben und ist kein Verlust: Die Ersparnis rechnet mit
             # dem, was die Spiele kosten. Ältere Einträge kennen nur die Kartenkosten.
