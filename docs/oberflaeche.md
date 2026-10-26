@@ -80,7 +80,7 @@ Ab 1.3.0:
   Feld (`.pk.open`, `size` bis 8); Enter nimmt den ersten Treffer (`pickFirst`), Esc leert. Ohne Treffer
   bleibt die Liste zu, das Feld ist rot umrandet (`.pk.none`, `--stop`).
 - **Hinweise** (`saleNews`) als `p.restline.news` unter der Zusammenfassung, nur mit Inhalt: „n Angebote
-  enden bald:“ fett, Titel als Link zu den Einzelheiten mit `endCell` (heute/morgen/bis TT.MM.), Angebote im
+  enden bald:“ fett, ab 1.5.2 die Zahl und bei „Neu im Angebot“ das „Neu“ im Angebots-Blau (`.dealn`, `--deal`), Titel als Link zu den Einzelheiten mit `endCell` (heute/morgen/bis TT.MM.), Angebote im
   Plan und mit Urteil kaufen/gut, weniger als 7 Tage; „Neu im Angebot“ mit grauem „seit höchstens drei
   Tagen“ (Beginn aus `start` der Zelle). Ab 1.3.1 ist jede Zeile selbst klappbar (`details.newsd`,
   gemerkt unter `newssoon`/`newsfresh`): zu nennt sie fett die Überschrift, dahinter grau die ersten drei
@@ -536,7 +536,7 @@ die Felder in „Grenzen anpassen“ und „Gebühren anpassen“. „Quellen un
 igdbkey, ab 1.4.3: Kopf „eingetragen“ grün oder „keiner“, Passwortfelder ohne gespeicherten Wert),
 „Zustand der Quellen“ (`data-k` srcstate, zu von Haus aus; Kopf „n ok, m mit Problem (…)“, Zahl ok
 grün, Problem violett; Tabelle je Quelle mit Zustand, Zeit und Zeile aus dem Protokoll), dann
-„Abgleich alle … Stunden“, „Verbindung testen“, die Klappe „Verbindungstest“ (erst nach einem Test) und
+„Abgleich alle … Stunden“, „Aktualisieren“ (ab 1.5.2, wie der Knopf oben) und „Verbindung testen“, die Klappe „Verbindungstest“ (erst nach einem Test) und
 „Protokoll des letzten Abgleichs · kopieren“ (offen von Haus aus, `data-kc` logbox). Ein Knopf in
 einer Klappzeile schaltet die Klappe nicht um.
 Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Jede Klappe und jeder Kasten einer Karte

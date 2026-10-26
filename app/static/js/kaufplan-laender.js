@@ -61,9 +61,9 @@ function saleNews(k){
   };
   let h = "";
   const a = [...soon.values()].sort((x, y) => x.t - y.t);
-  if(a.length) h += line("newssoon", `<b>${a.length === 1 ? "1 Angebot endet bald:" : `${a.length} Angebote enden bald:`}</b>`, a, x => `<span class="ink">${esc(short(x))}</span> ${endCell(x.end, "bis ", "", true)}`);
+  if(a.length) h += line("newssoon", `<b><span class="dealn">${a.length}</span> ${a.length === 1 ? "Angebot endet bald:" : "Angebote enden bald:"}</b>`, a, x => `<span class="ink">${esc(short(x))}</span> ${endCell(x.end, "bis ", "", true)}`);
   const b = [...fresh.values()].sort((x, y) => y.t - x.t);
-  if(b.length) h += line("newsfresh", `<b>Neu im Angebot</b> <span class="mut">seit höchstens drei Tagen:</span>`, b, x => `<span class="ink">${esc(short(x))}</span>`);
+  if(b.length) h += line("newsfresh", `<b><span class="dealn">Neu</span> im Angebot</b> <span class="mut">seit höchstens drei Tagen:</span>`, b, x => `<span class="ink">${esc(short(x))}</span>`);
   return h ? `<div class="news">${h}</div>` : "";
 }
 /* Angenommene Preise (1.3.0, „Was wäre, wenn“): oben im Kaufplan, damit niemand sie für echte Preise hält */
