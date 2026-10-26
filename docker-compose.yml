@@ -15,8 +15,6 @@ services:
     ports:
       - "8787:8787"
     environment:
-      # Startwert, später in der Oberfläche unter Einstellungen änderbar
-      WISHLIST_URL: "https://www.dekudeals.com/wishlist/DEINE-ID"
       # Nur nötig, wenn du das Tool über eine Domain aufrufst. IP-Adressen, Namen ohne Punkt und
       # Namen im eigenen Netz (.home.arpa, .local, .lan, .internal) gelten ohne Eintrag
       # ALLOWED_HOSTS: "kompass.beispiel.de"

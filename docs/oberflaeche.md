@@ -519,14 +519,22 @@ der Wishlist-Liste zweizeilig je Spalte.
 Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel dazunehmen …“ stehen in einer Zeile, die
 „Rechnung“ darunter in eigener Zeile; Aufklappen schiebt so nichts zur Seite (ab 0.58).
 
-Einstellungen: Jeder Bereich (Länder, Regeln, Gebühren, Sprachen prüfen, Quellen, Sicherung und
-Protokoll) ist eine eigene Karte (`.setc`), damit klar bleibt, wozu Eingeklapptes gehört. In „Quellen“
-steht der IGDB-Schlüssel in einer eigenen Klappe (`data-k` igdbkey, ab 1.4.3): Kopf „eingetragen“ (grün)
-oder „keiner“, Felder als Passwortfelder, die nie einen gespeicherten Wert zeigen.
+Einstellungen (Aufbau ab 1.5.0, nach dem VR-Navigator): wenige Karten (`.setc`) Länder, Regeln und
+Gebühren, Sprachen prüfen, Käufe aus dem eShop, Quellen und Abgleich, Sicherung. Klappbar sind die Teile
+darin, nicht die Karten; jede Klappzeile nennt zugeklappt das Nötigste. Die Sprungleiste trägt hinter
+Länder (Kartenpreise älter als 30 Tage), Sprachen (offen), Käufe (nicht in der Sammlung, zuordnen,
+nachtragen) und Quellen (mit Problem) eine violette Zahl (`.warnc`), wenn dort etwas offen ist; die
+Werkzeuge bleiben in ihren Karten (Entscheidung 26.10.2026). Regeln und Gebühren stehen je als Satz,
+die Felder in „Grenzen anpassen“ und „Gebühren anpassen“. „Quellen und Abgleich“: Klappen „DekuDeals“
+(Links; offen, solange keine Wishlist eingetragen ist), „IGDB-Schlüssel für Spielinfos“ (`data-k`
+igdbkey, ab 1.4.3: Kopf „eingetragen“ grün oder „keiner“, Passwortfelder ohne gespeicherten Wert),
+„Zustand der Quellen“ (`data-k` srcstate, zu von Haus aus; Kopf „n ok, m mit Problem (…)“, Zahl ok
+grün, Problem violett; Tabelle je Quelle mit Zustand, Zeit und Zeile aus dem Protokoll), dann
+„Abgleich alle … Stunden“, „Verbindung testen“, die Klappe „Verbindungstest“ (erst nach einem Test) und
+„Protokoll des letzten Abgleichs · kopieren“ (offen von Haus aus, `data-kc` logbox). Ein Knopf in
+einer Klappzeile schaltet die Klappe nicht um.
 Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Jede Klappe und jeder Kasten einer Karte
-hat 10 px Abstand zum Inhalt darüber (`.setc details`, ab 0.78; nicht in Listen und Tabellen). Das Protokollfeld steht unter der Zeile
-„Protokoll des letzten Abgleichs · kopieren“ in einer Klappe „Protokoll anzeigen“ (offen von Haus aus,
-`data-kc` logbox; „Protokoll öffnen“ klappt sie auf). Titel-Tabelle: Die Zahl der Bestpreise
+hat 10 px Abstand zum Inhalt darüber (`.setc details`, ab 0.78; nicht in Listen und Tabellen). Titel-Tabelle: Die Zahl der Bestpreise
 steht neben dem Länderkürzel („JP 17★“), nicht darunter.
 
 Kacheln und Kästen haben immer denselben Hintergrund (`--card`), auch die Länderkarten

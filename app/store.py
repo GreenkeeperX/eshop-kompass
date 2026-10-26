@@ -148,7 +148,9 @@ def load_settings():
             for c in s["countries"].values():
                 c.pop("markup_pct", None)
             s["settings_v"] = 5
-        if not s["wishlist_url"]:
+        # WISHLIST_URL nur als Startwert, solange es keine settings.json gibt (1.5.0): Ein im Tool
+        # geleertes Feld füllte sich vorher bei jedem Laden wieder aus der Umgebung
+        if not s["wishlist_url"] and not os.path.exists(_path("settings.json")):
             s["wishlist_url"] = os.environ.get("WISHLIST_URL", "")
         return s
 

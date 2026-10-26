@@ -50,6 +50,7 @@ def _state():
         "card_status": planner.card_status(data, settings),
         "owned_count": len(data.get("owned") or []),
         "keys": store.keys_view(),
+        "sources": [dict(data.get("sources", {}).get(k) or {}, key=k, label=label) for k, label, _ in sync.SOURCE_LINES],
         "countries": [dict(countries.BY_CODE[c], family_name=countries.FAMILIES[
             countries.BY_CODE[c]["family"]]) for c in countries.ORDER],
         "status": sync.status,

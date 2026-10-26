@@ -72,7 +72,7 @@ keine Zusatzpakete, Daten in `./data/`).
 
 ### Einrichten in fünf Schritten
 
-1. **Wishlist:** Unter Einstellungen, Quellen, den Link deiner öffentlichen
+1. **Wishlist:** Unter Einstellungen, Quellen und Abgleich, DekuDeals, den Link deiner öffentlichen
    DekuDeals-Wishlist eintragen, auf Wunsch auch den deiner Sammlung.
 2. **Länder:** Unter Einstellungen, Länder, die Länder einschalten, in denen du kaufen
    würdest, und je Land den Zahlweg wählen (Karte, Guthabenkarte oder das Günstigere).
@@ -686,8 +686,18 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
 
 ### Einstellungen
 
-Jede Änderung wird sofort gespeichert. Jeder Bereich ist eine eigene Karte, eine Leiste oben
-springt zu Länder, Regeln, Gebühren, Sprachen, Käufe, Quellen sowie Sicherung und Protokoll.
+Jede Änderung wird sofort gespeichert. Sechs Karten: Länder, Regeln und Gebühren, Sprachen, Käufe,
+Quellen und Abgleich, Sicherung; darin klappt auf, was man selten braucht, und jede Klappzeile nennt
+zugeklappt das Wichtigste. Die Leiste oben springt zu den Karten und zeigt eine violette Zahl, wo
+etwas offen ist: alte Kartenpreise, offene Sprachen, offene Käufe, Quellen mit Problem.
+
+**Zustand der Quellen** (unter Quellen und Abgleich, eingeklappt): je Quelle (DekuDeals,
+Nintendo-Preise, Sprachen Europa, Japan, Amerika, titledb, Wechselkurse, Kartenshops, eigene
+Angebote) „ok“ oder „Problem“ mit Zeit und der Zeile aus dem Protokoll des letzten Abgleichs, der sie
+gebraucht hat. Ein Problem ist eine Sperre, ein Warteraum oder ein Fehler.
+
+Der Wishlist-Link kommt unter Quellen und Abgleich, DekuDeals, hinein. `WISHLIST_URL` in der
+Umgebung des Containers gilt nur noch als Startwert, solange es keine Einstellungsdatei gibt.
 
 **Käufe aus dem eShop** (eigene Karte): Deine Sammlung pflegst du bei DekuDeals. Der
 Kaufverlauf von Nintendo sorgt nur dafür, dass der Plan nichts vorschlägt, was du schon gekauft

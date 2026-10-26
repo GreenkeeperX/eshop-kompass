@@ -2099,6 +2099,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
         safe(_log_extra_ids, data.get("extra") or {}, data.get("glangs") or {}, needed_families(settings), time.time())
         safe(sync_langs, data, settings, fetch, sleep, budget=langs_budget, report_idle=False)    # Sprachen der neu gefundenen DLC
         _deku_rest(data, resting)
+        remember_sources(data, status["log"])
         store.save_data(data)
         status["ok"] = not failed
         if manual["on"]:
@@ -2123,6 +2124,37 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
                       finished=datetime.now(timezone.utc).isoformat(timespec="seconds"))
         _lock.release()
     return True
+
+
+# Zustand der Quellen (1.5.0): aus den Zeilen des Protokolls je Quelle, am Ende jedes Abgleichs.
+# Eine Quelle, die in diesem Lauf nichts sagt (nichts fällig), behält ihren letzten Zustand
+SOURCE_LINES = (
+    ("deku", "DekuDeals", r"^(Wishlist|Sammlung|Tiefstpreise|DLC und Pakete|Titel-IDs|DekuDeals|Mitgliedschaft: DekuDeals)"),
+    ("prices", "Nintendo-Preise", r"^([A-Z]{2}: \d+ von \d+ Titeln|Preise)"),
+    ("lang_eu", "Sprachen Europa", r"^Sprachen Europa"),
+    ("lang_jp", "Sprachen Japan", r"^Sprachen Japan"),
+    ("lang_am", "Sprachen Amerika", r"^Sprachen Amerika"),
+    ("titledb", "titledb", r"^(titledb|IDs fehlender DLC aus titledb|Englische Namen gekaufter Titel)"),
+    ("fx", "Wechselkurse", r"^Wechselkurse"),
+    ("cards", "Kartenshops", r"^Kartenpreise"),
+    ("offers", "Eigene Angebote", r"^Eigene Angebote"),
+)
+SOURCE_BAD = re.compile(r"(?i)lehnt|gesperrt|sperre|\b(403|429)\b|warteraum|fehler|nicht abrufbar|nicht erreichbar|"
+                        r"keine verbindung|abgebrochen|ruht")
+
+
+def remember_sources(data, log, now=None):
+    """data.sources {Quelle: {ok, note, at}}: ein Problem in diesem Lauf zählt vor jeder guten Zeile."""
+    at = datetime.fromtimestamp(now or time.time(), timezone.utc).isoformat(timespec="seconds")
+    out = data.setdefault("sources", {})
+    for key, label, rx in SOURCE_LINES:
+        lines = [re.sub(r"^\d\d:\d\d:\d\d ", "", x) for x in log]
+        mine = [x for x in lines if re.search(rx, x)]
+        if not mine:
+            continue
+        bad = [x for x in mine if SOURCE_BAD.search(x)]
+        note = re.sub(r"/(wishlist|collection)/[^/?\s]+", r"/\1/…", (bad or mine)[-1])[:240]
+        out[key] = {"ok": not bad, "note": note, "at": at}
 
 
 def diagnose(sleep=time.sleep):

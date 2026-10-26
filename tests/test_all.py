@@ -2236,6 +2236,46 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(calls[1][2]["Authorization"], "Bearer tok")
         self.assertEqual(sync.igdb_probe(["x"], keys={}), ["IGDB: kein Schlüssel eingetragen (Einstellungen, Quellen), nicht angefragt"])
 
+    def test_sources_state_from_log(self):
+        # 1.5.0: Zustand je Quelle aus dem Protokoll; ein Problem schlägt jede gute Zeile, eine Quelle
+        # ohne Zeile behält den letzten Zustand, Wishlist-Kennungen bleiben verdeckt
+        data = {"sources": {"titledb": {"ok": False, "note": "titledb: nicht abrufbar", "at": "x"}}}
+        sync.remember_sources(data, [
+            "23:06:37 Wishlist: HTTP 403 bei https://www.dekudeals.com/wishlist/geheim1",
+            "23:06:39 Sammlung: 108 Titel",
+            "23:06:46 DE: 114 von 119 Titeln kaufbar",
+            "23:08:25 Kartenpreise: Shop lehnt Abrufe ab (429 bei https://shop.example/x), Werte von Hand gelten weiter",
+            "23:08:25 Kartenpreise: 10 von 12 gelesen",
+            "23:09:19 Sprachen Japan: 2 Seiten offen, der Store zeigte zuletzt den Warteraum",
+            "23:09:19 Sprachen Europa: nichts fällig"], now=1e9)
+        src = data["sources"]
+        self.assertEqual((src["deku"]["ok"], src["deku"]["note"]), (False, "Wishlist: HTTP 403 bei https://www.dekudeals.com/wishlist/…"))
+        self.assertTrue(src["prices"]["ok"])
+        self.assertFalse(src["cards"]["ok"])
+        self.assertIn("429", src["cards"]["note"])
+        self.assertFalse(src["lang_jp"]["ok"])
+        self.assertTrue(src["lang_eu"]["ok"])
+        self.assertEqual(src["titledb"]["note"], "titledb: nicht abrufbar")       # nichts gesagt: bleibt
+        self.assertNotIn("fx", src)
+
+    def test_wishlist_env_only_as_start_value(self):
+        # 1.5.0: WISHLIST_URL füllt nur eine frische Installation, ein geleertes Feld bleibt leer
+        path = store._path("settings.json")
+        saved = store.load_settings() if os.path.exists(path) else None
+
+        def back():
+            if os.path.exists(path):
+                os.remove(path)
+            if saved is not None:
+                store._save("settings.json", saved)
+        self.addCleanup(back)
+        if os.path.exists(path):
+            os.remove(path)
+        with mock.patch.dict(os.environ, {"WISHLIST_URL": "https://www.dekudeals.com/wishlist/start"}):
+            self.assertEqual(store.load_settings()["wishlist_url"], "https://www.dekudeals.com/wishlist/start")
+            store.save_settings({"wishlist_url": ""})
+            self.assertEqual(store.load_settings()["wishlist_url"], "")
+
     def test_keys_stay_out_of_settings_and_backup(self):
         # 1.4.3: Schlüssel in keys.json, nicht in den Einstellungen; die Oberfläche sieht nur „eingetragen“
         self.addCleanup(store.save_keys, {"igdb_id": "", "igdb_secret": ""})

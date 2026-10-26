@@ -113,7 +113,7 @@ fragt der Test DekuDeals nicht weiter an und sagt das je Probe:
 |---|---|---|
 | `settings.json` | nur Eingaben | dauerhaft |
 | `keys.json` | Schlüssel für Quellen (IGDB, ab 1.4.3), nicht in der Sicherung, nie an den Browser | dauerhaft, leer eingetragen löscht |
-| `data.json` | Abgleichsdaten | `prices`, `fx`, `owned`, `card_prices`, `offer_prices`, `checks` werden überschrieben; `items`, `lows` und `rel` verlieren Titel nach 180 Tagen ohne Wishlist und Sammlung; `extra`, `glangs`, `links` und `card_hist` räumen sich selbst auf |
+| `data.json` | Abgleichsdaten (ab 1.5.0 mit `sources`: Zustand je Quelle aus dem Protokoll am Ende jedes Abgleichs, `sync.remember_sources`) | `prices`, `fx`, `owned`, `card_prices`, `offer_prices`, `checks` werden überschrieben; `items`, `lows` und `rel` verlieren Titel nach 180 Tagen ohne Wishlist und Sammlung; `extra`, `glangs`, `links` und `card_hist` räumen sich selbst auf |
 | `history.json` | eigene Preisaufzeichnung | wächst, wird nie gekürzt, weil sie unersetzlich ist; ist eine Datei kaputt, bleibt sie als `<Name>.kaputt-<Zeit>` liegen (ab 0.99.2) |
 | `eshop_history.json` | Kaufverlauf | bis 3000 Einträge |
 | `purchases.json`, `ui.json` | Kaufprotokoll, Ansicht | dauerhaft |

@@ -58,6 +58,8 @@ document.addEventListener("click", async e => {
   const el = e.target.closest("[data-act]");
   if(!el) return;
   const a = el.dataset.act, d = el.dataset;
+  // Knopf in einer Klappzeile (Kopieren beim Protokoll, 1.5.0): handeln, ohne die Klappe umzuschalten
+  if(el.closest("summary") && el.tagName === "BUTTON") e.preventDefault();
   try{
     if(a === "tab"){ go(d.tab); }
     else if(a === "legend"){ openLegend(); }
@@ -343,14 +345,13 @@ document.addEventListener("click", async e => {
     }
     else if(a === "diag"){
       // Eigene Box: Das Protokoll des Abgleichs läuft daneben weiter
-      const l = $("diag");
-      l.hidden = false;
+      const l = $("diag"), w = $("diagWrap");
+      if(w){ w.hidden = false; w.open = true; }
       l.textContent = "Teste DekuDeals, Nintendo, Wechselkurse und Guthabenkarten …";
       const r = await api("/api/diag", {});
       S.diagText = r.lines.join("\n");   // bleibt stehen, auch wenn die Seite neu zeichnet
       l.textContent = S.diagText;
       l.scrollTop = 0;
-      if($("diagCopy")) $("diagCopy").hidden = false;
     }
   }catch(err){ toast("Fehler: " + err.message); }
 });
