@@ -84,7 +84,9 @@ Ab 1.3.0:
   Plan und mit Urteil kaufen/gut, weniger als 7 Tage; „Neu im Angebot“ mit grauem „seit höchstens drei
   Tagen“ (Beginn aus `start` der Zelle). Ab 1.3.1 ist jede Zeile selbst klappbar (`details.newsd`,
   gemerkt unter `newssoon`/`newsfresh`): zu nennt sie fett die Überschrift, dahinter grau die ersten drei
-  Titel (DLC ohne Spielnamen) und „und n weitere“; auf verschwindet diese Aufzählung, und alle Titel stehen
+  Titel (DLC ohne Spielnamen, ab 1.5.1 in `--ink` wie normaler Text, `.news .ink`, damit sie sich vom
+  Grau abheben) und „und n weitere“, jedes Enddatum hervorgehoben (`.soon`, `endCell` mit `mark`, ab
+  1.5.1; „heute“ bleibt `.today`); auf verschwindet diese Aufzählung, und alle Titel stehen
   im Raster von „Wartet“ (`npRow`, `NP_COLS`), geplante mit Chip „im Plan“ und Schritt. Abstand
   oben 6 px, unten 10 px (vorher klebte „Neu im Angebot“ an den Karten). Vorher eine zweite, auffälligere
   Zeile „und n weitere“ mit unterstrichenen Links.
@@ -92,7 +94,11 @@ Ab 1.3.0:
   `a.pl`): Titelname in Schritt, Länderkarte und Korb öffnet die Einzelheiten (`titleBtn`, ein `span`
   mit `role=link`, weil ein Knopf den zweizeiligen DLC-Namen umbrach; Enter und Leertaste gehen),
   „normal“ und Angebotsende in der Spalte „bis“ öffnen den Preisverlauf (`endBtn`; `endCell` hängt
-  „· Klick öffnet den Preisverlauf“ an das genaue Ende im Tooltip). Der Einkaufspreis eines DLC ohne
+  „· Klick öffnet den Preisverlauf“ an das genaue Ende im Tooltip). Ab 1.5.1 öffnet auch das Urteil
+  (`vdBtn`, `button.vdb`, unterstrichen beim Darüberfahren) den Preisverlauf: im Raster von „Wartet“,
+  „enden bald“ und „Neu im Angebot“ (`npRow`), in „Am nächsten dran“ (`emptyPlan`), in der
+  Wishlist-Liste und in deren Einzelheiten; in der Sammlung bleibt es der Link zu den Einzelheiten
+  (1.0.1). Der Einkaufspreis eines DLC ohne
   eShop-Seite führt wie überall zu DekuDeals (`shopLink` statt `buyLink`).
 - **Was wäre, wenn** (`assumeBtn`, `assumedLine`): graues ✎ (`.asmb`) hinter dem Einkaufspreis im Schritt
   und vor „dazunehmen …“ unter „Wartet“; es fragt mit `prompt` nach dem Preis in Landeswährung

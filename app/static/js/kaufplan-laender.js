@@ -61,9 +61,9 @@ function saleNews(k){
   };
   let h = "";
   const a = [...soon.values()].sort((x, y) => x.t - y.t);
-  if(a.length) h += line("newssoon", `<b>${a.length === 1 ? "1 Angebot endet bald:" : `${a.length} Angebote enden bald:`}</b>`, a, x => `${esc(short(x))} ${endCell(x.end, "bis ")}`);
+  if(a.length) h += line("newssoon", `<b>${a.length === 1 ? "1 Angebot endet bald:" : `${a.length} Angebote enden bald:`}</b>`, a, x => `<span class="ink">${esc(short(x))}</span> ${endCell(x.end, "bis ", "", true)}`);
   const b = [...fresh.values()].sort((x, y) => y.t - x.t);
-  if(b.length) h += line("newsfresh", `<b>Neu im Angebot</b> <span class="mut">seit höchstens drei Tagen:</span>`, b, x => esc(short(x)));
+  if(b.length) h += line("newsfresh", `<b>Neu im Angebot</b> <span class="mut">seit höchstens drei Tagen:</span>`, b, x => `<span class="ink">${esc(short(x))}</span>`);
   return h ? `<div class="news">${h}</div>` : "";
 }
 /* Angenommene Preise (1.3.0, „Was wäre, wenn“): oben im Kaufplan, damit niemand sie für echte Preise hält */
@@ -82,7 +82,7 @@ function emptyPlan(){
   if(!near.length) return `<p class="restline">Heute ist nichts auf „kaufen“.</p>`;
   return `<p class="restline">Heute ist nichts auf „kaufen“. Am nächsten dran:</p><div class="box"><table class="mini-t">` + near.map(r => {
     const x = shownOffer(r);
-    return `<tr><td><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">${esc(r.title)}</button></td><td class="l">${pill(r.verdict)}</td><td>${ax(x)}${eur(x.eur)} ${esc(x.name)}</td><td>+${eur(r.diff || 0)} über Bestpreis</td><td>${x.end ? endCell(x.end, "bis ") : ""}</td></tr>`;
+    return `<tr><td><button class="link" data-act="gotitle" data-s="${esc(r.slug)}">${esc(r.title)}</button></td><td class="l">${vdBtn(r.slug, r.verdict)}</td><td>${ax(x)}${eur(x.eur)} ${esc(x.name)}</td><td>+${eur(r.diff || 0)} über Bestpreis</td><td>${x.end ? endCell(x.end, "bis ") : ""}</td></tr>`;
   }).join("") + `</table></div>`;
 }
 /* Konto in einem Land, dessen Rest den Wechsel blockiert: Der Plan bleibt dort */
@@ -117,7 +117,7 @@ function npRow(slug, o){
     ? `<select class="np-add" data-act="npadd" data-s="${esc(slug)}" title="${esc(title)} in einen Schritt des Kaufplans nehmen; der Plan rechnet neu"><option value="">dazunehmen …</option>${steps.map(y => `<option value="${y.p.code}">Schritt ${y.n + 1}, ${esc(y.p.name)} · ${eur(y.c.eur)}${off && y.c.eur > off.eur + 0.005 ? ` (+${eur(y.c.eur - off.eur)})` : ""}</option>`).join("")}</select>`
     : `<small class="mut" title="Kein Schritt des Kaufplans bietet den Titel an">in keinem Schritt</small>`;
   return `<div class="npr"><span class="t">${name}${o.note ? `<small class="np-w">${o.note}</small>` : ""}</span>` +
-    `<span class="c-vd">${r ? pill(r.verdict) : ""}${r && r.nohist ? ` <span class="nohist" title="DekuDeals hat noch keinen Tiefstpreis geliefert">ohne Verlauf</span>` : ""}</span>` +
+    `<span class="c-vd">${r ? vdBtn(slug, r.verdict) : ""}${r && r.nohist ? ` <span class="nohist" title="DekuDeals hat noch keinen Tiefstpreis geliefert">ohne Verlauf</span>` : ""}</span>` +
     `<span class="r c-eur">${x ? `${star(x)}${ax(x)}${shopLink(slug, x.code, x, eur(x.eur), x.currency)}` : `<span class="mut">–</span>`}</span>` +
     `<span class="c-pct">${x && x.sale ? `<span class="pct">−${x.pct} %</span>` : ""}</span>` +
     `<span class="c-land">${x ? priceLink(slug, x.code, esc(x.name), x, x.currency) : ""}</span>` +

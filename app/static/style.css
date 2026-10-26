@@ -616,6 +616,7 @@ span.plain{cursor:pointer}
 .news details.newsd>summary{cursor:pointer}
 .news details.newsd[open]>summary .lead{display:none}
 .news .np-grid{margin:4px 0 8px;color:var(--ink)}
+.news .ink{color:var(--ink)}
 /* „Wartet“ und „Gekauft“ (1.4.0) */
 .np .wf{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .bk-grid{margin-top:4px}

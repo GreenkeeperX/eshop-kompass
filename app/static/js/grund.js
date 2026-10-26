@@ -101,7 +101,7 @@ function langTag(x, all){
   if(x.lang === "no") return `<span class="lgt no" title="Andere Fassung als im deutschen eShop, ohne Deutsch">andere Fassung</span>`;
   return "";
 }
-function endCell(iso, prefix, more){
+function endCell(iso, prefix, more, mark){
   if(!iso) return "";
   const d = new Date(iso);
   if(isNaN(d)) return "";
@@ -111,7 +111,7 @@ function endCell(iso, prefix, more){
   let text = d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"}), cls = "";
   if(diff <= 0){ text = "heute"; cls = "today"; }
   else if(diff === 1){ text = "morgen"; cls = "soon"; }
-  else if(diff === 2){ cls = "soon"; }
+  else if(diff === 2 || mark){ cls = "soon"; }   // mark (1.5.1): jedes Datum hervorgehoben, etwa in „enden bald“
   return `<span class="${cls}" title="Angebot endet ${esc(full)}${esc(more || "")}">${diff <= 1 ? "" : (prefix || "")}${text}</span>`;
 }
 function ago(iso){
@@ -542,6 +542,9 @@ const VERDICT = {buy:"kaufen", good:"gut", wait:"warten", none:"kein Urteil"};
 const TIER = {1:"leicht", 2:"mittel", 3:"schwer"};
 const tierTag = t => t && TIER[t] ? `<span class="tier" title="Wechselstufe">${TIER[t]}</span>` : "";
 const pill = v => v === "none" || !v ? `<span class="mut">kein Urteil</span>` : `<span class="vd ${v}">${VERDICT[v]}</span>`;
+// Urteil mit Preisverlauf hinterlegt (1.5.1), wie Angebotsende und „normal“ (endBtn): Klick öffnet den Verlauf
+const vdBtn = (slug, v) => !v || v === "none" || String(slug).startsWith("nso-") ? pill(v)
+  : `<button class="vdb" data-act="verlauf" data-s="${esc(slug)}" title="Klick öffnet den Preisverlauf">${pill(v)}</button>`;
 const star = x => x && x.mark === "best" ? `<span class="star" title="Einkaufspreis erreicht den Bestpreis">★</span>` : "";
 /* Bis 2 % über dem Bestpreis gilt ein Preis als Bestpreis, wie im Urteil (BEST_TOLERANCE) */
 const atBest = (eurNow, champ) => eurNow <= champ * 1.02 + 0.005;

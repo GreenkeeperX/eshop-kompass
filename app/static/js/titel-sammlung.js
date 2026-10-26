@@ -241,7 +241,7 @@ function titleRow(r, group, tog){
   // In der flachen Liste (nach Preis, Abstand, Ende) zweizeilig wie in den Karten: Spiel klein, darunter der DLC (1.1.10)
   const label = group ? esc(name) : dlcLabel(r);
   let h = `<tr class="v-${r.verdict} ${open ? "open" : ""} ${group ? "sub" : ""}" data-s="${esc(r.slug)}"><td class="tn"><button class="tbtn" data-act="topen" data-s="${esc(r.slug)}" title="Einzelheiten ${open ? "zuklappen" : "aufklappen"}"><span class="chev">${open ? "▾" : "▸"}</span>${dlc}${label}</button>${r.owned ? ` <span class="chip w" title="Der Titel steht schon in deiner DekuDeals-Sammlung">schon in Sammlung</span>` : ""}${packChip(r.slug)}${((S.state.s2 || {})[r.slug] || {}).base_owned ? ` <span class="chip" title="Du hast die Switch-1-Fassung: Das Upgrade-Paket genügt, Einzelheiten aufklappen">Upgrade genügt</span>` : ""}${r.no_ids ? `<small>nicht im eShop gefunden</small>` : ""}${tog || ""}</td>
-    <td class="l vdc">${pill(r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
+    <td class="l vdc">${vdBtn(r.slug, r.verdict)}${marks}${ps ? `<small>${ps}</small>` : why ? `<small>${why}</small>` : ""}</td>
     <td class="pr">${price}</td><td class="ob">${over}</td><td class="al">${alt}</td>
     <td class="kb-c"><button class="kb ${inBasket(r.slug) ? "on" : ""}" data-act="star" data-s="${esc(r.slug)}" title="in den gemeinsamen Korb">${inBasket(r.slug) ? "✓" : "+"}</button></td></tr>`;
   if(open) h += `<tr class="det"><td colspan="6">${titleDetail(r)}</td></tr>`;
@@ -291,7 +291,7 @@ function titleDetail(r){
   h += `<span>Zielpreis</span><span><input class="tgt" type="text" inputmode="decimal" data-act="target" data-s="${esc(r.slug)}" value="${dc(r.target ?? "")}" placeholder="–">
     ${sug !== null ? `<button class="sm" data-act="tgtfill" data-s="${esc(r.slug)}" data-v="${sug}">Bestpreis ${eur(sug)} übernehmen</button>` : ""}
     <small class="mut" style="display:inline">${r.target !== null ? "Ist er erreicht, heißt das Urteil „kaufen“." : "leer: Das Urteil misst am Bestpreis."}</small></span>`;
-  h += `<span>Urteil</span><span>${pill(r.verdict)} ${esc(r.reason)}${r.nohist ? ` <span class="nohist">noch ohne Verlauf</span> <small class="mut">DekuDeals hat noch keinen Tiefstpreis geliefert, der Bestpreis stützt sich nur auf heutige Preise und die eigene Aufzeichnung</small>` : ""}</span>`;
+  h += `<span>Urteil</span><span>${vdBtn(r.slug, r.verdict)} ${esc(r.reason)}${r.nohist ? ` <span class="nohist">noch ohne Verlauf</span> <small class="mut">DekuDeals hat noch keinen Tiefstpreis geliefert, der Bestpreis stützt sich nur auf heutige Preise und die eigene Aufzeichnung</small>` : ""}</span>`;
   const s2 = s2Line(r.slug);
   if(s2) h += `<span>Switch 2</span><span>${s2}</span>`;
   const pk = packLine(r.slug);
