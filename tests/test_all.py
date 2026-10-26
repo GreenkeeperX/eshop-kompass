@@ -811,6 +811,10 @@ class PlanTest(unittest.TestCase):
         self.assertIn("/titles/70010000000007", rows[("vs-foscari", "AM")]["url"])
         self.assertEqual(planner.wish_dlc_parents(self.data), {"vampire-survivors": ["vs-foscari"]})
         self.assertEqual(sync.game_ids(self.data, "AM"), {"vampire-survivors": "70010000000007"})
+        # 1.4.4: Mit der Liste der wirklich fehlenden DLC bleiben Spiele ohne fehlende DLC draußen
+        self.data["extra"] = {"vs-old": {"parent": "graveyard-keeper", "ids": {"AM": ["70050000000099"]}}}
+        self.assertEqual(sync.game_ids(self.data, "AM", wanted={}), {"vampire-survivors": "70010000000007"})
+        self.assertEqual(sync.game_ids(self.data, "AM", wanted={"vs-old": 1})["graveyard-keeper"], "70050000000099")
 
     def test_package_distance_to_optimum(self):
         self.only_sales()

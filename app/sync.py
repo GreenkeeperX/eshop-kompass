@@ -968,11 +968,14 @@ def jp_targets(data):
     return out
 
 
-def game_ids(data, fam):
+def game_ids(data, fam, wanted=None):
     """Je Spiel mit fehlenden DLC die ID, deren Seite die Sprache trägt: die des Spiels
-    selbst, wenn bekannt, sonst die des ersten DLC."""
+    selbst, wenn bekannt, sonst die des ersten DLC. `wanted` (planner.extra_dlc): nur DLC, die
+    wirklich fehlen; abgehakte, ignorierte und gekaufte DLC brauchen keine Seite (1.4.4)."""
     glangs, out = data.get("glangs") or {}, {}
-    for e in (data.get("extra") or {}).values():
+    for slug, e in (data.get("extra") or {}).items():
+        if wanted is not None and slug not in wanted:
+            continue
         ids = (e.get("ids") or {}).get(fam)
         game = e.get("parent")
         if game and game not in out and (ids or ((glangs.get(game) or {}).get("ids") or {}).get(fam)):
@@ -1431,7 +1434,9 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
             continue
         todo = [(it, it["ids"][fam][0]) for it in items.values()
                 if it["ids"].get(fam) and due(it, fam) and not it.get("parent")]
-        for game, nsuid in game_ids(data, fam).items():
+        # Nur Spiele, deren DLC noch fehlen, wie in „Sprachen prüfen“: Bis 1.4.3 zählte der Abgleich
+        # auch Spiele, deren DLC du schon hast, als offene Seiten, die Ansicht aber nicht
+        for game, nsuid in game_ids(data, fam, planner.extra_dlc(data, settings)).items():
             rec = glangs.setdefault(game, {})
             if due(rec, fam):
                 todo.append((rec, nsuid))
