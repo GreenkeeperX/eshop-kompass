@@ -20,6 +20,9 @@ services:
       # Nur nötig, wenn du das Tool über eine Domain aufrufst. IP-Adressen, Namen ohne Punkt und
       # Namen im eigenen Netz (.home.arpa, .local, .lan, .internal) gelten ohne Eintrag
       # ALLOWED_HOSTS: "kompass.beispiel.de"
+      # Optional für „Verbindung testen“ (Spielinfos): kostenloser Schlüssel einer Twitch-Entwickler-App
+      # IGDB_CLIENT_ID: "..."
+      # IGDB_CLIENT_SECRET: "..."
     volumes:
       - eshop-daten:/data
     labels:

@@ -1,5 +1,6 @@
 """Abgleich: Wishlist -> Titel-IDs je Region -> Preise je Land -> Wechselkurse."""
 import json
+import os
 import re
 import threading
 import time
@@ -2218,7 +2219,7 @@ def diagnose(sleep=time.sleep):
                 + f"; Abschnitte: {', '.join(r.get('found') or []) or 'keine'}"
                 + (", Ausschnitt: " + sources.re.sub(r"\s+", " ", t[m.start():m.start() + 400]) if m else
                    ", keine Überschrift DLC"))
-    probe(f"DLC und Pakete ({game})", f"https://www.dekudeals.com/items/{game}?country=de", None, rel_info)
+    relr = probe(f"DLC und Pakete ({game})", f"https://www.dekudeals.com/items/{game}?country=de", None, rel_info)
     # Steht Cashback in der Seite? Dann ließe es sich je Karte prüfen
     def cashback_spots(t):
         spots = [t[max(0, m.start() - 80):m.start() + 120].replace("\n", " ")
@@ -2245,7 +2246,7 @@ def diagnose(sleep=time.sleep):
     lines.append(f"titledb (JP.ja): keine Verbindung ({h['error']})" if h["error"] else
                  f"titledb (JP.ja): HTTP {h['status']}, Größe {int(h['size']) // 1_000_000 if (h['size'] or '').isdigit() else '?'} MB, "
                  f"Stand {h['modified'] or '?'}")
-    lines.extend(info_probe(probe, data, sleep))
+    lines.extend(info_probe(probe, data, sleep, (game, relr.get("text") or "")))
     lines.extend(membership_probe(probe, sleep))
     # Angebote der Mitgliedschaft von Hand (ab 0.60): Ließe sich der Preis lesen? Je Link ein Abruf
     # mit ehrlicher Kennung; eine Prüfseite (Captcha) wird nur gemeldet, nicht umgangen.
@@ -2270,15 +2271,19 @@ def diagnose(sleep=time.sleep):
 INFO_FIELD = re.compile(r"(?i)categor|genre|player|play_?mode|coop|co_op|multi|online|local|share|feature|publisher|age_rating")
 
 
-def info_probe(probe, data, sleep=time.sleep):
-    """Spielinfos für die Sammlung (Eingang der Roadmap, 1.4.1): Welche Felder nennt die
-    Nintendo-Europa-Suche zu bis zu drei Spielen der Sammlung, und was steht zu Koop, Online und
-    GameShare auf der Shopseite des ersten? Nur Probe, nichts wird gespeichert."""
-    lines, ids, page = [], [], []
+def info_probe(probe, data, sleep=time.sleep, deku=None):
+    """Spielinfos für die Sammlung (Eingang der Roadmap, 1.4.1, mehr Quellen 1.4.2): Was nennen die
+    Nintendo-Europa-Suche, die Shopseite, DekuDeals, Wikidata und IGDB zu bis zu drei Spielen der
+    Sammlung, und was steht auf Nintendos GameShare-Seite? Nur Probe, nichts wird gespeichert.
+    deku: (Kürzel, Text) einer schon gelesenen DekuDeals-Artikelseite, kostet keinen Abruf."""
+    lines, ids, names, page = [], [], [], []
     for slug in data.get("owned") or []:
-        eu = (((data["items"].get(slug) or {}).get("ids") or {}).get("EU") or [None])[0]
+        it = data["items"].get(slug) or {}
+        eu = ((it.get("ids") or {}).get("EU") or [None])[0]
         if eu and str(eu) not in ids:
             ids.append(str(eu))
+            if it.get("title") and it["title"] != slug:
+                names.append(it["title"])
         if len(ids) == 3:
             break
     ids = ids or ["70010000000038"]
@@ -2291,6 +2296,8 @@ def info_probe(probe, data, sleep=time.sleep):
         for d in docs:
             if not page and isinstance(d.get("url"), str):
                 page.append(d["url"])
+            if isinstance(d.get("title"), str) and len(names) < len(ids) and d["title"] not in names:
+                names.append(d["title"])
             found = {k: v for k, v in sorted(d.items()) if INFO_FIELD.search(k)}
             out.append(f"„{str(d.get('title') or '?')[:40]}“: "
                        + ("; ".join(f"{k}={str(v)[:80]}" for k, v in found.items()) or "keine passenden Felder")
@@ -2299,23 +2306,116 @@ def info_probe(probe, data, sleep=time.sleep):
     q = urllib.parse.urlencode({"q": "*", "fq": "nsuid_txt:(" + " OR ".join(ids) + ")", "fl": "*",
                                 "rows": 3, "wt": "json"})
     probe("Spielinfos Europa", f"{sources.SOLR_URL}?{q}", None, solr_info)
+    names = names or ["Snipperclips"]
+
+    def spots(t, rx, n=6):
+        text = sources.visible_text(t)
+        return " | ".join(text[max(0, m.start() - 60):m.start() + 120] for m in list(re.finditer(rx, text))[:n]) or "keine"
+    url = ("https://www.nintendo.com" + page[0] if page[0].startswith("/") else page[0]) if page else ""
+    host = urllib.parse.urlsplit(url).hostname or ""
     if not page:
         lines.append("Spielinfos Shopseite: keine Adresse aus der Europa-Suche, nicht angefragt")
-        return lines
-    url = "https://www.nintendo.com" + page[0] if page[0].startswith("/") else page[0]
-    host = urllib.parse.urlsplit(url).hostname or ""
-    if not (host == "nintendo.com" or host.endswith(".nintendo.com")):   # nur Nintendos eigene Seiten
+    elif not (host == "nintendo.com" or host.endswith(".nintendo.com")):   # nur Nintendos eigene Seiten
         lines.append(f"Spielinfos Shopseite: Adresse außerhalb von nintendo.com ({host or '?'}), nicht angefragt")
-        return lines
-
-    def shop_info(t):
-        text = sources.visible_text(t)
-        spots = [text[max(0, m.start() - 60):m.start() + 120]
-                 for m in re.finditer(r"(?i)co-?op|koop|game ?share|online|lokal|local|players|spieler", text)][:6]
-        return (f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Fundstellen: "
-                + (" | ".join(spots) or "keine"))
+    else:
+        sleep(1)
+        probe("Spielinfos Shopseite", url, None, lambda t: (
+            f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Fundstellen: "
+            + spots(t, r"(?i)co-?op|koop|game ?share|online|lokal|local|players|spieler")))
+    if deku and deku[1]:
+        lines.append(f"Spielinfos DekuDeals ({deku[0]}, schon gelesen): "
+                     + spots(deku[1], r"(?i)genre|players|play modes?|co-?op|online|game ?share"))
+    # GameShare: eine Sammelseite je Region mit Spalten lokal und online (Spanien gesehen 26.10.2026)
+    for gs in GAMESHARE_URLS:
+        sleep(1)
+        r = probe("GameShare-Liste", gs, None, lambda t: (
+            f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Tabellenzeilen "
+            f"{len(_TR_RE.findall(t))}, Anfang der Tabelle: "
+            + (sources.visible_text(t[t.lower().find('<table'):])[:300] if '<table' in t.lower() else "keine Tabelle")))
+        if r.get("status") == 200:
+            break
+    # Wikidata: offen, ohne Schlüssel. Spielmodus (P404), Genre (P136), Plattform (P400), Spieler (P1872/P1873)
     sleep(1)
-    probe("Spielinfos Shopseite", url, None, shop_info)
+    probe("Wikidata", WIKIDATA_URL + "?" + urllib.parse.urlencode({"query": wikidata_query(names), "format": "json"}),
+          None, wikidata_info)
+    lines.extend(igdb_probe(names, sleep))
+    return lines
+
+
+GAMESHARE_URLS = (
+    "https://www.nintendo.com/de-de/Hardware/Nintendo-Switch-2/GameShare/Nintendo-Switch-2-GameShare-2785626.html",
+    "https://www.nintendo.com/es-es/Hardware/Nintendo-Switch-2/GameShare/Nintendo-Switch-2-GameShare-2785626.html")
+WIKIDATA_URL = "https://query.wikidata.org/sparql"
+_TR_RE = re.compile(r"(?i)<tr[\s>]")
+
+
+def _clean_name(name):
+    return re.sub(r"\s+", " ", re.sub(r"[™®©]", "", str(name))).strip()
+
+
+def wikidata_query(names):
+    """SPARQL: Spiele mit genau diesem englischen Namen, mit Plattform, Spielmodus, Genre, Spielerzahl."""
+    vals = " ".join(json.dumps(_clean_name(n), ensure_ascii=False) + "@en" for n in names)
+    lab = lambda v, o: f'OPTIONAL {{ ?item wdt:{v} ?{o} . ?{o} rdfs:label ?{o}L FILTER(lang(?{o}L) = "en") }}'
+    return ("SELECT ?name (GROUP_CONCAT(DISTINCT ?plL; separator=\", \") AS ?plats) "
+            "(GROUP_CONCAT(DISTINCT ?moL; separator=\", \") AS ?modes) "
+            "(GROUP_CONCAT(DISTINCT ?geL; separator=\", \") AS ?genres) (MIN(?mn) AS ?minp) (MAX(?mx) AS ?maxp) "
+            f"WHERE {{ VALUES ?name {{ {vals} }} ?item rdfs:label ?name ; wdt:P31 wd:Q7889 . "
+            + lab("P400", "pl") + " " + lab("P404", "mo") + " " + lab("P136", "ge") + " "
+            "OPTIONAL { ?item wdt:P1872 ?mn } OPTIONAL { ?item wdt:P1873 ?mx } } GROUP BY ?name")
+
+
+def wikidata_info(t):
+    rows = ((json.loads(t) if t.strip() else {}).get("results") or {}).get("bindings") or []
+    if not rows:
+        return "keine Treffer"
+    v = lambda r, k: (r.get(k) or {}).get("value") or "–"
+    return f"{len(rows)} Treffer | " + " | ".join(
+        f"„{v(r, 'name')[:40]}“: Modus {v(r, 'modes')}; Genre {v(r, 'genres')[:80]}; "
+        f"Spieler {v(r, 'minp')}–{v(r, 'maxp')}; Plattform {v(r, 'plats')[:80]}" for r in rows)
+
+
+IGDB_FIELDS = ("fields name,genres.name,game_modes.name,platforms.name,multiplayer_modes.platform.name,"
+               "multiplayer_modes.onlinecoop,multiplayer_modes.onlinecoopmax,multiplayer_modes.offlinecoop,"
+               "multiplayer_modes.offlinecoopmax,multiplayer_modes.splitscreen,multiplayer_modes.onlinemax,"
+               "multiplayer_modes.offlinemax; limit 2;")
+
+
+def igdb_probe(names, sleep=time.sleep, env=None):
+    """IGDB (Twitch-Schlüssel, optional über IGDB_CLIENT_ID und IGDB_CLIENT_SECRET im Container):
+    Genres, Spielmodi und Koop-Angaben je Plattform. Der Schlüssel steht nie in der Ausgabe."""
+    env = os.environ if env is None else env
+    cid, secret = env.get("IGDB_CLIENT_ID", "").strip(), env.get("IGDB_CLIENT_SECRET", "").strip()
+    if not (cid and secret):
+        return ["IGDB: kein Schlüssel (IGDB_CLIENT_ID und IGDB_CLIENT_SECRET), nicht angefragt"]
+    r = sources.request("https://id.twitch.tv/oauth2/token", data=urllib.parse.urlencode(
+        {"client_id": cid, "client_secret": secret, "grant_type": "client_credentials"}).encode())
+    try:
+        token = json.loads(r["text"] or "{}").get("access_token") if not r["error"] else None
+    except ValueError:
+        token = None
+    if not token:
+        return [f"IGDB: kein Zugang (Twitch HTTP {r['status']}{', ' + r['error'] if r['error'] else ''})"]
+    lines = []
+    for n in names:
+        sleep(1)
+        body = f'search {json.dumps(_clean_name(n), ensure_ascii=False)}; {IGDB_FIELDS}'.encode()
+        r = sources.request("https://api.igdb.com/v4/games", data=body, headers={
+            "Client-ID": cid, "Authorization": f"Bearer {token}", "Accept": "application/json"})
+        if r["error"] or r["status"] != 200:
+            lines.append(f"IGDB „{n[:40]}“: HTTP {r['status']} {r['error']}".rstrip())
+            if r["status"] in sources.BLOCKED:
+                break
+            continue
+        try:
+            games = json.loads(r["text"] or "[]")
+        except ValueError:
+            games = []
+        lines.append(f"IGDB „{n[:40]}“: " + (" | ".join(
+            f"{g.get('name')}: Modi {[m.get('name') for m in g.get('game_modes') or []]}; "
+            f"Genres {[x.get('name') for x in g.get('genres') or []]}; Mehrspieler "
+            + str([{k: v for k, v in m.items() if k not in ('id',)} for m in g.get('multiplayer_modes') or []])[:300]
+            for g in games) or "keine Treffer"))
     return lines
 
 

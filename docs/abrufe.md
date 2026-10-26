@@ -99,7 +99,11 @@ fragt der Test DekuDeals nicht weiter an und sagt das je Probe:
 - Spielinfos (ab 1.4.1): eine Abfrage der Europa-Suche mit allen Feldern für bis zu drei Spiele der
   Sammlung (gezeigt werden Felder zu Kategorien, Spielern, Spielweise, Koop, Online, Teilen), dann
   nach 1 s die Shopseite des ersten Treffers, nur auf nintendo.com, mit Fundstellen zu Koop, Online,
-  lokal, Spielern und GameShare
+  lokal, Spielern und GameShare. Ab 1.4.2 dazu: Fundstellen auf der schon gelesenen DekuDeals-Seite
+  (kein Abruf), Nintendos GameShare-Sammelseite (Deutschland, sonst Spanien, je 1 s Pause), eine
+  Wikidata-Abfrage (query.wikidata.org, Spielmodus, Genre, Spielerzahl, Plattform) und, nur mit
+  `IGDB_CLIENT_ID` und `IGDB_CLIENT_SECRET` im Container, ein Twitch-Zugang und je Spiel eine
+  IGDB-Suche (api.igdb.com, 1 s Pause, Abbruch bei 403 und 429; der Schlüssel steht nie in der Ausgabe)
 - Online-Mitgliedschaft: Nintendos Mitgliedschaftsseite für JP, DE und US (je eine Seite: erkannte Varianten mit ihrer eShop-ID, dazu eine Preisabfrage für diese IDs), DekuDeals für DE, BR, JP und US (mit allen dort genannten Ländern und verlinkten Varianten), damit die Nintendo-Preise der dort genannten eShop-IDs
 - Eigene Angebote (Mitgliedschaft ab 0.60, Titel ab 0.62): höchstens vier Links im Verbindungstest, je einer ein Abruf: gelesener Preis mit Fundstelle, Beträge auf der Seite, eingetragener Preis; eine Prüfseite (Captcha) wird gemeldet, nicht umgangen. Seit 0.61 liest auch der Abgleich diese Links (Zeile 6a).
 

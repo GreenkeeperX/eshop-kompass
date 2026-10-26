@@ -872,8 +872,11 @@ Was das Tool woher, wann und wie oft holt und wo es die Daten ablegt, steht ausf
 „Verbindung testen“ zeigt je Quelle, was zurückkommt, auch für die erste Guthabenkarte mit Link
 (liest die Seite einen Preis?) und für die Online-Mitgliedschaft (DekuDeals und Nintendos
 Mitgliedschaftsseiten für Japan, Deutschland und die USA) und für Spielinfos der Sammlung (welche
-Felder die Europa-Suche nennt, was die Shopseite zu Koop, Online und GameShare sagt). Gespeichert
-wird dabei nichts.
+Felder die Europa-Suche nennt, was die Shopseite, DekuDeals, Nintendos GameShare-Liste, Wikidata
+und, mit eigenem Schlüssel, IGDB zu Koop, Online und GameShare sagen). Gespeichert wird dabei
+nichts. Den IGDB-Schlüssel gibt es kostenlos als Twitch-Entwickler-App; er kommt als
+`IGDB_CLIENT_ID` und `IGDB_CLIENT_SECRET` in die Umgebung des Containers (siehe
+`docker-compose.yml`), ohne ihn fragt der Test IGDB nicht an.
 
 ### Datenquellen
 

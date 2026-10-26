@@ -88,5 +88,7 @@ Neue Wünsche, noch nicht eingeordnet.
   Filter und Marke am Titel, kein eigener Reiter: Es sind dieselben Spiele. titledb (schon
   wöchentlich gestreamt) führt je Titel Kategorien, Spielerzahl, Verlag und Erscheinungsdatum,
   ohne neuen Abruf. Welche Felder die Nintendo-Europa-Suche dazu liefert und was die Shopseiten zu
-  Koop und GameShare sagen, zeigt seit 1.4.1 „Verbindung testen“ (Spielinfos). Danach entscheiden,
-  ob ein langsamer Nachlauf je Shopseite nötig ist.
+  Koop und GameShare sagen, zeigt seit 1.4.1 „Verbindung testen“ (Spielinfos), seit 1.4.2 auch
+  DekuDeals, Nintendos GameShare-Liste, Wikidata und IGDB (mit eigenem Schlüssel). Wie bei den
+  Sprachen: eine offene Quelle liefert, Nintendo bestätigt, nur eine Quelle heißt „≈“. Danach
+  entscheiden, welche Quellen der Abgleich nutzt.

@@ -2177,12 +2177,24 @@ class SafetyTest(unittest.TestCase):
 
         def request(url, ua=None, timeout=25):
             urls.append(url)
-            text = solr if "fl=%2A" in url else \
-                "<title>Snipperclips</title><p>Bis zu 4 Spieler im Koop, GameShare</p>" if "/de-de/" in url else ""
+            if "GameShare-2785626" in url:
+                return {"url": url, "status": 404 if "/de-de/" in url else 200, "enc": "", "server": "t", "error": "",
+                        "text": "<title>GameShare</title><table><tr><th>Spiel</th><th>Local</th></tr><tr><td>Mario</td><td>Sí</td></tr></table>"}
+            text = solr if "fl=%2A" in url else wiki if "wikidata" in url else \
+                "<title>Snipperclips</title><p>Bis zu 4 Spieler im Koop, GameShare</p>" if "/de-de/" in url else \
+                "<dl><dt>Genre</dt><dd>Puzzle</dd><dt>Players</dt><dd>1-4</dd></dl>" if "/items/" in url else ""
             return {"url": url, "status": 200, "text": text, "enc": "", "server": "t", "error": ""}
-        with mock.patch.object(sources, "request", request):
+        wiki = json.dumps({"results": {"bindings": [{"name": {"value": "Snipperclips"}, "modes": {"value": "multiplayer video game, co-op"},
+                                                      "maxp": {"value": "4"}}]}})
+        with mock.patch.object(sources, "request", request), mock.patch.dict(os.environ, {"IGDB_CLIENT_ID": ""}):
             text = "\n".join(sync.diagnose(sleep=lambda s: None))
         self.assertTrue(any("nsuid_txt%3A%2870010000000038%29" in u for u in urls))
+        self.assertIn("Spielinfos DekuDeals (snipperclips, schon gelesen): Genre Puzzle Players 1-4", text)
+        self.assertIn("GameShare-Liste: HTTP 404", text)            # erst Deutschland, dann Spanien
+        self.assertIn("Tabellenzeilen 2, Anfang der Tabelle: Spiel Local Mario Sí", text)
+        self.assertIn("Wikidata: HTTP 200", text)
+        self.assertIn("„Snipperclips“: Modus multiplayer video game, co-op; Genre –; Spieler ––4", text)
+        self.assertIn("IGDB: kein Schlüssel", text)
         self.assertIn("„Snipperclips“: players_to=4; pretty_game_categories_txt=['Puzzle']", text)
         self.assertIn("Spielinfos Shopseite: HTTP 200", text)
         self.assertIn("4 Spieler im Koop, GameShare", text)
@@ -2194,6 +2206,31 @@ class SafetyTest(unittest.TestCase):
             text = "\n".join(sync.diagnose(sleep=lambda s: None))
         self.assertIn("außerhalb von nintendo.com (example.org), nicht angefragt", text)
         self.assertNotIn("https://example.org/x", urls)
+
+    def test_igdb_probe_keeps_key_secret(self):
+        # 1.4.2: IGDB nur mit Schlüssel aus der Umgebung; Twitch-Zugang per POST, Schlüssel nie in der Ausgabe
+        calls = []
+
+        def request(url, ua=None, timeout=25, data=None, headers=None):
+            calls.append((url, data, headers or {}))
+            if "twitch" in url:
+                return {"url": url, "status": 200, "text": '{"access_token": "tok"}', "enc": "", "server": "t", "error": ""}
+            games = [{"id": 1, "name": "Snipperclips", "game_modes": [{"id": 3, "name": "Co-operative"}],
+                      "genres": [{"id": 9, "name": "Puzzle"}],
+                      "multiplayer_modes": [{"id": 5, "offlinecoop": True, "offlinecoopmax": 4}]}]
+            return {"url": url, "status": 200, "text": json.dumps(games), "enc": "", "server": "t", "error": ""}
+        with mock.patch.object(sources, "request", request):
+            lines = sync.igdb_probe(["Snipperclips™"], sleep=lambda s: None,
+                                    env={"IGDB_CLIENT_ID": "cid", "IGDB_CLIENT_SECRET": "geheim123"})
+        text = "\n".join(lines)
+        self.assertIn("Modi ['Co-operative']; Genres ['Puzzle']", text)
+        self.assertIn("'offlinecoopmax': 4", text)
+        self.assertNotIn("geheim123", text)
+        self.assertNotIn("geheim123", calls[0][0])                  # nicht in der Adresse, nur im Inhalt
+        self.assertIn(b"client_secret=geheim123", calls[0][1])
+        self.assertEqual(calls[1][1], b'search "Snipperclips"; ' + sync.IGDB_FIELDS.encode())
+        self.assertEqual(calls[1][2]["Authorization"], "Bearer tok")
+        self.assertEqual(sync.igdb_probe(["x"], env={}), ["IGDB: kein Schlüssel (IGDB_CLIENT_ID und IGDB_CLIENT_SECRET), nicht angefragt"])
 
     def test_diagnose_reads_history_from_item_page(self):
         # Bis 0.37 suchte der Verbindungstest den Verlauf in robots.txt statt in der Artikelseite
