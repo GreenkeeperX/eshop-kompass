@@ -54,14 +54,28 @@ function saleNews(k){
   }
   const short = x => { const r = S.state.radar.find(y => y.slug === x.slug) || {}; return r.dlc_of && sameT(x.title).startsWith(sameT(r.dlc_of)) ? x.title.slice(r.dlc_of.length).replace(/^[\s:–\-+]+/, "") || x.title : x.title; };
   const inPlan = s => { const w = where[s]; return w ? `<span class="chip">im Plan</span> Schritt ${w.n}, ${esc(country(w.code).name)}` : ""; };
-  const line = (key, head, xs, one) => {
+  const rows = xs => xs.map(x => npRow(x.slug, where[x.slug] ? {note: inPlan(x.slug), act: ""} : {})).join("");
+  const line = (key, head, xs, one, tail) => {
     const lead = xs.slice(0, 3).map(one).join(", ") + (xs.length > 3 ? ` und ${xs.length - 3} weitere` : "");
     return `<details class="newsd np" data-k="${key}" ${S.folds[key] ? "open" : ""}><summary>${head} <span class="lead">${lead}</span></summary>` +
-      `<div class="np-grid">${NP_COLS}${xs.map(x => npRow(x.slug, where[x.slug] ? {note: inPlan(x.slug), act: ""} : {})).join("")}</div></details>`;
+      `<div class="np-grid">${NP_COLS}${rows(xs)}${tail || ""}</div></details>`;
   };
+  /* Alle übrigen Angebote (1.5.3): unter „enden bald“ erst auf Klick, nach Enddatum, ohne Ende zuletzt. Nicht
+     gemerkt: S.allSale gilt nur, bis die Zeile zugeklappt wird, danach zeigt sie wieder nur „enden bald“ */
+  const rest = [];
+  for(const r of S.state.radar){
+    const o = shownOffer(r);
+    if(!o || !o.sale || soon.has(r.slug)) continue;
+    const t = +new Date(o.end || "");
+    rest.push({slug: r.slug, t: isNaN(t) ? Infinity : t});
+  }
+  rest.sort((x, y) => x.t - y.t);
+  const more = !rest.length ? "" : S.allSale
+    ? `<p class="npmore">Alle weiteren Angebote der Wishlist, nach Enddatum: <button class="link" data-act="allsale" data-v="0">weniger zeigen</button></p>${rows(rest)}`
+    : `<p class="npmore"><button class="link" data-act="allsale" data-v="1">Alle Angebote zeigen</button> <span class="mut">noch ${rest.length} weitere, die später enden oder kein Urteil „kaufen“ oder „gut“ haben</span></p>`;
   let h = "";
   const a = [...soon.values()].sort((x, y) => x.t - y.t);
-  if(a.length) h += line("newssoon", `<b><span class="dealn">${a.length}</span> ${a.length === 1 ? "Angebot endet bald:" : "Angebote enden bald:"}</b>`, a, x => `<span class="ink">${esc(short(x))}</span> ${endCell(x.end, "bis ", "", true)}`);
+  if(a.length) h += line("newssoon", `<b><span class="dealn">${a.length}</span> ${a.length === 1 ? "Angebot endet bald:" : "Angebote enden bald:"}</b>`, a, x => `<span class="ink">${esc(short(x))}</span> ${endCell(x.end, "bis ", "", true)}`, more);
   const b = [...fresh.values()].sort((x, y) => y.t - x.t);
   if(b.length) h += line("newsfresh", `<b><span class="dealn">Neu</span> im Angebot</b> <span class="mut">seit höchstens drei Tagen:</span>`, b, x => `<span class="ink">${esc(short(x))}</span>`);
   return h ? `<div class="news">${h}</div>` : "";

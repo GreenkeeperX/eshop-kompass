@@ -71,6 +71,7 @@ document.addEventListener("click", async e => {
     else if(a === "vf"){ S.vf = d.v; saveView(); render(); }
     else if(a === "waitf"){ S.wf = d.v; render(); }
     else if(a === "wlfoldall"){ document.querySelectorAll(".radar .dlctog").forEach(b => { const k = "wl:" + b.dataset.g; if(d.v) delete S.folds[k]; else S.folds[k] = 1; }); saveView(); render(); }
+    else if(a === "allsale"){ S.allSale = d.v === "1"; render(); }
     else if(a === "wlfold"){ const k = "wl:" + d.g; if(S.folds[k]) delete S.folds[k]; else S.folds[k] = 1; saveView(); render(); }
     else if(a === "nodlcoff"){ S.noDlc = false; saveView(); render(); }
     else if(a === "tview"){ S.tview = d.v; saveView(); render(); }
@@ -454,6 +455,8 @@ document.addEventListener("toggle", e => {
   if(kc){ if(e.target.open) delete S.folds[kc]; else S.folds[kc] = 1; saveView(); return; }
   const k = e.target.dataset && e.target.dataset.k;
   if(!k) return;
+  // „Alle Angebote zeigen“ gilt nur, solange „enden bald“ offen ist (1.5.3)
+  if(k === "newssoon" && !e.target.open && S.allSale){ S.allSale = false; setTimeout(render); }
   if(e.target.open) S.folds[k] = 1; else delete S.folds[k];
   saveView();
 }, true);

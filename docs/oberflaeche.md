@@ -90,6 +90,10 @@ Ab 1.3.0:
   im Raster von „Wartet“ (`npRow`, `NP_COLS`), geplante mit Chip „im Plan“ und Schritt. Abstand
   oben 6 px, unten 10 px (vorher klebte „Neu im Angebot“ an den Karten). Vorher eine zweite, auffälligere
   Zeile „und n weitere“ mit unterstrichenen Links.
+  Ab 1.5.3 steht aufgeklappt unter „enden bald“ eine gestrichelt abgesetzte Zeile `p.npmore` „Alle
+  Angebote zeigen“ (Link) mit grauem „noch n weitere …“; ein Klick hängt alle übrigen Angebote der
+  Wishlist nach Enddatum ins selbe Raster („weniger zeigen“ nimmt sie wieder weg). Nicht klappbar und
+  nicht gemerkt (`S.allSale`): Zuklappen von „enden bald“ setzt es zurück.
 - **Verweise ohne Unterstreichung** (ab 1.3.1, `.plain`, unterstrichen erst beim Darüberfahren wie
   `a.pl`): Titelname in Schritt, Länderkarte und Korb öffnet die Einzelheiten (`titleBtn`, ein `span`
   mit `role=link`, weil ein Knopf den zweizeiligen DLC-Namen umbrach; Enter und Leertaste gehen),

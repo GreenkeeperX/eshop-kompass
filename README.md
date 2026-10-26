@@ -402,7 +402,9 @@ bald“ für Angebote im Plan oder mit Urteil „kaufen“ oder „gut“, die i
 enden, und „Neu im Angebot“ für Wishlist-Titel, deren günstigstes Angebot vor höchstens drei Tagen
 begann. Jede Zeile nennt die ersten drei Titel und „und n weitere“; ein Klick klappt sie auf und
 zeigt alle im Raster von „Wartet“: Urteil, Einkaufspreis, Rabatt, Land, Abstand zum Bestpreis,
-Ende, und „im Plan“ mit Schritt oder „dazunehmen …“.
+Ende, und „im Plan“ mit Schritt oder „dazunehmen …“. Unter „enden bald“ zeigt „Alle Angebote zeigen“
+auf Wunsch auch alle übrigen Angebote der Wishlist, nach Enddatum; beim nächsten Aufklappen sind sie
+wieder weg.
 
 **Verweise in Schritten, Länderkarten und Korb:** Der Titelname öffnet seine Einzelheiten in der
 Wishlist (wie in der Tabelle), „normal“ oder das Angebotsende öffnet den Preisverlauf (das genaue
