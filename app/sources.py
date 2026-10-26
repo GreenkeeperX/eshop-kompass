@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -641,7 +641,7 @@ def parse_game_info(page_html):
         out["released"] = f"{m.group(3)}-{_MONTHS[m.group(1).lower()]:02d}-{int(m.group(2)):02d}"
     elif re.search(r"\b(19|20)\d\d\b", rd):
         out["released"] = re.search(r"\b(19|20)\d\d\b", rd).group(0)
-    for key in ("developer", "publisher"):
+    for key in ("developer", "publisher", "platform"):
         if simple(key):
             out[key] = simple(key)
     for org in ("usk", "pegi", "esrb"):
@@ -803,7 +803,7 @@ def fetch_langs_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
 
 INFO_EU_FIELDS = ("nsuid_txt,title,pretty_game_categories_txt,players_from,players_to,play_mode_tv_mode_b,"
                   "play_mode_tabletop_mode_b,play_mode_handheld_mode_b,multiplayer_mode,paid_subscription_online_play_b,"
-                  "publisher,dates_released_dts,age_rating_type,age_rating_value")
+                  "publisher,dates_released_dts,age_rating_type,age_rating_value,system_names_txt,playable_on_txt")
 
 
 def parse_info_eu(payload):
@@ -831,6 +831,9 @@ def parse_info_eu(payload):
         r = r[0] if isinstance(r, list) and r else r
         if isinstance(r, str) and re.match(r"\d{4}-\d\d-\d\d", r):
             x["released"] = r[:10]
+        sy = [str(v) for k in ("system_names_txt", "playable_on_txt") for v in d.get(k) or [] if isinstance(d.get(k), list)]
+        if sy:
+            x["sys"] = list(dict.fromkeys(sy))[:4]
         if d.get("age_rating_type") and d.get("age_rating_value") is not None:
             x["age"] = f"{str(d['age_rating_type']).upper()} {d['age_rating_value']}"
         for n in d.get("nsuid_txt") or []:

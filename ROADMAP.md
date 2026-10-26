@@ -93,5 +93,6 @@ Neue Wünsche, noch nicht eingeordnet.
   Sprachen: eine offene Quelle liefert, Nintendo bestätigt, nur eine Quelle heißt „≈“.
   Entschieden (26.10.2026): Umschalter „DLC | Spiele“ im Reiter Sammlung, alle Angaben erst einmal
   zeigen, Mischungen wie vorgeschlagen. Schritte: 1.6.0 Daten (DekuDeals beim DLC-Schritt, Nintendo
-  bestätigt, erledigt), 1.6.1 Ansicht „Spiele“ mit Filtern, Sortierung und „≈“, 1.6.2 IGDB für Koop,
-  GameShare, Mischungen und „Überrasch mich“.
+  bestätigt, erledigt), 1.6.1 Ansicht „Spiele“ mit Filtern, Sortierung, „≈“, Mischungen und
+  „Überrasch mich“ (erledigt), 1.6.2 IGDB für Koop (lokal, online, Höchstzahl, Splitscreen) und
+  GameShare. Danach prüfen, welche Angaben wie prominent stehen.

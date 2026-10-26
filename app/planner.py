@@ -1675,6 +1675,114 @@ def _group_packs(data, dlc, links):
     return out, groups
 
 
+# Genres auf Deutsch (1.6.1): DekuDeals nennt sie wie der amerikanische eShop, die Europa-Suche wie der
+# britische. Gleich heißt gleich nach dieser Liste; was fehlt, bleibt englisch
+GENRE_DE = {"action": "Action", "adventure": "Abenteuer", "role-playing": "Rollenspiel", "rpg": "Rollenspiel",
+            "role playing": "Rollenspiel", "simulation": "Simulation", "platformer": "Plattformer",
+            "platform": "Plattformer", "puzzle": "Puzzle", "party": "Party", "sports": "Sport", "sport": "Sport",
+            "racing": "Rennspiel", "fighting": "Kampfspiel", "strategy": "Strategie", "shooter": "Shooter",
+            "music": "Musik", "education": "Lernen", "educational": "Lernen", "arcade": "Arcade", "other": "Sonstiges",
+            "lifestyle": "Alltag", "practical": "Alltag", "board game": "Brettspiel", "communication": "Kommunikation",
+            "first-person": "Ego-Perspektive", "fitness": "Fitness", "training": "Training", "utility": "Werkzeug",
+            "video": "Video", "multiplayer": "Mehrspieler", "study": "Lernen", "application": "Anwendung",
+            "first-person shooter": "Shooter", "survival": "Survival", "horror": "Horror", "roguelike": "Roguelike",
+            "metroidvania": "Metroidvania", "visual novel": "Visual Novel", "card game": "Kartenspiel",
+            "trivia": "Quiz", "quiz": "Quiz", "tower defense": "Tower Defense", "rhythm": "Rhythmus"}
+
+
+def _genre(name):
+    return GENRE_DE.get(re.sub(r"\s+", " ", str(name).strip().lower()), str(name).strip())
+
+
+def _pub(name):
+    return re.sub(r"[^a-z0-9]+", "", re.sub(r"(?i)\b(inc|ltd|llc|co|corp|gmbh|s\.?a|games|entertainment)\b\.?", "",
+                                              str(name or "").lower()))
+
+
+def game_infos(data, settings):
+    """Ansicht „Spiele“ der Sammlung (1.6.1): je Spiel die Spielinfos von DekuDeals (rel.info), bestätigt
+    von der Nintendo-Europa-Suche (rel.nin). Je Angabe ok=True, wenn beide Quellen sie nennen und
+    übereinstimmen; nur eine Quelle oder Widerspruch: ok=False (Oberfläche „≈“, beide Werte im Tooltip).
+    Wertungen und Spielzeit nennen nur Metacritic, OpenCritic und HowLongToBeat (über DekuDeals)."""
+    rel = data.get("rel") or {}
+    owned_list = list(dict.fromkeys(data.get("owned") or []))
+    direct = set(owned_list) | eshop_matches(data)["owned"]
+    via = pack_parts(data, direct, pack_block(settings))
+    owned = owned_set(data, settings)
+    bought = {}
+    for r in eshop_matches(data).get("rows") or []:
+        if r.get("slug") and r.get("date"):
+            bought[r["slug"]] = max(bought.get(r["slug"], ""), str(r["date"])[:10])
+    out, genres = [], {}
+    for slug in owned_games(data, settings):
+        e = rel.get(slug) or {}
+        if e.get("parent"):
+            continue
+        title = e.get("title") or ((data.get("items") or {}).get(slug) or {}).get("title") or slug.replace("-", " ").title()
+        di, ni = e.get("info") or {}, e.get("nin") or {}
+        nin = bool(ni.get("at")) and not ni.get("none")
+        g = {"slug": slug, "title": title, "read": e.get("iv", 0) > 0, "nin": nin,
+             "via": (rel.get(via[slug]) or {}).get("title") or via[slug] if slug in via and slug not in direct else None}
+        # System: Switch 2 Edition im Namen, ein vorhandenes Upgrade-Paket oder eine Quelle nennt Switch 2
+        ups = [d for d, t in e.get("dlc") or [] if is_upgrade(d, t)]
+        sysn = " ".join([str(di.get("platform") or "")] + [str(x) for x in ni.get("sys") or []]).lower()
+        g["s2"] = ("edition" if _S2.search(" " + _tnorm(title)) else "upgrade" if any(d in owned for d in ups)
+                   else "switch2" if "switch 2" in sysn else None)
+        # Genre: Vereinigung beider Quellen, deutsch, je Genre bestätigt oder nicht
+        dg = {_genre(x) for x in di.get("genre") or []}
+        ng = {_genre(x) for x in ni.get("genre") or []}
+        g["genre"] = [{"n": x, "ok": x in dg and x in ng, "src": "beide" if x in dg and x in ng else "DekuDeals" if x in dg else "Nintendo"}
+                      for x in sorted(dg | ng, key=lambda x: (x not in dg, x))]
+        for x in g["genre"]:
+            genres[x["n"]] = genres.get(x["n"], 0) + 1
+        # Spieler: offline gegen Nintendos Höchstzahl, online gegen Nintendos „Online-Spiel mit Mitgliedschaft“
+        pl, npl = di.get("players") or {}, ni.get("players")
+        players = {}
+        for k in ("offline", "local", "online"):
+            if pl.get(k):
+                ok = (k == "offline" and npl and npl[1] == pl[k][1]) or (k == "online" and ni.get("online") is True)
+                players[k] = {"v": pl[k], "ok": bool(ok)}
+        if "offline" not in players and npl:
+            players["offline"] = {"v": npl, "ok": False, "src": "Nintendo"}
+        if players.get("offline") and npl and npl[1] != players["offline"]["v"][1]:
+            players["offline"]["alt"] = npl
+        if "online" not in players and ni.get("online") is True:
+            players["online"] = {"v": None, "ok": False, "src": "Nintendo"}
+        g["players"] = players
+        g["max"] = max([v["v"][1] for v in players.values() if v["v"]] or [0]) or None
+        dm, nm = di.get("modes") or [], ni.get("modes") or []
+        g["modes"] = [{"n": m, "ok": m in dm and m in nm} for m in ("tv", "tabletop", "handheld") if m in dm or m in nm]
+        g["coop"] = bool((di.get("hltb") or {}).get("coop"))           # bis IGDB (1.6.2): Koop-Spielzeit heißt Koop
+        for k in ("mc", "mcu", "oc", "hltb", "developer", "size_gb"):
+            if di.get(k) not in (None, "", {}):
+                g[k] = di[k]
+        dr, nr = di.get("released"), ni.get("released")
+        if dr or nr:
+            g["year"] = (dr or nr)[:4]
+            g["year_ok"] = bool(dr and nr and dr[:4] == nr[:4])
+            g["year_alt"] = nr[:4] if dr and nr and dr[:4] != nr[:4] else None
+            g["released"] = dr or nr
+        dp, np_ = di.get("publisher"), ni.get("publisher")
+        if dp or np_:
+            g["publisher"] = dp or np_
+            g["pub_ok"] = bool(dp and np_ and (_pub(dp) in _pub(np_) or _pub(np_) in _pub(dp)))
+            g["pub_alt"] = np_ if dp and np_ and not g["pub_ok"] else None
+        ages = [a for a in (di.get("age"), ni.get("age")) if a]
+        if ages:
+            g["age"] = " · ".join(dict.fromkeys(ages))
+        if slug in bought:
+            g["bought"] = bought[slug]
+        g["score"] = di.get("mc") or di.get("oc")
+        h = di.get("hltb") or {}
+        g["hours"] = h.get("main") or h.get("solo") or h.get("extra") or h.get("coop")
+        g["mm"] = ni.get("mm")
+        out.append(g)
+    out.sort(key=lambda g: g["title"].lower())
+    return {"games": out, "genres": sorted(genres.items(), key=lambda x: (-x[1], x[0])),
+            "read": sum(1 for g in out if g["read"]), "with_info": sum(1 for g in out if g["genre"] or g["players"]),
+            "confirmed": sum(1 for g in out if g["nin"])}
+
+
 def collection(data, settings, targets=None, now=None, rows=None):
     """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
 

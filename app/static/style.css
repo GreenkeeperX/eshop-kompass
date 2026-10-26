@@ -638,3 +638,49 @@ span.plain{cursor:pointer}
   .np details.bkf>summary.bkr{padding-left:6px}
   .bk-t{padding-left:18px}
 }
+
+/* Sammlung, Ansicht „Spiele“ (1.6.1): Mischungen, Filter als Menüs, ein Raster je Spiel wie „Wartet“ */
+.chips.gmix{margin:0 0 8px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
+.chips.gmix .fb{white-space:nowrap}
+.gfilter{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:0 0 8px;font-size:13px}
+.gfilter label{display:flex;gap:6px;align-items:center;max-width:100%}
+.chips.gact{margin:0 0 8px;align-items:center}
+.chips.gact .fb{font-size:12px;padding:1px 9px}
+details.gmenu{position:relative}
+details.gmenu>summary{cursor:pointer;list-style:none;border:1px solid var(--line);border-radius:6px;padding:2px 8px;background:var(--card)}
+details.gmenu>summary::-webkit-details-marker{display:none}
+details.gmenu>summary::after{content:" ▾";color:var(--muted)}
+details.gmenu[open]>summary{border-color:var(--accent)}
+details.gmenu .cnt{display:inline-block;min-width:16px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--bg);font-size:11px;text-align:center}
+details.gmenu .pop{position:absolute;z-index:6;top:calc(100% + 4px);left:0;min-width:220px;max-width:min(320px,calc(100vw - 32px));max-height:60vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+details.gmenu .opts{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+details.gmenu .opts label{display:flex;gap:6px;align-items:baseline;white-space:nowrap}
+details.gmenu .opts .mut{margin-left:auto;padding-left:10px;font-size:12px}
+details.gmenu .hint{margin:0}
+.glist{padding:4px 8px}
+.gr{display:grid;grid-template-columns:minmax(0,1fr) 170px 64px 56px 56px 48px 58px 72px 46px;gap:0 10px;align-items:baseline;padding:5px 0;border-top:1px dashed var(--line);font-size:13px}
+.gr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.gr .r{text-align:right;white-space:nowrap}
+.gr .t{min-width:0}
+.gr .c-pl{white-space:nowrap}
+.gr button.link.g-n{text-decoration:none;color:inherit;text-align:left;font:inherit;font-weight:600;padding:0}
+.gr button.link.g-n:hover{text-decoration:underline}
+.gr .chip{vertical-align:1px}
+.chip.s2c{color:var(--ink)}
+.approx.gx{color:var(--muted);margin:0 0 0 2px}
+.approx.gx.bad{color:var(--warn)}
+.gd{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 14px;padding:4px 0 10px 14px;font-size:13px}
+.gd .fl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.gd .fv{min-width:0;overflow-wrap:anywhere}
+.gpick h3{margin:2px 0 6px;font-size:14px}
+.gpa{display:flex;gap:8px;margin:8px 0 0}
+@media (max-width:760px){
+  .gr.nph{display:none}
+  .gr{display:flex;flex-wrap:wrap;gap:2px 12px}
+  .gr .t{flex:1 0 100%}
+  .gr .nil{display:none}
+  .gr>span[data-l]:not(.c-gen)::before{content:attr(data-l) " ";color:var(--muted);font-size:11px}
+  .gr .c-gen{flex:1 0 100%;color:var(--muted)}
+  .gd{padding-left:4px}
+  details.gmenu .pop{position:fixed;left:16px;right:16px;top:auto;max-width:none;min-width:0}
+}

@@ -3084,6 +3084,37 @@ class CollectionTest(unittest.TestCase):
         sync.sync_related(data, settings, lambda u, ua=None: "<title>A | Deku Deals</title>", lambda s: None, now=t0 + 9000)
         self.assertEqual((data["rel"]["game-a"]["info"], data["rel"]["game-a"]["nin"]["none"]), ({"genre": ["Puzzle"]}, True))
 
+    def test_game_infos_mark_single_source(self):
+        # 1.6.1: Ansicht „Spiele“: Genre deutsch und je Quelle bestätigt, Spieler gegen Nintendos
+        # Höchstzahl, Jahr und Verlag mit Widerspruch, Switch 2 aus dem Namen, ungelesene Spiele dabei
+        data, settings = sample()
+        data["owned"] = ["game-a", "game-b-nintendo-switch-2-edition", "game-c"]
+        data["rel"] = {
+            "game-a": {"title": "Game A", "dlc": [], "iv": 1, "info": {
+                "genre": ["Role-Playing", "Puzzle"], "players": {"offline": [1, 4], "online": [1, 8]},
+                "modes": ["tv", "handheld"], "mc": 88, "hltb": {"main": 12.5, "coop": 9}, "released": "2020-03-20",
+                "publisher": "Nintendo"},
+                "nin": {"genre": ["RPG", "Action"], "players": [1, 2], "modes": ["tv", "handheld"], "online": True,
+                        "released": "2019-12-01", "publisher": "Nintendo Co., Ltd.", "at": 1}},
+            "game-b-nintendo-switch-2-edition": {"title": "Game B – Nintendo Switch 2 Edition", "dlc": [], "iv": 1,
+                                                  "info": {"genre": ["Party"]}, "nin": {"none": True, "at": 1}},
+            "game-c": {"title": "Game C", "dlc": []}}
+        sp = planner.game_infos(data, settings)
+        a, b, c = sp["games"]
+        self.assertEqual(a["genre"], [{"n": "Puzzle", "ok": False, "src": "DekuDeals"},
+                                      {"n": "Rollenspiel", "ok": True, "src": "beide"},
+                                      {"n": "Action", "ok": False, "src": "Nintendo"}])
+        self.assertEqual(a["players"]["offline"], {"v": [1, 4], "ok": False, "alt": [1, 2]})
+        self.assertEqual(a["players"]["online"], {"v": [1, 8], "ok": True})
+        self.assertEqual((a["max"], a["coop"], a["score"], a["hours"]), (8, True, 88, 12.5))
+        self.assertEqual(a["modes"], [{"n": "tv", "ok": True}, {"n": "handheld", "ok": True}])
+        self.assertEqual((a["year"], a["year_ok"], a["year_alt"]), ("2020", False, "2019"))
+        self.assertTrue(a["pub_ok"])
+        self.assertEqual((b["s2"], b["nin"], b["genre"][0]["ok"]), ("edition", False, False))
+        self.assertEqual((c["read"], c["genre"], c["players"]), (False, [], {}))
+        self.assertEqual((sp["read"], sp["with_info"], sp["confirmed"]), (2, 2, 1))
+        self.assertIn(("Party", 1), sp["genres"])
+
     def test_collection_view(self):
         data, settings = sample()
         data["owned"] = ["vampire-survivors", "vs-emergency-meeting", "hades", "unread-game"]
@@ -4762,7 +4793,13 @@ def ui_sample():
     data["owned"] = ["vampire-survivors"]
     data["rel"] = {"vampire-survivors": {"checked": NOW.timestamp(), "v": 1, "title": "Vampire Survivors", "parent": None,
                                          "dlc": [["vs-foscari", "Tides of the Foscari"], ["vs-emergency-meeting", "Emergency Meeting"]],
-                                         "in": [], "has": []}}
+                                         "in": [], "has": [], "iv": 1, "eu": "70010000000001",
+                                         "info": {"genre": ["Action", "Role-Playing"], "players": {"offline": [1, 4], "online": [1, 4]},
+                                                  "modes": ["tv", "tabletop", "handheld"], "mc": 86, "oc": 88,
+                                                  "hltb": {"main": 16, "coop": 20}, "released": "2022-12-17",
+                                                  "developer": "Studio X", "publisher": "Studio X", "age": "USK 12", "size_gb": 0.9},
+                                         "nin": {"genre": ["Action"], "players": [1, 4], "modes": ["tv", "handheld"], "online": False,
+                                                 "released": "2022-12-17", "publisher": "Studio X Ltd", "at": NOW.timestamp()}}}
     data["last_sync"] = NOW.isoformat()
     return data, settings
 
@@ -4806,6 +4843,10 @@ class UiContractTest(unittest.TestCase):
         "plan.others": {"code", "current", "diff", "estimated", "games_cost", "is_ref", "missing", "name", "tier"},
         "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
+        "spiele": {"confirmed", "games", "genres", "read", "with_info"},
+        "spiele.games": {"bought", "coop", "developer", "genre", "hltb", "hours", "max", "mc", "mcu", "modes", "nin", "oc", "players",
+                         "pub_alt", "pub_ok", "publisher", "read", "released", "s2", "score", "size_gb", "slug", "title", "via",
+                         "year", "year_alt", "year_ok", "age"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "suggest", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
         "eshop": {"amount", "coll", "coll_game", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
@@ -4879,6 +4920,8 @@ class UiContractTest(unittest.TestCase):
             "plan.others": keys([o for p in kauf["steps"] for o in p["others"]]),
             "collection": set(state["collection"]),
             "collection.games": keys(state["collection"]["games"]),
+            "spiele": set(state["spiele"]),
+            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu"},
             "nso": set(state["nso"]),
             "pay": keys(state["pay"].values()),
             "eshop": keys(planner.eshop_matches(dict(store.load_data(), _eshop={"picks": {}, "entries": [

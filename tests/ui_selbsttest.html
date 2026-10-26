@@ -18,7 +18,7 @@ f.addEventListener("load", () => {
     try{
       // Jeder Reiter, dazu die Ansichten Tabelle und Korb (leer und mit Titeln) der Wishlist und die Länderkarten (aus dem Kaufplan, ab 0.74 ohne Reiter)
       const views = w.eval("TABS.map(x => x[0])").map(t => [t, t, ""])
-        .concat([["titel:tabelle", "titel", "S.tview = 'table'"], ["titel:korb", "titel", "S.tview = 'korb'"], ["titel:korb-voll", "titel", "S.ui.basket = [...S.state.matrix.rows].sort((a, b) => b.title.length - a.title.length).slice(0, 4).map(r => r.slug), loadPlans()"], ["laender", "laender", "S.landFocus = null; S.dense = true"], ["laender:liste", "laender", "S.dense = false"], ["laender:land", "laender", "S.landFocus = S.plans[0].code"]]);
+        .concat([["titel:tabelle", "titel", "S.tview = 'table'"], ["titel:korb", "titel", "S.tview = 'korb'"], ["sammlung:spiele", "sammlung", "S.cview = 'spiele'"], ["sammlung:spiele-offen", "sammlung", "S.cview = 'spiele'; S.gOpen = (S.state.spiele.games[0] || {}).slug; S.g.mix = 'surprise'; S.g.seed = 7"], ["titel:korb-voll", "titel", "S.ui.basket = [...S.state.matrix.rows].sort((a, b) => b.title.length - a.title.length).slice(0, 4).map(r => r.slug), loadPlans()"], ["laender", "laender", "S.landFocus = null; S.dense = true"], ["laender:liste", "laender", "S.dense = false"], ["laender:land", "laender", "S.landFocus = S.plans[0].code"]]);
       // Prüft erst den Prüfer: Ein absichtlich zu breiter Kasten muss auffallen
       const probe = w.document.createElement("div");
       probe.style.width = "700px"; probe.textContent = "Probe";

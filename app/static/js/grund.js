@@ -2,7 +2,7 @@
 /* Grundlagen: Ansicht und Zustand im Browser, Zahlen, Zeiten, Links, Deal-Güte, Signale (Teil der Oberfläche, Reihenfolge in index.html) */
 /* Ansicht je Browser: Reiter, Titelansicht, Filter, aufgeklappte Kästen */
 function loadView(){ try{ return JSON.parse(localStorage.getItem("ek.view") || "{}") || {}; }catch(e){ return {}; } }
-function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder, noDlc:S.noDlc, dense:S.dense, lsort:S.lsort})); }catch(e){} }
+function saveView(){ try{ localStorage.setItem("ek.view", JSON.stringify({tab:S.tab, tview:S.tview, vf:S.vf, folds:S.folds, mDetails:S.mDetails, sorts:S.sorts, colOrder:S.colOrder, noDlc:S.noDlc, dense:S.dense, lsort:S.lsort, cview:S.cview})); }catch(e){} }
 /* Hell, dunkel oder wie das Gerät. Gemerkt je Browser (ek.theme); das Skript im Kopf setzt es
    vor dem ersten Zeichnen, damit nichts aufblitzt. */
 const ICO = d => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${d}</svg>`;
@@ -34,6 +34,7 @@ if(V0.tab === "korb"){ V0.tab = "titel"; V0.tview = "korb"; }
 if(V0.vf === "coll"){ V0.vf = "all"; if(V0.tab === "titel") V0.tab = "sammlung"; }   // bis 0.27 ein Filter im Reiter Titel
 const S = {state:null, plans:[], ui:null, tab:TABS.some(t => t[0] === V0.tab) ? V0.tab : "jetzt",
            onlySale:false, collMissing:false, rq:"", vf:V0.vf || "all", tview:["table", "korb"].includes(V0.tview) ? V0.tview : "list",
+           cview:V0.cview === "spiele" ? "spiele" : "dlc",     // Sammlung: DLC | Spiele (1.6.1)
            openTitle:null, folds:V0.folds || {}, mDetails:!!V0.mDetails, noDlc:!!V0.noDlc,
            sorts:V0.sorts && typeof V0.sorts === "object" ? V0.sorts : {}, colOrder:V0.colOrder || "tierbest",
            // Ansicht und Sortierung der Länder merkt sich der Browser (0.65), früher der Server
@@ -471,13 +472,14 @@ function render(){
   m.className = "";     // Einstellungen ab 0.76 so breit wie der Bildschirm, alle Karten gleich (vorher 1280 px, nur Sprachen breiter)
   if(S.tab === "jetzt") m.innerHTML = banners() + viewJetzt();
   else if(S.tab === "titel") m.innerHTML = banners() + (S.tview === "table" ? viewMatrix() : S.tview === "korb" ? (S.ui.basket ? viewCompare() : viewKorbEmpty()) : viewTitles());
-  else if(S.tab === "sammlung") m.innerHTML = banners() + viewCollection();
+  else if(S.tab === "sammlung") m.innerHTML = banners() + (S.cview === "spiele" ? viewGames() : viewCollection());
   else if(S.tab === "laender") m.innerHTML = banners() + viewCards();
   else { m.innerHTML = viewSettings(); showLog(S.state.status.log); }
   // Tabellen mit eigenem Scrollkasten, fensterhoch: Titel-Tabelle und Korb (0.61)
   document.body.classList.toggle("fit", (S.tab === "titel" && (S.tview === "table" || S.tview === "korb" && !!document.querySelector(".fitbox"))) && innerWidth > 700);
   if(!document.body.classList.contains("fit")) showStick();
   fitMatrix();
+  gHash();        // Filter der Ansicht „Spiele“ in der Adresse, sonst keine (1.6.1)
   m.querySelectorAll(".scroll,.fitbox").forEach((e, k) => { if(keep[k]){ e.scrollLeft = keep[k][0]; e.scrollTop = keep[k][1]; } });
   const grp = m.querySelector(".matrix tr.grp");
   if(grp) grp.closest(".matrix").style.setProperty("--grp", grp.getBoundingClientRect().height + "px");

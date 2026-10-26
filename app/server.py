@@ -39,6 +39,7 @@ def _state():
         "ui": ui,
         "radar": radar,
         "collection": planner.collection(data, settings, rows=radar),
+        "spiele": planner.game_infos(data, settings),
         "nso": planner.membership(data, settings, bought=store.load_purchases()),
         "nso_items": planner.nso_items(data),
         "extra_offers": planner.extra_offers(data, settings),

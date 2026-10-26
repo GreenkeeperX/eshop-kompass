@@ -127,7 +127,7 @@ function viewCollection(){
   // Filter und Reihenfolge direkt über den Spielen, unter Zahlen und Erklärung (0.58)
   const tools = `<div class="tools">${searchBox("Spiel oder DLC filtern")}
     <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select>
-    <span class="foldall"><button class="link" data-act="foldall" data-v="1" data-scope="#collopen">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="" data-scope="#collopen">alle zuklappen</button></span></div>`;
+    <span class="foldall"><button class="link" data-act="foldall" data-v="1" data-scope="#collopen">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="" data-scope="#collopen">alle zuklappen</button></span>${collSeg()}</div>`;
   let h = "";
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)

@@ -239,6 +239,38 @@ eingeklappt „x vorhanden“, „x ignoriert“, „x nicht mehr erhältlich“
 · alle zuklappen“ in der Werkzeugzeile gilt für diese Kästen (`data-scope="#collopen"`). Am Handy
 brechen die Zeilen um wie unter „Wartet“.
 
+## Sammlung: Ansicht „Spiele“
+
+Ab 1.6.1 (Entscheidung 26.10.2026: Umschalter statt eigener Reiter, Name „Spiele“, erst einmal alle
+Angaben zeigen). Umschalter `collSeg` „DLC | Spiele“ rechts in der Werkzeugzeile beider Ansichten, wie
+`viewSeg` der Wishlist, gemerkt je Browser (`S.cview`, `ek.view`). Code in `js/spiele.js`
+(`viewGames`), Daten aus `state.spiele` (`planner.game_infos`).
+
+- **Werkzeugzeile:** eigenes Suchfeld `#gq` (Name, Genre, Verlag, Entwickler; `fold1` wie `hits`),
+  Sortieren (Name, Wertung, Spielzeit kurz zuerst, Erscheinen neu zuerst, Spieler, zuletzt gekauft,
+  Zufall mit „Neu mischen“).
+- **Mischungen** als Zeile von `.fb`-Knöpfen, am Handy seitlich wischbar (`.chips.gmix`): Überrasch mich,
+  Couch-Abend, Koop zu zweit, Große Runde, Online mit Freunden, Kurz und gut, Für unterwegs. Ein Klick
+  setzt Filter und Sortierung, ein zweiter nimmt sie zurück. „Überrasch mich“ zeigt einen Kasten
+  „Vorschlag“ mit drei Spielen (gewichtet nach Wertung), „Noch mal“ und „Schließen“.
+- **Filter:** System (alle, Switch 2, nur Switch), Genre und Spielweise als Menüs mit Häkchen
+  (`details.gmenu`, eine Zahl je Eintrag: Treffer unter den übrigen Filtern; offen bleibt das Menü beim
+  Anhaken, `S.gMenu`; am Handy über die ganze Breite), Spieler ab n, Wertung ab, Spielzeit. Gesetzte
+  Genres und Spielweisen stehen darunter als Knöpfe mit ×, dazu „alle Filter zurücksetzen“. Alle Filter
+  stehen in der Adresse (`#spiele?…`, `gHash`), nur solange die Ansicht offen ist.
+- **Raster** `.gr` wie „Wartet“: Spiel (fett, Klick klappt die Einzelheiten auf), Genre, Konsole,
+  Lokal, Online, Koop, Wertung, Spielzeit, Jahr. Marken am Namen: `.chip.s2c` „Switch 2 Edition“,
+  „Switch-2-Upgrade“ (Upgrade-Paket in der Sammlung) oder „Switch 2“, grau „nur TV“ (wenn nicht alle drei
+  Spielmodi), „über …“ bei Paketen. Wertung ab 85 grün. Am Handy brechen die Zeilen um, jede Angabe
+  mit kleinem grauem Namen davor, leere fallen weg. Noch nicht gelesene Spiele: Genre „folgt“.
+- **≈** `.approx.gx` hinter einer Angabe: grau, wenn nur eine Quelle sie nennt, violett (`.bad`), wenn
+  DekuDeals und Nintendo verschiedene Werte nennen; der Tooltip nennt die Quelle oder beide Werte.
+  Wertung und Spielzeit tragen kein ≈ (Metacritic, OpenCritic und HowLongToBeat sind selbst die Quelle),
+  ihr Tooltip nennt alle Werte. „Koop ja ≈“ bis IGDB: nur aus einer Koop-Spielzeit bei HowLongToBeat.
+- **Einzelheiten** (`gDetail`, Raster `.gd` wie die Fakten im VR-Navigator): Spieler, Spielmodi,
+  Wertung, Spielzeit je Art, Erschienen, Entwickler, Verlag, Alter, Größe, Gekauft, DLC mit „zu den DLC“
+  (schaltet um und filtert nach dem Spiel), Quellen mit Link zu DekuDeals.
+
 ## Rest füllen (Kaufplan)
 
 „Passt dazu“ (Plan-Schritt, Länderkarte, Korb): „+ Titel **spart x €**“ rechnet mit heutigen Preisen;
@@ -566,10 +598,11 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Titel dazunehmen, weglassen, „Passt dazu“, „Passt in den Rest“, „Genau Null“/„Fast Null“ | Plan-Schritt und Länderkarte gemeinsam in `suggestHtml` (Null-Zeilen `zeroHtml`), `xBtn`, `removedLine` (Schritt `planpick`, `planfill`, `planskip`; Länderkarte `pick`, `add`, `trim`, `drop`), Korb (`add`, Auswahl im Kopf, „In „Jetzt“ übernehmen“ `jetztBtn`), Erklärung `fillTip`, Abstand zum Bestpreis `fillBest`; Suchfeld vor jeder Auswahl `pickWrap` |
 | Angenommener Preis (Was wäre, wenn) | Plan-Schritt (`planCard`, Zelle Einkaufspreis), „Wartet“ (`npRow`), Zeile oben (`assumedLine`), Legende (`openLegend`) |
 | Angebotsende und Angebotsbeginn | Hinweise oben im Kaufplan (`saleNews`), Plan-Schritt (`endCell`), Tabelle mit „Details“, Tooltips in Tabelle und Korb, „Wartet“ und „Noch auf der Wishlist“ (`npRow`) |
-| Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen |
+| Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen; „Spiele“ eigenes Feld `#gq` mit `fold1` |
+| Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, ≈ je Quelle) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`); Daten nur aus `planner.game_infos` |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |
-| Ansichten und Reiter | `TABS`, `render()`, `viewSeg()`, `go()`/`goKorb()`; der Handy-Test `tests/ui_selbsttest.html` zählt jede Ansicht einzeln auf |
+| Ansichten und Reiter | `TABS`, `render()`, `viewSeg()`, `collSeg()` (Sammlung DLC | Spiele), `go()`/`goKorb()`; der Handy-Test `tests/ui_selbsttest.html` zählt jede Ansicht einzeln auf |
 | Felder vom Server | Vertrag `UiContractTest.CONTRACT` in `tests/test_all.py` |
 
 Dazu immer: README (Abschnitt „Nachschlagen“ zum Reiter), diese Datei und bei Abrufen `docs/abrufe.md`.

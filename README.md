@@ -646,6 +646,8 @@ Rechnung unter „Rechnung“.
 
 ### Sammlung
 
+Oben rechts schaltet „DLC | Spiele“ zwischen zwei Ansichten um; das Gerät merkt sich die letzte.
+
 Alle Spiele deiner DekuDeals-Sammlung mit ihren Zusatzinhalten (Abschnitt „DLC“ der
 DekuDeals-Artikelseite), je DLC „hast du“ oder „fehlt“. Ob du einen DLC hast, sagt deine
 Sammlung bei DekuDeals; was sie nicht kennt, etwa einen DLC aus einem Paket, hakst du mit
@@ -685,13 +687,33 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
   Region, jeweils zweimal, gibt es ihn meist nur im Spiel oder nicht mehr im eShop. Er zählt
   nicht als fehlend und steht eingeklappt unter „nicht mehr erhältlich“. Was in einer Region
   gerade nicht kaufbar ist, zählt dort ebenfalls nicht als offen.
-- **Spielinfos (ab 1.6.0, Ansicht „Spiele“ folgt):** Beim Lesen der DLC nimmt der Abgleich von der
+- **Spielinfos (ab 1.6.0):** Beim Lesen der DLC nimmt der Abgleich von der
   DekuDeals-Seite jedes Spiels der Sammlung auch Genre, Spieler (offline, lokal drahtlos, online),
   Spielmodi (TV, Tisch, Handheld), Wertung (Metacritic, OpenCritic), Spielzeit (How Long To Beat),
   Erscheinen, Entwickler, Verlag, Altersfreigabe und Größe mit, ohne zusätzlichen Abruf. Die
   Nintendo-Europa-Suche bestätigt Genre, Spielerzahl, Spielmodi, Verlag und Erscheinen, monatlich, 40
   Spiele je Anfrage. Spiele ohne diese Angaben kommen im DLC-Schritt zuerst dran, bei 40 Seiten je
   Abgleich ist eine Sammlung von gut hundert Spielen nach drei Abgleichen vollständig.
+
+**Ansicht „Spiele“** (ab 1.6.1): jedes Spiel der Sammlung in einer Zeile mit Genre, Spielern an
+einer Konsole, lokal drahtlos und online, Koop, Wertung (Metacritic, sonst OpenCritic), Spielzeit
+(HowLongToBeat, Hauptgeschichte) und Jahr; ein Klick auf den Namen zeigt alles Weitere: Spielmodi,
+Spielzeit je Art, Erscheinungsdatum, Entwickler, Verlag, Altersfreigabe, Größe, Kaufdatum, DLC mit
+Link in die DLC-Ansicht und die Quellen. Marken zeigen Switch 2 Edition, Switch-2-Upgrade und Spiele,
+die nicht alle Spielmodi haben.
+
+- **Herkunft:** Was DekuDeals und Nintendo beide nennen, steht ohne Zeichen. Nennt es nur eine
+  Quelle, steht ein graues „≈“ dahinter, widersprechen sie sich, ein violettes; der Tooltip sagt,
+  wer was nennt. Koop gilt bis auf Weiteres nur als Hinweis („ja ≈“, wenn HowLongToBeat eine
+  Koop-Spielzeit kennt); genaue Koop-Angaben kommen mit IGDB.
+- **Filter:** System (Switch 2 oder nur Switch), Genre (eines davon oder alle), Spielweise (an einer
+  Konsole, lokal drahtlos, online, Koop, Handheld, TV; mehrere müssen alle passen), Spieler ab n,
+  Wertung ab, Spielzeit. Jeder Eintrag in den Menüs nennt, wie viele Spiele dazu passen.
+- **Mischungen:** ein Klick setzt passende Filter: Couch-Abend, Koop zu zweit, Große Runde, Online mit
+  Freunden, Kurz und gut, Für unterwegs. „Überrasch mich“ schlägt drei Spiele aus dem vor, was die
+  Filter zeigen, gut bewertete öfter.
+- **Lesezeichen:** Filter, Sortierung und Mischung stehen in der Adresse (`#spiele?…`), eine Auswahl
+  lässt sich so merken und wieder öffnen.
 
 ### Einstellungen
 
