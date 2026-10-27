@@ -250,8 +250,10 @@ Einträge samt DLC). Code in `js/spiele.js`
 (`viewGames`), Daten aus `state.spiele` (`planner.game_infos`).
 
 - **Werkzeugzeile:** eigenes Suchfeld `#gq` (Name, Genre, Verlag, Entwickler; `fold1` wie `hits`),
-  Sortieren (Name, Wertung, Spielzeit kurz zuerst, Erscheinen neu zuerst, Spieler, zuletzt gekauft,
-  Zufall mit „Neu mischen“).
+  Sortieren (Name, Wertung, Spielzeit kurz zuerst, Erscheinen neu zuerst, Spieler, Zufall mit „Neu
+  mischen“; „zuletzt gekauft“ entfiel in 1.7.0, zu wenige Kaufdaten). Sortiert ein Spaltenkopf, zeigt
+  das Menü „nach Spalte“; eine Wahl im Menü, eine Mischung oder „alle Filter zurücksetzen“ hebt die
+  Spaltensortierung auf.
 - **Mischungen** als Zeile von `.fb`-Knöpfen, am Handy seitlich wischbar (`.chips.gmix`): Überrasch mich,
   Couch-Abend, Koop zu zweit, Große Runde, Online mit Freunden, Kurz und gut, Für unterwegs. Ein Klick
   setzt Filter und Sortierung, ein zweiter nimmt sie zurück. „Überrasch mich“ zeigt einen Kasten
@@ -261,19 +263,40 @@ Einträge samt DLC). Code in `js/spiele.js`
   Anhaken, `S.gMenu`; am Handy über die ganze Breite), Spieler ab n, Wertung ab, Spielzeit. Gesetzte
   Genres und Spielweisen stehen darunter als Knöpfe mit ×, dazu „alle Filter zurücksetzen“. Alle Filter
   stehen in der Adresse (`#spiele?…`, `gHash`), nur solange die Ansicht offen ist.
-- **Raster** `.gr` wie „Wartet“: Spiel (fett, Klick klappt die Einzelheiten auf), Genre, Konsole,
-  Lokal, Online, Koop, Wertung, Spielzeit, Jahr. Marken am Namen: `.chip.s2c` „Switch 2 Edition“,
-  „Switch-2-Upgrade“ (Upgrade-Paket in der Sammlung) oder „Switch 2“, grau „nur TV“ (wenn nicht alle drei
-  Spielmodi), „über …“ bei Paketen. Wertung ab 85 grün. Am Handy brechen die Zeilen um, jede Angabe
-  mit kleinem grauem Namen davor, leere fallen weg. Noch nicht gelesene Spiele: Genre „folgt“.
+- **Raster** `.gr` (ab 1.7.0, Entscheidung 27.10.2026): jede Zeile einzeilig und gleich hoch. Spalten
+  Spiel (höchstens 320 px, normale Schrift in Textfarbe, zu lang mit „…“, voller Name im Tooltip; fett
+  nur, solange die Einzelheiten offen sind) · Spieler (Konsole | Lokal | Online unter einem gemeinsamen
+  Kopf `.gh-sp`) · Koop · Genre · Metacritic · Spielzeit · Jahr. Die Köpfe sortieren per Klick
+  (`gTh`, wie `sth`, `S.sorts.spiele`); Spieler, Koop, Metacritic und Jahr zuerst absteigend
+  (`data-d0="-1"`). Leere Zellen: grauer Strich `G_NIL`.
+- **Marken am Namen** im Stil von DE✓ (`.lgt.de`): „Switch 2“ oder „S2-Upgrade“ (Upgrade-Paket in der
+  Sammlung; die Switch 2 Edition steht schon im Namen), „ohne Handheld“ oder „nur TV, Tisch“, wenn nicht
+  alle drei Spielmodi gehen, Tooltip nennt beide Seiten. Dahinter klein grau „aus: Paket“, kürzt sich
+  vor dem Namen.
+- **Genre** als Blasen (`.gtags .chip`), höchstens zwei, der Rest als „+n“; alle im Tooltip. Feste
+  Reihenfolge in jeder Zeile: das seltenere Genre zuerst, gleich häufige nach dem Alphabet, „Sonstiges“
+  zuletzt (`planner.game_infos`). Nintendo Europa zuerst, ohne Nintendo-Angabe DekuDeals, ohne Marke.
+- **Metacritic** ab 85 grün. Fehlt Metacritic, steht OpenCritic grau und kursiv (`.galt`), der Tooltip
+  sagt es. Filter, Sortierung und „Kurz und gut“ nehmen denselben Wert.
+- **Pakete** (Entscheidung 27.10.2026, Variante a): Ein Paket der Sammlung, dessen Teile Spiele sind,
+  steht nicht als eigene Zeile da. Jedes Spiel daraus trägt „aus: …“; fehlt eine Angabe auf seiner
+  Seite, kommt sie von der Seite des Pakets („Angaben teils vom Paket“ in den Einzelheiten, Tooltip
+  nennt welche). Oben: „90 Spiele (119 Einträge bei DekuDeals, davon 30 DLC und 5 Pakete mit 6 Spielen)“.
+- Am Handy brechen die Zeilen um, jede Angabe mit kleinem grauem Namen davor, leere fallen weg. Noch
+  nicht gelesene Spiele: Genre „folgt“.
 - **Herkunft:** 1.6.1 setzte „≈“ hinter jede Angabe aus nur einer Quelle; ab 1.6.2 kein Zeichen mehr
   (Entscheidung 27.10.2026: „≈ ungern dauerhaft“). DekuDeals gilt, nennt Nintendo etwas anderes, ist
   der Wert dezent violett (`.gxc`, `gVal`), der Tooltip nennt beide. Koop „ja“ bis IGDB nur aus einer
   Koop-Spielzeit bei HowLongToBeat.
 - **Vollständig:** alle Spiele auf einmal, kein „weitere zeigen“ (Entscheidung 27.10.2026).
-- **Einzelheiten** (`gDetail`, Raster `.gd` wie die Fakten im VR-Navigator): Spieler, Spielmodi,
-  Wertung, Spielzeit je Art, Erschienen, Entwickler, Verlag, Alter, Größe, Gekauft, DLC mit „zu den DLC“
-  (schaltet um und filtert nach dem Spiel), Quellen mit Link zu DekuDeals.
+- **Einzelheiten** (`gDetail`, ab 1.7.0): oben nebeneinander, was beim Aussuchen hilft (`.gdt`, je Angabe
+  kleiner grauer Name darüber): Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
+  Nebenaufgaben“, „insgesamt“, „Koop“ …), DLC mit den Farben der DLC-Ansicht (`collSum`: grün vorhanden,
+  violett fehlt, rot ignoriert) und „zu den DLC“, Erschienen (Tooltip: Entwickler und Verlag), USK (nur
+  die Zahl, PEGI im Tooltip; ohne USK „PEGI n“). Spieler nur, wenn Nintendo andere Zahlen nennt; „Online
+  mit Mitgliedschaft“, wenn Nintendo das sagt. Darunter eine kleine graue Zeile: Größe, Kaufdatum,
+  Paket, Link zu DekuDeals und ob Nintendo geprüft hat. Spielmodi stehen nicht mehr da (nur die Marke am
+  Namen bei Abweichung).
 
 ## Rest füllen (Kaufplan)
 
@@ -603,7 +626,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Angenommener Preis (Was wäre, wenn) | Plan-Schritt (`planCard`, Zelle Einkaufspreis), „Wartet“ (`npRow`), Zeile oben (`assumedLine`), Legende (`openLegend`) |
 | Angebotsende und Angebotsbeginn | Hinweise oben im Kaufplan (`saleNews`), Plan-Schritt (`endCell`), Tabelle mit „Details“, Tooltips in Tabelle und Korb, „Wartet“ und „Noch auf der Wishlist“ (`npRow`) |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen; „Spiele“ eigenes Feld `#gq` mit `fold1` |
-| Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, ≈ je Quelle) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`); Daten nur aus `planner.game_infos` |
+| Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, violett bei Widerspruch, grau-kursiv OpenCritic) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`); Daten nur aus `planner.game_infos` |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |
 | Ansichten und Reiter | `TABS`, `render()`, `viewSeg()`, `collSeg()` (Sammlung DLC | Spiele), `go()`/`goKorb()`; der Handy-Test `tests/ui_selbsttest.html` zählt jede Ansicht einzeln auf |

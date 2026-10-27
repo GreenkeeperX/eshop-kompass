@@ -77,15 +77,16 @@ document.addEventListener("click", async e => {
     else if(a === "tview"){ S.tview = d.v; saveView(); render(); }
     else if(a === "mdet"){ S.mDetails = !S.mDetails; saveView(); render(); }
     else if(a === "tsort"){
-      const cur = S.sorts[d.t];
-      if(!cur || cur.k !== d.k) S.sorts[d.t] = {k: d.k, dir: 1};
-      else if(cur.dir > 0) cur.dir = -1;
+      // data-d0="-1": erster Klick absteigend, etwa bei Wertungen (1.7.0)
+      const cur = S.sorts[d.t], d0 = Number(d.d0) || 1;
+      if(!cur || cur.k !== d.k) S.sorts[d.t] = {k: d.k, dir: d0};
+      else if(cur.dir === d0) cur.dir = -d0;
       else delete S.sorts[d.t];
       saveView();
-      const kb = document.activeElement && document.activeElement.matches("th[data-act]");
+      const kb = document.activeElement && document.activeElement.matches("[data-act=\"tsort\"]");
       if(d.t === "verlauf") drawVerlauf(); else render();
       // Mit der Tastatur sortiert (0.89): Fokus bleibt auf dem Spaltenkopf
-      if(kb){ const t = document.querySelector(`th[data-act="tsort"][data-t="${CSS.escape(d.t)}"][data-k="${CSS.escape(d.k)}"]`); if(t) t.focus(); }
+      if(kb){ const t = document.querySelector(`[data-act="tsort"][data-t="${CSS.escape(d.t)}"][data-k="${CSS.escape(d.k)}"]`); if(t) t.focus(); }
     }
     else if(a === "topen"){ S.openTitle = S.openTitle === d.s ? null : d.s; render(); }
     else if(a === "gotitle"){
@@ -504,7 +505,7 @@ document.addEventListener("keydown", e => { if(e.key === "Escape") themeMenu(fal
 // Tastatur und Bildschirmleser (0.89): Spaltenköpfe zum Sortieren reagieren auf Enter und Leertaste,
 // Knöpfe nur mit Zeichen (+, ✓, ×, ↺, ✎, Symbol) bekommen ihren Tooltip als Namen
 document.addEventListener("keydown", e => {
-  if((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("th[data-act], span.plain[data-act]")){ e.preventDefault(); e.target.click(); }
+  if((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("th[data-act], span.plain[data-act], span.sth[data-act]")){ e.preventDefault(); e.target.click(); }
 });
 function nameButtons(){
   for(const b of document.querySelectorAll("button[title]:not([aria-label])"))

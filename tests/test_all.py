@@ -3103,19 +3103,44 @@ class CollectionTest(unittest.TestCase):
             "game-c": {"title": "Game C", "dlc": []}}
         sp = planner.game_infos(data, settings)
         a, b, c = sp["games"]
-        self.assertEqual(a["genre"], [{"n": "Puzzle", "ok": False, "src": "DekuDeals"},
-                                      {"n": "Rollenspiel", "ok": True, "src": "beide"},
-                                      {"n": "Action", "ok": False, "src": "Nintendo"}])
+        # 1.7.0: Genre von Nintendo, ohne Nintendo-Angabe von DekuDeals; seltenere zuerst
+        self.assertEqual(a["genre"], [{"n": "Action", "ok": False, "src": "Nintendo"},
+                                      {"n": "Rollenspiel", "ok": True, "src": "Nintendo"}])
+        self.assertEqual(b["genre"], [{"n": "Party", "ok": False, "src": "DekuDeals"}])
+        self.assertTrue(a["paid_online"])
         self.assertEqual(a["players"]["offline"], {"v": [1, 4], "ok": False, "alt": [1, 2]})
         self.assertEqual(a["players"]["online"], {"v": [1, 8], "ok": True})
         self.assertEqual((a["max"], a["coop"], a["score"], a["hours"]), (8, True, 88, 12.5))
         self.assertEqual(a["modes"], [{"n": "tv", "ok": True}, {"n": "handheld", "ok": True}])
         self.assertEqual((a["year"], a["year_ok"], a["year_alt"]), ("2020", False, "2019"))
         self.assertTrue(a["pub_ok"])
-        self.assertEqual((b["s2"], b["nin"], b["genre"][0]["ok"]), ("edition", False, False))
+        self.assertEqual((b["s2"], b["nin"]), ("edition", False))
         self.assertEqual((c["read"], c["genre"], c["players"]), (False, [], {}))
         self.assertEqual((sp["read"], sp["with_info"], sp["confirmed"]), (2, 2, 1))
         self.assertIn(("Party", 1), sp["genres"])
+
+    def test_game_infos_packs_as_games(self):
+        # 1.7.0: Ein Paket der Sammlung steht nicht als eigene Zeile da, seine Spiele tragen „aus“ und
+        # nehmen fehlende Angaben von der Seite des Pakets (eine Edition, die DekuDeals als DLC führt)
+        data, settings = sample()
+        data["owned"] = ["duo-pack", "clip-plus", "game-a"]
+        data["links"] = {"duo-pack": {"part-1": 1, "part-2": 1}, "clip-plus": {"clip": 1}}
+        data["rel"] = {
+            "duo-pack": {"title": "Duo Pack", "dlc": [], "iv": 1, "info": {"mc": 90, "released": "2025-10-02"}},
+            "part-1": {"title": "Part 1", "dlc": [], "iv": 1, "info": {"mc": 80, "genre": ["Puzzle"]}},
+            "part-2": {"title": "Part 2", "dlc": []},
+            "clip-plus": {"title": "Clip Plus", "dlc": [], "iv": 1, "info": {"genre": ["Puzzle"], "age": "USK 6"},
+                          "nin": {"at": 1, "age": "PEGI 3"}},
+            "clip": {"title": "Clip", "dlc": []},
+            "game-a": {"title": "Game A", "dlc": []}}
+        sp = planner.game_infos(data, settings)
+        by = {g["slug"]: g for g in sp["games"]}
+        self.assertEqual(set(by), {"part-1", "part-2", "clip", "game-a"})
+        self.assertEqual((sp["packs"], sp["via_packs"]), (2, 3))
+        self.assertEqual((by["part-1"]["via"], by["part-1"]["mc"], by["part-1"]["year"]), ("Duo Pack", 80, "2025"))
+        self.assertEqual(by["part-1"]["pack"]["filled"], ["released"])
+        self.assertEqual((by["clip"]["read"], by["clip"]["usk"], by["clip"]["pegi"], by["clip"]["nin"]), (True, "6", "3", True))
+        self.assertIsNone(by["game-a"]["via"])
 
     def test_collection_view(self):
         data, settings = sample()
@@ -4845,10 +4870,10 @@ class UiContractTest(unittest.TestCase):
         "plan.others": {"code", "current", "diff", "estimated", "games_cost", "is_ref", "missing", "name", "tier"},
         "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
-        "spiele": {"dlc_entries", "entries", "games", "genres", "via_packs"},
+        "spiele": {"dlc_entries", "entries", "games", "genres", "packs", "via_packs"},
         "spiele.games": {"bought", "coop", "developer", "genre", "hltb", "hours", "max", "mc", "mcu", "modes", "nin", "oc", "players",
-                         "pub_alt", "pub_ok", "publisher", "read", "released", "s2", "score", "size_gb", "slug", "title", "via",
-                         "year", "year_alt", "year_ok", "age"},
+                         "pack", "paid_online", "pegi", "pub_alt", "publisher", "read", "released", "s2", "score", "size_gb",
+                         "slug", "title", "usk", "via", "year", "year_alt"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "suggest", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
         "eshop": {"amount", "coll", "coll_game", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
@@ -4923,7 +4948,7 @@ class UiContractTest(unittest.TestCase):
             "collection": set(state["collection"]),
             "collection.games": keys(state["collection"]["games"]),
             "spiele": set(state["spiele"]),
-            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu"},
+            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu", "pack", "pegi"},
             "nso": set(state["nso"]),
             "pay": keys(state["pay"].values()),
             "eshop": keys(planner.eshop_matches(dict(store.load_data(), _eshop={"picks": {}, "entries": [

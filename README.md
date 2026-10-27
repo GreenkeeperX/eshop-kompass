@@ -695,20 +695,28 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
   Spiele je Anfrage. Spiele ohne diese Angaben kommen im DLC-Schritt zuerst dran, bei 40 Seiten je
   Abgleich ist eine Sammlung von gut hundert Spielen nach drei Abgleichen vollständig.
 
-**Ansicht „Spiele“** (ab 1.6.1): jedes Spiel der Sammlung in einer Zeile mit Genre, Spielern an
-einer Konsole, lokal drahtlos und online, Koop, Wertung (Metacritic, sonst OpenCritic), Spielzeit
-(HowLongToBeat, Hauptgeschichte) und Jahr; ein Klick auf den Namen zeigt alles Weitere: Spielmodi,
-Spielzeit je Art, Erscheinungsdatum, Entwickler, Verlag, Altersfreigabe, Größe, Kaufdatum, DLC mit
-Link in die DLC-Ansicht und die Quellen. Marken zeigen Switch 2 Edition, Switch-2-Upgrade und Spiele,
-die nicht alle Spielmodi haben.
+**Ansicht „Spiele“** (ab 1.6.1, Tabelle überarbeitet in 1.7.0): jedes Spiel der Sammlung in einer
+Zeile: Spieler an einer Konsole, lokal drahtlos und online, Koop, Genre, Metacritic, Spielzeit
+(HowLongToBeat, Story) und Jahr. Ein Klick auf einen Spaltenkopf sortiert, ein Klick auf den Namen
+zeigt die Einzelheiten: oben Wertung, Spielzeit je Art, DLC (grün vorhanden, violett fehlt, rot
+ignoriert, mit Link in die DLC-Ansicht), Erscheinen (Entwickler und Verlag im Tooltip) und USK (PEGI
+im Tooltip), darunter klein Größe, Kaufdatum, Paket und Quelle. Marken am Namen zeigen Switch 2,
+Switch-2-Upgrade und Spiele, die nicht alle Spielmodi haben („ohne Handheld“).
 
+- **Genre:** von Nintendo Europa (23 Genres statt 12 bei DekuDeals, trennt besser), ohne
+  Nintendo-Angabe von DekuDeals. Je Zeile höchstens zwei Genres, der Rest als „+n“, in fester
+  Reihenfolge: das seltenere, also genauere zuerst, „Sonstiges“ zuletzt.
+- **Wertung:** Metacritic. Fehlt sie, steht OpenCritic grau und kursiv da; der Tooltip nennt
+  OpenCritic und die Nutzerwertung.
+- **Pakete:** Ein Paket steht nicht als eigene Zeile da, sondern seine Spiele, jedes mit „aus: …“.
+  Fehlt eine Angabe auf der Seite des Spiels, kommt sie von der Seite des Pakets.
 - **Herkunft:** Die Angaben kommen von DekuDeals. Nennt die Nintendo-Suche etwas anderes (Spieler an
   einer Konsole oder online, Jahr, Verlag), ist der Wert violett und der Tooltip nennt beide. Koop gilt
   bis auf Weiteres nur als Hinweis („ja“, wenn HowLongToBeat eine Koop-Spielzeit kennt); genaue
   Koop-Angaben kommen mit IGDB.
 - **Zahlen:** Oben steht in beiden Ansichten, wie viele Spiele es sind und woher die Zahl kommt: Die
-  DekuDeals-Sammlung führt auch DLC als Einträge, dazu kommen Spiele, die du nur in einem Paket hast
-  (etwa beide Teile von „Super Mario Galaxy + Super Mario Galaxy 2“).
+  DekuDeals-Sammlung führt auch DLC und Pakete als Einträge; gezählt werden die Spiele darin (etwa
+  beide Teile von „Super Mario Galaxy + Super Mario Galaxy 2“).
 - **Filter:** System (Switch 2 oder nur Switch), Genre (eines davon oder alle), Spielweise (an einer
   Konsole, lokal drahtlos, online, Koop, Handheld, TV; mehrere müssen alle passen), Spieler ab n,
   Wertung ab, Spielzeit. Jeder Eintrag in den Menüs nennt, wie viele Spiele dazu passen.

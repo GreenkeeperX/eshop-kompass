@@ -3,12 +3,12 @@
    Filter, Sortierung, Mischungen und „Überrasch mich“ nach dem Vorbild von „Entdecken“ im VR-Navigator.
    Daten aus S.state.spiele (planner.game_infos). Filter laufen im Browser und stehen in der Adresse
    (#spiele?…), eine Mischung lässt sich so als Lesezeichen merken (Teil der Oberfläche, Reihenfolge in index.html) */
-const G0 = {sys: "", g: [], gop: "", how: [], pl: 0, sc: 0, hr: 0, q: "", sort: "name", seed: 0, mix: "", n: 60};
+const G0 = {sys: "", g: [], gop: "", how: [], pl: 0, sc: 0, hr: 0, q: "", sort: "name", seed: 0, mix: ""};
 S.g = Object.assign({}, G0, {g: [], how: []});
 S.gOpen = null;
 S.gMenu = null;
 const G_SORTS = [["name", "Name"], ["score", "Wertung"], ["hours", "Spielzeit, kurz zuerst"], ["year", "Erscheinen, neu zuerst"],
-  ["players", "Spieler, die meisten zuerst"], ["bought", "Zuletzt gekauft"], ["random", "Zufall"]];
+  ["players", "Spieler, die meisten zuerst"], ["random", "Zufall"]];
 // Spielweisen: mehrere gewählt heißt, alle müssen passen
 const G_HOW = [["couch", "An einer Konsole (ab 2)", "Mehrere Spieler an einer Konsole: Couch, Splitscreen, geteilte Joy-Con"],
   ["local", "Lokal drahtlos", "Mehrere Konsolen im selben Raum"], ["online", "Online", "Über das Internet, mit Mitgliedschaft"],
@@ -33,7 +33,7 @@ function gHash(){
   const on = S.tab === "sammlung" && S.cview === "spiele";
   if(!on){ if(location.hash.startsWith("#spiele")) history.replaceState(null, "", location.pathname + location.search); return; }
   const p = new URLSearchParams();
-  for(const [k, v] of Object.entries(S.g)) if(k !== "n" && String(v) !== String(G0[k])) p.set(k, Array.isArray(v) ? v.join(",") : v);
+  for(const [k, v] of Object.entries(S.g)) if(String(v) !== String(G0[k])) p.set(k, Array.isArray(v) ? v.join(",") : v);
   const h = "#spiele" + (String(p) ? "?" + p : "");
   if(location.hash !== h) history.replaceState(null, "", location.pathname + location.search + h);
 }
@@ -42,7 +42,7 @@ function gReadHash(){
   S.tab = "sammlung"; S.cview = "spiele";
   const p = new URLSearchParams(location.hash.split("?")[1] || ""), d = Object.assign({}, G0, {g: [], how: []});
   for(const [k, v] of p){
-    if(!(k in G0) || k === "n") continue;
+    if(!(k in G0)) continue;
     d[k] = Array.isArray(G0[k]) ? v.split(",").filter(Boolean) : typeof G0[k] === "number" ? (Number(v) || 0) : v;
   }
   S.g = d;
@@ -71,14 +71,23 @@ function gFilter(d, games){
   });
 }
 function gSort(rows, d){
-  if(d.sort === "random"){
+  if(d.sort === "random" && !S.sorts.spiele){
     const r = gRand(d.seed || 1), a = rows.slice();
     for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
     return a;
   }
   const by = {score: g => -(g.score ?? -1), hours: g => g.hours ?? 1e9, year: g => -(Number(g.released ? g.released.replace(/-/g, "") : 0)),
-              players: g => -(g.max || 0), bought: g => -(g.bought ? Date.parse(g.bought) : 0)}[d.sort];
-  return by ? rows.slice().sort((a, b) => by(a) - by(b) || a.title.localeCompare(b.title, "de")) : rows;
+              players: g => -(g.max || 0)}[d.sort];
+  const out = by ? rows.slice().sort((a, b) => by(a) - by(b) || a.title.localeCompare(b.title, "de")) : rows;
+  return sortRows("spiele", out, G_COLS);
+}
+// Spaltenköpfe (1.7.0): Klick sortiert wie in der Wishlist; Zahlen, bei denen mehr besser ist, zuerst absteigend
+const G_COLS = {title: g => g.title, offline: g => gPl(g, "offline") || null, local: g => gPl(g, "local") || null,
+  online: g => gPl(g, "online") || null, coop: g => g.coop ? 1 : null, genre: g => g.genre.length ? g.genre[0].n : null,
+  mc: g => g.score ?? null, hours: g => g.hours ?? null, year: g => g.released || null};
+function gTh(k, label, tip, cls = "", d0 = 1){
+  const s = S.sorts.spiele, on = !!(s && s.k === k);
+  return `<span class="sth ${on ? "on" : ""} ${cls}" role="columnheader" tabindex="0" data-act="tsort" data-t="spiele" data-k="${k}"${d0 < 0 ? ` data-d0="-1"` : ""} title="${esc(tip ? tip + " · " : "")}Klick sortiert"${on ? ` aria-sort="${s.dir > 0 ? "ascending" : "descending"}"` : ""}>${label}<span class="sa">${on ? (s.dir > 0 ? "▲" : "▼") : ""}</span></span>`;
 }
 // Drei Vorschläge, gewichtet: jede Wertung über 60 macht ein Spiel wahrscheinlicher
 function gPick(rows, seed, k = 3){
@@ -94,16 +103,15 @@ function gSetMix(k){
   const m = G_MIXES.find(x => x[0] === k);
   if(!m) return;
   if(m[3]) S.g = Object.assign({}, G0, {g: [], how: []}, JSON.parse(JSON.stringify(m[3])));
-  S.g.mix = k; S.g.seed = gSeed(); S.g.n = G0.n;
+  S.g.mix = k; S.g.seed = gSeed(); delete S.sorts.spiele;
 }
 const gLabel = d => [d.sys === "s2" ? "Switch 2" : d.sys === "s1" ? "nur Switch" : "", d.how.map(h => (G_HOW.find(x => x[0] === h) || [h, h])[1]).join(" + "),
   d.pl && `ab ${d.pl} Spieler`, d.g.join(d.gop === "and" ? " und " : " oder "), d.sc && `Wertung ab ${d.sc}`,
   d.hr > 0 ? `bis ${d.hr} Stunden` : d.hr < 0 ? `ab ${-d.hr} Stunden` : "", d.q && `„${d.q}“`].filter(Boolean).join(", ");
 
-/* Zellen: ≈ heißt nur eine Quelle oder die Quellen sind sich nicht einig; der Tooltip sagt, welche */
-/* Herkunft (1.6.2, Entscheidung 27.10.2026): kein Zeichen mehr. DekuDeals gilt; nennt Nintendo etwas anderes,
-   ist der Wert dezent violett, beide Werte stehen im Tooltip */
-const gApx = () => "";
+/* Herkunft (1.6.2, Entscheidung 27.10.2026): kein Zeichen. DekuDeals gilt; nennt Nintendo etwas anderes,
+   ist der Wert dezent violett, beide Werte stehen im Tooltip. Leer heißt grauer Strich (1.7.0) */
+const G_NIL = `<span class="mut">–</span>`;
 const gVal = (v, tip, bad) => `<span class="${bad ? "gxc" : ""}" title="${esc(tip)}">${v}</span>`;
 const gHours = h => h === null || h === undefined ? "" : h < 1 ? "unter 1 h" : h < 10 ? `${String(Math.round(h * 2) / 2).replace(".", ",")} h` : `${Math.round(h)} h`;
 const gRange = v => !v ? "ja" : v[0] === v[1] ? String(v[1]) : `${v[0]}–${v[1]}`;
@@ -111,65 +119,83 @@ function gPlayers(g, k){
   const p = g.players[k];
   if(!p) return "";
   const lab = {offline: "an einer Konsole", local: "lokal drahtlos", online: "online"}[k];
-  const tip = p.ok ? `${lab}: DekuDeals und Nintendo einig` : p.alt ? `${lab}: DekuDeals ${gRange(p.v)}, Nintendo ${gRange(p.alt)}`
-    : p.src === "Nintendo" ? `${lab}: nur laut Nintendo` : `${lab}: nur laut DekuDeals`;
+  const tip = (p.ok ? `${lab}: DekuDeals und Nintendo einig` : p.alt ? `${lab}: DekuDeals ${gRange(p.v)}, Nintendo ${gRange(p.alt)}`
+    : p.src === "Nintendo" ? `${lab}: nur laut Nintendo` : `${lab}: nur laut DekuDeals`) +
+    (k === "online" && g.paid_online ? ". Braucht die Online-Mitgliedschaft (Nintendo)" : "");
   return gVal(gRange(p.v), tip, !!p.alt);
 }
+/* Genres als Blasen (1.7.0): höchstens zwei, der Rest als „+n“ mit Tooltip. Die Reihenfolge ist in jeder
+   Zeile dieselbe (planner.game_infos: seltenere zuerst), so steht ein Genre immer gleich zu den anderen */
 function gGenres(g){
-  if(!g.genre.length) return g.read ? `<span class="mut">–</span>` : `<span class="mut" title="Die DekuDeals-Seite dieses Spiels ist noch nicht gelesen; je Abgleich höchstens 40 Seiten">folgt</span>`;
-  return g.genre.map(x => esc(x.n) + (x.ok ? "" : gApx(x.src === "DekuDeals" ? "Nur laut DekuDeals" : "Nur laut Nintendo"))).join(", ");
+  if(!g.genre.length) return g.read ? "" : `<span class="mut" title="Die DekuDeals-Seite dieses Spiels ist noch nicht gelesen; je Abgleich höchstens 40 Seiten">folgt</span>`;
+  const src = g.genre[0].src === "Nintendo" ? "Genre laut Nintendo" : "Genre laut DekuDeals (Nintendo nennt keines)";
+  const rest = g.genre.slice(2).map(x => x.n);
+  return `<span class="gtags" title="${esc(src + ": " + g.genre.map(x => x.n).join(", "))}">${g.genre.slice(0, 2).map(x => `<span class="chip">${esc(x.n)}</span>`).join("")}${rest.length ? `<span class="chip more">+${rest.length}</span>` : ""}</span>`;
 }
+/* Wertung (1.7.0, Entscheidung 27.10.2026): Metacritic. Fehlt sie, steht OpenCritic grau und kursiv da */
 function gScore(g){
-  if(g.score === null || g.score === undefined) return "";
-  const tip = [g.mc !== undefined && `Metacritic ${g.mc}`, g.mcu !== undefined && `Nutzer ${String(g.mcu).replace(".", ",")}`, g.oc !== undefined && `OpenCritic ${g.oc}`].filter(Boolean).join(", ");
-  return `<span class="${g.score >= 85 ? "gn" : ""}" title="${esc(tip + " (über DekuDeals)")}">${g.score}</span>`;
+  const more = [g.mcu !== undefined && `Metacritic-Nutzer ${String(g.mcu).replace(".", ",")}`, g.oc !== undefined && `OpenCritic ${g.oc}`].filter(Boolean).join(", ");
+  if(g.mc !== undefined) return `<span class="${g.mc >= 85 ? "gn" : ""}" title="${esc(`Metacritic ${g.mc}${more ? `; ${more}` : ""} (über DekuDeals)`)}">${g.mc}</span>`;
+  if(g.oc !== undefined) return `<span class="galt" title="${esc(`Keine Metacritic-Wertung. OpenCritic ${g.oc} (über DekuDeals)`)}">${g.oc}</span>`;
+  return "";
 }
 function gYear(g){
   if(!g.year) return "";
   const tip = g.year_ok ? "DekuDeals und Nintendo einig" : g.year_alt ? `DekuDeals ${g.year}, Nintendo ${g.year_alt} (Erscheinen je Region verschieden)` : "Nur eine Quelle";
   return gVal(esc(g.year), tip, !!g.year_alt);
 }
+/* Marken hinter dem Titel (1.7.0), knapp wie DE✓: Switch 2, abweichende Spielmodi, Paket */
+const G_MODE = {tv: "TV", tabletop: "Tisch", handheld: "Handheld"};
 function gBadges(g){
   const b = [];
-  if(g.s2) b.push(`<span class="chip s2c" title="${g.s2 === "edition" ? "Nintendo Switch 2 Edition" : g.s2 === "upgrade" ? "Mit Upgrade-Paket für die Switch 2" : "Spiel für die Switch 2"}">${g.s2 === "upgrade" ? "Switch-2-Upgrade" : g.s2 === "edition" ? "Switch 2 Edition" : "Switch 2"}</span>`);
-  const ms = g.modes.map(m => m.n);
-  if(ms.length && ms.length < 3) b.push(`<span class="chip" title="Spielmodi">nur ${ms.map(m => ({tv: "TV", tabletop: "Tisch", handheld: "Handheld"})[m]).join(", ")}</span>`);
-  if(g.via) b.push(`<small class="mut">über ${esc(g.via)}</small>`);
-  return b.join(" ");
+  // Die Switch 2 Edition steht schon im Namen
+  if(g.s2 && g.s2 !== "edition") b.push(`<span class="lgt de" title="${g.s2 === "upgrade" ? "Mit Upgrade-Paket für die Switch 2, das du hast" : "Spiel für die Switch 2"}">${g.s2 === "upgrade" ? "S2-Upgrade" : "Switch 2"}</span>`);
+  const ms = g.modes.map(m => m.n), miss = ["tv", "tabletop", "handheld"].filter(m => !ms.includes(m));
+  if(ms.length && miss.length){
+    const lab = miss.length === 1 ? `ohne ${G_MODE[miss[0]]}` : `nur ${ms.map(m => G_MODE[m]).join(", ")}`;
+    b.push(`<span class="lgt de" title="${esc(`Spielbar: ${ms.map(m => G_MODE[m]).join(", ")}. Nicht: ${miss.map(m => G_MODE[m]).join(", ")}`)}">${lab}</span>`);
+  }
+  return b.join("");
 }
 function gRow(g, pick){
   const open = S.gOpen === g.slug && !pick;
-  const coop = g.coop ? `<span title="Laut HowLongToBeat gibt es eine Koop-Spielzeit">ja</span>${gApx("Nur ein Hinweis: HowLongToBeat nennt eine Koop-Spielzeit. Genaue Koop-Angaben (lokal, online, wie viele) folgen mit IGDB")}` : "";
-  const cells = [["c-gen", "Genre", gGenres(g)], ["c-pl", "Konsole", gPlayers(g, "offline")], ["c-pl", "Lokal", gPlayers(g, "local")],
-    ["c-pl", "Online", gPlayers(g, "online")], ["c-pl", "Koop", coop], ["r", "Wertung", gScore(g)], ["r", "Spielzeit", g.hours ? `<span title="${esc(gHltbTip(g))}">${gHours(g.hours)}</span>` : ""], ["r", "Jahr", gYear(g)]];
-  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="gopen" data-s="${esc(g.slug)}" aria-expanded="${open}" title="Einzelheiten">${esc(g.title)}</button> ${gBadges(g)}</span>` +
-    cells.map(([c, lab, v]) => `<span class="${c}${v ? "" : " nil"}" data-l="${lab}">${v}</span>`).join("") + `</div>` + (open ? gDetail(g) : "");
+  const coop = g.coop ? `<span title="Laut HowLongToBeat gibt es eine Koop-Spielzeit">ja</span>` : "";
+  const cells = [["c-pl", "Konsole", gPlayers(g, "offline")], ["c-pl", "Lokal", gPlayers(g, "local")], ["c-pl", "Online", gPlayers(g, "online")],
+    ["c-pl", "Koop", coop], ["c-gen", "Genre", gGenres(g)], ["r", "Metacritic", gScore(g)],
+    ["r", "Spielzeit", g.hours ? `<span title="${esc(gHltbTip(g))}">${gHours(g.hours)}</span>` : ""], ["r", "Jahr", gYear(g)]];
+  const tip = g.title + (g.via ? ` · aus: ${g.via}` : "") + " · Einzelheiten";
+  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="gopen" data-s="${esc(g.slug)}" aria-expanded="${open}" title="${esc(tip)}">${esc(g.title)}</button>${gBadges(g)}${g.via ? `<small class="mut gvia" title="${esc("Hast du im Paket " + g.via)}">aus: ${esc(g.via)}</small>` : ""}</span>` +
+    cells.map(([c, lab, v]) => `<span class="${c}${v ? "" : " nil"}" data-l="${lab}">${v || G_NIL}</span>`).join("") + `</div>` + (open ? gDetail(g) : "");
 }
+const G_FILLED = {genre: "Genre", players: "Spieler", modes: "Spielmodi", mc: "Wertung", mcu: "Wertung", oc: "Wertung", hltb: "Spielzeit",
+  released: "Erscheinen", developer: "Entwickler", publisher: "Verlag", age: "Alter", size_gb: "Größe", platform: "System"};
+const G_HLTB = {main: "Story", extra: "mit Nebenaufgaben", complete: "insgesamt", solo: "allein", coop: "Koop", vs: "gegeneinander", all: "alle Spielweisen"};
 function gHltbTip(g){
-  const h = g.hltb || {}, n = {main: "Hauptgeschichte", extra: "mit Nebenaufgaben", complete: "alles", solo: "allein", coop: "Koop", vs: "gegeneinander", all: "alle Spielweisen"};
-  return "HowLongToBeat (über DekuDeals): " + Object.entries(h).map(([k, v]) => `${n[k] || k} ${gHours(v)}`).join(", ");
+  return "HowLongToBeat (über DekuDeals): " + Object.entries(g.hltb || {}).map(([k, v]) => `${G_HLTB[k] || k} ${gHours(v)}`).join(", ");
 }
+/* Einzelheiten (1.7.0): oben, was beim Aussuchen hilft (Wertung, Spielzeit, DLC, Erscheinen, USK), darunter
+   klein der Rest. Was schon in der Zeile steht (Spieler, Genre), kommt nur bei Mehrwert wieder: wenn
+   Nintendo etwas anderes nennt */
 function gDetail(g){
   const c = ((S.state.collection || {}).games || []).find(x => x.slug === g.slug);
-  const row = (l, v) => v ? `<span class="fl">${l}</span><span class="fv">${v}</span>` : "";
-  const src = (ok, alt) => ok || !alt ? "" : ` <span class="gxc">(Nintendo: ${esc(alt)})</span>`;
-  const modes = g.modes.map(m => ({tv: "TV", tabletop: "Tisch", handheld: "Handheld"})[m.n] + (m.ok ? "" : gApx("Nur eine Quelle"))).join(", ");
-  const h = g.hltb || {}, hn = {main: "Hauptgeschichte", extra: "mit Nebenaufgaben", complete: "alles", solo: "allein", coop: "Koop", vs: "gegeneinander", all: "alle Spielweisen"};
-  const dlc = c ? `${c.have} von ${c.dlc.length} vorhanden${c.missing ? `, <span class="warnc">${c.missing}</span> ${c.missing === 1 ? "fehlt" : "fehlen"}` : ""} · <button class="link" data-act="gdlc" data-s="${esc(g.title)}">zu den DLC</button>` : "keine";
-  return `<div class="gd facts">` +
-    row("Spieler", ["offline", "local", "online"].filter(k => g.players[k]).map(k => `${gPlayers(g, k)} ${({offline: "an einer Konsole", local: "lokal drahtlos", online: "online"})[k]}`).join(", ")) +
-    row("Spielmodi", modes) +
-    row("Wertung", [g.mc !== undefined && `Metacritic ${g.mc}${g.mcu !== undefined ? ` (Nutzer ${String(g.mcu).replace(".", ",")})` : ""}`, g.oc !== undefined && `OpenCritic ${g.oc}`].filter(Boolean).join(" · ")) +
-    row("Spielzeit", Object.entries(h).map(([k, v]) => `${hn[k] || k} ${gHours(v)}`).join(" · ")) +
-    row("Erschienen", g.released ? `${esc(dmy(g.released.length > 4 ? g.released : g.released + "-01-01"))}${src(g.year_ok, g.year_alt)}` : "") +
-    row("Entwickler", esc(g.developer || "")) +
-    row("Verlag", g.publisher ? esc(g.publisher) + src(g.pub_ok, g.pub_alt) : "") +
-    row("Alter", esc(g.age || "")) +
-    row("Größe", g.size_gb ? `${String(g.size_gb).replace(".", ",")} GB` : "") +
-    row("Gekauft", g.bought ? dmy(g.bought) : "") +
-    row("DLC", dlc) +
-    row("Quellen", `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">DekuDeals</a>${g.nin ? ", bestätigt von der Nintendo-Europa-Suche" : g.read ? ", noch nicht von Nintendo bestätigt" : ", Seite noch nicht gelesen"}`) +
-    `</div>`;
+  const item = (l, v, tip) => v ? `<span class="gdi"${tip ? ` title="${esc(tip)}"` : ""}><span class="fl">${l}</span><span class="fv">${v}</span></span>` : "";
+  const num = v => String(v).replace(".", ",");
+  const score = [g.mc !== undefined && `Metacritic <b>${g.mc}</b>`, g.mcu !== undefined && `Nutzer ${num(g.mcu)}`, g.oc !== undefined && `OpenCritic ${g.oc}`].filter(Boolean).join(" · ");
+  const hltb = Object.entries(g.hltb || {}).map(([k, v]) => `${G_HLTB[k] || k} ${gHours(v)}`).join(" · ");
+  const dlc = c && c.dlc.length ? `${collSum(c)} · <button class="link" data-act="gdlc" data-s="${esc(g.title)}">zu den DLC</button>` : "";
+  const who = [g.developer && `Entwickler: ${g.developer}`, g.publisher && `Verlag: ${g.publisher}${g.pub_alt ? ` (Nintendo: ${g.pub_alt})` : ""}`].filter(Boolean).join("\n");
+  const rel = g.released ? `${esc(g.released.length > 4 ? dmy(g.released) : g.released)}${g.year_alt ? ` <span class="gxc">(Nintendo: ${esc(g.year_alt)})</span>` : ""}` : "";
+  const age = g.usk ? `${esc(g.usk)}` : g.pegi ? `<span title="Keine USK-Angabe">PEGI ${esc(g.pegi)}</span>` : "";
+  const ageTip = [g.usk && `USK ${g.usk}`, g.pegi && `PEGI ${g.pegi}`].filter(Boolean).join(", ");
+  const odd = ["offline", "local", "online"].filter(k => g.players[k] && g.players[k].alt)
+    .map(k => `${({offline: "an einer Konsole", local: "lokal drahtlos", online: "online"})[k]} <span class="gxc">DekuDeals ${gRange(g.players[k].v)}, Nintendo ${gRange(g.players[k].alt)}</span>`).join(" · ");
+  const top = item("Wertung", score) + item("Spielzeit", hltb, "HowLongToBeat, über DekuDeals") + item("DLC", dlc) +
+    item("Erschienen", rel, who || "") + item("USK", age, ageTip) + (odd ? item("Spieler", odd, "DekuDeals und Nintendo nennen verschiedene Zahlen") : "") +
+    (g.paid_online ? item("Online", "mit Mitgliedschaft", "Laut Nintendo braucht das Online-Spiel die Nintendo Switch Online-Mitgliedschaft") : "");
+  const pk = g.pack ? `aus ${esc(g.pack.title)}${g.pack.filled && g.pack.filled.length ? ` <span title="${esc("Von der Seite des Pakets, weil die Seite des Spiels sie nicht nennt: " + g.pack.filled.map(k => G_FILLED[k] || k).filter((x, i, a) => a.indexOf(x) === i).join(", "))}">(Angaben teils vom Paket)</span>` : ""}` : "";
+  const small = [g.size_gb && `${num(g.size_gb)} GB`, g.bought && `gekauft am ${dmy(g.bought)}`, pk,
+    `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">DekuDeals</a>${g.nin ? ", von Nintendo geprüft" : g.read ? ", noch nicht von Nintendo geprüft" : ", Seite noch nicht gelesen"}`].filter(Boolean).join(" · ");
+  return `<div class="gd">${top ? `<div class="gdt">${top}</div>` : ""}<p class="hint gds">${small}</p></div>`;
 }
 function gMenu(k, head, n, body){
   return `<details class="gmenu" data-gm="${k}" ${S.gMenu === k ? "open" : ""}><summary>${head}${n ? ` <span class="cnt">${n}</span>` : ""}</summary><div class="pop">${body}</div></details>`;
@@ -196,12 +222,12 @@ function viewGames(){
       <label>Spielzeit <select data-gset="hr">${opt([[0, "egal"], [5, "bis 5 h"], [10, "bis 10 h"], [20, "bis 20 h"], [-40, "ab 40 h"]], d.hr)}</select></label></div>
     ${label ? `<div class="chips gact">${d.how.map(h => `<button class="fb" data-act="ghowoff" data-v="${h}" title="Filter entfernen">${esc((G_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.g.map(x => `<button class="fb" data-act="ggoff" data-v="${esc(x)}" title="Filter entfernen">${esc(x)} ×</button>`).join("")}<button class="link" data-act="greset">alle Filter zurücksetzen</button></div>` : ""}`;
   const tools = `<div class="tools"><span class="sbox"><input type="search" id="gq" placeholder="Spiel, Genre oder Verlag" aria-label="Spiel, Genre oder Verlag suchen" value="${esc(d.q)}">${d.q ? `<button class="sx" data-act="gqclear" title="Suche leeren (Esc)">×</button>` : ""}</span>
-    <label>Sortieren <select data-gset="sort">${opt(G_SORTS, d.sort)}</select></label>${d.sort === "random" ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}</div>`;
+    <label>Sortieren <select data-gset="sort">${S.sorts.spiele ? `<option value="" selected>nach Spalte</option>` : ""}${opt(G_SORTS, S.sorts.spiele ? "" : d.sort)}</select></label>${d.sort === "random" && !S.sorts.spiele ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}</div>`;
   const pickCard = d.mix === "surprise" ? `<section class="box gpick"><h3>Vorschlag${label ? ` <span class="mut">${esc(label)}</span>` : ""}</h3>
     ${pick.length ? `<div class="glist">${pick.map(g => gRow(g, true)).join("")}</div>` : `<p class="hint">Nichts passt zu den Filtern.</p>`}
     <p class="gpa"><button data-act="gmixoff" data-v="surprise">Schließen</button> <button class="primary" data-act="gmix" data-v="surprise">Noch mal</button></p></section>` : "";
-  const head = `<div class="gr nph"><span>Spiel</span><span>Genre</span><span title="Spieler an einer Konsole (Couch, Splitscreen)">Konsole</span><span title="Spieler mit mehreren Konsolen im selben Raum">Lokal</span><span title="Spieler online">Online</span><span>Koop</span><span class="r" title="Metacritic, sonst OpenCritic">Wertung</span><span class="r" title="HowLongToBeat: Hauptgeschichte, sonst allein">Spielzeit</span><span class="r">Jahr</span></div>`;
-  const note = `<p class="hint">${rows.length === all.length ? `Alle ${all.length} Spiele` : `${rows.length} von ${all.length} Spielen`}. Angaben von DekuDeals, Nintendo prüft gegen: violett heißt, Nintendo nennt etwas anderes (Tooltip).</p>`;
+  const head = `<div class="gr nph" role="row"><span class="gh-sp" aria-hidden="true">Spieler</span>${gTh("title", "Spiel", "", "gh-t")}${gTh("offline", "Konsole", "Spieler an einer Konsole (Couch, Splitscreen)", "", -1)}${gTh("local", "Lokal", "Spieler mit mehreren Konsolen im selben Raum", "", -1)}${gTh("online", "Online", "Spieler online", "", -1)}${gTh("coop", "Koop", "Laut HowLongToBeat gibt es eine Koop-Spielzeit", "", -1)}${gTh("genre", "Genre", "Von Nintendo, sonst DekuDeals")}${gTh("mc", "Metacritic", "Grau und kursiv: keine Metacritic-Wertung, dafür OpenCritic", "r", -1)}${gTh("hours", "Spielzeit", "HowLongToBeat: Story, sonst allein", "r")}${gTh("year", "Jahr", "", "r", -1)}</div>`;
+  const note = `<p class="hint">${rows.length === all.length ? `Alle ${all.length} Spiele` : `${rows.length} von ${all.length} Spielen`}. Angaben von DekuDeals, Nintendo prüft gegen: violett heißt, Nintendo nennt etwas anderes (Tooltip). Genre von Nintendo.</p>`;
   if(!all.length) return collTop() + tools + `<p class="mut">Noch keine Spiele bekannt.</p>`;
   return collTop() + tools + mixes + filters + pickCard + note +
     `<div class="glist box">${head}${rows.map(g => gRow(g)).join("") || `<p class="mut">Kein Spiel passt zu den Filtern.</p>`}</div>` +
@@ -212,9 +238,10 @@ function viewGames(){
 function collTop(){
   const sp = S.state.spiele || {};
   if(!sp.entries) return `<div class="ctop"><span></span>${collSeg()}</div>`;
-  const parts = [`<b>${sp.games.length}</b> Spiele`];
-  const why = [`${sp.entries} Einträge bei DekuDeals`, sp.dlc_entries ? `davon ${sp.dlc_entries} DLC` : "", sp.via_packs ? `${sp.via_packs} Spiele nur in Paketen` : ""].filter(Boolean).join(", ");
-  return `<div class="ctop"><span>${parts.join("")} <span class="mut">(${why})</span></span>${collSeg()}</div>`;
+  // 1.7.0: Pakete sind keine eigene Zeile mehr, gezählt werden ihre Spiele
+  const pk = sp.packs ? `${sp.packs} ${sp.packs === 1 ? "Paket" : "Pakete"} mit ${sp.via_packs} ${sp.via_packs === 1 ? "Spiel" : "Spielen"}` : "";
+  const why = [`${sp.entries} Einträge bei DekuDeals`, [sp.dlc_entries ? `davon ${sp.dlc_entries} DLC` : "", pk].filter(Boolean).join(" und ")].filter(Boolean).join(", ");
+  return `<div class="ctop"><span><b>${sp.games.length}</b> Spiele <span class="mut">(${why})</span></span>${collSeg()}</div>`;
 }
 /* Umschalter der Sammlung: DLC | Spiele, gemerkt je Browser */
 const collSeg = () => `<span class="seg">${[["dlc", "DLC", "Spiele mit ihren Zusatzinhalten: was du hast, was fehlt"], ["spiele", "Spiele", "Jedes Spiel mit Genre, Spielern, Koop, Wertung und Spielzeit, mit Filtern und Mischungen"]]
@@ -234,11 +261,10 @@ document.addEventListener("click", e => {
   else if(a === "gmix"){ gSetMix(v); done(); }
   else if(a === "gmixoff"){ if(v === "surprise"){ d.mix = ""; } else { S.g = Object.assign({}, G0, {g: [], how: []}); } done(); }
   else if(a === "gshuffle"){ d.seed = gSeed(); done(); }
-  else if(a === "gmore"){ d.n += G0.n; render(); }
   else if(a === "ggop"){ d.gop = v; d.mix = ""; done(); }
   else if(a === "ggoff"){ d.g = d.g.filter(x => x !== v); d.mix = ""; done(); }
   else if(a === "ghowoff"){ d.how = d.how.filter(x => x !== v); d.mix = ""; done(); }
-  else if(a === "greset"){ S.g = Object.assign({}, G0, {g: [], how: []}); done(); }
+  else if(a === "greset"){ S.g = Object.assign({}, G0, {g: [], how: []}); delete S.sorts.spiele; saveView(); done(); }
   else if(a === "gqclear"){ d.q = ""; done(); const q = $("gq"); if(q) q.focus(); }
 });
 document.addEventListener("toggle", e => {
@@ -249,13 +275,13 @@ document.addEventListener("toggle", e => {
 }, true);
 document.addEventListener("change", e => {
   const el = e.target, d = S.g;
-  if(el.dataset.gset){ const k = el.dataset.gset; d[k] = typeof G0[k] === "number" ? Number(el.value) || 0 : el.value; if(k === "sort" && el.value === "random") d.seed = gSeed(); if(k !== "sort") d.mix = ""; d.n = G0.n; gHash(); render(); }
-  else if(el.dataset.gg !== undefined){ const x = el.dataset.gg; d.g = el.checked ? d.g.concat(x) : d.g.filter(y => y !== x); d.mix = ""; d.n = G0.n; gHash(); render(); }
-  else if(el.dataset.gh !== undefined){ const x = el.dataset.gh; d.how = el.checked ? d.how.concat(x) : d.how.filter(y => y !== x); d.mix = ""; d.n = G0.n; gHash(); render(); }
+  if(el.dataset.gset){ const k = el.dataset.gset; if(k === "sort"){ delete S.sorts.spiele; saveView(); if(!el.value) return; } d[k] = typeof G0[k] === "number" ? Number(el.value) || 0 : el.value; if(k === "sort" && el.value === "random") d.seed = gSeed(); if(k !== "sort") d.mix = ""; gHash(); render(); }
+  else if(el.dataset.gg !== undefined){ const x = el.dataset.gg; d.g = el.checked ? d.g.concat(x) : d.g.filter(y => y !== x); d.mix = ""; gHash(); render(); }
+  else if(el.dataset.gh !== undefined){ const x = el.dataset.gh; d.how = el.checked ? d.how.concat(x) : d.how.filter(y => y !== x); d.mix = ""; gHash(); render(); }
 });
 document.addEventListener("input", e => {
   if(e.target.id !== "gq") return;
-  S.g.q = e.target.value; S.g.n = G0.n;
+  S.g.q = e.target.value;
   const pos = e.target.selectionStart;
   gHash(); render();
   const q = $("gq"); if(q){ q.focus(); q.setSelectionRange(pos, pos); }

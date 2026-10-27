@@ -1687,7 +1687,8 @@ GENRE_DE = {"action": "Action", "adventure": "Abenteuer", "role-playing": "Rolle
             "video": "Video", "multiplayer": "Mehrspieler", "study": "Lernen", "application": "Anwendung",
             "first-person shooter": "Shooter", "survival": "Survival", "horror": "Horror", "roguelike": "Roguelike",
             "metroidvania": "Metroidvania", "visual novel": "Visual Novel", "card game": "Kartenspiel",
-            "trivia": "Quiz", "quiz": "Quiz", "tower defense": "Tower Defense", "rhythm": "Rhythmus"}
+            "trivia": "Quiz", "quiz": "Quiz", "tower defense": "Tower Defense", "rhythm": "Rhythmus",
+            "animal life": "Tiere", "football": "Fußball", "golf": "Golf"}
 
 
 def _genre(name):
@@ -1700,11 +1701,13 @@ def _pub(name):
 
 
 def game_infos(data, settings):
-    """Ansicht „Spiele“ der Sammlung (1.6.1): je Spiel die Spielinfos von DekuDeals (rel.info), bestätigt
-    von der Nintendo-Europa-Suche (rel.nin). Je Angabe ok=True, wenn beide Quellen sie nennen und
-    übereinstimmen; nur eine Quelle oder Widerspruch: ok=False (Oberfläche „≈“, beide Werte im Tooltip).
-    Wertungen und Spielzeit nennen nur Metacritic, OpenCritic und HowLongToBeat (über DekuDeals)."""
+    """Ansicht „Spiele“ der Sammlung (1.6.1): je Spiel die Spielinfos von DekuDeals (rel.info), geprüft
+    gegen die Nintendo-Europa-Suche (rel.nin). DekuDeals gilt; nennt Nintendo etwas anderes, steht der
+    andere Wert daneben (alt). Genre kommt von Nintendo, ohne Nintendo-Angabe von DekuDeals (1.7.0).
+    Pakete (1.7.0, Entscheidung 27.10.2026): Ein Paket, dessen Teile Spiele der Sammlung sind, steht nicht
+    als eigene Zeile da; seine Spiele tragen „aus“ und nehmen fehlende Angaben von der Seite des Pakets."""
     rel = data.get("rel") or {}
+    links = data.get("links") or {}
     owned_list = list(dict.fromkeys(data.get("owned") or []))
     direct = set(owned_list) | eshop_matches(data)["owned"]
     via = pack_parts(data, direct, pack_block(settings))
@@ -1713,29 +1716,47 @@ def game_infos(data, settings):
     for r in eshop_matches(data).get("rows") or []:
         if r.get("slug") and r.get("date"):
             bought[r["slug"]] = max(bought.get(r["slug"], ""), str(r["date"])[:10])
+    slugs = [s for s in owned_games(data, settings) if not (rel.get(s) or {}).get("parent")]
+    games = set(slugs)
+    packs = {s for s in slugs if any(p in games for p in links.get(s) or {})}
+
+    def pack_of(slug):
+        """Das Paket der Sammlung, aus dem ein Spiel kommt (auch über Zwischenstufen), sonst None."""
+        seen, c = set(), via.get(slug)
+        while c and c not in packs and c not in seen:
+            seen.add(c)
+            c = via.get(c)
+        return c if c in packs else next((p for p in packs if slug in (links.get(p) or {})), None)
     out, genres = [], {}
-    for slug in owned_games(data, settings):
-        e = rel.get(slug) or {}
-        if e.get("parent"):
+    for slug in slugs:
+        if slug in packs:
             continue
+        e = rel.get(slug) or {}
         title = e.get("title") or ((data.get("items") or {}).get(slug) or {}).get("title") or slug.replace("-", " ").title()
-        di, ni = e.get("info") or {}, e.get("nin") or {}
+        pk = pack_of(slug)
+        pe = rel.get(pk) or {} if pk else {}
+        di, ni = dict(e.get("info") or {}), dict(e.get("nin") or {})
+        filled = [k for k, v in (pe.get("info") or {}).items() if k not in di and v not in (None, "", [], {})]
+        for k in filled:
+            di[k] = pe["info"][k]
+        if pk and not (ni.get("at") and not ni.get("none")) and (pe.get("nin") or {}).get("at"):
+            ni = dict(pe["nin"])
         nin = bool(ni.get("at")) and not ni.get("none")
-        g = {"slug": slug, "title": title, "read": e.get("iv", 0) > 0, "nin": nin,
-             "via": (rel.get(via[slug]) or {}).get("title") or via[slug] if slug in via and slug not in direct else None}
+        g = {"slug": slug, "title": title, "read": e.get("iv", 0) > 0 or bool(filled), "nin": nin,
+             "via": (rel.get(pk) or {}).get("title") or pk if pk and slug not in direct else None}
+        if pk:
+            g["pack"] = {"slug": pk, "title": (rel.get(pk) or {}).get("title") or pk, "filled": filled}
         # System: Switch 2 Edition im Namen, ein vorhandenes Upgrade-Paket oder eine Quelle nennt Switch 2
         ups = [d for d, t in e.get("dlc") or [] if is_upgrade(d, t)]
         sysn = " ".join([str(di.get("platform") or "")] + [str(x) for x in ni.get("sys") or []]).lower()
         g["s2"] = ("edition" if _S2.search(" " + _tnorm(title)) else "upgrade" if any(d in owned for d in ups)
                    else "switch2" if "switch 2" in sysn else None)
-        # Genre: Vereinigung beider Quellen, deutsch, je Genre bestätigt oder nicht
-        dg = {_genre(x) for x in di.get("genre") or []}
-        ng = {_genre(x) for x in ni.get("genre") or []}
-        g["genre"] = [{"n": x, "ok": x in dg and x in ng, "src": "beide" if x in dg and x in ng else "DekuDeals" if x in dg else "Nintendo"}
-                      for x in sorted(dg | ng, key=lambda x: (x not in dg, x))]
+        # Genre (1.7.0): Nintendo Europa trennt feiner (23 statt 12 Genres), ohne Nintendo-Angabe DekuDeals
+        dg = list(dict.fromkeys(_genre(x) for x in di.get("genre") or []))
+        ng = list(dict.fromkeys(_genre(x) for x in ni.get("genre") or []))
+        g["genre"] = [{"n": x, "ok": x in dg and x in ng, "src": "Nintendo" if ng else "DekuDeals"} for x in (ng or dg)]
         for x in g["genre"]:
             genres[x["n"]] = genres.get(x["n"], 0) + 1
-        # Spieler: offline gegen Nintendos Höchstzahl, online gegen Nintendos „Online-Spiel mit Mitgliedschaft“
         # Spieler (1.6.2): an einer Konsole gegen Nintendos players_to_system, online gegen players_to_online;
         # Nintendos players_to allein ist die Höchstzahl über alle Spielweisen und taugt nicht zum Vergleich
         pl = di.get("players") or {}
@@ -1754,9 +1775,10 @@ def game_infos(data, settings):
             players["online"] = {"v": None, "ok": False, "src": "Nintendo"}
         g["players"] = players
         g["max"] = max([v["v"][1] for v in players.values() if v["v"]] or [0]) or None
+        g["paid_online"] = ni.get("online") is True       # Nintendo: Online-Spiel braucht die Mitgliedschaft
         dm, nm = di.get("modes") or [], ni.get("modes") or []
         g["modes"] = [{"n": m, "ok": m in dm and m in nm} for m in ("tv", "tabletop", "handheld") if m in dm or m in nm]
-        g["coop"] = bool((di.get("hltb") or {}).get("coop"))           # bis IGDB (1.6.2): Koop-Spielzeit heißt Koop
+        g["coop"] = bool((di.get("hltb") or {}).get("coop"))           # bis IGDB: Koop-Spielzeit heißt Koop
         for k in ("mc", "mcu", "oc", "hltb", "developer", "size_gb"):
             if di.get(k) not in (None, "", {}):
                 g[k] = di[k]
@@ -1765,7 +1787,7 @@ def game_infos(data, settings):
             g["year"] = (dr or nr)[:4]
             g["year_ok"] = bool(dr and nr and dr[:4] == nr[:4])
             g["year_alt"] = nr[:4] if dr and nr and dr[:4] != nr[:4] else None
-            g["released"] = dr or nr
+            g["released"] = dr if dr and (len(dr) > 4 or not nr) else nr
         dp, np_ = di.get("publisher"), ni.get("publisher")
         if dp or np_:
             g["publisher"] = dp or np_
@@ -1774,6 +1796,10 @@ def game_infos(data, settings):
         ages = [a for a in (di.get("age"), ni.get("age")) if a]
         if ages:
             g["age"] = " · ".join(dict.fromkeys(ages))
+            for a in ages:                          # USK für die Zeile, PEGI für den Tooltip (1.7.0)
+                m = re.match(r"(USK|PEGI)\s+(\S+)", a)
+                if m:
+                    g.setdefault(m.group(1).lower(), m.group(2))
         if slug in bought:
             g["bought"] = bought[slug]
         g["score"] = di.get("mc") or di.get("oc")
@@ -1782,9 +1808,15 @@ def game_infos(data, settings):
         g["mm"] = ni.get("mm")
         out.append(g)
     out.sort(key=lambda g: g["title"].lower())
+    # Feste Reihenfolge der Genres in jeder Zeile (1.7.0): das seltenere, also genauere zuerst, gleich
+    # häufige nach dem Alphabet, „Sonstiges“ zuletzt. So steht ein Genre überall an derselben Stelle
+    # zu den anderen, und die zwei sichtbaren sagen am meisten
+    rank = {n: (n == "Sonstiges", c, n) for n, c in genres.items()}
+    for g in out:
+        g["genre"].sort(key=lambda x: rank[x["n"]])
     return {"games": out, "genres": sorted(genres.items(), key=lambda x: (-x[1], x[0])),
             "entries": len(owned_list), "dlc_entries": sum(1 for s in owned_list if (rel.get(s) or {}).get("parent")),
-            "via_packs": sum(1 for g in out if g["via"]),
+            "via_packs": sum(1 for g in out if g["via"]), "packs": len(packs),
             "read": sum(1 for g in out if g["read"]), "with_info": sum(1 for g in out if g["genre"] or g["players"]),
             "confirmed": sum(1 for g in out if g["nin"])}
 

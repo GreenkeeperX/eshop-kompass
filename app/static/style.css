@@ -658,29 +658,48 @@ details.gmenu .opts label{display:flex;gap:6px;align-items:baseline;white-space:
 details.gmenu .opts .mut{margin-left:auto;padding-left:10px;font-size:12px}
 details.gmenu .hint{margin:0}
 .glist{padding:4px 8px}
-.gr{display:grid;grid-template-columns:minmax(0,1fr) 170px 64px 56px 56px 48px 58px 72px 46px;gap:0 10px;align-items:baseline;padding:5px 0;border-top:1px dashed var(--line);font-size:13px}
-.gr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+/* Spiele (1.7.0): einzeilig, Titel höchstens 320 px, Spieler unter einem gemeinsamen Kopf */
+.gr{display:grid;grid-template-columns:minmax(150px,320px) 58px 48px 52px 40px minmax(0,1fr) 78px 70px 44px;gap:0 10px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
+.gr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);row-gap:1px;align-items:end}
+.gr.nph>*{grid-row:2}
+.gr.nph .gh-sp{grid-row:1;grid-column:2/5;text-align:center;border-bottom:1px solid var(--line);font-size:10px;line-height:1.4}
+.gr.nph .sth{cursor:pointer;user-select:none;white-space:nowrap}
+.gr.nph .sth:hover,.gr.nph .sth.on{color:var(--ink)}
+.gr.nph .sth .sa{font-size:9px;margin-left:2px}
 .gr .r{text-align:right;white-space:nowrap}
-.gr .t{min-width:0}
+.gr .t{min-width:0;display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden}
+.gr .t .lgt{flex:none}
+.gr .gvia{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px;flex:0 100000 auto}
 .gr .c-pl{white-space:nowrap}
-.gr button.link.g-n{text-decoration:none;color:inherit;text-align:left;font:inherit;font-weight:600;padding:0}
+.gr button.link.g-n{text-decoration:none;color:inherit;text-align:left;font:inherit;font-weight:400;padding:0;min-width:3em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
 .gr button.link.g-n:hover{text-decoration:underline}
-.gr .chip{vertical-align:1px}
-.chip.s2c{color:var(--ink)}
+.gr.open button.link.g-n{font-weight:600}
+.gtags{display:flex;gap:4px;min-width:0;overflow:hidden}
+.gtags .chip{flex:none}
+.gtags .chip.more{background:none;padding:0 2px}
+.galt{color:var(--muted);font-style:italic}
 .gxc{color:var(--warn)}
 .ctop{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;margin:2px 0 10px;font-size:13px}
-.gd{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 14px;padding:4px 0 10px 14px;font-size:13px}
+/* Einzelheiten: oben das Wichtige nebeneinander, darunter klein der Rest */
+.gd{padding:4px 0 10px 14px;font-size:13px}
+.gdt{display:flex;flex-wrap:wrap;gap:6px 26px;margin-bottom:6px}
+.gdi{display:flex;flex-direction:column;min-width:0}
 .gd .fl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .gd .fv{min-width:0;overflow-wrap:anywhere}
+.gd .gds{font-size:12px}
 .gpick h3{margin:2px 0 6px;font-size:14px}
 .gpa{display:flex;gap:8px;margin:8px 0 0}
 @media (max-width:760px){
   .gr.nph{display:none}
-  .gr{display:flex;flex-wrap:wrap;gap:2px 12px}
+  .gr{display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline}
   .gr .t{flex:1 0 100%}
+  .gr .t{flex-wrap:wrap;white-space:normal}
+  .gr button.link.g-n{white-space:normal;flex:0 1 auto}
+  .gr .t .gvia{flex:0 1 auto;white-space:normal}
   .gr .nil{display:none}
   .gr>span[data-l]:not(.c-gen)::before{content:attr(data-l) " ";color:var(--muted);font-size:11px}
   .gr .c-gen{flex:1 0 100%;color:var(--muted)}
+  .gtags{flex-wrap:wrap}
   .gd{padding-left:4px}
   details.gmenu .pop{position:fixed;left:16px;right:16px;top:auto;max-width:none;min-width:0}
 }
