@@ -714,7 +714,8 @@ Handheld“).
 - **Pakete:** Ein Paket steht nicht als eigene Zeile da, sondern seine Spiele, jedes mit „aus: …“.
   Fehlt eine Angabe auf der Seite des Spiels, kommt sie von der Seite des Pakets.
 - **Mein Stand** (ab 1.7.1): In den Einzelheiten setzt du je Spiel Backlog, angefangen oder
-  durchgespielt und einen Favoriten. Die Zeile zeigt es als ○ (rot), ▷ (blau), ✓ (grün) und ★ (gelb) hinter dem Namen. Der Filter
+  durchgespielt und einen Favoriten. Die Zeile zeigt es als ○ (rot), ▷ (blau), ✓ (grün) und ★ (gelb) hinter dem Namen. USK 16 steht in
+  den Einzelheiten blau, USK 18 rot. Der Filter
   „Mein Stand“ und die Mischung „Aus dem Backlog“ nutzen es, „Überrasch mich“ wählt dann daraus. Der
   Stand liegt in den Einstellungen und damit in der Sicherung.
 - **Koop und GameShare** (ab 1.7.2): Mit einem IGDB-Schlüssel (Einstellungen, Quellen und Abgleich)

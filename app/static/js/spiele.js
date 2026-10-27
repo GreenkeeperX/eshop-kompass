@@ -246,7 +246,7 @@ function gDetail(g){
   const dlc = c && c.dlc.length ? `${collSum(c)} · <button class="link" data-act="gdlc" data-s="${esc(g.title)}">zu den DLC</button>` : "";
   const who = [g.developer && `Entwickler: ${g.developer}`, g.publisher && `Verlag: ${g.publisher}${g.pub_alt ? ` (Nintendo: ${g.pub_alt})` : ""}`].filter(Boolean).join("\n");
   const rel = g.released ? `${esc(g.released.length > 4 ? dmy(g.released) : g.released)}${g.year_alt ? ` <span class="gxc">(Nintendo: ${esc(g.year_alt)})</span>` : ""}` : "";
-  const age = g.usk ? `${esc(g.usk)}` : g.pegi ? `<span title="Keine USK-Angabe">PEGI ${esc(g.pegi)}</span>` : "";
+  const age = g.usk ? `<span class="${["16", "18"].includes(g.usk) ? "usk" + g.usk : ""}">${esc(g.usk)}</span>` : g.pegi ? `<span title="Keine USK-Angabe">PEGI ${esc(g.pegi)}</span>` : "";
   const ageTip = [g.usk && `USK ${g.usk}`, g.pegi && `PEGI ${g.pegi}`].filter(Boolean).join(", ");
   const odd = ["offline", "local", "online"].filter(k => g.players[k] && g.players[k].alt)
     .map(k => `${({offline: "an einer Konsole", local: "lokal drahtlos", online: "online"})[k]} <span class="gxc">DekuDeals ${gRange(g.players[k].v)}, Nintendo ${gRange(g.players[k].alt)}</span>`).join(" · ");
@@ -315,9 +315,18 @@ function collTop(body){
   const pk = sp.packs ? `${sp.packs} ${sp.packs === 1 ? "Paket" : "Pakete"} mit ${sp.via_packs} ${sp.via_packs === 1 ? "Spiel" : "Spielen"}` : "";
   const why = [`${sp.entries} Einträge bei DekuDeals`, [sp.dlc_entries ? `davon ${sp.dlc_entries} DLC` : "", pk].filter(Boolean).join(" und ")].filter(Boolean).join(", ");
   const head = `<b>${sp.games.length}</b> Spiele <span class="mut">(${why})</span>`;
-  // DLC-Ansicht (1.7.3): Zahlen und Erklärung klappbar unter dieser Zeile, offen als Vorgabe
-  if(body) return `<div class="ctop"><details class="cfold" data-kc="ctop" ${S.folds.ctop ? "" : "open"}><summary>${head}</summary>${body}</details>${collSeg()}</div>`;
-  return `<div class="ctop"><span>${head}</span>${collSeg()}</div>`;
+  // 1.7.5: in beiden Ansichten gleich klappbar, darunter die DLC-Zahlen; die Erklärung (body) nur in der DLC-Ansicht
+  return `<div class="ctop"><details class="cfold" data-kc="ctop" ${S.folds.ctop ? "" : "open"}><summary>${head}</summary><div class="cstatb">${collStats()}${body || ""}</div></details>${collSeg()}</div>`;
+}
+/* Zahlen der Sammlung (DLC), unter der Kopfzeile beider Ansichten */
+function collStats(){
+  const c = S.state.collection || {};
+  if(!c.games) return "";
+  const nDone = c.games.filter(g => !g.missing).length;
+  const missing = c.games.reduce((n, g) => n + g.missing, 0);
+  const priced = c.missing_eur !== null && c.missing_eur !== undefined;
+  return `<div class="cstat"><span><b>${c.games.length}</b> mit DLC <span class="mut">(<span class="warnc">${c.games.length - nDone}</span> mit offenen, <span class="gn">${nDone}</span> ohne)</span></span><span><b class="gn">${(c.plain || []).length}</b> ohne DLC</span></div>
+    ${missing ? `<div class="cstat"><span><b class="warnc">${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b class="dealn">${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}`;
 }
 /* Umschalter der Sammlung: DLC | Spiele, gemerkt je Browser */
 const collSeg = () => `<span class="seg">${[["dlc", "DLC", "Spiele mit ihren Zusatzinhalten: was du hast, was fehlt"], ["spiele", "Spiele", "Jedes Spiel mit Genre, Spielern, Koop, Wertung und Spielzeit, mit Filtern und Mischungen"]]

@@ -226,7 +226,8 @@ Ein fehlender Pass, dessen Teile nicht alle einzeln einen Preis haben, zeigt sta
 „einzeln nicht alle kaufbar“ (ab 0.90). „Titel dazunehmen …“ bietet diese DLC in der Gruppe „Fehlende DLC deiner Spiele“ an („Spiel: DLC ·
 Preis“).
 Die Aktionen einer DLC-Zeile („habe ich · ignorieren“) stehen rechtsbündig, bündig unter „alle DLC
-ignorieren“ in der Kopfzeile des Spiels (ab 1.1.7); am Handy links in eigener Zeile.
+ignorieren“ in der Kopfzeile des Spiels (ab 1.1.7, seit 1.3.1 durch `display:flex` verloren, ab 1.7.5 wieder
+mit `justify-content:flex-end`); am Handy links in eigener Zeile.
 
 Ab 0.99.6 nach der Checkliste (Entscheidung 20.10.2026): je DLC eine Rasterzeile wie unter „Nicht im
 Plan“ (`.npr.cdr`, `collDlc`), Spalten Name (darunter klein Pass-Vergleich oder Paket), Stand („fehlt“
@@ -247,9 +248,11 @@ steht er in beiden Ansichten in derselben Kopfzeile `collTop` (`.ctop`) ganz obe
 nicht springt; links daneben „95 Spiele (119 Einträge bei DekuDeals, davon 30 DLC, 6 Spiele nur in
 Paketen)“. Der Kasten der DLC-Ansicht nennt deshalb nicht mehr „119 Spiele in der Sammlung“ (das waren
 Einträge samt DLC). Ab 1.7.3 hat die DLC-Ansicht keinen eigenen Kasten mehr: Die Zeile „90 Spiele (…)“ ist
-dort die Kopfzeile einer Klappe (`details.cfold`, `data-kc="ctop"`, offen als Vorgabe), darunter die
-Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot; ab 1.7.4 wieder farbig: „mit offenen“ und „DLC
-fehlen“ violett, „ohne“ grün, „im Angebot“ blau) und „So funktioniert die Sammlung“. Code in `js/spiele.js`
+die Kopfzeile einer Klappe (`details.cfold`, `data-kc="ctop"`, offen als Vorgabe; ab 1.7.5 in beiden
+Ansichten gleich, Pfeil ▾/▸ hinter dem Text statt davor, damit die Zeile nicht springt), darunter die
+Zahlen (`collStats`: mit DLC, ohne DLC, fehlen, Preis, im Angebot; ab 1.7.4 farbig: „mit offenen“ und „DLC
+fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot“ blau; Schrift 13 px wie die Kopfzeile).
+„So funktioniert die Sammlung“ nur in der DLC-Ansicht und „So funktioniert die Sammlung“. Code in `js/spiele.js`
 (`viewGames`), Daten aus `state.spiele` (`planner.game_infos`).
 
 - **Werkzeugzeile:** eigenes Suchfeld `#gq` (Name, Genre, Verlag, Entwickler; `fold1` wie `hits`),
@@ -305,7 +308,10 @@ fehlen“ violett, „ohne“ grün, „im Angebot“ blau) und „So funktionie
 - **Einzelheiten** (`gDetail`, ab 1.7.0, ab 1.7.3 wieder untereinander, Entscheidung 27.10.2026): links
   die Fakten als Name und Wert (`.gdf`, Spalte Spiel), Mein Stand (`.gdm`) ab 1.7.4 unter den mittleren
   Spalten ab den Spielern, darunter klein der Rest. Offene Zeile und Einzelheiten liegen ab 1.7.4 auf
-  leicht abgesetztem Grund (`--best`). Wertungen in denselben Farben wie die Tabelle (`.gsc`, Nutzer mal
+  abgesetztem Grund, ab 1.7.5 dunkler als die Liste (`--open`, im Dunkeln fast Seitengrund; `--best` war
+  im Dunkeln heller). „Mein Stand“ in Textfarbe und fett, die Knöpfe auf Kartengrund, gewählt mit
+  leichtem Grau statt Akzent, damit die farbigen Symbole sichtbar bleiben. USK 16 blau, USK 18 rot (ab
+  1.7.5, `.usk16`, `.usk18`, wie die Farben der USK). Wertungen in denselben Farben wie die Tabelle (`.gsc`, Nutzer mal
   zehn). Mit Upgrade-Paket zuerst „Angaben: Switch-2-Edition“ (Link) und klein, was die Switch-1-Seite
   anders nennt (ab 1.7.4).
   Reihenfolge: Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
@@ -318,7 +324,7 @@ fehlen“ violett, „ohne“ grün, „im Angebot“ blau) und „So funktionie
 - **Mein Stand** (ab 1.7.1): in den Einzelheiten, `.seg.gmark` „○ Backlog | ▷ angefangen |
   ✓ durchgespielt“ (Klick auf den gewählten nimmt ihn zurück) und daneben als zweite Gruppe gleicher Höhe
   „☆ Favorit“ (an: „★“). Ab 1.7.4 farbig, in Knöpfen und Zeile gleich (`.gst`, `.gfav`): ○ rot (`--stop`),
-  ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold). In der Zeile hinter dem Namen nur, was
+  ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold); ○ und ▷ ab 1.7.5 1,5 px höher, sonst hängen sie durch. In der Zeile hinter dem Namen nur, was
   gesetzt ist (`.gme`), Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
   durchgespielt, Favoriten, ohne Stand), Mischung „Aus dem Backlog“. Gespeichert in den Einstellungen
   (`game_marks`), damit in der Sicherung; die Oberfläche zeigt den Klick sofort und speichert dann.
@@ -327,7 +333,7 @@ fehlen“ violett, „ohne“ grün, „im Angebot“ blau) und „So funktionie
 - **Koop** (ab 1.7.2): von IGDB „lokal“, „online“ oder „beides“, Höchstzahl und geteilter Bildschirm im
   Tooltip (`gCoop`, `gCoopTip`) und in den Einzelheiten; ohne IGDB „ja“, nur als Hinweis von
   HowLongToBeat. Spielweisen „Koop an einer Konsole“ und „Koop online“ nur mit IGDB.
-- **GameShare** (ab 1.7.2): Marke „GameShare“ (ab 1.7.4 `.lgt.gsh`, blauer Rand und Hauch, hebt sich von „Switch 2“ ab) hinter dem Namen, Tooltip lokal und/oder
+- **GameShare** (ab 1.7.2): Marke „GameShare“ (ab 1.7.4 `.lgt.gsh`, ab 1.7.5 ohne Rand: blaue Schrift auf leichtem blauem Hauch) hinter dem Namen, Tooltip lokal und/oder
   online; Spielweise „GameShare“; in den Einzelheiten. Quelle ist Nintendos Liste der hervorgehobenen
   Spiele, fehlt die Marke, heißt das nicht „kein GameShare“.
 - **Widersprüche** (ab 1.7.2, `contraBox` in Einstellungen, Quellen und Abgleich, unter „Zustand der
@@ -423,7 +429,8 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
 | Prüfen, Hinweis (violett; bis 0.57 Bernstein, kaum vom Gold zu unterscheiden) | `--warn`, `--warn-bg` | `.warnc`, `.chip.w`, `.q` (?), `.approx` (≈), `.soon`, `.today`, `.dlc.need` | Sprache ungeprüft, zählt nicht, Schätzung, endet bald, DLC ohne Hauptspiel, Kartenbewertung "teuer" |
 | Nein, teurer | `--stop`, `--stop-bg`, `--sale` | `.bad`, `.abv`, `.over`, `.lgt.no`, `.save.neg` | ohne Deutsch, Wechsel lohnt nicht, über dem Bestpreis (+x €), ignorierte Anzahl, Guthabenkarte teurer als Kreditkarte (Faktor und Bewertung) |
 | Neutral | `--muted`, `--chip`, `--line` | `.mut`, `.chip`, `.dlc`, `.lgt.de`, `.pct.np` | Beschriftungen, Normalpreis, "DLC"-Etikett (immer grau), "Deutsch ✓" |
-| Marke | `--brand` | `h1 .brand` | nur „eShop“ im Namen oben links, Nintendo-Rot. Sonst nirgends, damit Rot weiter „nein“ heißt |
+| Marke | `--brand` | `h1 .brand`, `nav button.on` | „eShop“ im Namen oben links, Nintendo-Rot, und ab 1.7.5 die Unterstreichung des aktiven Reiters (wie im VR-Navigator, Entscheidung 27.10.2026). Sonst nirgends, damit Rot weiter „nein“ heißt |
+| Gewählt, hervorgehoben | `--accent` | `button.primary`, `.seg button.on`, `.fb.on`, `.kb.on` | Hauptknopf und gewählter Knopf, alle gleich hell (ab 1.7.5; `.fb.on` war in Textfarbe und blendete im Dunkeln, etwa „alle 119“) |
 | Betonung ohne Wertung | `--accent` | `.lvl-neg`, `.pct.m-low` | Kurs-/Preisniveau unter 1 bzw. günstiger, ohne Urteil |
 
 ## Marken und Zeichen

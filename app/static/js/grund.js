@@ -80,10 +80,13 @@ function digits(cur){
   }
   return DIGITS[cur];
 }
+// Ein Format je Währung, einmal gebaut (1.7.5): neu je Aufruf kostete die Tabelle der Wishlist über eine Sekunde
+const MONEY = {};
 function money(n, cur){
   if(n === null || n === undefined) return "–";
-  try{ return new Intl.NumberFormat("de-DE",{style:"currency",currency:cur||"EUR"}).format(n); }
-  catch(e){ return n.toFixed(2).replace(".",",") + " " + (cur||""); }
+  cur = cur || "EUR";
+  try{ return (MONEY[cur] = MONEY[cur] || new Intl.NumberFormat("de-DE",{style:"currency",currency:cur})).format(n); }
+  catch(e){ return n.toFixed(2).replace(".",",") + " " + cur; }
 }
 function num(n, cur){   // Landeswährung ohne Zeichen, für enge Spalten; Euro immer mit €
   if(n === null || n === undefined) return "–";
