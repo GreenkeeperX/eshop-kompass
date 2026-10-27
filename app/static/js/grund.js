@@ -485,6 +485,11 @@ function render(){
   if(!document.body.classList.contains("fit")) showStick();
   fitMatrix();
   gHash();        // Filter der Ansicht „Spiele“ in der Adresse, sonst keine (1.6.1)
+  // Link auf ein Spiel (1.7.18): hinscrollen, sobald seine Zeile da ist
+  if(S.gJump && S.tab === "sammlung" && S.cview === "spiele"){
+    const el = m.querySelector(`[data-act="gopen"][data-s="${CSS.escape(S.gJump)}"]`);
+    if(el){ el.scrollIntoView({block: "center"}); S.gJump = null; }
+  }
   m.querySelectorAll(".scroll,.fitbox").forEach((e, k) => { if(keep[k]){ e.scrollLeft = keep[k][0]; e.scrollTop = keep[k][1]; } });
   const grp = m.querySelector(".matrix tr.grp");
   if(grp) grp.closest(".matrix").style.setProperty("--grp", grp.getBoundingClientRect().height + "px");
