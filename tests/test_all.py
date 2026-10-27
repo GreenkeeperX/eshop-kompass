@@ -2002,7 +2002,7 @@ class SafetyTest(unittest.TestCase):
             self.assertEqual(store.load_settings()["wishlist_url"], "x")
             store.save_settings({"wishlist_url": before})
             # Lesende Schnittstellen antworten mit JSON, auch ohne Aufzeichnung
-            for path in ("/api/kaufplan", "/api/verlauf?slug=gibt-es-nicht"):
+            for path in ("/api/kaufplan", "/api/verlauf?slug=gibt-es-nicht", "/api/sammlung"):
                 c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
                 c.request("GET", path)
                 r = c.getresponse()
@@ -3124,6 +3124,13 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual((c["read"], c["genre"], c["players"]), (False, [], {}))
         self.assertEqual((sp["read"], sp["with_info"], sp["confirmed"]), (2, 2, 1))
         self.assertIn(("Party", 1), sp["genres"])
+        # 1.7.16: Lesen für andere Tools: nur Spielangaben, Switch 2 als System, Leeres fällt weg
+        ex = {g["slug"]: g for g in planner.games_export(data, settings)}
+        self.assertEqual((ex["game-a"]["system"], ex["game-a"]["mc"], ex["game-a"]["hours"], ex["game-a"]["offline"]),
+                         ("Switch", 88, 12.5, [1, 4]))
+        self.assertEqual(ex["game-b-nintendo-switch-2-edition"]["system"], "Switch 2")
+        self.assertEqual(set(ex["game-c"]), {"slug", "title", "system", "coop", "online_any"})
+        self.assertFalse(any(k in str(ex) for k in ("price", "url", "wishlist")))
 
     def test_game_infos_packs_as_games(self):
         # 1.7.0: Ein Paket der Sammlung steht nicht als eigene Zeile da, seine Spiele tragen „aus“ und

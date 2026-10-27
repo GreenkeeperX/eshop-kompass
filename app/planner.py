@@ -1924,6 +1924,25 @@ def game_infos(data, settings):
             "confirmed": sum(1 for g in out if g["nin"])}
 
 
+def games_export(data, settings):
+    """Spiele der Sammlung für andere Tools im eigenen Netz (1.7.16, Entscheidung 27.10.2026: der
+    VR-Navigator zeigt die Switch-Sammlung mit). Nur lesend, nur Angaben zum Spiel und Mein Stand:
+    keine Preise, keine Links, keine Einstellungen."""
+    out = []
+    for g in game_infos(data, settings)["games"]:
+        pl = g.get("players") or {}
+        e = {"slug": g["slug"], "title": g["title"], "system": "Switch 2" if g.get("s2") else "Switch",
+             "genres": [x["n"] for x in g.get("genre") or []], "max": g.get("max"),
+             "offline": (pl.get("offline") or {}).get("v"), "local": (pl.get("local") or {}).get("v"),
+             "online": (pl.get("online") or {}).get("v"), "online_any": "online" in pl,
+             "coop": bool(g.get("coop")), "mc": g.get("mc"), "oc": g.get("oc"), "hours": g.get("hours"),
+             "released": g.get("released") or g.get("year"), "developer": g.get("developer"),
+             "publisher": g.get("publisher"), "usk": g.get("usk"), "desc": g.get("desc"), "desc_lang": g.get("desc_lang"),
+             "langs": g.get("langs"), "bought": g.get("bought"), "mine": g.get("mine") or {}}
+        out.append({k: v for k, v in e.items() if v not in (None, "", [], {})})
+    return out
+
+
 def collection(data, settings, targets=None, now=None, rows=None):
     """Spiele der Sammlung mit ihren Zusatzinhalten: welche du hast, welche fehlen.
 
