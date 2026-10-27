@@ -4,6 +4,8 @@
   --accent:#2f3b35; --warn:#7a3e9d; --warn-bg:#f1e5f7;
   --sale:#b3261e; --best:#ebe8de; --chip:#ece9df; --gold:#c28800; --gold-ink:#2b2000;
   --go:#0d6b4f; --go-bg:#dcefe4; --go-fill:#0d6b4f; --on-go:#fffdf8; --go-mark:var(--card); --stop:#b3261e; --stop-bg:#f8dfdc; --deal:#2f6690; --brand:#e60012;
+  /* Genre-Blasen und Wertung (1.7.3): Farbton je Genre bzw. Wertung, Sättigung und Helligkeit je Ansicht */
+  --gg-s:52%; --gg-bl:90%; --gg-ts:40%; --gg-tl:28%; --sc-s:70%; --sc-l:34%;
 }
 /* Ansicht: data-theme am html-Element (hell/dunkel), ohne Angabe wie das Gerät */
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]){
@@ -11,12 +13,14 @@
   --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
   --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --go-mark:transparent; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
+  --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }}
 :root[data-theme=dark]{color-scheme:dark;
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
   --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --go-mark:transparent; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
+  --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }
 :root[data-theme=light]{color-scheme:light}
 *{box-sizing:border-box}
@@ -659,7 +663,7 @@ details.gmenu .opts .mut{margin-left:auto;padding-left:10px;font-size:12px}
 details.gmenu .hint{margin:0}
 .glist{padding:4px 8px}
 /* Spiele (1.7.0): einzeilig, Titel höchstens 320 px, Spieler unter einem gemeinsamen Kopf */
-.gr{display:grid;grid-template-columns:minmax(150px,320px) 58px 48px 52px 50px minmax(0,1fr) 78px 70px 44px;gap:0 10px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
+.gr{display:grid;grid-template-columns:minmax(180px,1.5fr) 58px 48px 52px 50px 74px minmax(0,1fr) 66px 42px;gap:0 10px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
 .gr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);row-gap:1px;align-items:end}
 .gr.nph>*{grid-row:2}
 .gr.nph .gh-sp{grid-row:1;grid-column:2/5;text-align:center;border-bottom:1px solid var(--line);font-size:10px;line-height:1.4}
@@ -674,9 +678,10 @@ details.gmenu .hint{margin:0}
 .gr button.link.g-n{text-decoration:none;color:inherit;text-align:left;font:inherit;font-weight:400;padding:0;min-width:3em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
 .gr button.link.g-n:hover{text-decoration:underline}
 .gr.open button.link.g-n{font-weight:600}
-.gtags{display:flex;gap:4px;min-width:0;overflow:hidden}
+.gtags{display:flex;flex-wrap:wrap;gap:3px 4px;min-width:0}
 .gtags .chip{flex:none}
-.gtags .chip.more{background:none;padding:0 2px}
+.chip.gg{background:hsl(var(--gh) var(--gg-s) var(--gg-bl));color:hsl(var(--gh) var(--gg-ts) var(--gg-tl))}
+.gsc{color:hsl(var(--sh) var(--sc-s) var(--sc-l));font-weight:600}
 .galt{color:var(--muted);font-style:italic}
 .gme{flex:none;margin-left:6px;display:inline-flex;gap:3px;font-size:12px}
 .gst{color:var(--muted)}
@@ -685,16 +690,21 @@ details.gmenu .hint{margin:0}
 .gfav{color:var(--ink)}
 .gno{color:var(--stop)}
 .gmark button{font-size:12px;padding:1px 8px}
-.gfavb{font-size:12px;padding:1px 9px;margin-left:4px}
+.gfavb{font-size:12px;padding:1px 9px}
 .gxc{color:var(--warn)}
 .ctop{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;margin:2px 0 10px;font-size:13px}
-/* Einzelheiten: oben das Wichtige nebeneinander, darunter klein der Rest */
-.gd{padding:4px 0 10px 14px;font-size:13px}
-.gdt{display:flex;flex-wrap:wrap;gap:6px 26px;margin-bottom:6px}
-.gdi{display:flex;flex-direction:column;min-width:0}
+.ctop .cfold{flex:1;min-width:0}
+.ctop .cfold>summary{cursor:pointer}
+.ctop .cfold .cstatb{margin:6px 0 4px;padding:0 0 0 14px}
+.ctop:has(.cfold){align-items:flex-start}
+/* Einzelheiten (1.7.3): Fakten untereinander, rechts daneben Mein Stand, darunter klein der Rest */
+.gd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 24px;padding:4px 0 10px 14px;font-size:13px}
+.gdf{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 14px;align-content:start}
+.gdm{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
 .gd .fl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .gd .fv{min-width:0;overflow-wrap:anywhere}
-.gd .gds{font-size:12px}
+.gd .gds{grid-column:1/-1;font-size:12px}
+.gres{font-size:12px;color:var(--muted)}
 .gpick h3{margin:2px 0 6px;font-size:14px}
 .gpa{display:flex;gap:8px;margin:8px 0 0}
 @media (max-width:760px){
@@ -708,6 +718,6 @@ details.gmenu .hint{margin:0}
   .gr>span[data-l]:not(.c-gen)::before{content:attr(data-l) " ";color:var(--muted);font-size:11px}
   .gr .c-gen{flex:1 0 100%;color:var(--muted)}
   .gtags{flex-wrap:wrap}
-  .gd{padding-left:4px}
+  .gd{padding-left:4px;grid-template-columns:minmax(0,1fr)}
   details.gmenu .pop{position:fixed;left:16px;right:16px;top:auto;max-width:none;min-width:0}
 }

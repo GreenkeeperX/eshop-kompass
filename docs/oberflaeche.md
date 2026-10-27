@@ -246,7 +246,9 @@ Angaben zeigen). Umschalter `collSeg` „DLC | Spiele“, gemerkt je Browser (`S
 steht er in beiden Ansichten in derselben Kopfzeile `collTop` (`.ctop`) ganz oben, damit er beim Wechseln
 nicht springt; links daneben „95 Spiele (119 Einträge bei DekuDeals, davon 30 DLC, 6 Spiele nur in
 Paketen)“. Der Kasten der DLC-Ansicht nennt deshalb nicht mehr „119 Spiele in der Sammlung“ (das waren
-Einträge samt DLC). Code in `js/spiele.js`
+Einträge samt DLC). Ab 1.7.3 hat die DLC-Ansicht keinen eigenen Kasten mehr: Die Zeile „90 Spiele (…)“ ist
+dort die Kopfzeile einer Klappe (`details.cfold`, `data-kc="ctop"`, offen als Vorgabe), darunter die
+Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot) und „So funktioniert die Sammlung“. Code in `js/spiele.js`
 (`viewGames`), Daten aus `state.spiele` (`planner.game_infos`).
 
 - **Werkzeugzeile:** eigenes Suchfeld `#gq` (Name, Genre, Verlag, Entwickler; `fold1` wie `hits`),
@@ -261,22 +263,31 @@ Einträge samt DLC). Code in `js/spiele.js`
 - **Filter:** System (alle, Switch 2, nur Switch), Genre und Spielweise als Menüs mit Häkchen
   (`details.gmenu`, eine Zahl je Eintrag: Treffer unter den übrigen Filtern; offen bleibt das Menü beim
   Anhaken, `S.gMenu`; am Handy über die ganze Breite), Spieler ab n, Wertung ab, Spielzeit. Gesetzte
-  Genres und Spielweisen stehen darunter als Knöpfe mit ×, dazu „alle Filter zurücksetzen“. Alle Filter
+  Genres und Spielweisen stehen darunter als Knöpfe mit ×, dazu klein und grau „alle Filter
+  zurücksetzen“ (`.gres`, ab 1.7.3). Alle Filter
   stehen in der Adresse (`#spiele?…`, `gHash`), nur solange die Ansicht offen ist.
 - **Raster** `.gr` (ab 1.7.0, Entscheidung 27.10.2026): jede Zeile einzeilig und gleich hoch. Spalten
-  Spiel (höchstens 320 px, normale Schrift in Textfarbe, zu lang mit „…“, voller Name im Tooltip; fett
-  nur, solange die Einzelheiten offen sind) · Spieler (Konsole | Lokal | Online unter einem gemeinsamen
-  Kopf `.gh-sp`) · Koop · Genre · Metacritic · Spielzeit · Jahr. Die Köpfe sortieren per Klick
-  (`gTh`, wie `sth`, `S.sorts.spiele`); Spieler, Koop, Metacritic und Jahr zuerst absteigend
-  (`data-d0="-1"`). Leere Zellen: grauer Strich `G_NIL`.
+  (ab 1.7.3) Spiel (breiteste Spalte, 1,5 Teile gegen 1 Teil Genre, normale Schrift in Textfarbe, zu
+  lang mit „…“, voller Name im Tooltip; fett nur, solange die Einzelheiten offen sind) · Spieler
+  (Konsole | Lokal | Online unter einem gemeinsamen Kopf `.gh-sp`) · Koop · Metacritic · Genre ·
+  Spielzeit · Jahr. Die Köpfe sortieren per Klick (`gTh`, wie `sth`, `S.sorts.spiele`); Spieler, Koop,
+  Metacritic und Jahr zuerst absteigend (`data-d0="-1"`). Spieler sortieren nach der Höchstzahl, bei
+  gleicher die kleinere Mindestzahl zuerst (1–8 vor 4–8, `gPlKey`). Leere Zellen: grauer Strich `G_NIL`.
 - **Marken am Namen** im Stil von DE✓ (`.lgt.de`): „Switch 2“ oder „S2-Upgrade“ (Upgrade-Paket in der
   Sammlung; die Switch 2 Edition steht schon im Namen), „ohne Handheld“ oder „nur TV, Tisch“, wenn nicht
-  alle drei Spielmodi gehen, Tooltip nennt beide Seiten. Dahinter klein grau „aus: Paket“, kürzt sich
-  vor dem Namen.
-- **Genre** als Blasen (`.gtags .chip`), höchstens zwei, der Rest als „+n“; alle im Tooltip. Feste
+  alle drei Spielmodi gehen, Tooltip nennt beide Seiten. Dahinter klein grau „aus: …“, ab 1.7.3 nur
+  der Unterschied zum Spielnamen („Ultimate Edition“, „Snipperclips Plus“, `gPackShort`), Pakete mit
+  „+“ oder „&“ ganz; kürzt sich vor dem Namen.
+- **Genre** als Blasen (`.gtags .chip.gg`), ab 1.7.3 alle und farbig: Farbton je Genre (`G_HUE`) nach
+  Verwandtschaft, Action und Kampf rot, Tempo (Arcade, Rennen, Sport) orange bis gelbgrün, Plattformer
+  gelb, ruhiges Leben (Simulation, Tiere, Alltag) grün, Erkunden (Abenteuer, Rollenspiel) türkis bis
+  cyan, Denken (Puzzle, Strategie, Brett, Karten, Lernen) blau bis indigo, Gesellig (Party, Musik,
+  Kommunikation) rosa bis magenta, Sonstiges und Unbekanntes grau. Violett bleibt frei (Widerspruch).
+  Sanft: heller Grund, dunkle Schrift; im Dunkeln umgekehrt (Tokens `--gg-*`). Feste
   Reihenfolge in jeder Zeile: das seltenere Genre zuerst, gleich häufige nach dem Alphabet, „Sonstiges“
   zuletzt (`planner.game_infos`). Nintendo Europa zuerst, ohne Nintendo-Angabe DekuDeals, ohne Marke.
-- **Metacritic** ab 85 grün. Fehlt Metacritic, steht OpenCritic grau und kursiv (`.galt`), der Tooltip
+- **Metacritic** ab 1.7.3 fein gestuft von Rot über Gelb nach Grün (`.gsc`, `gScoreHue`, Farbton 0 bis
+  125 für Wertungen 50 bis 95, Tokens `--sc-*`), halbfett. Fehlt Metacritic, steht OpenCritic grau und kursiv (`.galt`), der Tooltip
   sagt es. Filter, Sortierung und „Kurz und gut“ nehmen denselben Wert.
 - **Pakete** (Entscheidung 27.10.2026, Variante a): Ein Paket der Sammlung, dessen Teile Spiele sind,
   steht nicht als eigene Zeile da. Jedes Spiel daraus trägt „aus: …“; fehlt eine Angabe auf seiner
@@ -289,8 +300,9 @@ Einträge samt DLC). Code in `js/spiele.js`
   der Wert dezent violett (`.gxc`, `gVal`), der Tooltip nennt beide. Koop „ja“ bis IGDB nur aus einer
   Koop-Spielzeit bei HowLongToBeat.
 - **Vollständig:** alle Spiele auf einmal, kein „weitere zeigen“ (Entscheidung 27.10.2026).
-- **Einzelheiten** (`gDetail`, ab 1.7.0): oben nebeneinander, was beim Aussuchen hilft (`.gdt`, je Angabe
-  kleiner grauer Name darüber): Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
+- **Einzelheiten** (`gDetail`, ab 1.7.0, ab 1.7.3 wieder untereinander, Entscheidung 27.10.2026): links
+  die Fakten als Name und Wert (`.gdf`), rechts daneben Mein Stand (`.gdm`), darunter klein der Rest.
+  Reihenfolge: Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
   Nebenaufgaben“, „insgesamt“, „Koop“ …), DLC mit den Farben der DLC-Ansicht (`collSum`: grün vorhanden,
   violett fehlt, rot ignoriert) und „zu den DLC“, Erschienen (Tooltip: Entwickler und Verlag), USK (nur
   die Zahl, PEGI im Tooltip; ohne USK „PEGI n“). Spieler nur, wenn Nintendo andere Zahlen nennt; „Online

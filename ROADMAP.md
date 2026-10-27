@@ -100,6 +100,7 @@ Neue Wünsche, noch nicht eingeordnet.
   Spieler · Koop · Genre · Metacritic · Spielzeit · Jahr; Pakete als ihre Spiele mit „aus: …“; Genre
   von Nintendo; Metacritic, sonst OpenCritic grau-kursiv (1.7.0, erledigt); „Mein Stand“ (Backlog,
   angefangen, durchgespielt, Favorit) und Sprachen der Spiele (1.7.1, erledigt); GameShare, Koop
-  über IGDB und die Liste „Widersprüche“ mit Klarstellungen im Repository (1.7.2, erledigt). Offen:
+  über IGDB und die Liste „Widersprüche“ mit Klarstellungen im Repository (1.7.2, erledigt); alle
+  Genres farbig, Wertung farbig vor dem Genre, Einzelheiten wieder untereinander (1.7.3, erledigt). Offen:
   Switch-2-Verbesserungen. Nintendos Liste ist keine Tabelle; der Verbindungstest zeigt seit 1.7.2,
   ob die Europa-Suche zu einem Switch-2-Spiel passende Felder kennt.

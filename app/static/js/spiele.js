@@ -95,8 +95,10 @@ function gSort(rows, d){
   return sortRows("spiele", out, G_COLS);
 }
 // Spaltenköpfe (1.7.0): Klick sortiert wie in der Wishlist; Zahlen, bei denen mehr besser ist, zuerst absteigend
-const G_COLS = {title: g => g.title, offline: g => gPl(g, "offline") || null, local: g => gPl(g, "local") || null,
-  online: g => gPl(g, "online") || null, coop: g => !g.coop ? null : Math.max(+g.coop.local || 0, +g.coop.online || 0, 1), genre: g => g.genre.length ? g.genre[0].n : null,
+// Spieler (1.7.3): erst die Höchstzahl, bei gleicher die kleinere Mindestzahl zuerst (1–8 vor 4–8)
+const gPlKey = (g, k) => { const p = g.players[k]; if(!p) return null; const v = p.v || [1, 2]; return v[1] * 100 + (99 - v[0]); };
+const G_COLS = {title: g => g.title, offline: g => gPlKey(g, "offline"), local: g => gPlKey(g, "local"),
+  online: g => gPlKey(g, "online"), coop: g => !g.coop ? null : Math.max(+g.coop.local || 0, +g.coop.online || 0, 1), genre: g => g.genre.length ? g.genre[0].n : null,
   mc: g => g.score ?? null, hours: g => g.hours ?? null, year: g => g.released || null};
 function gTh(k, label, tip, cls = "", d0 = 1){
   const s = S.sorts.spiele, on = !!(s && s.k === k);
@@ -137,18 +139,29 @@ function gPlayers(g, k){
     (k === "online" && g.paid_online ? ". Braucht die Online-Mitgliedschaft (Nintendo)" : "");
   return gVal(gRange(p.v), tip, !!p.alt);
 }
-/* Genres als Blasen (1.7.0): höchstens zwei, der Rest als „+n“ mit Tooltip. Die Reihenfolge ist in jeder
-   Zeile dieselbe (planner.game_infos: seltenere zuerst), so steht ein Genre immer gleich zu den anderen */
+/* Genres als Blasen (1.7.0, alle und farbig ab 1.7.3). Farbton nach Verwandtschaft: Action und Kampf rot,
+   Tempo (Arcade, Rennen, Sport) orange bis gelbgrün, Plattformer gelb, ruhiges Leben (Simulation, Tiere,
+   Alltag) grün, Erkunden (Abenteuer, Rollenspiel) türkis bis cyan, Denken (Puzzle, Strategie, Brett, Karten,
+   Lernen) blau bis indigo, Gesellig (Party, Musik, Kommunikation) rosa bis magenta, Sonstiges grau. Violett
+   bleibt frei, es heißt im Tool „Widerspruch“. Die Reihenfolge ist in jeder Zeile dieselbe (seltenere zuerst) */
+const G_HUE = {"Action": 4, "Kampfspiel": 352, "Shooter": 14, "Ego-Perspektive": 14, "Arcade": 26, "Rennspiel": 36, "Sport": 66,
+  "Golf": 82, "Fußball": 96, "Fitness": 74, "Training": 74, "Plattformer": 48, "Simulation": 128, "Tiere": 112, "Alltag": 100,
+  "Survival": 150, "Roguelike": 158, "Abenteuer": 172, "Metroidvania": 182, "Rollenspiel": 194, "Puzzle": 212, "Lernen": 204,
+  "Quiz": 222, "Strategie": 232, "Tower Defense": 232, "Brettspiel": 242, "Kartenspiel": 250, "Party": 330, "Mehrspieler": 330,
+  "Musik": 316, "Rhythmus": 316, "Kommunikation": 342, "Horror": 0, "Visual Novel": 300};
+const gTag = n => { const h = G_HUE[n]; return `<span class="chip gg" style="${h === undefined ? "--gh:0;--gg-s:0%;--gg-ts:0%" : `--gh:${h}`}">${esc(n)}</span>`; };
 function gGenres(g){
   if(!g.genre.length) return g.read ? "" : `<span class="mut" title="Die DekuDeals-Seite dieses Spiels ist noch nicht gelesen; je Abgleich höchstens 40 Seiten">folgt</span>`;
   const src = g.genre[0].src === "Nintendo" ? "Genre laut Nintendo" : "Genre laut DekuDeals (Nintendo nennt keines)";
-  const rest = g.genre.slice(2).map(x => x.n);
-  return `<span class="gtags" title="${esc(src + ": " + g.genre.map(x => x.n).join(", "))}">${g.genre.slice(0, 2).map(x => `<span class="chip">${esc(x.n)}</span>`).join("")}${rest.length ? `<span class="chip more">+${rest.length}</span>` : ""}</span>`;
+  return `<span class="gtags" title="${esc(src)}">${g.genre.map(x => gTag(x.n)).join("")}</span>`;
 }
-/* Wertung (1.7.0, Entscheidung 27.10.2026): Metacritic. Fehlt sie, steht OpenCritic grau und kursiv da */
+/* Wertung (1.7.0, Entscheidung 27.10.2026): Metacritic. Fehlt sie, steht OpenCritic grau und kursiv da.
+   Farbe ab 1.7.3 fein gestuft von Rot über Gelb nach Grün; die Skala reicht von 50 bis 95, weil fast alle
+   Wertungen dort liegen (bei 0 bis 100 wäre fast alles gelbgrün) */
+const gScoreHue = v => Math.round(Math.max(0, Math.min(1, (v - 50) / 45)) * 125);
 function gScore(g){
   const more = [g.mcu !== undefined && `Metacritic-Nutzer ${String(g.mcu).replace(".", ",")}`, g.oc !== undefined && `OpenCritic ${g.oc}`].filter(Boolean).join(", ");
-  if(g.mc !== undefined) return `<span class="${g.mc >= 85 ? "gn" : ""}" title="${esc(`Metacritic ${g.mc}${more ? `; ${more}` : ""} (über DekuDeals)`)}">${g.mc}</span>`;
+  if(g.mc !== undefined) return `<span class="gsc" style="--sh:${gScoreHue(g.mc)}" title="${esc(`Metacritic ${g.mc}${more ? `; ${more}` : ""} (über DekuDeals)`)}">${g.mc}</span>`;
   if(g.oc !== undefined) return `<span class="galt" title="${esc(`Keine Metacritic-Wertung. OpenCritic ${g.oc} (über DekuDeals)`)}">${g.oc}</span>`;
   return "";
 }
@@ -175,14 +188,28 @@ function gBadges(g){
   if(g.langs && g.langs.length && !g.langs.includes("german")) b.push(`<span class="lgt no" title="${esc("Laut Nintendo Europa ohne Deutsch. Sprachen: " + langDe(g.langs.join(", ")))}">ohne Deutsch</span>`);
   return b.join("");
 }
+/* „aus: …“ kurz (1.7.3): was das Paket vom Spielnamen unterscheidet. „Golf With Your Friends - Ultimate
+   Edition“ wird „Ultimate Edition“, „Snipperclips Plus - Cut it out, together!“ wird „Snipperclips Plus“.
+   Pakete mit „+“ oder „&“ bleiben ganz. Der volle Name steht im Tooltip */
+function gPackShort(title, pack){
+  const w = t => String(t).split(/\s+/), k = x => fold1(x);
+  // Ein Paket mit weiteren Spielen oder Inhalten („A + B“, „A & B“) bleibt ganz, sonst hieße es nur „B“
+  if(/\s[+&]\s/.test(pack)) return pack;
+  const a = w(title), b = w(pack);
+  let i = 0; while(i < a.length && i < b.length && k(a[i]) === k(b[i])) i++;
+  let j = 0; while(j < a.length - i && j < b.length - i && k(a[a.length - 1 - j]) === k(b[b.length - 1 - j])) j++;
+  let out = b.slice(j >= 2 ? 0 : i, b.length - (j >= 2 ? j : 0)).join(" ");
+  out = out.replace(/^[\s:&+–—-]+|[\s:&+–—-]+$/g, "");
+  return out && out.length < pack.length ? out : pack;
+}
 function gRow(g, pick){
   const open = S.gOpen === g.slug && !pick;
   const coop = gCoop(g);
   const cells = [["c-pl", "Konsole", gPlayers(g, "offline")], ["c-pl", "Lokal", gPlayers(g, "local")], ["c-pl", "Online", gPlayers(g, "online")],
-    ["c-pl", "Koop", coop], ["c-gen", "Genre", gGenres(g)], ["r", "Metacritic", gScore(g)],
+    ["c-pl", "Koop", coop], ["r", "Metacritic", gScore(g)], ["c-gen", "Genre", gGenres(g)],
     ["r", "Spielzeit", g.hours ? `<span title="${esc(gHltbTip(g))}">${gHours(g.hours)}</span>` : ""], ["r", "Jahr", gYear(g)]];
   const tip = g.title + (g.via ? ` · aus: ${g.via}` : "") + " · Einzelheiten";
-  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="gopen" data-s="${esc(g.slug)}" aria-expanded="${open}" title="${esc(tip)}">${esc(g.title)}</button>${gBadges(g)}${g.via ? `<small class="mut gvia" title="${esc("Hast du im Paket " + g.via)}">aus: ${esc(g.via)}</small>` : ""}</span>` +
+  return `<div class="gr${open ? " open" : ""}"><span class="t"><button class="link g-n" data-act="gopen" data-s="${esc(g.slug)}" aria-expanded="${open}" title="${esc(tip)}">${esc(g.title)}</button>${gBadges(g)}${g.via ? `<small class="mut gvia" title="${esc("Hast du im Paket " + g.via)}">aus: ${esc(gPackShort(g.title, g.via))}</small>` : ""}</span>` +
     cells.map(([c, lab, v]) => `<span class="${c}${v ? "" : " nil"}" data-l="${lab}">${v || G_NIL}</span>`).join("") + `</div>` + (open ? gDetail(g) : "");
 }
 const G_FILLED = {genre: "Genre", players: "Spieler", modes: "Spielmodi", mc: "Wertung", mcu: "Wertung", oc: "Wertung", hltb: "Spielzeit",
@@ -209,7 +236,8 @@ function gHltbTip(g){
    Nintendo etwas anderes nennt */
 function gDetail(g){
   const c = ((S.state.collection || {}).games || []).find(x => x.slug === g.slug);
-  const item = (l, v, tip) => v ? `<span class="gdi"${tip ? ` title="${esc(tip)}"` : ""}><span class="fl">${l}</span><span class="fv">${v}</span></span>` : "";
+  // Ab 1.7.3 wieder untereinander (Entscheidung 27.10.2026: leichter zu erfassen), Mein Stand rechts daneben
+  const row = (l, v, tip) => v ? `<span class="fl">${l}</span><span class="fv"${tip ? ` title="${esc(tip)}"` : ""}>${v}</span>` : "";
   const num = v => String(v).replace(".", ",");
   const score = [g.mc !== undefined && `Metacritic <b>${g.mc}</b>`, g.mcu !== undefined && `Nutzer ${num(g.mcu)}`, g.oc !== undefined && `OpenCritic ${g.oc}`].filter(Boolean).join(" · ");
   const hltb = Object.entries(g.hltb || {}).map(([k, v]) => `${G_HLTB[k] || k} ${gHours(v)}`).join(" · ");
@@ -222,16 +250,16 @@ function gDetail(g){
     .map(k => `${({offline: "an einer Konsole", local: "lokal drahtlos", online: "online"})[k]} <span class="gxc">DekuDeals ${gRange(g.players[k].v)}, Nintendo ${gRange(g.players[k].alt)}</span>`).join(" · ");
   const m = g.mine || {};
   const mine = `<span class="seg gmark">${G_ST.map(([k, l, ic, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}">${ic} ${l}</button>`).join("")}</span> <button class="fb gfavb${m.fav ? " on" : ""}" data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}">${m.fav ? "★" : "☆"} Favorit</button>`;
-  const top = item("Mein Stand", mine) + item("Wertung", score) + item("Spielzeit", hltb, "HowLongToBeat, über DekuDeals") + item("DLC", dlc) +
-    item("Erschienen", rel, who || "") + item("USK", age, ageTip) + (odd ? item("Spieler", odd, "DekuDeals und Nintendo nennen verschiedene Zahlen") : "") +
-    (g.coop && g.coop.src === "IGDB" ? item("Koop", esc(gCoopTip(g.coop).replace("Koop laut IGDB: ", "")), "IGDB") : "") +
-    (g.gs ? item("GameShare", [g.gs.local && "lokal", g.gs.online && "online"].filter(Boolean).join(", "), "Laut Nintendos Liste der hervorgehobenen GameShare-Spiele") : "") +
-    (g.paid_online ? item("Online", "mit Mitgliedschaft", "Laut Nintendo braucht das Online-Spiel die Nintendo Switch Online-Mitgliedschaft") : "");
+  const facts = row("Wertung", score) + row("Spielzeit", hltb, "HowLongToBeat, über DekuDeals") + row("DLC", dlc) +
+    row("Erschienen", rel, who || "") + row("USK", age, ageTip) + (odd ? row("Spieler", odd, "DekuDeals und Nintendo nennen verschiedene Zahlen") : "") +
+    (g.coop && g.coop.src === "IGDB" ? row("Koop", esc(gCoopTip(g.coop).replace("Koop laut IGDB: ", "")), "IGDB") : "") +
+    (g.gs ? row("GameShare", [g.gs.local && "lokal", g.gs.online && "online über GameChat"].filter(Boolean).join(", "), "Laut Nintendos Liste der hervorgehobenen GameShare-Spiele") : "") +
+    (g.paid_online ? row("Online", "mit Mitgliedschaft", "Laut Nintendo braucht das Online-Spiel die Nintendo Switch Online-Mitgliedschaft") : "");
   const pk = g.pack ? `aus ${esc(g.pack.title)}${g.pack.filled && g.pack.filled.length ? ` <span title="${esc("Von der Seite des Pakets, weil die Seite des Spiels sie nicht nennt: " + g.pack.filled.map(k => G_FILLED[k] || k).filter((x, i, a) => a.indexOf(x) === i).join(", "))}">(Angaben teils vom Paket)</span>` : ""}` : "";
   const langs = g.langs && g.langs.length ? `<span title="${esc("Sprachen laut Nintendo Europa: " + langDe(g.langs.join(", ")))}">${g.langs.includes("german") ? `Deutsch${g.langs.length > 1 ? ` und ${g.langs.length - 1} weitere Sprachen` : ""}` : `<span class="gno">ohne Deutsch</span>`}</span>` : "";
   const small = [langs, g.size_gb && `${num(g.size_gb)} GB`, g.bought && `gekauft am ${dmy(g.bought)}`, pk,
     `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">DekuDeals</a>${g.nin ? ", von Nintendo geprüft" : g.read ? ", noch nicht von Nintendo geprüft" : ", Seite noch nicht gelesen"}`].filter(Boolean).join(" · ");
-  return `<div class="gd">${top ? `<div class="gdt">${top}</div>` : ""}<p class="hint gds">${small}</p></div>`;
+  return `<div class="gd"><div class="gdf">${facts}</div><div class="gdm"><span class="fl">Mein Stand</span>${mine}</div><p class="hint gds">${small}</p></div>`;
 }
 function gMenu(k, head, n, body){
   return `<details class="gmenu" data-gm="${k}" ${S.gMenu === k ? "open" : ""}><summary>${head}${n ? ` <span class="cnt">${n}</span>` : ""}</summary><div class="pop">${body}</div></details>`;
@@ -257,13 +285,13 @@ function viewGames(){
       <label>Wertung <select data-gset="sc">${opt([[0, "egal"], [70, "ab 70"], [80, "ab 80"], [90, "ab 90"]], d.sc)}</select></label>
       <label>Spielzeit <select data-gset="hr">${opt([[0, "egal"], [5, "bis 5 h"], [10, "bis 10 h"], [20, "bis 20 h"], [-40, "ab 40 h"]], d.hr)}</select></label>
       <label title="Dein Stand je Spiel, setzt du in den Einzelheiten">Mein Stand <select data-gset="st">${opt(G_STF, d.st)}</select></label></div>
-    ${label ? `<div class="chips gact">${d.how.map(h => `<button class="fb" data-act="ghowoff" data-v="${h}" title="Filter entfernen">${esc((G_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.g.map(x => `<button class="fb" data-act="ggoff" data-v="${esc(x)}" title="Filter entfernen">${esc(x)} ×</button>`).join("")}<button class="link" data-act="greset">alle Filter zurücksetzen</button></div>` : ""}`;
+    ${label ? `<div class="chips gact">${d.how.map(h => `<button class="fb" data-act="ghowoff" data-v="${h}" title="Filter entfernen">${esc((G_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.g.map(x => `<button class="fb" data-act="ggoff" data-v="${esc(x)}" title="Filter entfernen">${esc(x)} ×</button>`).join("")}<button class="link gres" data-act="greset">alle Filter zurücksetzen</button></div>` : ""}`;
   const tools = `<div class="tools"><span class="sbox"><input type="search" id="gq" placeholder="Spiel, Genre oder Verlag" aria-label="Spiel, Genre oder Verlag suchen" value="${esc(d.q)}">${d.q ? `<button class="sx" data-act="gqclear" title="Suche leeren (Esc)">×</button>` : ""}</span>
     <label>Sortieren <select data-gset="sort">${S.sorts.spiele ? `<option value="" selected>nach Spalte</option>` : ""}${opt(G_SORTS, S.sorts.spiele ? "" : d.sort)}</select></label>${d.sort === "random" && !S.sorts.spiele ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}</div>`;
   const pickCard = d.mix === "surprise" ? `<section class="box gpick"><h3>Vorschlag${label ? ` <span class="mut">${esc(label)}</span>` : ""}</h3>
     ${pick.length ? `<div class="glist">${pick.map(g => gRow(g, true)).join("")}</div>` : `<p class="hint">Nichts passt zu den Filtern.</p>`}
     <p class="gpa"><button data-act="gmixoff" data-v="surprise">Schließen</button> <button class="primary" data-act="gmix" data-v="surprise">Noch mal</button></p></section>` : "";
-  const head = `<div class="gr nph" role="row"><span class="gh-sp" aria-hidden="true">Spieler</span>${gTh("title", "Spiel", "", "gh-t")}${gTh("offline", "Konsole", "Spieler an einer Konsole (Couch, Splitscreen)", "", -1)}${gTh("local", "Lokal", "Spieler mit mehreren Konsolen im selben Raum", "", -1)}${gTh("online", "Online", "Spieler online", "", -1)}${gTh("coop", "Koop", "Laut IGDB: lokal, online oder beides; „ja“: nur ein Hinweis von HowLongToBeat", "", -1)}${gTh("genre", "Genre", "Von Nintendo, sonst DekuDeals")}${gTh("mc", "Metacritic", "Grau und kursiv: keine Metacritic-Wertung, dafür OpenCritic", "r", -1)}${gTh("hours", "Spielzeit", "HowLongToBeat: Story, sonst allein", "r")}${gTh("year", "Jahr", "", "r", -1)}</div>`;
+  const head = `<div class="gr nph" role="row"><span class="gh-sp" aria-hidden="true">Spieler</span>${gTh("title", "Spiel", "", "gh-t")}${gTh("offline", "Konsole", "Spieler an einer Konsole (Couch, Splitscreen)", "", -1)}${gTh("local", "Lokal", "Spieler mit mehreren Konsolen im selben Raum", "", -1)}${gTh("online", "Online", "Spieler online", "", -1)}${gTh("coop", "Koop", "Laut IGDB: lokal, online oder beides; „ja“: nur ein Hinweis von HowLongToBeat", "", -1)}${gTh("mc", "Metacritic", "Grau und kursiv: keine Metacritic-Wertung, dafür OpenCritic", "r", -1)}${gTh("genre", "Genre", "Von Nintendo, sonst DekuDeals")}${gTh("hours", "Spielzeit", "HowLongToBeat: Story, sonst allein", "r")}${gTh("year", "Jahr", "", "r", -1)}</div>`;
   const note = `<p class="hint">${rows.length === all.length ? `Alle ${all.length} Spiele` : `${rows.length} von ${all.length} Spielen`}. Angaben von DekuDeals, Nintendo prüft gegen: violett heißt, Nintendo nennt etwas anderes (Tooltip). Genre von Nintendo.</p>`;
   if(!all.length) return collTop() + tools + `<p class="mut">Noch keine Spiele bekannt.</p>`;
   return collTop() + tools + mixes + filters + pickCard + note +
@@ -272,13 +300,16 @@ function viewGames(){
 }
 /* Kopfzeile beider Ansichten der Sammlung (1.6.2): was in der Sammlung steht, rechts der Umschalter. Steht
    in beiden Ansichten an derselben Stelle, damit er beim Wechseln nicht springt */
-function collTop(){
+function collTop(body){
   const sp = S.state.spiele || {};
-  if(!sp.entries) return `<div class="ctop"><span></span>${collSeg()}</div>`;
+  if(!sp.entries) return `<div class="ctop"><span></span>${collSeg()}</div>${body || ""}`;
   // 1.7.0: Pakete sind keine eigene Zeile mehr, gezählt werden ihre Spiele
   const pk = sp.packs ? `${sp.packs} ${sp.packs === 1 ? "Paket" : "Pakete"} mit ${sp.via_packs} ${sp.via_packs === 1 ? "Spiel" : "Spielen"}` : "";
   const why = [`${sp.entries} Einträge bei DekuDeals`, [sp.dlc_entries ? `davon ${sp.dlc_entries} DLC` : "", pk].filter(Boolean).join(" und ")].filter(Boolean).join(", ");
-  return `<div class="ctop"><span><b>${sp.games.length}</b> Spiele <span class="mut">(${why})</span></span>${collSeg()}</div>`;
+  const head = `<b>${sp.games.length}</b> Spiele <span class="mut">(${why})</span>`;
+  // DLC-Ansicht (1.7.3): Zahlen und Erklärung klappbar unter dieser Zeile, offen als Vorgabe
+  if(body) return `<div class="ctop"><details class="cfold" data-kc="ctop" ${S.folds.ctop ? "" : "open"}><summary>${head}</summary>${body}</details>${collSeg()}</div>`;
+  return `<div class="ctop"><span>${head}</span>${collSeg()}</div>`;
 }
 /* Umschalter der Sammlung: DLC | Spiele, gemerkt je Browser */
 const collSeg = () => `<span class="seg">${[["dlc", "DLC", "Spiele mit ihren Zusatzinhalten: was du hast, was fehlt"], ["spiele", "Spiele", "Jedes Spiel mit Genre, Spielern, Koop, Wertung und Spielzeit, mit Filtern und Mischungen"]]
