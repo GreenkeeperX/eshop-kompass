@@ -3129,7 +3129,11 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual((ex["game-a"]["system"], ex["game-a"]["mc"], ex["game-a"]["hours"], ex["game-a"]["offline"]),
                          ("Switch", 88, 12.5, [1, 4]))
         self.assertEqual(ex["game-b-nintendo-switch-2-edition"]["system"], "Switch 2")
-        self.assertEqual(set(ex["game-c"]), {"slug", "title", "system", "coop", "online_any"})
+        self.assertEqual(set(ex["game-c"]) - {"kv"}, {"slug", "title", "system", "coop", "online_any"})
+        # 1.7.17: dazu die Zeile der Ansicht „Spiele“ unter "kv"
+        kv = ex["game-a"]["kv"]
+        self.assertEqual((kv["players"]["offline"], kv["year_alt"], kv["coop"]["src"]), ({"v": [1, 4], "ok": False, "alt": [1, 2]}, "2019", "HowLongToBeat"))
+        self.assertNotIn("mine", kv)
         self.assertFalse(any(k in str(ex) for k in ("price", "url", "wishlist")))
 
     def test_game_infos_packs_as_games(self):

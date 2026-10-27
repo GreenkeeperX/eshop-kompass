@@ -1939,8 +1939,22 @@ def games_export(data, settings):
              "released": g.get("released") or g.get("year"), "developer": g.get("developer"),
              "publisher": g.get("publisher"), "usk": g.get("usk"), "desc": g.get("desc"), "desc_lang": g.get("desc_lang"),
              "langs": g.get("langs"), "bought": g.get("bought"), "mine": g.get("mine") or {}}
+        # 1.7.17 (Entscheidung 27.10.2026: der VR-Navigator zeigt die Switch-Spiele wie „Spiele“ hier):
+        # die Zeile der Ansicht, wie sie ist, ohne Links und Preise
+        kv = {k: g.get(k) for k in EXPORT_VIEW}
+        if g.get("pack"):
+            kv["pack"] = {"title": g["pack"].get("title"), "filled": g["pack"].get("filled") or []}
+        if g.get("ed"):
+            kv["ed"] = {"title": g["ed"].get("title"), "diff": g["ed"].get("diff") or {}}
+        e["kv"] = {k: v for k, v in kv.items() if v not in (None, "", [], {})}
         out.append({k: v for k, v in e.items() if v not in (None, "", [], {})})
     return out
+
+
+# Felder der Ansicht „Spiele“, die /api/sammlung unter "kv" mitgibt (1.7.17)
+EXPORT_VIEW = ("genre", "players", "max", "coop", "modes", "gs", "paid_online", "s2", "via", "mc", "mcu", "oc", "hltb",
+               "hours", "size_gb", "year", "year_ok", "year_alt", "released", "developer", "publisher", "pub_alt",
+               "usk", "pegi", "langs", "nin", "read")
 
 
 def collection(data, settings, targets=None, now=None, rows=None):
