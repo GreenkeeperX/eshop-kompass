@@ -3172,6 +3172,7 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual((a["s2"]["slug"], a["s2"]["info"]["mc"]), ("game-a-nintendo-switch-2-edition", 88))
         sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 7200)
         self.assertEqual(len(calls), n)                    # monatlich
+        self.assertIn("1 Spiele mit Upgrade-Paket; 1 mit eigener Seite", sync.edition_summary(data, settings, {"game-a"}))
         g = next(x for x in planner.game_infos(data, settings)["games"] if x["slug"] == "game-a")
         self.assertEqual((g["s2"], g["mc"], g["players"]["online"]["v"], g["hltb"]), ("upgrade", 88, [1, 8], {"solo": 10.0}))
         # Wertung (1.7.9): Metacritic der Edition vor dem der Switch-1-Seite; OpenCritic bleibt, wo die Edition keins hat
@@ -3200,6 +3201,7 @@ class CollectionTest(unittest.TestCase):
         a.pop("s2")
         a["info"]["platform"] = "Nintendo Switch 2, Nintendo Switch"
         self.assertEqual(sync.edition_due(data, settings, {"game-a"}, t0), [])
+        self.assertTrue(sync.edition_summary(data, settings, {"game-a"}).endswith("1 auf einer Seite für beide Fassungen (game-a)"))
         a["s2"] = {"slug": "x", "info": {"mc": 50}, "at": t0, "v": 1}
         g = next(x for x in planner.game_infos(data, settings)["games"] if x["slug"] == "game-a")
         self.assertEqual((g["mc"], g.get("ed")), (80, None))

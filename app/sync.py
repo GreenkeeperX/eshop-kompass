@@ -1737,6 +1737,36 @@ def edition_due(data, settings, games, now):
     return [(g, ed) for *_, g, ed in sorted(out)]
 
 
+def edition_summary(data, settings, games):
+    """Protokollzeile zu den Switch-2-Editionen (1.7.10): Spiele mit Upgrade-Paket, aufgeschlüsselt nach
+    eigener Seite, einer Seite für beide Fassungen, ohne eigenen Eintrag und noch offen. None ohne Upgrade-Paket."""
+    rel = data.get("rel") or {}
+    owned = planner.owned_set(data, settings)
+    own, both, none, wait = [], [], [], []
+    for g in sorted(games):
+        e = rel.get(g) or {}
+        if e.get("parent") or not any(planner.is_upgrade(d, t) and d in owned for d, t in e.get("dlc") or []):
+            continue
+        name = e.get("title") or g
+        s2 = e.get("s2") or {}
+        if "switch 2" in str((e.get("info") or {}).get("platform") or "").lower():
+            both.append(name)
+        elif s2.get("info"):
+            own.append(name)
+        elif s2.get("none") or s2.get("at"):
+            none.append(name)
+        else:
+            wait.append(name)
+    if not (own or both or none or wait):
+        return None
+    part = lambda n, head: f"{len(n)} {head} ({', '.join(n)})" if n else ""
+    return ("Switch-2-Editionen: " + f"{len(own) + len(both) + len(none) + len(wait)} Spiele mit Upgrade-Paket; "
+            + "; ".join(x for x in (part(own, "mit eigener Seite, deren Angaben gelten"),
+                                     part(both, "auf einer Seite für beide Fassungen"),
+                                     part(none, "ohne eigenen Eintrag, Angaben der Switch-1-Seite"),
+                                     part(wait, "folgen")) if x))
+
+
 def sync_related(data, settings, fetch, sleep, now=None):
     """Liest DLC, Pakete ("Included In") und Inhalt ("Contains") der Artikelseiten von
     Sammlung und Wishlist. Schonend: höchstens REL_PER_SYNC Seiten je Abgleich,
@@ -1782,6 +1812,9 @@ def sync_related(data, settings, fetch, sleep, now=None):
                  + (f", {len(games) - len(read)} folgen" if len(read) < len(games) else "")
                  + (f"; Warnung, {len(blank)} gelesene Seiten ohne Kasten „Details“ (hat DekuDeals die Seite umgebaut?)"
                     if len(blank) >= 3 else ""))
+        ed = edition_summary(data, settings, set(owned))
+        if ed:
+            _log(ed)
     blank = []
     if not todo and not links_todo and not s2_todo:
         summary("nichts fällig")
