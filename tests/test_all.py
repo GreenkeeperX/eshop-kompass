@@ -3061,6 +3061,8 @@ class CollectionTest(unittest.TestCase):
 
         def solr(url, ua=None):
             asked.append(url)
+            if "/de/select" in url:                        # Kurzbeschreibung auf Deutsch (1.7.11)
+                return json.dumps({"response": {"docs": [{"nsuid_txt": ["70010000000001"], "excerpt": "<p>Ein Rätsel&shy;spiel</p>\n<p>für alle.</p>"}]}})
             return json.dumps({"response": {"docs": [{
                 "nsuid_txt": ["70010000000001"], "pretty_game_categories_txt": ["Action", "Puzzle"],
                 "players_from": 1, "players_to": 4, "play_mode_tv_mode_b": True, "play_mode_handheld_mode_b": True,
@@ -3069,14 +3071,16 @@ class CollectionTest(unittest.TestCase):
                 "players_from_system_i": 1, "players_to_system_i": 2, "players_to_online_i": 4,
                 "language_availability": ["english,german,French"]}]}})
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0)
-        self.assertEqual(len(asked), 1)
+        self.assertEqual(len(asked), 2)
         self.assertIn("nsuid_txt", asked[0])
+        self.assertIn("fl=nsuid_txt%2Cexcerpt", asked[1])
         self.assertEqual(a["nin"], {"genre": ["Action", "Puzzle"], "players": [1, 4], "modes": ["tv", "handheld"],
                                     "mm": "simultaneous", "online": False, "publisher": "Nintendo",
                                     "age": "PEGI 3", "sys_pl": [1, 2], "on_pl": [1, 4],
-                                    "langs": ["english", "german", "french"], "at": t0, "v": sync.NIN_V})
+                                    "langs": ["english", "german", "french"], "desc": "Ein Rätselspiel für alle.",
+                                    "at": t0, "v": sync.NIN_V})
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0 + 86400)
-        self.assertEqual(len(asked), 1)                    # monatlich
+        self.assertEqual(len(asked), 2)                    # monatlich
         a["eu"] = "70010000000002"
         a.pop("nin")
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0)
@@ -5007,7 +5011,7 @@ class UiContractTest(unittest.TestCase):
         "spiele": {"contra", "dlc_entries", "entries", "fixed", "games", "genres", "packs", "via_packs"},
         "spiele.games": {"bought", "coop", "developer", "genre", "hltb", "hours", "max", "mc", "mcu", "modes", "nin", "oc", "players",
                          "pack", "paid_online", "pegi", "pub_alt", "publisher", "read", "released", "s2", "score", "size_gb",
-                         "slug", "title", "usk", "via", "year", "year_alt", "mine", "langs", "gs"},
+                         "slug", "title", "usk", "via", "year", "year_alt", "mine", "langs", "gs", "desc", "desc_lang", "ed"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "suggest", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
         "eshop": {"amount", "coll", "coll_game", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
@@ -5082,7 +5086,7 @@ class UiContractTest(unittest.TestCase):
             "collection": set(state["collection"]),
             "collection.games": keys(state["collection"]["games"]),
             "spiele": set(state["spiele"]),
-            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu", "pack", "pegi", "langs", "gs"},
+            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu", "pack", "pegi", "langs", "gs", "desc", "desc_lang", "ed"},
             "nso": set(state["nso"]),
             "pay": keys(state["pay"].values()),
             "eshop": keys(planner.eshop_matches(dict(store.load_data(), _eshop={"picks": {}, "entries": [

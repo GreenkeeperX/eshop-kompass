@@ -6,6 +6,7 @@
 const G0 = {sys: "", g: [], gop: "", how: [], pl: 0, sc: 0, hr: 0, st: "", usk: "", q: "", sort: "name", seed: 0, mix: ""};
 S.g = Object.assign({}, G0, {g: [], how: []});
 S.gOpen = null;
+S.gDesc = null;
 S.gMenu = null;
 const G_SORTS = [["name", "Name"], ["score", "Wertung"], ["hours", "Spielzeit, kurz zuerst"], ["year", "Erscheinen, neu zuerst"],
   ["players", "Spieler, die meisten zuerst"], ["random", "Zufall"]];
@@ -259,18 +260,22 @@ function gDetail(g){
   const ED_L = {players: "Spieler", modes: "Spielmodi", mc: "Metacritic", mcu: "Nutzer", oc: "OpenCritic", hltb: "Spielzeit", size_gb: "Größe"};
   const edv = (k, v) => k === "players" ? ["offline", "local", "online"].filter(x => v[x]).map(x => `${({offline: "Konsole", local: "lokal", online: "online"})[x]} ${gRange(v[x])}`).join(", ")
     : k === "hltb" ? Object.entries(v).map(([a, b]) => `${G_HLTB[a] || a} ${gHours(b)}`).join(", ") : k === "modes" ? v.length + " Modi" : num(v);
-  const ed = g.ed ? `<a class="tl" href="${esc(deku(g.ed.slug))}" target="_blank" rel="noopener">Switch-2-Edition</a>` +
-    (Object.keys(g.ed.diff).length ? ` <span class="hint">(Switch 1: ${Object.entries(g.ed.diff).map(([k, v]) => `${ED_L[k] || k} ${esc(edv(k, v))}`).join(" · ")})</span>` : "") : "";
-  const facts = row("Angaben", ed, "Du hast das Upgrade-Paket: Spieler, Wertung und Spielzeit stammen von der Seite der Switch-2-Edition") + row("Wertung", score) + row("Spielzeit", hltb, "HowLongToBeat, über DekuDeals") + row("DLC", dlc) +
+  // 1.7.11: klein in der Zeile darunter, was die Switch-1-Seite anders nennt nur im Tooltip
+  const edTip = g.ed ? "Du hast das Upgrade-Paket: Spieler, Spielzeit und Größe von der Seite der Switch-2-Edition, Metacritic von dort, sonst von der Switch-1-Seite" +
+    (Object.keys(g.ed.diff).length ? ". Die Switch-1-Seite nennt: " + Object.entries(g.ed.diff).map(([k, v]) => `${ED_L[k] || k} ${edv(k, v)}`).join(" · ") : ". Keine Unterschiede zur Switch-1-Seite") : "";
+  const ed = g.ed ? `<a class="tl" href="${esc(deku(g.ed.slug))}" target="_blank" rel="noopener" title="${esc(edTip)}">Angaben der Switch-2-Edition</a>` : "";
+  // Kurzbeschreibung (1.7.11) von Nintendo Europa unter Mein Stand: vier Zeilen, ein Klick zeigt alles
+  const desc = g.desc ? `<p class="gdesc${S.gDesc === g.slug ? " full" : ""}" data-act="gdesc" data-s="${esc(g.slug)}" title="${esc((g.desc_lang === "en" ? "Beschreibung von Nintendo Europa, nur auf Englisch" : "Beschreibung von Nintendo Europa") + (S.gDesc === g.slug ? "" : ". Klick zeigt alles"))}">${esc(g.desc)}</p>` : "";
+  const facts = row("Wertung", score) + row("Spielzeit", hltb, "HowLongToBeat, über DekuDeals") + row("DLC", dlc) +
     row("Erschienen", rel, who || "") + row("USK", age, ageTip) + (odd ? row("Spieler", odd, "DekuDeals und Nintendo nennen verschiedene Zahlen") : "") +
     (g.coop && g.coop.src === "IGDB" ? row("Koop", esc(gCoopTip(g.coop).replace("Koop laut IGDB: ", "")), "IGDB") : "") +
     (g.gs ? row("GameShare", [g.gs.local && "lokal", g.gs.online && "online über GameChat"].filter(Boolean).join(", "), "Laut Nintendos Liste der hervorgehobenen GameShare-Spiele") : "") +
     (g.paid_online ? row("Online", "mit Mitgliedschaft", "Laut Nintendo braucht das Online-Spiel die Nintendo Switch Online-Mitgliedschaft") : "");
   const pk = g.pack ? `aus ${esc(g.pack.title)}${g.pack.filled && g.pack.filled.length ? ` <span title="${esc("Von der Seite des Pakets, weil die Seite des Spiels sie nicht nennt: " + g.pack.filled.map(k => G_FILLED[k] || k).filter((x, i, a) => a.indexOf(x) === i).join(", "))}">(Angaben teils vom Paket)</span>` : ""}` : "";
   const langs = g.langs && g.langs.length ? `<span title="${esc("Sprachen laut Nintendo Europa: " + langDe(g.langs.join(", ")))}">${g.langs.includes("german") ? `Deutsch${g.langs.length > 1 ? ` und ${g.langs.length - 1} weitere Sprachen` : ""}` : `<span class="gno">ohne Deutsch</span>`}</span>` : "";
-  const small = [langs, g.size_gb && `${num(g.size_gb)} GB`, g.bought && `gekauft am ${dmy(g.bought)}`, pk,
+  const small = [langs, g.size_gb && `${num(g.size_gb)} GB`, g.bought && `gekauft am ${dmy(g.bought)}`, pk, ed,
     `<a class="tl" href="${esc(deku(g.slug))}" target="_blank" rel="noopener">DekuDeals</a>${g.nin ? ", von Nintendo geprüft" : g.read ? ", noch nicht von Nintendo geprüft" : ", Seite noch nicht gelesen"}`].filter(Boolean).join(" · ");
-  return `<div class="gd"><div class="gdf">${facts}</div><div class="gdm"><span class="fl">Mein Stand</span><span class="gmk">${mine}</span></div><p class="hint gds">${small}</p></div>`;
+  return `<div class="gd"><div class="gdf">${facts}</div><div class="gdm"><span class="fl">Mein Stand</span><span class="gmk">${mine}</span>${desc}</div><p class="hint gds">${small}</p></div>`;
 }
 function gMenu(k, head, n, body){
   return `<details class="gmenu" data-gm="${k}" ${S.gMenu === k ? "open" : ""}><summary>${head}${n ? ` <span class="cnt">${n}</span>` : ""}</summary><div class="pop">${body}</div></details>`;
@@ -345,6 +350,7 @@ document.addEventListener("click", e => {
   const a = el.dataset.act, v = el.dataset.v, d = S.g;
   const done = () => { gHash(); render(); };
   if(a === "cview"){ S.cview = v; S.gOpen = null; saveView(); window.scrollTo(0, 0); done(); }
+  else if(a === "gdesc"){ S.gDesc = S.gDesc === el.dataset.s ? null : el.dataset.s; render(); }
   else if(a === "gopen"){
     // 1.7.5: Aufgeklappt rückt das Fenster nach, bis die Einzelheiten ganz zu sehen sind; wer ganz unten war, bleibt unten
     const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 4;

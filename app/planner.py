@@ -1860,6 +1860,9 @@ def game_infos(data, settings):
             players["online"] = {"v": None, "ok": False, "src": "Nintendo"}
         g["players"] = players
         g["max"] = max([v["v"][1] for v in players.values() if v["v"]] or [0]) or None
+        # Kurzbeschreibung (1.7.11) von Nintendo Europa, deutsch, sonst englisch
+        if ni.get("desc") or ni.get("desc_en"):
+            g["desc"], g["desc_lang"] = (ni["desc"], "de") if ni.get("desc") else (ni["desc_en"], "en")
         g["paid_online"] = ni.get("online") is True       # Nintendo: Online-Spiel braucht die Mitgliedschaft
         dm, nm = di.get("modes") or [], ni.get("modes") or []
         g["modes"] = [{"n": m, "ok": m in dm and m in nm} for m in ("tv", "tabletop", "handheld") if m in dm or m in nm]

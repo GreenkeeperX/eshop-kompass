@@ -713,6 +713,8 @@ Handheld“).
 - **Spieler sortieren:** nach der Höchstzahl, bei gleicher die kleinere Mindestzahl zuerst (1–8 vor 4–8).
 - **Pakete:** Ein Paket steht nicht als eigene Zeile da, sondern seine Spiele, jedes mit „aus: …“.
   Fehlt eine Angabe auf der Seite des Spiels, kommt sie von der Seite des Pakets.
+- **Kurzbeschreibung** (ab 1.7.11): unter Mein Stand die Beschreibung von Nintendo Europa, auf Deutsch, sonst
+  auf Englisch; vier Zeilen, ein Klick zeigt alles. Sie kommt mit der Bestätigung durch Nintendo (monatlich).
 - **Mein Stand** (ab 1.7.1): In den Einzelheiten setzt du je Spiel Backlog, angefangen oder
   durchgespielt und einen Favoriten. Die Zeile zeigt es als ○ (rot), ▷ (blau), ✓ (grün) und ★ (gelb) hinter dem Namen. USK 16 steht in
   den Einzelheiten blau, USK 18 rot; der Filter „USK“ zeigt nur Spiele bis zur gewählten Freigabe (ab 1.7.6). Der Filter
@@ -725,8 +727,8 @@ Handheld“).
   Seite) und steht als Marke am Namen. Die Liste ist nicht vollständig.
 - **Switch-2-Edition** (ab 1.7.4): Hast du das Upgrade-Paket (in der Sammlung oder laut eShop-Käufen),
   liest der Abgleich zusätzlich die DekuDeals-Seite der Switch-2-Edition. Spieler, Spielmodi,
-  Wertung, Spielzeit und Größe kommen dann von dort; die Einzelheiten nennen „Angaben: Switch-2-Edition“
-  und, was die Switch-1-Seite anders sagt. Kommt das Paket später dazu, liest der nächste Abgleich die
+  Wertung, Spielzeit und Größe kommen dann von dort; die Einzelheiten nennen klein „Angaben der Switch-2-Edition“,
+  was die Switch-1-Seite anders sagt, steht im Tooltip. Kommt das Paket später dazu, liest der nächste Abgleich die
   Seite, danach monatlich wie die übrigen. Wertung (ab 1.7.9): Metacritic geht immer vor, das der Edition,
   sonst das der Switch-1-Seite; nur ohne Metacritic zählt OpenCritic, das der Edition zuerst.
   Viele Spiele führt DekuDeals auf einer Seite für beide Fassungen (Plattform nennt Switch 2); dann gibt

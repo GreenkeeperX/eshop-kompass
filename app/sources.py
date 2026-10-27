@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.7.10"
+VERSION = "1.7.11"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -804,7 +804,24 @@ def fetch_langs_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
 INFO_EU_FIELDS = ("nsuid_txt,title,pretty_game_categories_txt,players_from,players_to,play_mode_tv_mode_b,"
                   "play_mode_tabletop_mode_b,play_mode_handheld_mode_b,multiplayer_mode,paid_subscription_online_play_b,"
                   "publisher,dates_released_dts,age_rating_type,age_rating_value,system_names_txt,playable_on_txt,"
-                  "players_from_system_i,players_to_system_i,players_from_online_i,players_to_online_i,language_availability,url")
+                  "players_from_system_i,players_to_system_i,players_from_online_i,players_to_online_i,language_availability,url,excerpt")
+SOLR_DE_URL = SOLR_URL.replace("/en/", "/de/")     # Kurzbeschreibung auf Deutsch (1.7.11)
+
+
+def clean_desc(text, limit=1500):
+    """Kurzbeschreibung aus der Nintendo-Suche als schlichter Text: ohne Tags, Absätze als Leerzeichen."""
+    t = re.sub(r"\s+", " ", html.unescape(_TAG_RE.sub(" ", str(text or ""))).replace("\xad", "")).strip()
+    return t[:limit] if len(t) >= 20 else None
+
+
+def parse_desc(payload):
+    """{nsuid: Kurzbeschreibung} aus einer Antwort mit nsuid_txt und excerpt."""
+    out = {}
+    for d in (payload.get("response") or {}).get("docs", []):
+        t = clean_desc(d.get("excerpt"))
+        for n in (d.get("nsuid_txt") or []) if t else []:
+            out[str(n)] = t
+    return out
 
 
 def parse_info_eu(payload):
@@ -849,6 +866,8 @@ def parse_info_eu(payload):
             x["langs"] = list(dict.fromkeys(v.strip().lower() for v in la.split(",") if v.strip()))[:30]
         if page_id(d.get("url")):
             x["page"] = page_id(d["url"])          # Seitenkennung, für die GameShare-Liste (1.7.2)
+        if clean_desc(d.get("excerpt")):
+            x["desc_en"] = clean_desc(d["excerpt"])    # englisch, falls die deutsche Suche nichts nennt (1.7.11)
         for n in d.get("nsuid_txt") or []:
             out[str(n)] = x
     return out
@@ -896,10 +915,22 @@ def fetch_info_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
     for i in range(0, len(nsuids), 40):
         if i and pause:
             pause()
-        q = urllib.parse.urlencode({
-            "q": "*", "fq": "nsuid_txt:(" + " OR ".join(nsuids[i:i + 40]) + ")",
-            "fl": INFO_EU_FIELDS, "rows": 200, "wt": "json"})
-        out.update(parse_info_eu(json.loads(fetch(f"{SOLR_URL}?{q}"))))
+        q = lambda fl: urllib.parse.urlencode({
+            "q": "*", "fq": "nsuid_txt:(" + " OR ".join(nsuids[i:i + 40]) + ")", "fl": fl, "rows": 200, "wt": "json"})
+        part = parse_info_eu(json.loads(fetch(f"{SOLR_URL}?{q(INFO_EU_FIELDS)}")))
+        # Kurzbeschreibung (1.7.11): dieselben IDs in der deutschen Suche, nur nsuid und excerpt. Ein Fehler hier
+        # kostet nur die deutsche Beschreibung, die übrigen Angaben bleiben
+        if part:
+            if pause:
+                pause()
+            try:
+                de = parse_desc(json.loads(fetch(f"{SOLR_DE_URL}?{q('nsuid_txt,excerpt')}")))
+            except Exception:
+                de = {}
+            for n, t in de.items():
+                if n in part:
+                    part[n] = dict(part[n], desc=t)
+        out.update(part)
         if done is not None:
             done.extend(nsuids[i:i + 40])
     return out

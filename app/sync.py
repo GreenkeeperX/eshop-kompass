@@ -1903,7 +1903,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
     summary(f"{status['done']} Seiten gelesen")
 
 
-NIN_V = 4        # 1.6.2: Spielerzahl je Spielweise; 1.7.1: Sprachen; 1.7.2: Seitenkennung. Ältere neu holen
+NIN_V = 5        # 1.6.2: Spielerzahl je Spielweise; 1.7.1: Sprachen; 1.7.2: Seitenkennung; 1.7.11: Kurzbeschreibung. Ältere neu holen
 
 
 def sync_game_info_eu(data, fetch, sleep, now=None, settings=None):
@@ -2610,7 +2610,7 @@ def diagnose(sleep=time.sleep):
 
 # Felder der Europa-Suche, die nach Spielinfos klingen (Genre, Spieler, Spielweise, Koop, Teilen)
 INFO_FIELD = re.compile(r"(?i)categor|genre|player|play_?mode|coop|co_op|multi|online|local|share|feature|publisher|age_rating|"
-                        r"switch_?2|ns2|upgrade|gamechat|mouse|^url$")
+                        r"switch_?2|ns2|upgrade|gamechat|mouse|^url$|excerpt")
 
 
 def info_probe(probe, data, sleep=time.sleep, deku=None):
