@@ -2183,7 +2183,7 @@ class SafetyTest(unittest.TestCase):
             urls.append(url)
             if "GameShare-2785626" in url:
                 return {"url": url, "status": 404 if "/de-de/" in url else 200, "enc": "", "server": "t", "error": "",
-                        "text": "<title>GameShare</title><table><tr><th>Spiel</th><th>Local</th></tr><tr><td>Mario</td><td>Sí</td></tr></table>"}
+                        "text": "<title>GameShare</title><table><tr><th>Spiel</th><th>Local</th><th>Online</th></tr><tr><td>Mario</td><td>Sí</td><td>No</td></tr></table>"}
             text = solr if "fl=%2A" in url else wiki if "wikidata" in url else \
                 "<title>Snipperclips</title><p>Bis zu 4 Spieler im Koop, GameShare</p>" if "/de-de/" in url else \
                 "<dl><dt>Genre</dt><dd>Puzzle</dd><dt>Players</dt><dd>1-4</dd></dl>" if "/items/" in url else ""
@@ -2195,8 +2195,8 @@ class SafetyTest(unittest.TestCase):
         self.assertTrue(any("nsuid_txt%3A%2870010000000038%29" in u for u in urls))
         self.assertIn("Spielinfos DekuDeals (snipperclips, schon gelesen): Genre Puzzle Players 1-4", text)
         self.assertIn('Spielinfos DekuDeals gelesen: {}', text)          # dt/dd ohne Doppelpunkt: kein Kasten „Details“
-        self.assertIn("GameShare-Liste: HTTP 404", text)            # erst Deutschland, dann Spanien
-        self.assertIn("Tabellenzeilen 2, Anfang der Tabelle: Spiel Local Mario Sí", text)
+        self.assertIn("GameShare-Liste: HTTP 200", text)            # ab 1.7.2 nur die spanische Seite
+        self.assertIn("Tabellenzeilen 2, gelesen: Mario (lokal, Seite ?)", text)
         self.assertIn("Wikidata: HTTP 200", text)
         self.assertIn("„Snipperclips“: Modus multiplayer video game, co-op; Genre –; Spieler ––4", text)
         self.assertIn("IGDB: kein Schlüssel", text)
@@ -3112,7 +3112,7 @@ class CollectionTest(unittest.TestCase):
         self.assertTrue(a["paid_online"])
         self.assertEqual(a["players"]["offline"], {"v": [1, 4], "ok": False, "alt": [1, 2]})
         self.assertEqual(a["players"]["online"], {"v": [1, 8], "ok": True})
-        self.assertEqual((a["max"], a["coop"], a["score"], a["hours"]), (8, True, 88, 12.5))
+        self.assertEqual((a["max"], a["coop"], a["score"], a["hours"]), (8, {"any": True, "src": "HowLongToBeat"}, 88, 12.5))
         self.assertEqual(a["modes"], [{"n": "tv", "ok": True}, {"n": "handheld", "ok": True}])
         self.assertEqual((a["year"], a["year_ok"], a["year_alt"]), ("2020", False, "2019"))
         self.assertTrue(a["pub_ok"])
@@ -3143,6 +3143,58 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual(by["part-1"]["pack"]["filled"], ["released"])
         self.assertEqual((by["clip"]["read"], by["clip"]["usk"], by["clip"]["pegi"], by["clip"]["nin"]), (True, "6", "3", True))
         self.assertIsNone(by["game-a"]["via"])
+
+    def test_game_infos_igdb_gameshare_clarified(self):
+        # 1.7.2: Koop von IGDB vor dem Hinweis von HowLongToBeat, GameShare je Seitenkennung oder Name,
+        # Widersprüche als Liste, eine Klarstellung gilt vor beiden Quellen
+        data, settings = sample()
+        data["owned"] = ["game-a", "game-b-nintendo-switch-2-edition", "game-c"]
+        data["rel"] = {
+            "game-a": {"title": "Game A", "dlc": [], "iv": 1, "info": {"players": {"offline": [1, 4]}, "hltb": {"coop": 3}},
+                       "nin": {"at": 1, "sys_pl": [1, 2], "page": "1234567"},
+                       "igdb": {"id": 9, "coop": {"local": 4, "split": True}, "at": 1, "v": 1}},
+            "game-b-nintendo-switch-2-edition": {"title": "Game B – Nintendo Switch 2 Edition", "dlc": [], "iv": 1, "info": {}},
+            "game-c": {"title": "Game C", "dlc": [], "iv": 1, "info": {"hltb": {"coop": 2}},
+                       "igdb": {"none": True, "at": 1, "v": 1}}}
+        data["gameshare"] = {"at": 1, "rows": [
+            {"t": "Juego A", "id": "1234567", "local": True, "online": False},
+            {"t": "Game B – Nintendo Switch 2 Edition + Extra", "id": "999", "local": True, "online": True}]}
+        sp = planner.game_infos(data, settings)
+        a, b, c = sp["games"]
+        self.assertEqual((a["coop"], c["coop"], b["coop"]), ({"local": 4, "split": True, "src": "IGDB"},
+                                                              {"any": True, "src": "HowLongToBeat"}, False))
+        self.assertEqual((a["gs"], b["gs"], c.get("gs")), ({"local": True, "online": False}, {"local": True, "online": True}, None))
+        self.assertEqual(sp["contra"], [{"slug": "game-a", "title": "Game A", "what": "Spieler an einer Konsole",
+                                         "key": "players.offline", "deku": "1–4", "nin": "1–2"}])
+        with mock.patch.object(planner, "clarifications", lambda: {"game-a": {"players.offline": {"v": [1, 2], "src": "https://x"}}}):
+            sp = planner.game_infos(data, settings)
+        self.assertEqual((sp["contra"], sp["fixed"], sp["games"][0]["players"]["offline"]["v"]), ([], 1, [1, 2]))
+        self.assertEqual(planner.clarifications.__wrapped__().keys() - {"_hinweis"}, planner.clarifications().keys())
+
+    def test_igdb_sync(self):
+        # 1.7.2: ohne Schlüssel kein Abruf; mit Schlüssel ein Token, dann je Spiel eine Suche, bester Treffer
+        data, settings = sample()
+        data["owned"] = ["celeste", "game-x"]
+        data["rel"] = {"celeste": {"title": "Celeste", "dlc": []}, "game-x": {"title": "Game X", "dlc": []}}
+        calls = []
+
+        def req(url, data=None, headers=None):
+            calls.append((url, data))
+            if "twitch" in url:
+                return {"status": 200, "error": "", "text": json.dumps({"access_token": "t"})}
+            if b"Celeste" in data:
+                return {"status": 200, "error": "", "text": json.dumps([
+                    {"id": 1, "name": "Celeste Classic"},
+                    {"id": 2, "name": "Celeste", "platforms": [{"name": "Nintendo Switch"}], "game_modes": [{"name": "Single player"}]}])}
+            return {"status": 200, "error": "", "text": "[]"}
+        sync.sync_igdb(data, settings, now=NOW.timestamp(), sleep=lambda s: None, keys={"igdb_id": "", "igdb_secret": ""}, request=req)
+        self.assertEqual(calls, [])
+        with mock.patch.object(store, "save_data"):
+            sync.sync_igdb(data, settings, now=NOW.timestamp(), sleep=lambda s: None, keys={"igdb_id": "i", "igdb_secret": "s"}, request=req)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual((data["rel"]["celeste"]["igdb"]["id"], data["rel"]["celeste"]["igdb"]["coop"]), (2, {}))
+        self.assertTrue(data["rel"]["game-x"]["igdb"]["none"])
+        self.assertFalse(any("secret" in str(l) or "=s&" in str(l) for l in sync.status["log"]))
 
     def test_collection_view(self):
         data, settings = sample()
@@ -4885,10 +4937,10 @@ class UiContractTest(unittest.TestCase):
         "plan.others": {"code", "current", "diff", "estimated", "games_cost", "is_ref", "missing", "name", "tier"},
         "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
-        "spiele": {"dlc_entries", "entries", "games", "genres", "packs", "via_packs"},
+        "spiele": {"contra", "dlc_entries", "entries", "fixed", "games", "genres", "packs", "via_packs"},
         "spiele.games": {"bought", "coop", "developer", "genre", "hltb", "hours", "max", "mc", "mcu", "modes", "nin", "oc", "players",
                          "pack", "paid_online", "pegi", "pub_alt", "publisher", "read", "released", "s2", "score", "size_gb",
-                         "slug", "title", "usk", "via", "year", "year_alt", "mine", "langs"},
+                         "slug", "title", "usk", "via", "year", "year_alt", "mine", "langs", "gs"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "suggest", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
         "eshop": {"amount", "coll", "coll_game", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
@@ -4963,7 +5015,7 @@ class UiContractTest(unittest.TestCase):
             "collection": set(state["collection"]),
             "collection.games": keys(state["collection"]["games"]),
             "spiele": set(state["spiele"]),
-            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu", "pack", "pegi", "langs"},
+            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu", "pack", "pegi", "langs", "gs"},
             "nso": set(state["nso"]),
             "pay": keys(state["pay"].values()),
             "eshop": keys(planner.eshop_matches(dict(store.load_data(), _eshop={"picks": {}, "entries": [

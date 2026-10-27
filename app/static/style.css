@@ -659,7 +659,7 @@ details.gmenu .opts .mut{margin-left:auto;padding-left:10px;font-size:12px}
 details.gmenu .hint{margin:0}
 .glist{padding:4px 8px}
 /* Spiele (1.7.0): einzeilig, Titel höchstens 320 px, Spieler unter einem gemeinsamen Kopf */
-.gr{display:grid;grid-template-columns:minmax(150px,320px) 58px 48px 52px 40px minmax(0,1fr) 78px 70px 44px;gap:0 10px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
+.gr{display:grid;grid-template-columns:minmax(150px,320px) 58px 48px 52px 50px minmax(0,1fr) 78px 70px 44px;gap:0 10px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
 .gr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);row-gap:1px;align-items:end}
 .gr.nph>*{grid-row:2}
 .gr.nph .gh-sp{grid-row:1;grid-column:2/5;text-align:center;border-bottom:1px solid var(--line);font-size:10px;line-height:1.4}

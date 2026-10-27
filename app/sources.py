@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.7.1"
+VERSION = "1.7.2"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -804,7 +804,7 @@ def fetch_langs_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
 INFO_EU_FIELDS = ("nsuid_txt,title,pretty_game_categories_txt,players_from,players_to,play_mode_tv_mode_b,"
                   "play_mode_tabletop_mode_b,play_mode_handheld_mode_b,multiplayer_mode,paid_subscription_online_play_b,"
                   "publisher,dates_released_dts,age_rating_type,age_rating_value,system_names_txt,playable_on_txt,"
-                  "players_from_system_i,players_to_system_i,players_from_online_i,players_to_online_i,language_availability")
+                  "players_from_system_i,players_to_system_i,players_from_online_i,players_to_online_i,language_availability,url")
 
 
 def parse_info_eu(payload):
@@ -847,8 +847,45 @@ def parse_info_eu(payload):
         la = ",".join(str(v) for v in la) if isinstance(la, list) else la
         if isinstance(la, str) and la.strip():
             x["langs"] = list(dict.fromkeys(v.strip().lower() for v in la.split(",") if v.strip()))[:30]
+        if page_id(d.get("url")):
+            x["page"] = page_id(d["url"])          # Seitenkennung, für die GameShare-Liste (1.7.2)
         for n in d.get("nsuid_txt") or []:
             out[str(n)] = x
+    return out
+
+
+# GameShare (1.7.2): Nintendos Seite zur Switch 2 nennt in einer Tabelle die hervorgehobenen Spiele mit den
+# Spalten „lokal teilen“ und „online über GameChat teilen“ (Sí/No). Nur die spanische Seite führt die Spiele,
+# die deutsche zeigt nur, welche Konsole teilen kann (gesehen 26. und 27.10.2026). Die Liste ist nicht
+# vollständig: Fehlt ein Spiel, heißt das nicht, dass es kein GameShare hat
+GAMESHARE_URL = "https://www.nintendo.com/es-es/Hardware/Nintendo-Switch-2/GameShare/Nintendo-Switch-2-GameShare-2785626.html"
+_YES = {"sí", "si", "yes", "ja", "oui", "✓", "✔"}
+_NO = {"no", "nein", "non", "–", "-", "✕", "✗"}
+_PAGE_ID_RE = re.compile(r"-(\d{5,})\.html")
+
+
+def page_id(url):
+    """Kennung einer Seite von nintendo.com in Europa: die Zahl am Ende, in jeder Sprache dieselbe
+    (/es-es/…/Super-Mario-Odyssey-1173332.html und /en-gb/…-1173332.html)."""
+    m = _PAGE_ID_RE.search(str(url or ""))
+    return m.group(1) if m else None
+
+
+def parse_gameshare(page_html):
+    """Tabelle der GameShare-Spiele -> [{"t": Titel, "id": Seitenkennung oder None, "local": bool,
+    "online": bool}]. Eine Zeile zählt nur mit drei Zellen, die zweite und dritte Ja oder Nein."""
+    out = []
+    for row in re.findall(r"(?is)<tr\b[^>]*>(.*?)</tr>", _norm(page_html)):
+        cells = re.findall(r"(?is)<t[dh]\b[^>]*>(.*?)</t[dh]>", row)
+        if len(cells) < 3:
+            continue
+        txt = [re.sub(r"\s+", " ", html.unescape(_TAG_RE.sub(" ", c))).strip() for c in cells]
+        yn = [t.lower() for t in txt[1:3]]
+        if not txt[0] or not all(v in _YES or v in _NO for v in yn):
+            continue
+        href = re.search(r'(?i)href="([^"]+)"', cells[0])
+        out.append({"t": txt[0][:150], "id": page_id(href.group(1)) if href else None,
+                    "local": yn[0] in _YES, "online": yn[1] in _YES})
     return out
 
 

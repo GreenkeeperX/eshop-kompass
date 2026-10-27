@@ -99,5 +99,7 @@ Neue Wünsche, noch nicht eingeordnet.
   Runde 2 entschieden (27.10.2026): Tabelle bleibt, einzeilig, sortierbare Köpfe, Spalten Spiel ·
   Spieler · Koop · Genre · Metacritic · Spielzeit · Jahr; Pakete als ihre Spiele mit „aus: …“; Genre
   von Nintendo; Metacritic, sonst OpenCritic grau-kursiv (1.7.0, erledigt); „Mein Stand“ (Backlog,
-  angefangen, durchgespielt, Favorit) und Sprachen der Spiele (1.7.1, erledigt). Als Nächstes:
-  GameShare (Nintendos Liste), Koop genau über IGDB, Switch-2-Verbesserungen (erst Probe), eine Liste „Widersprüche“ unter „Zustand der Quellen“ mit geklärten Fällen samt Quelle im Repository.
+  angefangen, durchgespielt, Favorit) und Sprachen der Spiele (1.7.1, erledigt); GameShare, Koop
+  über IGDB und die Liste „Widersprüche“ mit Klarstellungen im Repository (1.7.2, erledigt). Offen:
+  Switch-2-Verbesserungen. Nintendos Liste ist keine Tabelle; der Verbindungstest zeigt seit 1.7.2,
+  ob die Europa-Suche zu einem Switch-2-Spiel passende Felder kennt.

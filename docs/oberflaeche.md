@@ -305,6 +305,15 @@ Einträge samt DLC). Code in `js/spiele.js`
   (`game_marks`), damit in der Sicherung; die Oberfläche zeigt den Klick sofort und speichert dann.
 - **Sprachen** (ab 1.7.1, Nintendo Europa): markiert wird nur die Ausnahme, „ohne Deutsch“ (`.lgt.no`)
   hinter dem Namen; in den Einzelheiten klein „Deutsch und n weitere Sprachen“, alle im Tooltip.
+- **Koop** (ab 1.7.2): von IGDB „lokal“, „online“ oder „beides“, Höchstzahl und geteilter Bildschirm im
+  Tooltip (`gCoop`, `gCoopTip`) und in den Einzelheiten; ohne IGDB „ja“, nur als Hinweis von
+  HowLongToBeat. Spielweisen „Koop an einer Konsole“ und „Koop online“ nur mit IGDB.
+- **GameShare** (ab 1.7.2): Marke „GameShare“ (`.lgt.de`) hinter dem Namen, Tooltip lokal und/oder
+  online; Spielweise „GameShare“; in den Einzelheiten. Quelle ist Nintendos Liste der hervorgehobenen
+  Spiele, fehlt die Marke, heißt das nicht „kein GameShare“.
+- **Widersprüche** (ab 1.7.2, `contraBox` in Einstellungen, Quellen und Abgleich, unter „Zustand der
+  Quellen“): klappbar, Zahl offen violett (`.warnc`), „keine offen“ grün, „Liste kopieren“; Tabelle
+  Spiel, Angabe, DekuDeals, Nintendo (violett). Geklärte Fälle stehen in `app/klarstellungen.json`.
 - **Mitgliedschaft:** Sagt Nintendo, das Online-Spiel braucht sie, steht es im Tooltip der Spalte
   Online und in den Einzelheiten („Online: mit Mitgliedschaft“).
 
@@ -636,7 +645,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Angenommener Preis (Was wäre, wenn) | Plan-Schritt (`planCard`, Zelle Einkaufspreis), „Wartet“ (`npRow`), Zeile oben (`assumedLine`), Legende (`openLegend`) |
 | Angebotsende und Angebotsbeginn | Hinweise oben im Kaufplan (`saleNews`), Plan-Schritt (`endCell`), Tabelle mit „Details“, Tooltips in Tabelle und Korb, „Wartet“ und „Noch auf der Wishlist“ (`npRow`) |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen; „Spiele“ eigenes Feld `#gq` mit `fold1` |
-| Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, violett bei Widerspruch, grau-kursiv OpenCritic) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`); Daten nur aus `planner.game_infos` |
+| Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, violett bei Widerspruch, grau-kursiv OpenCritic) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`), Widersprüche in den Einstellungen (`contraBox`); Daten nur aus `planner.game_infos` |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |
 | Ansichten und Reiter | `TABS`, `render()`, `viewSeg()`, `collSeg()` (Sammlung DLC | Spiele), `go()`/`goKorb()`; der Handy-Test `tests/ui_selbsttest.html` zählt jede Ansicht einzeln auf |

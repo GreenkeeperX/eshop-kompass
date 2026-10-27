@@ -12,7 +12,9 @@ const G_SORTS = [["name", "Name"], ["score", "Wertung"], ["hours", "Spielzeit, k
 // Spielweisen: mehrere gewählt heißt, alle müssen passen
 const G_HOW = [["couch", "An einer Konsole (ab 2)", "Mehrere Spieler an einer Konsole: Couch, Splitscreen, geteilte Joy-Con"],
   ["local", "Lokal drahtlos", "Mehrere Konsolen im selben Raum"], ["online", "Online", "Über das Internet, mit Mitgliedschaft"],
-  ["coop", "Koop", "Miteinander statt gegeneinander; bis IGDB dazukommt: laut HowLongToBeat gibt es eine Koop-Spielzeit"],
+  ["coop", "Koop", "Miteinander statt gegeneinander: laut IGDB, sonst kennt HowLongToBeat eine Koop-Spielzeit"],
+  ["coopl", "Koop an einer Konsole", "Laut IGDB Koop lokal"], ["coopo", "Koop online", "Laut IGDB Koop online"],
+  ["gs", "GameShare", "Laut Nintendos Liste mit GameShare: Freunde spielen mit, ohne das Spiel zu haben"],
   ["handheld", "Handheld", "Unterwegs spielbar"], ["tv", "TV", "Am Fernseher spielbar"]];
 // Mischungen: ein Klick setzt Filter und Sortierung (alles andere zurück), ein zweiter nimmt sie zurück
 const G_MIXES = [
@@ -66,6 +68,9 @@ function gFilter(d, games){
       if(h === "couch" && gPl(g, "offline") < Math.max(2, d.pl)) return false;
       if((h === "local" || h === "online") && gPl(g, h) < Math.max(2, d.pl || 0)) return false;
       if(h === "coop" && !g.coop) return false;
+      if(h === "coopl" && !(g.coop && g.coop.local)) return false;
+      if(h === "coopo" && !(g.coop && g.coop.online)) return false;
+      if(h === "gs" && !g.gs) return false;
       if((h === "handheld" || h === "tv") && !g.modes.some(m => m.n === h)) return false;
     }
     if(d.pl && !d.how.some(h => ["couch", "local", "online"].includes(h)) && (g.max || 0) < d.pl) return false;
@@ -91,7 +96,7 @@ function gSort(rows, d){
 }
 // Spaltenköpfe (1.7.0): Klick sortiert wie in der Wishlist; Zahlen, bei denen mehr besser ist, zuerst absteigend
 const G_COLS = {title: g => g.title, offline: g => gPl(g, "offline") || null, local: g => gPl(g, "local") || null,
-  online: g => gPl(g, "online") || null, coop: g => g.coop ? 1 : null, genre: g => g.genre.length ? g.genre[0].n : null,
+  online: g => gPl(g, "online") || null, coop: g => !g.coop ? null : Math.max(+g.coop.local || 0, +g.coop.online || 0, 1), genre: g => g.genre.length ? g.genre[0].n : null,
   mc: g => g.score ?? null, hours: g => g.hours ?? null, year: g => g.released || null};
 function gTh(k, label, tip, cls = "", d0 = 1){
   const s = S.sorts.spiele, on = !!(s && s.k === k);
@@ -164,13 +169,15 @@ function gBadges(g){
     const lab = miss.length === 1 ? `ohne ${G_MODE[miss[0]]}` : `nur ${ms.map(m => G_MODE[m]).join(", ")}`;
     b.push(`<span class="lgt de" title="${esc(`Spielbar: ${ms.map(m => G_MODE[m]).join(", ")}. Nicht: ${miss.map(m => G_MODE[m]).join(", ")}`)}">${lab}</span>`);
   }
+  // GameShare (1.7.2): laut Nintendos Liste der hervorgehobenen Spiele
+  if(g.gs) b.push(`<span class="lgt de" title="${esc(`GameShare laut Nintendo: ${[g.gs.local && "lokal", g.gs.online && "online über GameChat"].filter(Boolean).join(" und ")}. Freunde spielen mit, ohne das Spiel zu haben`)}">GameShare</span>`);
   // Sprachen (1.7.1): markiert wird nur die Ausnahme, ein Spiel ohne Deutsch
   if(g.langs && g.langs.length && !g.langs.includes("german")) b.push(`<span class="lgt no" title="${esc("Laut Nintendo Europa ohne Deutsch. Sprachen: " + langDe(g.langs.join(", ")))}">ohne Deutsch</span>`);
   return b.join("");
 }
 function gRow(g, pick){
   const open = S.gOpen === g.slug && !pick;
-  const coop = g.coop ? `<span title="Laut HowLongToBeat gibt es eine Koop-Spielzeit">ja</span>` : "";
+  const coop = gCoop(g);
   const cells = [["c-pl", "Konsole", gPlayers(g, "offline")], ["c-pl", "Lokal", gPlayers(g, "local")], ["c-pl", "Online", gPlayers(g, "online")],
     ["c-pl", "Koop", coop], ["c-gen", "Genre", gGenres(g)], ["r", "Metacritic", gScore(g)],
     ["r", "Spielzeit", g.hours ? `<span title="${esc(gHltbTip(g))}">${gHours(g.hours)}</span>` : ""], ["r", "Jahr", gYear(g)]];
@@ -181,6 +188,19 @@ function gRow(g, pick){
 const G_FILLED = {genre: "Genre", players: "Spieler", modes: "Spielmodi", mc: "Wertung", mcu: "Wertung", oc: "Wertung", hltb: "Spielzeit",
   released: "Erscheinen", developer: "Entwickler", publisher: "Verlag", age: "Alter", size_gb: "Größe", platform: "System"};
 const G_HLTB = {main: "Story", extra: "mit Nebenaufgaben", complete: "insgesamt", solo: "allein", coop: "Koop", vs: "gegeneinander", all: "alle Spielweisen"};
+/* Koop (1.7.2): von IGDB lokal, online oder beides, Höchstzahl im Tooltip; sonst „ja“ als Hinweis von HowLongToBeat */
+function gCoopTip(c){
+  if(!c) return "";
+  if(c.src !== "IGDB") return "Nur ein Hinweis: HowLongToBeat kennt eine Koop-Spielzeit";
+  const n = v => v === true ? "" : ` bis ${v}`;
+  return "Koop laut IGDB: " + ([c.local && `an einer Konsole${n(c.local)}`, c.online && `online${n(c.online)}`, c.split && "geteilter Bildschirm"].filter(Boolean).join(", ") || "ja, ohne Einzelheiten");
+}
+function gCoop(g){
+  const c = g.coop;
+  if(!c) return "";
+  const lab = c.local && c.online ? "beides" : c.local ? "lokal" : c.online ? "online" : "ja";
+  return `<span title="${esc(gCoopTip(c))}">${lab}</span>`;
+}
 function gHltbTip(g){
   return "HowLongToBeat (über DekuDeals): " + Object.entries(g.hltb || {}).map(([k, v]) => `${G_HLTB[k] || k} ${gHours(v)}`).join(", ");
 }
@@ -204,6 +224,8 @@ function gDetail(g){
   const mine = `<span class="seg gmark">${G_ST.map(([k, l, ic, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}">${ic} ${l}</button>`).join("")}</span> <button class="fb gfavb${m.fav ? " on" : ""}" data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}">${m.fav ? "★" : "☆"} Favorit</button>`;
   const top = item("Mein Stand", mine) + item("Wertung", score) + item("Spielzeit", hltb, "HowLongToBeat, über DekuDeals") + item("DLC", dlc) +
     item("Erschienen", rel, who || "") + item("USK", age, ageTip) + (odd ? item("Spieler", odd, "DekuDeals und Nintendo nennen verschiedene Zahlen") : "") +
+    (g.coop && g.coop.src === "IGDB" ? item("Koop", esc(gCoopTip(g.coop).replace("Koop laut IGDB: ", "")), "IGDB") : "") +
+    (g.gs ? item("GameShare", [g.gs.local && "lokal", g.gs.online && "online"].filter(Boolean).join(", "), "Laut Nintendos Liste der hervorgehobenen GameShare-Spiele") : "") +
     (g.paid_online ? item("Online", "mit Mitgliedschaft", "Laut Nintendo braucht das Online-Spiel die Nintendo Switch Online-Mitgliedschaft") : "");
   const pk = g.pack ? `aus ${esc(g.pack.title)}${g.pack.filled && g.pack.filled.length ? ` <span title="${esc("Von der Seite des Pakets, weil die Seite des Spiels sie nicht nennt: " + g.pack.filled.map(k => G_FILLED[k] || k).filter((x, i, a) => a.indexOf(x) === i).join(", "))}">(Angaben teils vom Paket)</span>` : ""}` : "";
   const langs = g.langs && g.langs.length ? `<span title="${esc("Sprachen laut Nintendo Europa: " + langDe(g.langs.join(", ")))}">${g.langs.includes("german") ? `Deutsch${g.langs.length > 1 ? ` und ${g.langs.length - 1} weitere Sprachen` : ""}` : `<span class="gno">ohne Deutsch</span>`}</span>` : "";
@@ -241,7 +263,7 @@ function viewGames(){
   const pickCard = d.mix === "surprise" ? `<section class="box gpick"><h3>Vorschlag${label ? ` <span class="mut">${esc(label)}</span>` : ""}</h3>
     ${pick.length ? `<div class="glist">${pick.map(g => gRow(g, true)).join("")}</div>` : `<p class="hint">Nichts passt zu den Filtern.</p>`}
     <p class="gpa"><button data-act="gmixoff" data-v="surprise">Schließen</button> <button class="primary" data-act="gmix" data-v="surprise">Noch mal</button></p></section>` : "";
-  const head = `<div class="gr nph" role="row"><span class="gh-sp" aria-hidden="true">Spieler</span>${gTh("title", "Spiel", "", "gh-t")}${gTh("offline", "Konsole", "Spieler an einer Konsole (Couch, Splitscreen)", "", -1)}${gTh("local", "Lokal", "Spieler mit mehreren Konsolen im selben Raum", "", -1)}${gTh("online", "Online", "Spieler online", "", -1)}${gTh("coop", "Koop", "Laut HowLongToBeat gibt es eine Koop-Spielzeit", "", -1)}${gTh("genre", "Genre", "Von Nintendo, sonst DekuDeals")}${gTh("mc", "Metacritic", "Grau und kursiv: keine Metacritic-Wertung, dafür OpenCritic", "r", -1)}${gTh("hours", "Spielzeit", "HowLongToBeat: Story, sonst allein", "r")}${gTh("year", "Jahr", "", "r", -1)}</div>`;
+  const head = `<div class="gr nph" role="row"><span class="gh-sp" aria-hidden="true">Spieler</span>${gTh("title", "Spiel", "", "gh-t")}${gTh("offline", "Konsole", "Spieler an einer Konsole (Couch, Splitscreen)", "", -1)}${gTh("local", "Lokal", "Spieler mit mehreren Konsolen im selben Raum", "", -1)}${gTh("online", "Online", "Spieler online", "", -1)}${gTh("coop", "Koop", "Laut IGDB: lokal, online oder beides; „ja“: nur ein Hinweis von HowLongToBeat", "", -1)}${gTh("genre", "Genre", "Von Nintendo, sonst DekuDeals")}${gTh("mc", "Metacritic", "Grau und kursiv: keine Metacritic-Wertung, dafür OpenCritic", "r", -1)}${gTh("hours", "Spielzeit", "HowLongToBeat: Story, sonst allein", "r")}${gTh("year", "Jahr", "", "r", -1)}</div>`;
   const note = `<p class="hint">${rows.length === all.length ? `Alle ${all.length} Spiele` : `${rows.length} von ${all.length} Spielen`}. Angaben von DekuDeals, Nintendo prüft gegen: violett heißt, Nintendo nennt etwas anderes (Tooltip). Genre von Nintendo.</p>`;
   if(!all.length) return collTop() + tools + `<p class="mut">Noch keine Spiele bekannt.</p>`;
   return collTop() + tools + mixes + filters + pickCard + note +

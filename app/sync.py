@@ -1819,7 +1819,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
     summary(f"{status['done']} Seiten gelesen")
 
 
-NIN_V = 3        # 1.6.2: Spielerzahl an einer Konsole und online getrennt; 1.7.1: Sprachen. Ältere neu holen
+NIN_V = 4        # 1.6.2: Spielerzahl je Spielweise; 1.7.1: Sprachen; 1.7.2: Seitenkennung. Ältere neu holen
 
 
 def sync_game_info_eu(data, fetch, sleep, now=None, settings=None):
@@ -1854,6 +1854,153 @@ def sync_game_info_eu(data, fetch, sleep, now=None, settings=None):
              f"{sum(1 for s in games if (rel[s].get('nin') or {}).get('at') and not rel[s]['nin'].get('none'))} "
              f"von {len(games)} mit europäischer ID bestätigt")
     store.save_data(data)
+
+
+GAMESHARE_RECHECK = 7 * 24 * 3600     # Nintendos GameShare-Liste wöchentlich (1.7.2)
+
+
+def sync_gameshare(data, settings, fetch, now=None):
+    """GameShare (1.7.2): Nintendos Liste der hervorgehobenen Spiele, eine Seite, wöchentlich. Ablage
+    data.gameshare {rows, at}; bei einem Fehler bleibt die alte Liste."""
+    now = now or time.time()
+    gs = data.get("gameshare") or {}
+    if now - (gs.get("at") or 0) < GAMESHARE_RECHECK:
+        return
+    try:
+        rows = sources.parse_gameshare(fetch(sources.GAMESHARE_URL))
+    except Exception as e:
+        _log(f"GameShare: Nintendos Liste nicht abrufbar ({e}), nächster Versuch in einem Tag")
+        data["gameshare"] = dict(gs, at=now - GAMESHARE_RECHECK + 86400)
+        return
+    if not rows:
+        _log("GameShare: Warnung, keine Spiele in Nintendos Liste gefunden (Seite umgebaut?), alte Liste bleibt")
+        data["gameshare"] = dict(gs, at=now)
+        return
+    data["gameshare"] = {"rows": rows, "at": now}
+    mine = sum(1 for g in planner.game_infos(data, settings)["games"] if g.get("gs"))
+    _log(f"GameShare: {len(rows)} Spiele in Nintendos Liste, {mine} davon in deiner Sammlung")
+    store.save_data(data)
+
+
+# IGDB (1.7.2): Koop genau (lokal, online, Höchstzahl, Splitscreen), mit deinem Twitch-Schlüssel. Ein Abruf
+# je Spiel, höchstens IGDB_PER_SYNC je Abgleich, danach halbjährlich. Ohne Schlüssel nichts
+IGDB_V = 1
+IGDB_PER_SYNC = 30
+IGDB_RECHECK = 182 * 24 * 3600
+IGDB_PAUSE = 0.3          # IGDB erlaubt 4 Anfragen je Sekunde
+IGDB_GAME_FIELDS = ("fields name,game_modes.name,platforms.name,parent_game,version_parent,"
+                    "multiplayer_modes.platform.name,multiplayer_modes.onlinecoop,multiplayer_modes.onlinecoopmax,"
+                    "multiplayer_modes.offlinecoop,multiplayer_modes.offlinecoopmax,multiplayer_modes.splitscreen; limit 10;")
+
+
+def _igdb_name(t):
+    """Name zum Vergleichen mit IGDB: ohne „Nintendo Switch 2 Edition“ und Zusätze nach „+“ oder „–“ am Ende."""
+    t = re.sub(r"(?i)\s*[–—-]\s*nintendo switch 2 edition.*$", "", str(t or ""))
+    return planner._tnorm(t)
+
+
+_EDITION = re.compile(r"\b(edition|deluxe|remaster(ed)?|hd|complete|definitive|goty|game of the year|director s cut|final cut)\b")
+
+
+def igdb_pick(title, games):
+    """Bester Treffer der IGDB-Suche für einen Titel, sonst None. Der Name muss passen (gleich, oder
+    gleich bis auf einen Untertitel); Hauptspiele vor DLC und Fassungen, Switch vor anderen Systemen."""
+    want, best = _igdb_name(title), (0, None)
+    for g in games or []:
+        n = _igdb_name(g.get("name"))
+        if not n:
+            continue
+        # gleich; oder IGDB hängt einen Untertitel an; oder der Titel hier eine Fassung („Deluxe Edition“)
+        rest = want[len(n):] if want.startswith(n + " ") else ""
+        score = 4 if n == want else 2 if (n.startswith(want + " ") or _EDITION.search(rest)) else 0
+        if not score:
+            continue
+        score += 0 if g.get("parent_game") or g.get("version_parent") else 1
+        score += 1 if any("switch" in str((p or {}).get("name", "")).lower() for p in g.get("platforms") or []) else 0
+        if score > best[0]:
+            best = (score, g)
+    return best[1]
+
+
+def igdb_coop(g):
+    """Koop eines IGDB-Spiels: {"local": Höchstzahl oder True, "online": …, "split": bool}; {} ohne Koop.
+    Angaben für die Switch gehen vor, sonst gilt die erste Plattform mit Angaben."""
+    modes = [str((m or {}).get("name", "")) for m in g.get("game_modes") or []]
+    mm = [m for m in g.get("multiplayer_modes") or [] if isinstance(m, dict)]
+    sw = [m for m in mm if "switch" in str((m.get("platform") or {}).get("name", "")).lower()]
+    m = (sw or mm or [{}])[0]
+    out = {}
+    for k, on, mx in (("local", "offlinecoop", "offlinecoopmax"), ("online", "onlinecoop", "onlinecoopmax")):
+        if m.get(on):
+            out[k] = m.get(mx) if isinstance(m.get(mx), int) and m.get(mx) > 1 else True
+    if m.get("splitscreen"):
+        out["split"] = True
+    if not out and "Co-operative" in modes:
+        out["any"] = True
+    return out
+
+
+def sync_igdb(data, settings, now=None, sleep=time.sleep, keys=None, request=None):
+    """Koop-Angaben von IGDB für die Spiele der Sammlung (1.7.2). Ablage rel[Spiel].igdb {id, name, coop,
+    at, v}; ohne passenden Treffer {none, at, v}. Der Schlüssel steht nie im Protokoll."""
+    now = now or time.time()
+    keys = store.load_keys() if keys is None else keys
+    request = request or sources.request
+    rel = data.get("rel") or {}
+    games = [s for s in planner.owned_games(data, settings) if s in rel and not rel[s].get("parent")]
+    due = [s for s in games if now - ((rel[s].get("igdb") or {}).get("at") or 0) >= IGDB_RECHECK
+           or (rel[s].get("igdb") or {}).get("v", 0) < IGDB_V]
+    if not (keys.get("igdb_id") and keys.get("igdb_secret")):
+        if due:
+            _log(f"IGDB: kein Schlüssel eingetragen, Koop für {len(due)} Spiele nur als Hinweis von HowLongToBeat")
+        return
+    if not due:
+        _log(f"IGDB: nichts fällig, {sum(1 for s in games if (rel[s].get('igdb') or {}).get('id'))} von {len(games)} Spielen gefunden")
+        return
+    r = request("https://id.twitch.tv/oauth2/token", data=urllib.parse.urlencode(
+        {"client_id": keys["igdb_id"], "client_secret": keys["igdb_secret"], "grant_type": "client_credentials"}).encode())
+    try:
+        token = json.loads(r["text"] or "{}").get("access_token") if not r["error"] else None
+    except ValueError:
+        token = None
+    if not token:
+        _log(f"IGDB: kein Zugang (Twitch HTTP {r['status']}), Schlüssel prüfen")
+        return
+    found = done = 0
+    for s in due[:IGDB_PER_SYNC]:
+        if done:
+            sleep(IGDB_PAUSE)
+        title = rel[s].get("title") or s.replace("-", " ")
+        body = f'search {json.dumps(_clean_name(_igdb_title(title)), ensure_ascii=False)}; {IGDB_GAME_FIELDS}'.encode()
+        r = request("https://api.igdb.com/v4/games", data=body, headers={
+            "Client-ID": keys["igdb_id"], "Authorization": f"Bearer {token}", "Accept": "application/json"})
+        if r["error"] or r["status"] != 200:
+            _log(f"IGDB: HTTP {r['status']} bei „{title[:40]}“" + (", abgebrochen" if r["status"] in sources.BLOCKED else ""))
+            if r["status"] in sources.BLOCKED:
+                break
+            continue
+        try:
+            g = igdb_pick(title, json.loads(r["text"] or "[]"))
+        except ValueError:
+            continue
+        done += 1
+        if g:
+            found += 1
+            rel[s]["igdb"] = {"id": g.get("id"), "name": str(g.get("name") or "")[:150], "coop": igdb_coop(g),
+                              "modes": [str((m or {}).get("name", "")) for m in g.get("game_modes") or []][:8],
+                              "at": now, "v": IGDB_V}
+        else:
+            rel[s]["igdb"] = {"none": True, "at": now, "v": IGDB_V}
+    if done:
+        left = len(due) - done
+        _log(f"IGDB: {found} von {done} Spielen gefunden" + (f", {left} folgen beim nächsten Abgleich" if left > 0 else "")
+             + f"; {sum(1 for x in games if (rel[x].get('igdb') or {}).get('id'))} von {len(games)} mit Koop-Angaben")
+        store.save_data(data)
+
+
+def _igdb_title(t):
+    """Suchbegriff für IGDB: ohne „– Nintendo Switch 2 Edition“, sonst findet die Suche oft nur die Edition."""
+    return re.sub(r"(?i)\s*[–—-]\s*nintendo switch 2 edition.*$", "", str(t or "")).strip() or str(t or "")
 
 
 def sync_extra_ids(data, settings, fetch, sleep, now=None, report=True):
@@ -2154,6 +2301,8 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
         safe(sync_lows, data, settings, fetch, sleep)
         safe(sync_related, data, settings, fetch, sleep)
         safe(sync_game_info_eu, data, fetch, sleep, settings=settings)    # Spielinfos von Nintendo bestätigen (1.6.0)
+        safe(sync_gameshare, data, settings, fetch)                         # GameShare-Liste, wöchentlich (1.7.2)
+        safe(sync_igdb, data, settings)                                     # Koop von IGDB, mit Schlüssel (1.7.2)
         safe(sync_extra_ids, data, settings, fetch, sleep, report=False)
         safe(sync_titledb, data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
         safe(sync_eshop_names, data, fetch)           # Kauftitel aus Japan und anderen Ländern zuordnen (0.72)
@@ -2197,6 +2346,8 @@ SOURCE_LINES = (
     ("lang_jp", "Sprachen Japan", r"^Sprachen Japan"),
     ("lang_am", "Sprachen Amerika", r"^Sprachen Amerika"),
     ("ginfo", "Spielinfos", r"^Spielinfos (DekuDeals|Nintendo)"),
+    ("gameshare", "GameShare", r"^GameShare"),
+    ("igdb", "IGDB", r"^IGDB"),
     ("titledb", "titledb", r"^(titledb|IDs fehlender DLC aus titledb|Englische Namen gekaufter Titel)"),
     ("fx", "Wechselkurse", r"^Wechselkurse"),
     ("cards", "Kartenshops", r"^Kartenpreise"),
@@ -2374,7 +2525,8 @@ def diagnose(sleep=time.sleep):
 
 
 # Felder der Europa-Suche, die nach Spielinfos klingen (Genre, Spieler, Spielweise, Koop, Teilen)
-INFO_FIELD = re.compile(r"(?i)categor|genre|player|play_?mode|coop|co_op|multi|online|local|share|feature|publisher|age_rating")
+INFO_FIELD = re.compile(r"(?i)categor|genre|player|play_?mode|coop|co_op|multi|online|local|share|feature|publisher|age_rating|"
+                        r"switch_?2|ns2|upgrade|gamechat|mouse|^url$")
 
 
 def info_probe(probe, data, sleep=time.sleep, deku=None):
@@ -2383,7 +2535,9 @@ def info_probe(probe, data, sleep=time.sleep, deku=None):
     Sammlung, und was steht auf Nintendos GameShare-Seite? Nur Probe, nichts wird gespeichert.
     deku: (Kürzel, Text) einer schon gelesenen DekuDeals-Artikelseite, kostet keinen Abruf."""
     lines, ids, names, page = [], [], [], []
-    for slug in data.get("owned") or []:
+    # Ein Spiel der Switch 2 zuerst (1.7.2): zeigt, ob die Suche Felder zu GameShare oder Switch-2-Verbesserungen kennt
+    owned = sorted(data.get("owned") or [], key=lambda x: "switch-2" not in x)
+    for slug in owned:
         it = data["items"].get(slug) or {}
         eu = ((it.get("ids") or {}).get("EU") or [None])[0]
         if eu and str(eu) not in ids:
@@ -2434,14 +2588,12 @@ def info_probe(probe, data, sleep=time.sleep, deku=None):
         # Was der Abgleich davon ablegt (1.6.0), zum Vergleich mit den Fundstellen
         lines.append(f"Spielinfos DekuDeals gelesen: {json.dumps(sources.parse_game_info(deku[1]), ensure_ascii=False) or '{}'}")
     # GameShare: eine Sammelseite je Region mit Spalten lokal und online (Spanien gesehen 26.10.2026)
-    for gs in GAMESHARE_URLS:
-        sleep(1)
-        r = probe("GameShare-Liste", gs, None, lambda t: (
-            f"{len(t)} Zeichen, Titel „{(sources.page_title(t) or '')[:60]}“, Tabellenzeilen "
-            f"{len(_TR_RE.findall(t))}, Anfang der Tabelle: "
-            + (sources.visible_text(t[t.lower().find('<table'):])[:300] if '<table' in t.lower() else "keine Tabelle")))
-        if r.get("status") == 200:
-            break
+    # Ab 1.7.2 liest der Abgleich die spanische Seite; die Probe zeigt, was der Parser daraus macht
+    sleep(1)
+    probe("GameShare-Liste", sources.GAMESHARE_URL, None, lambda t: (
+        f"{len(t)} Zeichen, Tabellenzeilen {len(_TR_RE.findall(t))}, gelesen: "
+        + ("; ".join(f"{r['t'][:40]} ({'lokal' if r['local'] else ''}{'+' if r['local'] and r['online'] else ''}{'online' if r['online'] else ''}, Seite {r['id'] or '?'})"
+                     for r in sources.parse_gameshare(t)) or "nichts")))
     # Wikidata: offen, ohne Schlüssel. Spielmodus (P404), Genre (P136), Plattform (P400), Spieler (P1872/P1873)
     sleep(1)
     probe("Wikidata", WIKIDATA_URL + "?" + urllib.parse.urlencode({"query": wikidata_query(names), "format": "json"}),
@@ -2450,9 +2602,6 @@ def info_probe(probe, data, sleep=time.sleep, deku=None):
     return lines
 
 
-GAMESHARE_URLS = (
-    "https://www.nintendo.com/de-de/Hardware/Nintendo-Switch-2/GameShare/Nintendo-Switch-2-GameShare-2785626.html",
-    "https://www.nintendo.com/es-es/Hardware/Nintendo-Switch-2/GameShare/Nintendo-Switch-2-GameShare-2785626.html")
 WIKIDATA_URL = "https://query.wikidata.org/sparql"
 _TR_RE = re.compile(r"(?i)<tr[\s>]")
 

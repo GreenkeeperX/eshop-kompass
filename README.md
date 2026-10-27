@@ -714,6 +714,14 @@ Switch-2-Upgrade und Spiele, die nicht alle Spielmodi haben („ohne Handheld“
   durchgespielt und einen Favoriten. Die Zeile zeigt es als ○, ▶, ✓ und ★ hinter dem Namen. Der Filter
   „Mein Stand“ und die Mischung „Aus dem Backlog“ nutzen es, „Überrasch mich“ wählt dann daraus. Der
   Stand liegt in den Einstellungen und damit in der Sicherung.
+- **Koop und GameShare** (ab 1.7.2): Mit einem IGDB-Schlüssel (Einstellungen, Quellen und Abgleich)
+  holt der Abgleich je Spiel, ob Koop an einer Konsole, online oder beides geht, mit Höchstzahl im
+  Tooltip; 30 Spiele je Abgleich, danach halbjährlich. Ohne Schlüssel bleibt „ja“ als Hinweis von
+  HowLongToBeat. GameShare kommt wöchentlich aus Nintendos Liste der hervorgehobenen Spiele (eine
+  Seite) und steht als Marke am Namen. Die Liste ist nicht vollständig.
+- **Widersprüche** (ab 1.7.2): Unter „Zustand der Quellen“ listet das Tool, wo Nintendo etwas anderes
+  nennt als DekuDeals. Jeder Fall wird einmal geklärt und mit Quelle in `app/klarstellungen.json`
+  eingetragen; die Klarstellung gilt dann vor beiden Quellen.
 - **Sprachen und Mitgliedschaft** (ab 1.7.1): Laut Nintendo Europa ohne Deutsch heißt „ohne Deutsch“
   am Namen. Braucht das Online-Spiel die Mitgliedschaft, sagt es der Tooltip der Spalte Online.
 - **Herkunft:** Die Angaben kommen von DekuDeals. Nennt die Nintendo-Suche etwas anderes (Spieler an

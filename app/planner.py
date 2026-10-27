@@ -5,7 +5,10 @@ Beträge in Landeswährung werden intern als ganze Hundertstel gerechnet.
 Seit 0.86 liegen Teile in eigenen Dateien: cards (Guthabenkarten), titles (Namen, Käufe, Besitz),
 kaufplan und membership. planner reicht alle ihre Namen weiter, planner.X gilt also überall wie bisher.
 """
+import functools
 import importlib
+import json
+import os
 import re
 from datetime import datetime, timedelta, timezone
 from itertools import combinations
@@ -1700,6 +1703,55 @@ def _pub(name):
                                               str(name or "").lower()))
 
 
+_S2_CUT = re.compile(r"\s+[–—-]\s+Nintendo Switch 2 Edition", re.I)
+CLARIFY_FILE = os.path.join(os.path.dirname(__file__), "klarstellungen.json")
+
+
+@functools.lru_cache(maxsize=1)
+def clarifications():
+    """Geklärte Widersprüche zwischen DekuDeals und Nintendo (1.7.2), im Repository mit Quelle:
+    {Spiel: {"players.offline" | "players.online" | "year" | "publisher": {"v": Wert, "src": Adresse,
+    "note": Text, "date": JJJJ-MM-TT}}}. Öffentliche Angaben zu Spielen, nichts aus einem Konto."""
+    try:
+        with open(CLARIFY_FILE, encoding="utf-8") as f:
+            d = json.load(f)
+        return {k: v for k, v in d.items() if isinstance(v, dict) and not k.startswith("_")}
+    except (OSError, ValueError):
+        return {}
+
+
+def _clarify(g, fix):
+    """Eine Klarstellung gilt vor beiden Quellen, der Widerspruch verschwindet."""
+    for key, c in fix.items():
+        if not isinstance(c, dict) or "v" not in c:
+            continue
+        if key.startswith("players.") and key[8:] in g["players"]:
+            g["players"][key[8:]] = {"v": c["v"], "ok": True, "src": "geklärt", "fix": c.get("src")}
+        elif key == "year" and g.get("year"):
+            g.update(year=str(c["v"]), year_ok=True, year_alt=None, year_fix=c.get("src"))
+        elif key == "publisher" and g.get("publisher"):
+            g.update(publisher=c["v"], pub_ok=True, pub_alt=None, pub_fix=c.get("src"))
+
+
+def contradictions(games):
+    """Liste „Widersprüche“ (1.7.2): wo Nintendo etwas anderes nennt als DekuDeals und noch keine
+    Klarstellung gilt. [{slug, title, what, deku, nin}]"""
+    out = []
+    lab = {"offline": "Spieler an einer Konsole", "local": "Spieler lokal drahtlos", "online": "Spieler online"}
+    rng = lambda v: "ja" if not v else str(v[1]) if v[0] == v[1] else f"{v[0]}–{v[1]}"
+    for g in games:
+        for k, p in g["players"].items():
+            if p.get("alt"):
+                out.append({"slug": g["slug"], "title": g["title"], "what": lab[k], "key": "players." + k,
+                            "deku": rng(p["v"]), "nin": rng(p["alt"])})
+        if g.get("year_alt"):
+            out.append({"slug": g["slug"], "title": g["title"], "what": "Jahr", "key": "year", "deku": g["year"], "nin": g["year_alt"]})
+        if g.get("pub_alt"):
+            out.append({"slug": g["slug"], "title": g["title"], "what": "Verlag", "key": "publisher",
+                        "deku": g["publisher"], "nin": g["pub_alt"]})
+    return out
+
+
 def game_infos(data, settings):
     """Ansicht „Spiele“ der Sammlung (1.6.1): je Spiel die Spielinfos von DekuDeals (rel.info), geprüft
     gegen die Nintendo-Europa-Suche (rel.nin). DekuDeals gilt; nennt Nintendo etwas anderes, steht der
@@ -1720,6 +1772,16 @@ def game_infos(data, settings):
     games = set(slugs)
     packs = {s for s in slugs if any(p in games for p in links.get(s) or {})}
     marks = settings.get("game_marks") or {}
+    # GameShare (1.7.2): Nintendos Liste, je Seitenkennung und je Name (auch ohne „– Nintendo Switch 2 Edition …“)
+    gs_id, gs_name = {}, {}
+    for r in (data.get("gameshare") or {}).get("rows") or []:
+        if r.get("id"):
+            gs_id[str(r["id"])] = r
+        t0 = r.get("t") or ""
+        for t in {t0, t0.split(" + ")[0], _S2_CUT.split(t0)[0]}:
+            if _tnorm(t):
+                gs_name.setdefault(_tnorm(t), r)
+    fixes = clarifications()
 
     def pack_of(slug):
         """Das Paket der Sammlung, aus dem ein Spiel kommt (auch über Zwischenstufen), sonst None."""
@@ -1779,7 +1841,17 @@ def game_infos(data, settings):
         g["paid_online"] = ni.get("online") is True       # Nintendo: Online-Spiel braucht die Mitgliedschaft
         dm, nm = di.get("modes") or [], ni.get("modes") or []
         g["modes"] = [{"n": m, "ok": m in dm and m in nm} for m in ("tv", "tabletop", "handheld") if m in dm or m in nm]
-        g["coop"] = bool((di.get("hltb") or {}).get("coop"))           # bis IGDB: Koop-Spielzeit heißt Koop
+        # Koop (1.7.2): genau von IGDB, sonst nur der Hinweis, dass HowLongToBeat eine Koop-Spielzeit kennt
+        ig = e.get("igdb") or (pe.get("igdb") if pk else None) or {}
+        if ig.get("coop"):
+            g["coop"] = dict(ig["coop"], src="IGDB")
+        elif (di.get("hltb") or {}).get("coop"):
+            g["coop"] = {"any": True, "src": "HowLongToBeat"}
+        else:
+            g["coop"] = False
+        gsr = gs_id.get(str(ni.get("page") or "")) or gs_name.get(_tnorm(title)) or gs_name.get(_tnorm(_S2_CUT.split(title)[0]))
+        if gsr:
+            g["gs"] = {"local": bool(gsr.get("local")), "online": bool(gsr.get("online"))}
         for k in ("mc", "mcu", "oc", "hltb", "developer", "size_gb"):
             if di.get(k) not in (None, "", {}):
                 g[k] = di[k]
@@ -1801,6 +1873,7 @@ def game_infos(data, settings):
                 m = re.match(r"(USK|PEGI)\s+(\S+)", a)
                 if m:
                     g.setdefault(m.group(1).lower(), m.group(2))
+        _clarify(g, fixes.get(slug) or {})
         if slug in bought:
             g["bought"] = bought[slug]
         g["score"] = di.get("mc") or di.get("oc")
@@ -1819,6 +1892,7 @@ def game_infos(data, settings):
     for g in out:
         g["genre"].sort(key=lambda x: rank[x["n"]])
     return {"games": out, "genres": sorted(genres.items(), key=lambda x: (-x[1], x[0])),
+            "contra": contradictions(out), "fixed": sum(1 for s in fixes if s in games),
             "entries": len(owned_list), "dlc_entries": sum(1 for s in owned_list if (rel.get(s) or {}).get("parent")),
             "via_packs": sum(1 for g in out if g["via"]), "packs": len(packs),
             "read": sum(1 for g in out if g["read"]), "with_info": sum(1 for g in out if g["genre"] or g["players"]),
