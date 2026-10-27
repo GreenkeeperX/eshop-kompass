@@ -3174,9 +3174,13 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual(len(calls), n)                    # monatlich
         g = next(x for x in planner.game_infos(data, settings)["games"] if x["slug"] == "game-a")
         self.assertEqual((g["s2"], g["mc"], g["players"]["online"]["v"], g["hltb"]), ("upgrade", 88, [1, 8], {"solo": 10.0}))
-        # Wertungen nur zusammen (1.7.8): OpenCritic der Switch-1-Seite fällt weg, statt sich zu mischen
-        self.assertEqual(g["ed"]["diff"], {"mc": 80, "oc": 70, "players": {"offline": [1, 2], "online": [1, 4]}})
-        self.assertNotIn("oc", g)
+        # Wertung (1.7.9): Metacritic der Edition vor dem der Switch-1-Seite; OpenCritic bleibt, wo die Edition keins hat
+        self.assertEqual(g["ed"]["diff"], {"mc": 80, "players": {"offline": [1, 2], "online": [1, 4]}})
+        self.assertEqual(g["oc"], 70)
+        # Edition ohne Metacritic: der Wert der Switch-1-Seite geht vor ihrem OpenCritic
+        a["s2"]["info"] = {"oc": 78}
+        g = next(x for x in planner.game_infos(data, settings)["games"] if x["slug"] == "game-a")
+        self.assertEqual((g["mc"], g["oc"], g["score"], g["ed"]["diff"]), (80, 78, 80, {"oc": 70}))
         self.assertNotIn("alt", g["players"]["online"])    # Nintendos Zahl gilt dem Switch-1-Spiel
         self.assertTrue(g["players"]["offline"]["ok"])
         self.assertEqual(sync.edition_slug("x-upgrade", "x"), "x-nintendo-switch-2-edition")

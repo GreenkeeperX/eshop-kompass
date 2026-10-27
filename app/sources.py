@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.7.8"
+VERSION = "1.7.9"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
