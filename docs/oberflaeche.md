@@ -311,7 +311,7 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
 - **Einzelheiten** (`gDetail`, ab 1.7.0, ab 1.7.3 wieder untereinander, Entscheidung 27.10.2026): links
   die Fakten als Name und Wert (`.gdf`, Spalte Spiel), Mein Stand (`.gdm`) ab 1.7.4 unter den mittleren
   Spalten ab den Spielern, darunter klein der Rest. Offene Zeile und Einzelheiten liegen ab 1.7.4 auf
-  abgesetztem Grund, ab 1.7.5 dunkler als die Liste (`--open`, ab 1.7.6 zwischen Liste und Seitengrund;
+  abgesetztem Grund, ab 1.7.5 dunkler als die Liste (`--open`, ab 1.7.7 im Dunkeln der Seitengrund `--bg`, im Hellen zwischen Liste und Seitengrund;
   `--best` war im Dunkeln heller). Knöpfe von Mein Stand auf Kartengrund, gewählt mit leichtem Grau statt
   Akzent und nicht fett (sonst wächst der Knopf), damit die farbigen Symbole sichtbar bleiben. USK 16 blau, USK 18 rot (ab
   1.7.5, `.usk16`, `.usk18`, wie die Farben der USK). Wertungen in denselben Farben wie die Tabelle (`.gsc`, Nutzer mal
@@ -327,7 +327,9 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
 - **Mein Stand** (ab 1.7.1): in den Einzelheiten, `.seg.gmark` „○ Backlog | ▷ angefangen |
   ✓ durchgespielt“ (Klick auf den gewählten nimmt ihn zurück) und daneben als zweite Gruppe gleicher Höhe
   „☆ Favorit“ (an: „★“). Ab 1.7.4 farbig, in Knöpfen und Zeile gleich (`.gst`, `.gfav`): ○ rot (`--stop`),
-  ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold); ○ und ▷ ab 1.7.5 höher (in Knöpfen 1,5 px, hinter dem Titel ab 1.7.6 2,5 px), sonst hängen sie durch; ab 1.7.6
+  ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold); ○ und ▷ ab 1.7.5 höher (in Knöpfen 1,5 px), sonst hängen sie durch. Hinter dem Titel ab 1.7.7 in einem
+  Kasten fester Höhe (14 px), mittig zur Zeile statt an der Grundlinie, damit die Zeile nicht springt, auch
+  wenn eine Ersatzschrift die Zeichen größer zeichnet; ✓ und ★ dort etwas größer (15 px); ab 1.7.6
   mit feiner Kontur kräftiger (`-webkit-text-stroke`, fett ändert diese Zeichen kaum). In der Zeile hinter dem Namen nur, was
   gesetzt ist (`.gme`), Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
   durchgespielt, Favoriten, ohne Stand), Mischung „Aus dem Backlog“. Gespeichert in den Einstellungen

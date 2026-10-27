@@ -13,14 +13,14 @@
   --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
   --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --go-mark:transparent; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
-  --open:#181c1a; --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
+  --open:var(--bg); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }}
 :root[data-theme=dark]{color-scheme:dark;
   --bg:#141816; --card:#1c211f; --ink:#e7ebe8; --muted:#97a19b; --line:#2e3532;
   --accent:#cdd6d1; --warn:#cfa2ee; --warn-bg:#2f2338;
   --sale:#ff8a80; --best:#262c29; --chip:#262c29; --gold:#f2c14e; --gold-ink:#2b2000;
   --go:#5fd0a5; --go-bg:#183328; --go-fill:#22694b; --on-go:#f3fbf6; --go-mark:transparent; --stop:#ff8a80; --stop-bg:#3b1c19; --deal:#8cc0e8; --brand:#ff3d48;
-  --open:#181c1a; --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
+  --open:var(--bg); --gg-s:28%; --gg-bl:21%; --gg-ts:45%; --gg-tl:80%; --sc-s:60%; --sc-l:66%;
 }
 :root[data-theme=light]{color-scheme:light}
 *{box-sizing:border-box}
@@ -685,12 +685,16 @@ details.gmenu .hint{margin:0}
 .chip.gg{background:hsl(var(--gh) var(--gg-s) var(--gg-bl));color:hsl(var(--gh) var(--gg-ts) var(--gg-tl))}
 .gsc{color:hsl(var(--sh) var(--sc-s) var(--sc-l));font-weight:600}
 .galt{color:var(--muted);font-style:italic}
-.gme{flex:none;margin-left:6px;display:inline-flex;gap:3px;font-size:12px}
+/* Symbole hinter dem Titel (1.7.7): feste Höhe, mittig zur Zeile statt an der Grundlinie, damit nichts springt, auch wenn
+   eine Ersatzschrift die Zeichen größer zeichnet */
+.gme{flex:none;margin-left:6px;display:inline-flex;gap:4px;align-items:center;align-self:center;height:14px;line-height:14px;font-size:13px}
+.gme>span{display:inline-block;height:14px;line-height:14px}
+.gme .gst.done,.gme .gfav{font-size:15px}
 .gst.backlog{color:var(--stop)}
 .gst.started{color:var(--deal)}
 .gst{-webkit-text-stroke:.5px currentColor}     /* kräftiger, fett ändert die Zeichen kaum (1.7.6) */
 .gst.backlog,.gst.started{position:relative;top:-1.5px}
-.gme .gst.backlog,.gme .gst.started{top:-2.5px}     /* hinter dem Titel hingen sie sonst durch (1.7.6) */     /* ○ und ▷ sitzen sonst tiefer als ✓ und ★ (1.7.5) */
+.gme .gst.backlog,.gme .gst.started{top:-1px}     /* ○ und ▷ sitzen in der Schrift tiefer als ✓ und ★ */
 .usk16{color:var(--deal);font-weight:600}
 .usk18{color:var(--stop);font-weight:600}
 .gst.done{color:var(--go)}
