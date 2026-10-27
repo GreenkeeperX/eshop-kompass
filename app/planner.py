@@ -1703,6 +1703,7 @@ def _pub(name):
                                               str(name or "").lower()))
 
 
+ED_KEYS = ("players", "modes", "mc", "mcu", "oc", "hltb", "size_gb")
 _S2_CUT = re.compile(r"\s+[–—-]\s+Nintendo Switch 2 Edition", re.I)
 CLARIFY_FILE = os.path.join(os.path.dirname(__file__), "klarstellungen.json")
 
@@ -1814,6 +1815,20 @@ def game_infos(data, settings):
         sysn = " ".join([str(di.get("platform") or "")] + [str(x) for x in ni.get("sys") or []]).lower()
         g["s2"] = ("edition" if _S2.search(" " + _tnorm(title)) else "upgrade" if any(d in owned for d in ups)
                    else "switch2" if "switch 2" in sysn else None)
+        # Switch-2-Edition (1.7.4): Hast du das Upgrade-Paket, gelten Spieler, Wertung und Spielzeit von der
+        # Seite der Edition; was dort anders steht, nennt "ed" mit dem Wert der Switch-1-Seite
+        base_pl = dict(di.get("players") or {})
+        s2e = e.get("s2") or {}
+        if g["s2"] == "upgrade" and s2e.get("info"):
+            diff = {}
+            for k in ED_KEYS:
+                v = s2e["info"].get(k)
+                if v in (None, "", [], {}):
+                    continue
+                if di.get(k) not in (None, "", [], {}) and di[k] != v:
+                    diff[k] = di[k]
+                di[k] = v
+            g["ed"] = {"slug": s2e.get("slug"), "title": s2e.get("title") or s2e.get("slug"), "diff": diff}
         # Genre (1.7.0): Nintendo Europa trennt feiner (23 statt 12 Genres), ohne Nintendo-Angabe DekuDeals
         dg = list(dict.fromkeys(_genre(x) for x in di.get("genre") or []))
         ng = list(dict.fromkeys(_genre(x) for x in ni.get("genre") or []))
@@ -1824,6 +1839,9 @@ def game_infos(data, settings):
         # Nintendos players_to allein ist die Höchstzahl über alle Spielweisen und taugt nicht zum Vergleich
         pl = di.get("players") or {}
         npl = {"offline": ni.get("sys_pl"), "online": ni.get("on_pl")}
+        for k in list(npl):                         # Nintendos Angabe gilt dem Switch-1-Spiel
+            if base_pl.get(k) != pl.get(k):
+                npl[k] = None
         players = {}
         for k in ("offline", "local", "online"):
             if pl.get(k):

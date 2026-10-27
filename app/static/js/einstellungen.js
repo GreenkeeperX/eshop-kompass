@@ -104,8 +104,8 @@ function viewSettings(){
       <p style="margin-top:6px"><button type="button" data-act="savekeys">Schlüssel speichern</button>${S.state.keys && S.state.keys.igdb ? ` <button class="link" type="button" data-act="dropkeys">entfernen</button>` : ""}</p></details>
     <details class="fold" data-k="srcstate" ${S.folds.srcstate ? "open" : ""}><summary class="hint">Zustand der Quellen: ${srcSummary()}</summary>${srcTable()}</details>
     ${contraBox()}
-    <div class="fields" style="margin-top:10px;max-width:260px"><label class="f" title="Wie oft Wishlist und Preise neu geholt werden. Wechselkurse nur, wenn die Quelle neue hat (einmal am Tag); was sonst wie oft geholt wird, steht in docs/abrufe.md.">Abgleich alle … Stunden<input form="setForm" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}"></label></div>
-    <p style="margin-top:10px"><button type="button" class="primary" data-act="sync" ${S.state.status && S.state.status.running ? "disabled" : ""} title="Wie „Aktualisieren“ oben: Abgleich von Hand, übergeht Ruhezeiten, nicht Sperren">${S.state.status && S.state.status.running ? "Abgleich läuft …" : "Aktualisieren"}</button> <button type="button" data-act="diag">Verbindung testen</button></p>
+    <p class="autos" title="Wie oft Wishlist und Preise neu geholt werden. Wechselkurse nur, wenn die Quelle neue hat (einmal am Tag); was sonst wie oft geholt wird, steht in docs/abrufe.md. Ohne Häkchen gleicht das Tool nur ab, wenn du „Aktualisieren“ klickst."><label><input form="setForm" type="checkbox" name="auto_sync" ${s.auto_sync !== false ? "checked" : ""}> automatisch alle</label> <input form="setForm" class="numh" name="refresh_hours" type="number" step="1" min="1" value="${s.refresh_hours}" aria-label="Stunden zwischen zwei Abgleichen"> Stunden</p>
+    <p style="margin-top:10px"><button type="button" class="primary slimp" data-act="sync" ${S.state.status && S.state.status.running ? "disabled" : ""} title="Wie „Aktualisieren“ oben: Abgleich von Hand, übergeht Ruhezeiten, nicht Sperren">${S.state.status && S.state.status.running ? "Abgleich läuft …" : "Aktualisieren"}</button> <button type="button" data-act="diag">Verbindung testen</button></p>
     <details class="fold" data-k="diagbox" id="diagWrap" ${S.diagText ? "" : "hidden"} ${S.diagText ? "open" : ""}><summary class="hint">Verbindungstest <span id="diagCopy"> · <button class="link" type="button" data-act="copy" data-t="diag">Ergebnis kopieren</button></span></summary>
     <pre class="log" id="diag">${esc(S.diagText || "")}</pre></details>
     <details class="fold" data-kc="logbox" ${S.folds.logbox ? "" : "open"}><summary class="hint">Protokoll des letzten Abgleichs · <button class="link" type="button" data-act="copy" data-t="log">kopieren</button></summary>
@@ -146,6 +146,7 @@ function settingsBody(form){
   for(const k of ["wishlist_url","collection_url","current_country","card_fee_pct","gift_markup_pct","shop_fee_pct","shop_fee_eur","refresh_hours","lang_rule","cashback_pct"])
     body[k] = form.elements[k].inputMode === "decimal" ? nv(form.elements[k]) : form.elements[k].value;
   for(const t of ["1","2","3"]) body.tier_min_saving[t] = nv(form.elements["tier" + t]);
+  body.auto_sync = !!(form.elements.auto_sync && form.elements.auto_sync.checked);
   body.deal_eur = {buy: nv(form.elements.deal_buy), good: nv(form.elements.deal_good), mini: nv(form.elements.deal_mini)};
   body.zero = {left: nv(form.elements.zero_left), near: nv(form.elements.zero_near)};
   body.eur_card_steps = {top: nv(form.elements.eur_top), good: nv(form.elements.eur_good), ok: nv(form.elements.eur_ok)};

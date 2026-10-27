@@ -248,7 +248,8 @@ nicht springt; links daneben „95 Spiele (119 Einträge bei DekuDeals, davon 30
 Paketen)“. Der Kasten der DLC-Ansicht nennt deshalb nicht mehr „119 Spiele in der Sammlung“ (das waren
 Einträge samt DLC). Ab 1.7.3 hat die DLC-Ansicht keinen eigenen Kasten mehr: Die Zeile „90 Spiele (…)“ ist
 dort die Kopfzeile einer Klappe (`details.cfold`, `data-kc="ctop"`, offen als Vorgabe), darunter die
-Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot) und „So funktioniert die Sammlung“. Code in `js/spiele.js`
+Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot; ab 1.7.4 wieder farbig: „mit offenen“ und „DLC
+fehlen“ violett, „ohne“ grün, „im Angebot“ blau) und „So funktioniert die Sammlung“. Code in `js/spiele.js`
 (`viewGames`), Daten aus `state.spiele` (`planner.game_infos`).
 
 - **Werkzeugzeile:** eigenes Suchfeld `#gq` (Name, Genre, Verlag, Entwickler; `fold1` wie `hits`),
@@ -269,8 +270,9 @@ Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot) und „So funktioniert die
 - **Raster** `.gr` (ab 1.7.0, Entscheidung 27.10.2026): jede Zeile einzeilig und gleich hoch. Spalten
   (ab 1.7.3) Spiel (breiteste Spalte, 1,5 Teile gegen 1 Teil Genre, normale Schrift in Textfarbe, zu
   lang mit „…“, voller Name im Tooltip; fett nur, solange die Einzelheiten offen sind) · Spieler
-  (Konsole | Lokal | Online unter einem gemeinsamen Kopf `.gh-sp`) · Koop · Metacritic · Genre ·
-  Spielzeit · Jahr. Die Köpfe sortieren per Klick (`gTh`, wie `sth`, `S.sorts.spiele`); Spieler, Koop,
+  (Konsole | Lokal | Online unter einem gemeinsamen Kopf `.gh-sp`) · Koop · Metacritic · Spielzeit ·
+  Genre · Jahr (ab 1.7.4 Spielzeit vor Genre, trennt die bunten Genres von der bunten Wertung; Breiten
+  in `--gcols`, die Einzelheiten nutzen dasselbe Raster). Die Köpfe sortieren per Klick (`gTh`, wie `sth`, `S.sorts.spiele`); Spieler, Koop,
   Metacritic und Jahr zuerst absteigend (`data-d0="-1"`). Spieler sortieren nach der Höchstzahl, bei
   gleicher die kleinere Mindestzahl zuerst (1–8 vor 4–8, `gPlKey`). Leere Zellen: grauer Strich `G_NIL`.
 - **Marken am Namen** im Stil von DE✓ (`.lgt.de`): „Switch 2“ oder „S2-Upgrade“ (Upgrade-Paket in der
@@ -301,7 +303,11 @@ Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot) und „So funktioniert die
   Koop-Spielzeit bei HowLongToBeat.
 - **Vollständig:** alle Spiele auf einmal, kein „weitere zeigen“ (Entscheidung 27.10.2026).
 - **Einzelheiten** (`gDetail`, ab 1.7.0, ab 1.7.3 wieder untereinander, Entscheidung 27.10.2026): links
-  die Fakten als Name und Wert (`.gdf`), rechts daneben Mein Stand (`.gdm`), darunter klein der Rest.
+  die Fakten als Name und Wert (`.gdf`, Spalte Spiel), Mein Stand (`.gdm`) ab 1.7.4 unter den mittleren
+  Spalten ab den Spielern, darunter klein der Rest. Offene Zeile und Einzelheiten liegen ab 1.7.4 auf
+  leicht abgesetztem Grund (`--best`). Wertungen in denselben Farben wie die Tabelle (`.gsc`, Nutzer mal
+  zehn). Mit Upgrade-Paket zuerst „Angaben: Switch-2-Edition“ (Link) und klein, was die Switch-1-Seite
+  anders nennt (ab 1.7.4).
   Reihenfolge: Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
   Nebenaufgaben“, „insgesamt“, „Koop“ …), DLC mit den Farben der DLC-Ansicht (`collSum`: grün vorhanden,
   violett fehlt, rot ignoriert) und „zu den DLC“, Erschienen (Tooltip: Entwickler und Verlag), USK (nur
@@ -309,10 +315,11 @@ Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot) und „So funktioniert die
   mit Mitgliedschaft“, wenn Nintendo das sagt. Darunter eine kleine graue Zeile: Größe, Kaufdatum,
   Paket, Link zu DekuDeals und ob Nintendo geprüft hat. Spielmodi stehen nicht mehr da (nur die Marke am
   Namen bei Abweichung).
-- **Mein Stand** (ab 1.7.1): in den Einzelheiten zuerst, `.seg.gmark` „○ Backlog | ▶ angefangen |
-  ✓ durchgespielt“ (Klick auf den gewählten nimmt ihn zurück) und daneben „☆ Favorit“ (`.fb`, an: „★“).
-  In der Zeile hinter dem Namen nur, was gesetzt ist (`.gme`): ○ grau, ▶ Textfarbe, ✓ grün, ★
-  Textfarbe, Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
+- **Mein Stand** (ab 1.7.1): in den Einzelheiten, `.seg.gmark` „○ Backlog | ▷ angefangen |
+  ✓ durchgespielt“ (Klick auf den gewählten nimmt ihn zurück) und daneben als zweite Gruppe gleicher Höhe
+  „☆ Favorit“ (an: „★“). Ab 1.7.4 farbig, in Knöpfen und Zeile gleich (`.gst`, `.gfav`): ○ rot (`--stop`),
+  ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold). In der Zeile hinter dem Namen nur, was
+  gesetzt ist (`.gme`), Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
   durchgespielt, Favoriten, ohne Stand), Mischung „Aus dem Backlog“. Gespeichert in den Einstellungen
   (`game_marks`), damit in der Sicherung; die Oberfläche zeigt den Klick sofort und speichert dann.
 - **Sprachen** (ab 1.7.1, Nintendo Europa): markiert wird nur die Ausnahme, „ohne Deutsch“ (`.lgt.no`)
@@ -320,7 +327,7 @@ Zahlen (mit DLC, ohne DLC, fehlen, Preis, im Angebot) und „So funktioniert die
 - **Koop** (ab 1.7.2): von IGDB „lokal“, „online“ oder „beides“, Höchstzahl und geteilter Bildschirm im
   Tooltip (`gCoop`, `gCoopTip`) und in den Einzelheiten; ohne IGDB „ja“, nur als Hinweis von
   HowLongToBeat. Spielweisen „Koop an einer Konsole“ und „Koop online“ nur mit IGDB.
-- **GameShare** (ab 1.7.2): Marke „GameShare“ (`.lgt.de`) hinter dem Namen, Tooltip lokal und/oder
+- **GameShare** (ab 1.7.2): Marke „GameShare“ (ab 1.7.4 `.lgt.gsh`, blauer Rand und Hauch, hebt sich von „Switch 2“ ab) hinter dem Namen, Tooltip lokal und/oder
   online; Spielweise „GameShare“; in den Einzelheiten. Quelle ist Nintendos Liste der hervorgehobenen
   Spiele, fehlt die Marke, heißt das nicht „kein GameShare“.
 - **Widersprüche** (ab 1.7.2, `contraBox` in Einstellungen, Quellen und Abgleich, unter „Zustand der
@@ -630,7 +637,9 @@ die Felder in „Grenzen anpassen“ und „Gebühren anpassen“. „Quellen un
 igdbkey, ab 1.4.3: Kopf „eingetragen“ grün oder „keiner“, Passwortfelder ohne gespeicherten Wert),
 „Zustand der Quellen“ (`data-k` srcstate, zu von Haus aus; Kopf „n ok, m mit Problem (…)“, Zahl ok
 grün, Problem violett; Tabelle je Quelle mit Zustand, Zeit und Zeile aus dem Protokoll), dann
-„Abgleich alle … Stunden“, „Aktualisieren“ (ab 1.5.2, wie der Knopf oben) und „Verbindung testen“, die Klappe „Verbindungstest“ (erst nach einem Test) und
+„☑ automatisch alle [6] Stunden“ (ab 1.7.4 wie im VR-Navigator: Häkchen `auto_sync`, schmales Zahlenfeld
+`.numh`; ohne Häkchen zeigt die Kopfzeile „Abgleich nur von Hand“), „Aktualisieren“ (ab 1.5.2, wie der
+Knopf oben, ab 1.7.4 so flach wie „Verbindung testen“, `.slimp`) und „Verbindung testen“, die Klappe „Verbindungstest“ (erst nach einem Test) und
 „Protokoll des letzten Abgleichs · kopieren“ (offen von Haus aus, `data-kc` logbox). Ein Knopf in
 einer Klappzeile schaltet die Klappe nicht um.
 Kästen in einer Karte haben den Seitenhintergrund (`--bg`). Jede Klappe und jeder Kasten einer Karte

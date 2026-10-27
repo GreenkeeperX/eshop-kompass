@@ -85,7 +85,8 @@ keine Zusatzpakete, Daten in `./data/`).
 
 Der erste Abgleich startet von selbst. Er sucht je Titel die Nintendo-IDs, liest Sprachen und
 Tiefstpreise und braucht dafür einige Minuten; was in einem Lauf nicht fertig wird, folgt beim
-nächsten. Danach gleicht das Tool im eingestellten Abstand ab (Vorgabe 6 Stunden) und
+nächsten. Danach gleicht das Tool im eingestellten Abstand ab (Vorgabe 6 Stunden; ab 1.7.4 abschaltbar mit
+dem Häkchen „automatisch alle … Stunden“, dann nur noch von Hand) und
 zusätzlich fünf Minuten nach jedem Start, etwa nach einem Update. Lief der letzte Abgleich
 vor weniger als 30 Minuten, entfällt der beim Start.
 
@@ -695,10 +696,10 @@ DekuDeals, der Preis „x € in Land“ zum Preisverlauf dort für dieses Land.
   Spiele je Anfrage. Spiele ohne diese Angaben kommen im DLC-Schritt zuerst dran, bei 40 Seiten je
   Abgleich ist eine Sammlung von gut hundert Spielen nach drei Abgleichen vollständig.
 
-**Ansicht „Spiele“** (ab 1.6.1, Tabelle überarbeitet in 1.7.0 und 1.7.3): jedes Spiel der Sammlung
-in einer Zeile: Spieler an einer Konsole, lokal drahtlos und online, Koop, Metacritic, Genre,
-Spielzeit (HowLongToBeat, Story) und Jahr. Ein Klick auf einen Spaltenkopf sortiert, ein Klick auf den
-Namen zeigt die Einzelheiten untereinander, Mein Stand rechts daneben: Wertung, Spielzeit je Art, DLC
+**Ansicht „Spiele“** (ab 1.6.1, Tabelle überarbeitet in 1.7.0, 1.7.3 und 1.7.4): jedes Spiel der Sammlung
+in einer Zeile: Spieler an einer Konsole, lokal drahtlos und online, Koop, Metacritic, Spielzeit
+(HowLongToBeat, Story), Genre und Jahr. Ein Klick auf einen Spaltenkopf sortiert, ein Klick auf den
+Namen zeigt die Einzelheiten untereinander, Mein Stand daneben unter den mittleren Spalten: Wertung, Spielzeit je Art, DLC
 (grün vorhanden, violett fehlt, rot ignoriert, mit Link in die DLC-Ansicht), Erscheinen (Entwickler
 und Verlag im Tooltip) und USK (PEGI im Tooltip), darunter klein Größe, Kaufdatum, Paket und Quelle.
 Marken am Namen zeigen Switch 2, Switch-2-Upgrade und Spiele, die nicht alle Spielmodi haben („ohne
@@ -707,13 +708,13 @@ Handheld“).
 - **Genre:** von Nintendo Europa (23 Genres statt 12 bei DekuDeals, trennt besser), ohne
   Nintendo-Angabe von DekuDeals. Alle Genres als sanft farbige Blasen (verwandte Genres in ähnlichen
   Farben, ab 1.7.3), in fester Reihenfolge: das seltenere, also genauere zuerst, „Sonstiges“ zuletzt.
-- **Wertung:** Metacritic, vor dem Genre, fein gestuft von Rot (50) über Gelb nach Grün (95). Fehlt
+- **Wertung:** Metacritic, vor Spielzeit und Genre (auch in den Einzelheiten farbig), fein gestuft von Rot (50) über Gelb nach Grün (95). Fehlt
   sie, steht OpenCritic grau und kursiv da; der Tooltip nennt OpenCritic und die Nutzerwertung.
 - **Spieler sortieren:** nach der Höchstzahl, bei gleicher die kleinere Mindestzahl zuerst (1–8 vor 4–8).
 - **Pakete:** Ein Paket steht nicht als eigene Zeile da, sondern seine Spiele, jedes mit „aus: …“.
   Fehlt eine Angabe auf der Seite des Spiels, kommt sie von der Seite des Pakets.
 - **Mein Stand** (ab 1.7.1): In den Einzelheiten setzt du je Spiel Backlog, angefangen oder
-  durchgespielt und einen Favoriten. Die Zeile zeigt es als ○, ▶, ✓ und ★ hinter dem Namen. Der Filter
+  durchgespielt und einen Favoriten. Die Zeile zeigt es als ○ (rot), ▷ (blau), ✓ (grün) und ★ (gelb) hinter dem Namen. Der Filter
   „Mein Stand“ und die Mischung „Aus dem Backlog“ nutzen es, „Überrasch mich“ wählt dann daraus. Der
   Stand liegt in den Einstellungen und damit in der Sicherung.
 - **Koop und GameShare** (ab 1.7.2): Mit einem IGDB-Schlüssel (Einstellungen, Quellen und Abgleich)
@@ -721,6 +722,11 @@ Handheld“).
   Tooltip; 30 Spiele je Abgleich, danach halbjährlich. Ohne Schlüssel bleibt „ja“ als Hinweis von
   HowLongToBeat. GameShare kommt wöchentlich aus Nintendos Liste der hervorgehobenen Spiele (eine
   Seite) und steht als Marke am Namen. Die Liste ist nicht vollständig.
+- **Switch-2-Edition** (ab 1.7.4): Hast du das Upgrade-Paket (in der Sammlung oder laut eShop-Käufen),
+  liest der Abgleich zusätzlich die DekuDeals-Seite der Switch-2-Edition. Spieler, Spielmodi,
+  Wertung, Spielzeit und Größe kommen dann von dort; die Einzelheiten nennen „Angaben: Switch-2-Edition“
+  und, was die Switch-1-Seite anders sagt. Kommt das Paket später dazu, liest der nächste Abgleich die
+  Seite, danach monatlich wie die übrigen.
 - **Widersprüche** (ab 1.7.2): Unter „Zustand der Quellen“ listet das Tool, wo Nintendo etwas anderes
   nennt als DekuDeals. Jeder Fall wird einmal geklärt und mit Quelle in `app/klarstellungen.json`
   eingetragen; die Klarstellung gilt dann vor beiden Quellen.

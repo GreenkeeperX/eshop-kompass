@@ -1707,6 +1707,35 @@ def _log_links(notes):
         _log(f"Pakete: {len(notes) - 10} weitere Änderungen")
 
 
+def edition_slug(upgrade, game):
+    """Kürzel der Switch-2-Edition zu einem Upgrade-Paket: bei DekuDeals das Kürzel des Pakets ohne
+    „-upgrade-pack“, sonst das des Spiels plus „-nintendo-switch-2-edition“."""
+    if upgrade.endswith("-upgrade-pack") and "switch-2-edition" in upgrade:
+        return upgrade[:-len("-upgrade-pack")]
+    return game + "-nintendo-switch-2-edition"
+
+
+def edition_due(data, settings, games, now):
+    """Spiele der Sammlung mit vorhandenem Upgrade-Paket, deren Edition-Seite fehlt oder älter als einen
+    Monat ist (1.7.4). Kommt das Paket später dazu, ist die Seite gleich beim nächsten Abgleich dran.
+    [(Spiel, Kürzel der Edition)], nie gelesene zuerst"""
+    rel = data.get("rel") or {}
+    owned = planner.owned_set(data, settings)
+    out = []
+    for g in sorted(games):
+        e = rel.get(g) or {}
+        if e.get("parent"):
+            continue
+        up = next((d for d, t in e.get("dlc") or [] if planner.is_upgrade(d, t) and d in owned), None)
+        if not up:
+            continue
+        ed, old = edition_slug(up, g), e.get("s2") or {}
+        if old.get("slug") == ed and old.get("v", 0) >= INFO_V and now - old.get("at", 0) < REL_RECHECK_SECONDS:
+            continue
+        out.append((old.get("slug") == ed, old.get("at", 0), g, ed))
+    return [(g, ed) for *_, g, ed in sorted(out)]
+
+
 def sync_related(data, settings, fetch, sleep, now=None):
     """Liest DLC, Pakete ("Included In") und Inhalt ("Contains") der Artikelseiten von
     Sammlung und Wishlist. Schonend: höchstens REL_PER_SYNC Seiten je Abgleich,
@@ -1735,10 +1764,11 @@ def sync_related(data, settings, fetch, sleep, now=None):
     todo = todo[:REL_PER_SYNC]
     # Fehlende DLC: ihre Pakete kennt das Tool aus der ID-Suche; wessen Seite länger nicht
     # gelesen wurde, wird mit dem Rest des Budgets nachgesehen (rel bleibt dafür unberührt)
+    s2_todo = edition_due(data, settings, games, now)[:REL_PER_SYNC - len(todo)]
     lchk = data.get("lchk") or {}
     links_todo = sorted((lchk.get(s, 0), s) for s in (data.get("extra") or {})
                         if now - lchk.get(s, 0) >= LINKS_RECHECK_SECONDS)
-    links_todo = [s for _, s in links_todo[:REL_PER_SYNC - len(todo)]]
+    links_todo = [s for _, s in links_todo[:REL_PER_SYNC - len(todo) - len(s2_todo)]]
     def summary(head):
         games = [s for s in deku if s in rel and not rel[s].get("parent")]
         _log(f"DLC und Pakete: {head}; bekannt sind {len(games)} Spiele der Sammlung, "
@@ -1752,11 +1782,28 @@ def sync_related(data, settings, fetch, sleep, now=None):
                  + (f"; Warnung, {len(blank)} gelesene Seiten ohne Kasten „Details“ (hat DekuDeals die Seite umgebaut?)"
                     if len(blank) >= 3 else ""))
     blank = []
-    if not todo and not links_todo:
+    if not todo and not links_todo and not s2_todo:
         summary("nichts fällig")
         return
-    _step("DLC und Pakete lesen", len(todo) + len(links_todo))
+    _step("DLC und Pakete lesen", len(todo) + len(links_todo) + len(s2_todo))
     fails, notes, kept = 0, [], []
+    for game, ed in s2_todo:
+        # Seite der Switch-2-Edition (1.7.4): nur ihre Spielinfos, unter rel[Spiel].s2
+        try:
+            info = sources.fetch_item(ed, "de", fetch=fetch)
+            rel[game]["s2"] = {"slug": ed, "title": info.get("title"), "info": info.get("info") or {},
+                               "at": now, "v": INFO_V}
+        except sources.FetchError as e:
+            if e.status == 404:
+                rel[game]["s2"] = {"slug": ed, "none": True, "at": now, "v": INFO_V}
+            elif e.status in sources.BLOCKED or fails >= 4:
+                _log(f"DLC und Pakete unterbrochen ({e}), Rest beim nächsten Abgleich")
+                todo, links_todo = [], []
+                break
+            else:
+                fails += 1
+        status["done"] += 1
+        sleep(LOW_PAUSE)
     for slug in links_todo:
         try:
             info = sources.fetch_item(slug, "de", fetch=fetch)
@@ -1803,7 +1850,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
             eu = next((n for cc in EU_SHOPS for n in (info.get("eshop_ids") or {}).get(cc) or []), None)
             if eu or old.get("eu"):
                 rel[slug]["eu"] = eu or old["eu"]
-            for k in ("nin",):
+            for k in ("nin", "igdb", "s2"):
                 if k in old:
                     rel[slug][k] = old[k]
         notes += update_links(data, slug, r, now)
@@ -2779,7 +2826,7 @@ def scheduler():
                     (now - datetime.fromisoformat(data["last_sync"])).total_seconds() < BOOT_MIN_AGE:
                 boot_at = None                 # gerade erst abgeglichen
             failed = status["finished"] if status["ok"] is False else None
-            if sync_due(data.get("last_sync"), settings["refresh_hours"], now, boot_at, failed) \
+            if settings.get("auto_sync", True) and sync_due(data.get("last_sync"), settings["refresh_hours"], now, boot_at, failed) \
                     and settings["wishlist_url"] and not status["running"]:
                 run_sync()
                 boot_at = None

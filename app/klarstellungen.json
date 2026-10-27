@@ -1,3 +1,14 @@
 {
-  "_hinweis": "Geklärte Widersprüche zwischen DekuDeals und Nintendo (ab 1.7.2). Je Spiel (Kürzel bei DekuDeals) und Angabe: der richtige Wert, die Quelle der Klärung und das Datum. Schlüssel: players.offline, players.online, year, publisher. Nur öffentliche Angaben zu Spielen."
+  "_hinweis": "Geklärte Widersprüche zwischen DekuDeals und Nintendo (ab 1.7.2). Je Spiel (Kürzel bei DekuDeals) und Angabe: der richtige Wert, die Quelle der Klärung und das Datum. Schlüssel: players.offline, players.online, year, publisher. Nur öffentliche Angaben zu Spielen.",
+  "fortnite": {
+    "players.online": {
+      "v": [
+        1,
+        100
+      ],
+      "src": "https://en.wikipedia.org/wiki/Fortnite_Battle_Royale",
+      "note": "Battle Royale: bis zu 100 Spieler je Runde. Nintendos US-Seite nennt selbst beides, Online 1–99 und 1–100",
+      "date": "2026-10-27"
+    }
+  }
 }

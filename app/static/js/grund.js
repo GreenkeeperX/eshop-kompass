@@ -398,9 +398,11 @@ function renderHead(){
   } else {
     const last = S.state.last_sync ? new Date(S.state.last_sync) : null;
     const stale = last && Date.now() - last > 2 * hours * 3600000;
-    let next = last ? new Date(+last + hours * 3600000) : null;
-    if(st.boot_sync && (!next || new Date(st.boot_sync) < next)) next = new Date(st.boot_sync);   // einmal nach dem Start
-    m.innerHTML = `<span class="${stale ? "warnc" : ""}" title="${last ? esc(last.toLocaleString("de-DE")) : ""}">Stand ${ago(S.state.last_sync)}</span>` +
+    const auto = S.state.settings.auto_sync !== false;    // 1.7.4: automatischer Abgleich abschaltbar
+    let next = last && auto ? new Date(+last + hours * 3600000) : null;
+    if(auto && st.boot_sync && (!next || new Date(st.boot_sync) < next)) next = new Date(st.boot_sync);   // einmal nach dem Start
+    m.innerHTML = `<span class="${stale && auto ? "warnc" : ""}" title="${last ? esc(last.toLocaleString("de-DE")) : ""}">Stand ${ago(S.state.last_sync)}</span>` +
+      (!auto ? " · Abgleich nur von Hand" : "") +
       (next ? ` · nächster Abgleich ${next < new Date() ? "in Kürze" : "ca. " + whenDay(next) + clock(next)}` : "") +
       ` · ${S.state.item_count} Titel · v${esc(S.state.version)}`;
   }

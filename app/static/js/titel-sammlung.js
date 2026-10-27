@@ -133,8 +133,8 @@ function viewCollection(){
   // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)
   const nDone = c.games.filter(g => !g.missing).length;
   const priced = c.missing_eur !== null && c.missing_eur !== undefined;
-  h += collTop(`<div class="cstatb"><div class="cstat"><span><b>${c.games.length}</b> mit DLC <span class="mut">(${c.games.length - nDone} mit offenen, ${nDone} ohne)</span></span><span><b>${(c.plain || []).length}</b> ohne DLC</span></div>
-    ${missing ? `<div class="cstat"><span><b>${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b>${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}
+  h += collTop(`<div class="cstatb"><div class="cstat"><span><b>${c.games.length}</b> mit DLC <span class="mut">(<span class="warnc">${c.games.length - nDone}</span> mit offenen, <span class="gn">${nDone}</span> ohne)</span></span><span><b>${(c.plain || []).length}</b> ohne DLC</span></div>
+    ${missing ? `<div class="cstat"><span><b class="warnc">${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b class="dealn">${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}
     <details class="fold" data-k="collhow" ${S.folds.collhow ? "open" : ""}><summary class="hint">So funktioniert die Sammlung</summary><p class="hint" style="margin:2px 0 8px">Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details></div>`);
   h += tools + `<div id="collopen">${games.map(collGame).join("")}</div>`;

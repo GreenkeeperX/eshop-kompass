@@ -3144,6 +3144,48 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual((by["clip"]["read"], by["clip"]["usk"], by["clip"]["pegi"], by["clip"]["nin"]), (True, "6", "3", True))
         self.assertIsNone(by["game-a"]["via"])
 
+    def test_switch2_edition_page(self):
+        # 1.7.4: Mit Upgrade-Paket liest der Abgleich die Seite der Switch-2-Edition (auch wenn das Paket
+        # später dazukommt), die Ansicht nimmt Spieler, Wertung und Spielzeit von dort
+        data, settings = sample()
+        t0 = NOW.timestamp()
+        up = "game-a-nintendo-switch-2-edition-upgrade-pack"
+        data["owned"] = ["game-a"]
+        data["rel"] = {s: {"checked": t0, "v": sync.REL_V, "title": s, "dlc": [], "in": [], "has": [], "iv": sync.INFO_V}
+                       for s in ("game-a",) + tuple(data["items"])}
+        a = data["rel"]["game-a"]
+        a.update(dlc=[[up, "Game A – Nintendo Switch 2 Edition Upgrade Pack"]],
+                 info={"mc": 80, "players": {"offline": [1, 2], "online": [1, 4]}, "hltb": {"solo": 10.0}},
+                 nin={"at": 1, "sys_pl": [1, 2], "on_pl": [1, 4]})
+        calls = []
+
+        def fake(url, ua=None):
+            calls.append(url)
+            return ('<title>Game A – Nintendo Switch 2 Edition | Deku Deals</title><li>Metacritic: 88</li>'
+                    '<li>Number of players:<ul><li>Offline: 1 - 2</li><li>Online: 1 - 8</li></ul></li>')
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 3600)
+        self.assertEqual(calls, [])                        # Paket noch nicht vorhanden
+        data["owned"].append(up)
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 3600)
+        self.assertEqual(sum("/items/game-a-nintendo-switch-2-edition?" in u for u in calls), 1)
+        n = len(calls)
+        self.assertEqual((a["s2"]["slug"], a["s2"]["info"]["mc"]), ("game-a-nintendo-switch-2-edition", 88))
+        sync.sync_related(data, settings, fake, lambda s: None, now=t0 + 7200)
+        self.assertEqual(len(calls), n)                    # monatlich
+        g = next(x for x in planner.game_infos(data, settings)["games"] if x["slug"] == "game-a")
+        self.assertEqual((g["s2"], g["mc"], g["players"]["online"]["v"], g["hltb"]), ("upgrade", 88, [1, 8], {"solo": 10.0}))
+        self.assertEqual(g["ed"]["diff"], {"mc": 80, "players": {"offline": [1, 2], "online": [1, 4]}})
+        self.assertNotIn("alt", g["players"]["online"])    # Nintendos Zahl gilt dem Switch-1-Spiel
+        self.assertTrue(g["players"]["offline"]["ok"])
+        self.assertEqual(sync.edition_slug("x-upgrade", "x"), "x-nintendo-switch-2-edition")
+        # Ohne Seite (404) wartet das Tool einen Monat
+        a.pop("s2")
+        def gone(url, ua=None):
+            raise sources.FetchError("weg", status=404)
+        sync.sync_related(data, settings, gone, lambda s: None, now=t0 + 3600)
+        self.assertTrue(a["s2"]["none"])
+        self.assertEqual(sync.edition_due(data, settings, {"game-a"}, t0 + 7200), [])
+
     def test_game_infos_igdb_gameshare_clarified(self):
         # 1.7.2: Koop von IGDB vor dem Hinweis von HowLongToBeat, GameShare je Seitenkennung oder Name,
         # Widersprüche als Liste, eine Klarstellung gilt vor beiden Quellen
@@ -3422,6 +3464,11 @@ class CollectionTabTest(unittest.TestCase):
             data, settings = sample()
             data["owned"], data["rel"] = ["a"], {"a": {"title": "A", "dlc": []}}
             self.assertEqual(planner.game_infos(data, store.load_settings())["games"][0]["mine"], {"fav": True})
+            # 1.7.4: automatischer Abgleich abschaltbar, nur ein echtes Ja/Nein zählt
+            self.assertTrue(store.load_settings()["auto_sync"])
+            store.save_settings({"auto_sync": False})
+            store.save_settings({"auto_sync": "nein"})
+            self.assertIs(store.load_settings()["auto_sync"], False)
 
 
 class Switch2Test(unittest.TestCase):

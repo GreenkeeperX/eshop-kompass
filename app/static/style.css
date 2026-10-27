@@ -621,7 +621,7 @@ span.plain{cursor:pointer}
 .news details.newsd[open]>summary .lead{display:none}
 .news .np-grid{margin:4px 0 8px;color:var(--ink)}
 .news .ink{color:var(--ink)}
-.news .dealn{color:var(--deal)}
+.news .dealn,.cstat .dealn{color:var(--deal)}
 .news .npmore{margin:8px 0 2px;padding-top:6px;border-top:1px dashed var(--line)}
 /* „Wartet“ und „Gekauft“ (1.4.0) */
 .np .wf{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
@@ -661,9 +661,9 @@ details.gmenu .opts{display:flex;flex-direction:column;gap:2px;margin-top:6px}
 details.gmenu .opts label{display:flex;gap:6px;align-items:baseline;white-space:nowrap}
 details.gmenu .opts .mut{margin-left:auto;padding-left:10px;font-size:12px}
 details.gmenu .hint{margin:0}
-.glist{padding:4px 8px}
+.glist{padding:4px 8px;--gcols:minmax(180px,1.5fr) 58px 48px 52px 50px 74px 66px minmax(0,1fr) 42px}
 /* Spiele (1.7.0): einzeilig, Titel höchstens 320 px, Spieler unter einem gemeinsamen Kopf */
-.gr{display:grid;grid-template-columns:minmax(180px,1.5fr) 58px 48px 52px 50px 74px minmax(0,1fr) 66px 42px;gap:0 10px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
+.gr{display:grid;grid-template-columns:var(--gcols);gap:0 10px;align-items:center;padding:4px 0;border-top:1px dashed var(--line);font-size:13px;min-height:22px}
 .gr.nph{border-top:0;padding-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);row-gap:1px;align-items:end}
 .gr.nph>*{grid-row:2}
 .gr.nph .gh-sp{grid-row:1;grid-column:2/5;text-align:center;border-bottom:1px solid var(--line);font-size:10px;line-height:1.4}
@@ -684,13 +684,13 @@ details.gmenu .hint{margin:0}
 .gsc{color:hsl(var(--sh) var(--sc-s) var(--sc-l));font-weight:600}
 .galt{color:var(--muted);font-style:italic}
 .gme{flex:none;margin-left:6px;display:inline-flex;gap:3px;font-size:12px}
-.gst{color:var(--muted)}
-.gst.started{color:var(--ink)}
+.gst.backlog{color:var(--stop)}
+.gst.started{color:var(--deal)}
 .gst.done{color:var(--go)}
-.gfav{color:var(--ink)}
+.gfav{color:var(--gold)}
+.lgt.gsh{border:1px solid var(--deal);color:var(--deal);background:color-mix(in srgb,var(--deal) 12%,transparent)}
 .gno{color:var(--stop)}
 .gmark button{font-size:12px;padding:1px 8px}
-.gfavb{font-size:12px;padding:1px 9px}
 .gxc{color:var(--warn)}
 .ctop{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;margin:2px 0 10px;font-size:13px}
 .ctop .cfold{flex:1;min-width:0}
@@ -698,12 +698,20 @@ details.gmenu .hint{margin:0}
 .ctop .cfold .cstatb{margin:6px 0 4px;padding:0 0 0 14px}
 .ctop:has(.cfold){align-items:flex-start}
 /* Einzelheiten (1.7.3): Fakten untereinander, rechts daneben Mein Stand, darunter klein der Rest */
-.gd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 24px;padding:4px 0 10px 14px;font-size:13px}
-.gdf{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 14px;align-content:start}
-.gdm{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.gd{display:grid;grid-template-columns:var(--gcols);gap:4px 10px;padding:4px 0 10px;font-size:13px}
+/* Offen (1.7.4): Zeile und Einzelheiten leicht abgesetzt, über die ganze Breite der Liste */
+.gr.open,.gd{background:var(--best);box-shadow:-8px 0 0 var(--best),8px 0 0 var(--best)}
+.gr.open{border-top-style:solid}
+.gdf{grid-column:1/2;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 14px;align-content:start;padding-left:14px}
+.gdm{grid-column:2/-1;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.gmk{display:flex;flex-wrap:wrap;gap:6px}
 .gd .fl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .gd .fv{min-width:0;overflow-wrap:anywhere}
-.gd .gds{grid-column:1/-1;font-size:12px}
+.gd .gds{grid-column:1/-1;font-size:12px;padding-left:14px}
+.autos{display:flex;align-items:center;gap:6px;margin:10px 0 0;font-size:13px}
+.autos label{display:flex;align-items:center;gap:6px}
+.numh{width:58px;padding:3px 6px}
+button.slimp{padding-top:4px;padding-bottom:4px}
 .gres{font-size:12px;color:var(--muted)}
 .gpick h3{margin:2px 0 6px;font-size:14px}
 .gpa{display:flex;gap:8px;margin:8px 0 0}
@@ -718,6 +726,8 @@ details.gmenu .hint{margin:0}
   .gr>span[data-l]:not(.c-gen)::before{content:attr(data-l) " ";color:var(--muted);font-size:11px}
   .gr .c-gen{flex:1 0 100%;color:var(--muted)}
   .gtags{flex-wrap:wrap}
-  .gd{padding-left:4px;grid-template-columns:minmax(0,1fr)}
+  .gd{grid-template-columns:minmax(0,1fr)}
+  .gdf,.gdm{grid-column:1}
+  .gdf,.gd .gds{padding-left:4px}
   details.gmenu .pop{position:fixed;left:16px;right:16px;top:auto;max-width:none;min-width:0}
 }

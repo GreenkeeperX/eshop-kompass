@@ -32,6 +32,7 @@ DEFAULT_SETTINGS = {
     # nicht in den Preisen: Es gibt es nicht immer
     "cashback_pct": 0.0,
     "refresh_hours": 6,
+    "auto_sync": True,        # Abgleich von selbst alle refresh_hours Stunden (1.7.4); aus: nur von Hand
     "current_country": "",    # Land, in dem das Nintendo-Konto gerade steht
     "nso_until": "",          # Online-Mitgliedschaft läuft bis (JJJJ-MM-TT), leer = unbekannt
     # Wann du das Ablaufdatum zuletzt gesetzt oder bestätigt hast (ab 0.88); nur Käufe danach
@@ -229,6 +230,8 @@ def save_settings(new):
                 except (TypeError, ValueError):
                     pass
         s["cashback_pct"] = min(50.0, s["cashback_pct"])
+        if isinstance(new.get("auto_sync"), bool):
+            s["auto_sync"] = new["auto_sync"]
         if new.get("current_country") in list(s["countries"]) + [""]:
             # Ein Konto steht in einem Land mit eigenem Shop: „Deutschland (Guthaben)“ ist das deutsche (0.63)
             s["current_country"] = countries.BY_CODE[new["current_country"]]["shop"] if new["current_country"] else ""
