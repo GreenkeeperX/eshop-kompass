@@ -651,7 +651,7 @@ nachtragen) und Quellen (mit Problem) eine violette Zahl (`.warnc`), wenn dort e
 Werkzeuge bleiben in ihren Karten (Entscheidung 26.10.2026). Regeln und Gebühren stehen je als Satz,
 die Felder in „Grenzen anpassen“ und „Gebühren anpassen“. „Quellen und Abgleich“: Klappen „DekuDeals“
 (Links; offen, solange keine Wishlist eingetragen ist), „IGDB-Schlüssel für Spielinfos“ (`data-k`
-igdbkey, ab 1.4.3: Kopf „eingetragen“ grün oder „keiner“, Passwortfelder ohne gespeicherten Wert),
+igdbkey, ab 1.4.3: Kopf „eingetragen“ grün oder „keiner“, Passwortfelder ohne gespeicherten Wert; ab 1.7.13 „dev.twitch.tv“ im Hinweis als Link zu den Apps),
 „Zustand der Quellen“ (`data-k` srcstate, zu von Haus aus; Kopf „n ok, m mit Problem (…)“, Zahl ok
 grün, Problem violett; Tabelle je Quelle mit Zustand, Zeit und Zeile aus dem Protokoll), dann
 „☑ automatisch alle [6] Stunden“ (ab 1.7.4 wie im VR-Navigator: Häkchen `auto_sync`, schmales Zahlenfeld
