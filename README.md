@@ -713,6 +713,8 @@ Handheld“).
 - **Spieler sortieren:** nach der Höchstzahl, bei gleicher die kleinere Mindestzahl zuerst (1–8 vor 4–8).
 - **Pakete:** Ein Paket steht nicht als eigene Zeile da, sondern seine Spiele, jedes mit „aus: …“.
   Fehlt eine Angabe auf der Seite des Spiels, kommt sie von der Seite des Pakets.
+- **Aufklappen:** Ein Klick auf den Namen öffnet die Einzelheiten und schließt die vorigen; „alle
+  aufklappen“ öffnet alle Spiele, die die Filter zeigen (ab 1.7.14), einzelne lassen sich dann wieder zuklappen.
 - **Kurzbeschreibung** (ab 1.7.11): unter Mein Stand die Beschreibung von Nintendo Europa, auf Deutsch, sonst
   auf Englisch; vier Zeilen, ein Klick zeigt alles. Sie kommt mit der Bestätigung durch Nintendo (monatlich).
 - **Mein Stand** (ab 1.7.1): In den Einzelheiten setzt du je Spiel Backlog, angefangen oder

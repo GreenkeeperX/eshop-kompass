@@ -307,7 +307,9 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   Koop-Spielzeit bei HowLongToBeat.
 - **Vollständig:** alle Spiele auf einmal, kein „weitere zeigen“ (Entscheidung 27.10.2026).
 - **Aufklappen** (ab 1.7.6): Reichen die Einzelheiten unter den Fensterrand, rückt die Seite nach; wer ganz
-  unten war, bleibt beim Zuklappen unten.
+  unten war, bleibt beim Zuklappen unten. Ein Klick öffnet ein Spiel und schließt das vorige. Ab 1.7.14
+  „alle aufklappen · alle zuklappen“ (`.foldall` wie in der DLC-Ansicht, hinter Sortieren; `S.gAll`,
+  einzeln zugeklappte in `S.gShut`, nicht gemerkt, Wechsel der Ansicht setzt zurück).
 - **Einzelheiten** (`gDetail`, ab 1.7.0, ab 1.7.3 wieder untereinander, Entscheidung 27.10.2026): links
   die Fakten als Name und Wert (`.gdf`, Spalte Spiel), Mein Stand (`.gdm`) ab 1.7.4 unter den mittleren
   Spalten ab den Spielern, darunter klein der Rest. Offene Zeile und Einzelheiten liegen ab 1.7.4 auf

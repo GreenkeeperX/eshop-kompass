@@ -6,6 +6,9 @@
 const G0 = {sys: "", g: [], gop: "", how: [], pl: 0, sc: 0, hr: 0, st: "", usk: "", q: "", sort: "name", seed: 0, mix: ""};
 S.g = Object.assign({}, G0, {g: [], how: []});
 S.gOpen = null;
+// Alle aufklappen (1.7.14): dann ist jedes Spiel offen außer den einzeln zugeklappten; nicht gemerkt
+S.gAll = false;
+S.gShut = new Set();
 S.gDesc = null;
 S.gMenu = null;
 const G_SORTS = [["name", "Name"], ["score", "Wertung"], ["hours", "Spielzeit, kurz zuerst"], ["year", "Erscheinen, neu zuerst"],
@@ -207,7 +210,7 @@ function gPackShort(title, pack){
   return out && out.length < pack.length ? out : pack;
 }
 function gRow(g, pick){
-  const open = S.gOpen === g.slug && !pick;
+  const open = (S.gAll ? !S.gShut.has(g.slug) : S.gOpen === g.slug) && !pick;
   const coop = gCoop(g);
   const cells = [["c-pl", "Konsole", gPlayers(g, "offline")], ["c-pl", "Lokal", gPlayers(g, "local")], ["c-pl", "Online", gPlayers(g, "online")],
     ["c-pl", "Koop", coop], ["r", "Metacritic", gScore(g)],
@@ -304,7 +307,8 @@ function viewGames(){
       <label title="Dein Stand je Spiel, setzt du in den Einzelheiten">Mein Stand <select data-gset="st">${opt(G_STF, d.st)}</select></label></div>
     ${label ? `<div class="chips gact">${d.how.map(h => `<button class="fb" data-act="ghowoff" data-v="${h}" title="Filter entfernen">${esc((G_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.g.map(x => `<button class="fb" data-act="ggoff" data-v="${esc(x)}" title="Filter entfernen">${esc(x)} ×</button>`).join("")}<button class="link gres" data-act="greset">alle Filter zurücksetzen</button></div>` : ""}`;
   const tools = `<div class="tools"><span class="sbox"><input type="search" id="gq" placeholder="Spiel, Genre oder Verlag" aria-label="Spiel, Genre oder Verlag suchen" value="${esc(d.q)}">${d.q ? `<button class="sx" data-act="gqclear" title="Suche leeren (Esc)">×</button>` : ""}</span>
-    <label>Sortieren <select data-gset="sort">${S.sorts.spiele ? `<option value="" selected>nach Spalte</option>` : ""}${opt(G_SORTS, S.sorts.spiele ? "" : d.sort)}</select></label>${d.sort === "random" && !S.sorts.spiele ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}</div>`;
+    <label>Sortieren <select data-gset="sort">${S.sorts.spiele ? `<option value="" selected>nach Spalte</option>` : ""}${opt(G_SORTS, S.sorts.spiele ? "" : d.sort)}</select></label>${d.sort === "random" && !S.sorts.spiele ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}
+    <span class="foldall"><button class="link" data-act="gall" data-v="1">alle aufklappen</button> · <button class="link" data-act="gall" data-v="">alle zuklappen</button></span></div>`;
   const pickCard = d.mix === "surprise" ? `<section class="box gpick"><h3>Vorschlag${label ? ` <span class="mut">${esc(label)}</span>` : ""}</h3>
     ${pick.length ? `<div class="glist">${pick.map(g => gRow(g, true)).join("")}</div>` : `<p class="hint">Nichts passt zu den Filtern.</p>`}
     <p class="gpa"><button data-act="gmixoff" data-v="surprise">Schließen</button> <button class="primary" data-act="gmix" data-v="surprise">Noch mal</button></p></section>` : "";
@@ -349,14 +353,20 @@ document.addEventListener("click", e => {
   if(!el) return;
   const a = el.dataset.act, v = el.dataset.v, d = S.g;
   const done = () => { gHash(); render(); };
-  if(a === "cview"){ S.cview = v; S.gOpen = null; saveView(); window.scrollTo(0, 0); done(); }
+  if(a === "cview"){ S.cview = v; S.gOpen = null; S.gAll = false; S.gShut.clear(); saveView(); window.scrollTo(0, 0); done(); }
   // Markieren zum Kopieren klappt nicht um (1.7.12)
+  else if(a === "gall"){ S.gAll = !!v; S.gShut.clear(); S.gOpen = null; render(); }
   else if(a === "gdesc"){ if(String(window.getSelection() || "").trim()) return; S.gDesc = S.gDesc === el.dataset.s ? null : el.dataset.s; render(); }
   else if(a === "gopen"){
     // 1.7.5: Aufgeklappt rückt das Fenster nach, bis die Einzelheiten ganz zu sehen sind; wer ganz unten war, bleibt unten
     const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 4;
-    S.gOpen = S.gOpen === el.dataset.s ? null : el.dataset.s; render();
-    const gd = S.gOpen && document.querySelector(".gd");
+    const s = el.dataset.s;
+    if(S.gAll){ if(S.gShut.has(s)) S.gShut.delete(s); else S.gShut.add(s); }
+    else S.gOpen = S.gOpen === s ? null : s;
+    render();
+    const row = document.querySelector(`.gr.open .g-n[data-s="${CSS.escape(s)}"]`);
+    const gd = row && row.closest(".gr").nextElementSibling;
+    if(gd && gd.classList.contains("gd")){ const r = gd.getBoundingClientRect(); if(r.bottom > innerHeight) scrollBy(0, Math.min(r.bottom - innerHeight + 12, r.top - 120)); }
     if(gd){ const r = gd.getBoundingClientRect(); if(r.bottom > innerHeight) scrollBy(0, Math.min(r.bottom - innerHeight + 12, r.top - 120)); }
     else if(atEnd) scrollTo(0, document.documentElement.scrollHeight);
   }
