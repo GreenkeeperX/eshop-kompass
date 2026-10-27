@@ -722,7 +722,7 @@ details.gmenu .hint{margin:0}
 .gdf{grid-column:1/2;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 14px;align-content:start;padding-left:14px}
 .gdm{grid-column:2/-1;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
 .gmk{display:flex;flex-wrap:wrap;gap:6px}
-.gdesc{margin:8px 0 0;max-width:68ch;font-size:13px;line-height:1.5;cursor:pointer;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
+.gdesc{margin:8px 0 0;max-width:68ch;font-size:13px;line-height:1.5;color:color-mix(in srgb,var(--ink) 72%,var(--muted));display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
 .gdesc.full{display:block}
 .gd .fl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .gd .fv{min-width:0;overflow-wrap:anywhere}

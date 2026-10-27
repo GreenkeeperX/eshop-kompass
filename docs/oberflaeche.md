@@ -318,7 +318,8 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   zehn). Mit Upgrade-Paket ab 1.7.11 nur noch in der kleinen Zeile „Angaben der Switch-2-Edition“ (Link),
   was die Switch-1-Seite anders nennt, im Tooltip (1.7.4 bis 1.7.10 als erste Zeile, Entscheidung 27.10.2026:
   zu prominent). Unter Mein Stand die Kurzbeschreibung von Nintendo Europa (ab 1.7.11, `.gdesc`, höchstens
-  68 Zeichen breit, vier Zeilen, ein Klick zeigt alles, `S.gDesc`; ohne deutsche die englische, Tooltip sagt es). Wertung (ab 1.7.9, Entscheidung 27.10.2026): Metacritic geht immer vor (Edition, sonst
+  68 Zeichen breit, vier Zeilen, ein Klick zeigt alles, `S.gDesc`; ab 1.7.12 gedeckter als die Textfarbe,
+  markierbar ohne Umklappen, Mauszeiger normal; ohne deutsche die englische, Tooltip sagt es). Wertung (ab 1.7.9, Entscheidung 27.10.2026): Metacritic geht immer vor (Edition, sonst
   Switch-1-Seite), OpenCritic nur ohne Metacritic, das der Edition zuerst.
   Reihenfolge: Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
   Nebenaufgaben“, „insgesamt“, „Koop“ …), DLC mit den Farben der DLC-Ansicht (`collSum`: grün vorhanden,

@@ -350,7 +350,8 @@ document.addEventListener("click", e => {
   const a = el.dataset.act, v = el.dataset.v, d = S.g;
   const done = () => { gHash(); render(); };
   if(a === "cview"){ S.cview = v; S.gOpen = null; saveView(); window.scrollTo(0, 0); done(); }
-  else if(a === "gdesc"){ S.gDesc = S.gDesc === el.dataset.s ? null : el.dataset.s; render(); }
+  // Markieren zum Kopieren klappt nicht um (1.7.12)
+  else if(a === "gdesc"){ if(String(window.getSelection() || "").trim()) return; S.gDesc = S.gDesc === el.dataset.s ? null : el.dataset.s; render(); }
   else if(a === "gopen"){
     // 1.7.5: Aufgeklappt rückt das Fenster nach, bis die Einzelheiten ganz zu sehen sind; wer ganz unten war, bleibt unten
     const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 4;
