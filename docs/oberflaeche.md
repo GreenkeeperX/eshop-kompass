@@ -316,7 +316,8 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   Akzent und nicht fett (sonst wächst der Knopf), damit die farbigen Symbole sichtbar bleiben. USK 16 blau, USK 18 rot (ab
   1.7.5, `.usk16`, `.usk18`, wie die Farben der USK). Wertungen in denselben Farben wie die Tabelle (`.gsc`, Nutzer mal
   zehn). Mit Upgrade-Paket zuerst „Angaben: Switch-2-Edition“ (Link) und klein, was die Switch-1-Seite
-  anders nennt (ab 1.7.4).
+  anders nennt (ab 1.7.4). Wertungen nur zusammen von einer Seite (ab 1.7.8), damit Metacritic und OpenCritic
+  nicht aus verschiedenen Fassungen stammen.
   Reihenfolge: Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
   Nebenaufgaben“, „insgesamt“, „Koop“ …), DLC mit den Farben der DLC-Ansicht (`collSum`: grün vorhanden,
   violett fehlt, rot ignoriert) und „zu den DLC“, Erschienen (Tooltip: Entwickler und Verlag), USK (nur

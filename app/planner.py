@@ -1704,6 +1704,7 @@ def _pub(name):
 
 
 ED_KEYS = ("players", "modes", "mc", "mcu", "oc", "hltb", "size_gb")
+ED_SCORES = ("mc", "mcu", "oc")
 _S2_CUT = re.compile(r"\s+[–—-]\s+Nintendo Switch 2 Edition", re.I)
 CLARIFY_FILE = os.path.join(os.path.dirname(__file__), "klarstellungen.json")
 
@@ -1819,10 +1820,16 @@ def game_infos(data, settings):
         # Seite der Edition; was dort anders steht, nennt "ed" mit dem Wert der Switch-1-Seite
         base_pl = dict(di.get("players") or {})
         s2e = e.get("s2") or {}
-        if g["s2"] == "upgrade" and s2e.get("info"):
-            diff = {}
+        if g["s2"] == "upgrade" and s2e.get("info") and "switch 2" not in str(di.get("platform") or "").lower():
+            diff, si = {}, dict(s2e["info"])
+            if any(k in si for k in ED_SCORES):     # Wertungen nur zusammen: nie Metacritic der einen, OpenCritic der anderen Seite
+                for k in ED_SCORES:
+                    si.setdefault(k, None)
             for k in ED_KEYS:
-                v = s2e["info"].get(k)
+                v = si.get(k)
+                if v is None and k in si and di.get(k) not in (None, "", [], {}):
+                    diff[k] = di.pop(k)
+                    continue
                 if v in (None, "", [], {}):
                     continue
                 if di.get(k) not in (None, "", [], {}) and di[k] != v:

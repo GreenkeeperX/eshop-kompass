@@ -727,7 +727,10 @@ Handheld“).
   liest der Abgleich zusätzlich die DekuDeals-Seite der Switch-2-Edition. Spieler, Spielmodi,
   Wertung, Spielzeit und Größe kommen dann von dort; die Einzelheiten nennen „Angaben: Switch-2-Edition“
   und, was die Switch-1-Seite anders sagt. Kommt das Paket später dazu, liest der nächste Abgleich die
-  Seite, danach monatlich wie die übrigen.
+  Seite, danach monatlich wie die übrigen. Wertungen kommen nur zusammen von einer Seite (ab 1.7.8): Nennt
+  die Edition eine Wertung, gelten nur ihre, sonst nie Metacritic der einen und OpenCritic der anderen.
+  Viele Spiele führt DekuDeals auf einer Seite für beide Fassungen (Plattform nennt Switch 2); dann gibt
+  es nichts nachzulesen. Ohne eigenen Eintrag leitet DekuDeals auf die Suche um, das gilt als „keine Seite“.
 - **Widersprüche** (ab 1.7.2): Unter „Zustand der Quellen“ listet das Tool, wo Nintendo etwas anderes
   nennt als DekuDeals. Jeder Fall wird einmal geklärt und mit Quelle in `app/klarstellungen.json`
   eingetragen; die Klarstellung gilt dann vor beiden Quellen.

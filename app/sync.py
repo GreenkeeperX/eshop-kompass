@@ -1727,7 +1727,8 @@ def edition_due(data, settings, games, now):
         if e.get("parent"):
             continue
         up = next((d for d, t in e.get("dlc") or [] if planner.is_upgrade(d, t) and d in owned), None)
-        if not up:
+        # Führt DekuDeals beide Fassungen auf einer Seite (Plattform nennt Switch 2), gibt es nichts nachzulesen
+        if not up or "switch 2" in str((e.get("info") or {}).get("platform") or "").lower():
             continue
         ed, old = edition_slug(up, g), e.get("s2") or {}
         if old.get("slug") == ed and old.get("v", 0) >= INFO_V and now - old.get("at", 0) < REL_RECHECK_SECONDS:
@@ -1791,8 +1792,11 @@ def sync_related(data, settings, fetch, sleep, now=None):
         # Seite der Switch-2-Edition (1.7.4): nur ihre Spielinfos, unter rel[Spiel].s2
         try:
             info = sources.fetch_item(ed, "de", fetch=fetch)
-            rel[game]["s2"] = {"slug": ed, "title": info.get("title"), "info": info.get("info") or {},
-                               "at": now, "v": INFO_V}
+            if str(info.get("title") or "").startswith("Search - ") or not info.get("info"):
+                # Kein eigener Eintrag: DekuDeals leitet auf die Suche um (1.7.8)
+                rel[game]["s2"] = {"slug": ed, "none": True, "at": now, "v": INFO_V}
+            else:
+                rel[game]["s2"] = {"slug": ed, "title": info.get("title"), "info": info["info"], "at": now, "v": INFO_V}
         except sources.FetchError as e:
             if e.status == 404:
                 rel[game]["s2"] = {"slug": ed, "none": True, "at": now, "v": INFO_V}

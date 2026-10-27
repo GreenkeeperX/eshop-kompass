@@ -3155,7 +3155,7 @@ class CollectionTest(unittest.TestCase):
                        for s in ("game-a",) + tuple(data["items"])}
         a = data["rel"]["game-a"]
         a.update(dlc=[[up, "Game A – Nintendo Switch 2 Edition Upgrade Pack"]],
-                 info={"mc": 80, "players": {"offline": [1, 2], "online": [1, 4]}, "hltb": {"solo": 10.0}},
+                 info={"mc": 80, "oc": 70, "players": {"offline": [1, 2], "online": [1, 4]}, "hltb": {"solo": 10.0}},
                  nin={"at": 1, "sys_pl": [1, 2], "on_pl": [1, 4]})
         calls = []
 
@@ -3174,7 +3174,9 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual(len(calls), n)                    # monatlich
         g = next(x for x in planner.game_infos(data, settings)["games"] if x["slug"] == "game-a")
         self.assertEqual((g["s2"], g["mc"], g["players"]["online"]["v"], g["hltb"]), ("upgrade", 88, [1, 8], {"solo": 10.0}))
-        self.assertEqual(g["ed"]["diff"], {"mc": 80, "players": {"offline": [1, 2], "online": [1, 4]}})
+        # Wertungen nur zusammen (1.7.8): OpenCritic der Switch-1-Seite fällt weg, statt sich zu mischen
+        self.assertEqual(g["ed"]["diff"], {"mc": 80, "oc": 70, "players": {"offline": [1, 2], "online": [1, 4]}})
+        self.assertNotIn("oc", g)
         self.assertNotIn("alt", g["players"]["online"])    # Nintendos Zahl gilt dem Switch-1-Spiel
         self.assertTrue(g["players"]["offline"]["ok"])
         self.assertEqual(sync.edition_slug("x-upgrade", "x"), "x-nintendo-switch-2-edition")
@@ -3185,6 +3187,18 @@ class CollectionTest(unittest.TestCase):
         sync.sync_related(data, settings, gone, lambda s: None, now=t0 + 3600)
         self.assertTrue(a["s2"]["none"])
         self.assertEqual(sync.edition_due(data, settings, {"game-a"}, t0 + 7200), [])
+        # Leitet DekuDeals auf die Suche um, gibt es keinen eigenen Eintrag (1.7.8)
+        a.pop("s2")
+        sync.sync_related(data, settings, lambda u, ua=None: "<title>Search - game a | Deku Deals</title><li>Genre: Puzzle</li>",
+                          lambda s: None, now=t0 + 3600)
+        self.assertTrue(a["s2"]["none"])
+        # Eine Seite für beide Fassungen (Plattform nennt Switch 2): nichts nachzulesen, nichts ersetzt
+        a.pop("s2")
+        a["info"]["platform"] = "Nintendo Switch 2, Nintendo Switch"
+        self.assertEqual(sync.edition_due(data, settings, {"game-a"}, t0), [])
+        a["s2"] = {"slug": "x", "info": {"mc": 50}, "at": t0, "v": 1}
+        g = next(x for x in planner.game_infos(data, settings)["games"] if x["slug"] == "game-a")
+        self.assertEqual((g["mc"], g.get("ed")), (80, None))
 
     def test_game_infos_igdb_gameshare_clarified(self):
         # 1.7.2: Koop von IGDB vor dem Hinweis von HowLongToBeat, GameShare je Seitenkennung oder Name,
