@@ -59,6 +59,9 @@ function gReadHash(){
     d[k] = Array.isArray(G0[k]) ? v.split(",").filter(Boolean) : typeof G0[k] === "number" ? (Number(v) || 0) : v;
   }
   S.g = d;
+  // Link auf ein Spiel (1.7.18, etwa aus dem VR-Navigator): #spiele?o=<slug> öffnet es und zeigt es an
+  const o = p.get("o");
+  if(o){ S.gOpen = o; S.gJump = o; }
 }
 gReadHash();
 

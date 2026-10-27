@@ -1047,7 +1047,8 @@ VR-Navigator): je Spiel Name, System (Switch oder Switch 2), Genres, Spieler, Ko
 Spielzeit, Erscheinen, Firmen, USK, Sprachen, Kurzbeschreibung, Kaufdatum und Mein Stand, ab 1.7.17
 unter `kv` dazu die Zeile der Ansicht „Spiele“ (Spieler je Art mit Nintendos Gegenprobe, Koop,
 Spielmodi, GameShare, Switch 2, Paket, Wertungen, Spielzeit-Teile, Größe), damit der VR-Navigator die
-Switch-Spiele genauso zeigt. Preise,
+Switch-Spiele genauso zeigt. Ab 1.7.18 öffnet `#spiele?o=<slug>` ein Spiel der Ansicht „Spiele“
+aufgeklappt (Link aus dem VR-Navigator). Preise,
 Links und Einstellungen stehen nicht darin; es gilt dieselbe Prüfung der Adresse wie überall.
 
 Eigene Links (Kartenpreise, eigene Angebote) holt der Server nur von öffentlichen Adressen. Zeigt ein Link oder eine Weiterleitung auf eine private, lokale oder Loopback-Adresse, steht im Protokoll „Adresse nicht öffentlich“, und nichts wird abgerufen. Unerwartete Fehler zeigt die Oberfläche nur mit ihrer Art an, die Einzelheiten stehen im Protokoll des Containers (`docker logs`).
