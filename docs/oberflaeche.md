@@ -320,7 +320,7 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   zehn). Mit Upgrade-Paket ab 1.7.11 nur noch in der kleinen Zeile „Angaben der Switch-2-Edition“ (Link),
   was die Switch-1-Seite anders nennt, im Tooltip (1.7.4 bis 1.7.10 als erste Zeile, Entscheidung 27.10.2026:
   zu prominent). Unter Mein Stand die Kurzbeschreibung von Nintendo Europa (ab 1.7.11, `.gdesc`, höchstens
-  68 Zeichen breit, vier Zeilen, ein Klick zeigt alles, `S.gDesc`; ab 1.7.12 gedeckter als die Textfarbe,
+  68 Zeichen breit, vier Zeilen, ein Klick zeigt alles, `S.gDesc`; ab 1.7.12 gedeckter als die Textfarbe (ab 1.7.15 in der nun gedeckten Textfarbe),
   markierbar ohne Umklappen, Mauszeiger normal; ohne deutsche die englische, Tooltip sagt es). Wertung (ab 1.7.9, Entscheidung 27.10.2026): Metacritic geht immer vor (Edition, sonst
   Switch-1-Seite), OpenCritic nur ohne Metacritic, das der Edition zuerst.
   Reihenfolge: Wertung (Metacritic fett, Nutzer, OpenCritic), Spielzeit („Story“, „mit
@@ -440,6 +440,7 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
 | Rabatt | `--deal` | `.pct` | Rabatt im Shop (−x %), immer dezent blau, auch in Tabellen |
 | Prüfen, Hinweis (violett; bis 0.57 Bernstein, kaum vom Gold zu unterscheiden) | `--warn`, `--warn-bg` | `.warnc`, `.chip.w`, `.q` (?), `.approx` (≈), `.soon`, `.today`, `.dlc.need` | Sprache ungeprüft, zählt nicht, Schätzung, endet bald, DLC ohne Hauptspiel, Kartenbewertung "teuer" |
 | Nein, teurer | `--stop`, `--stop-bg`, `--sale` | `.bad`, `.abv`, `.over`, `.lgt.no`, `.save.neg` | ohne Deutsch, Wechsel lohnt nicht, über dem Bestpreis (+x €), ignorierte Anzahl, Guthabenkarte teurer als Kreditkarte (Faktor und Bewertung) |
+| Text | `--ink`, `--ink-hi` | alles, `h1`–`h4`, `nav button.on`, `.big`, `.pc .money`, Spielnamen als Überschrift (`details.cg>summary>b`, `.gr.open .g-n`) | ab 1.7.15 im Dunkeln Grundschrift gedeckt (`--ink` #cdd4d0 statt #e7ebe8, Entscheidung 27.10.2026: „blendet mehr als es müsste“); hell (`--ink-hi`) nur Name oben, aktiver Reiter, Überschriften und die großen Summen. Im Hellen sind beide gleich |
 | Neutral | `--muted`, `--chip`, `--line` | `.mut`, `.chip`, `.dlc`, `.lgt.de`, `.pct.np` | Beschriftungen, Normalpreis, "DLC"-Etikett (immer grau), "Deutsch ✓" |
 | Marke | `--brand` | `h1 .brand`, `nav button.on` | „eShop“ im Namen oben links, Nintendo-Rot, und ab 1.7.5 die Unterstreichung des aktiven Reiters (wie im VR-Navigator, Entscheidung 27.10.2026). Sonst nirgends, damit Rot weiter „nein“ heißt |
 | Gewählt, hervorgehoben | `--accent` | `button.primary`, `.seg button.on`, `.fb.on`, `.kb.on` | Hauptknopf und gewählter Knopf, alle gleich hell (ab 1.7.5; `.fb.on` war in Textfarbe und blendete im Dunkeln, etwa „alle 119“). `.fb.on` nicht fett, sonst springt die Zeile |
