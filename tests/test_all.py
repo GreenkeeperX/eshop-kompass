@@ -3065,19 +3065,20 @@ class CollectionTest(unittest.TestCase):
                 "nsuid_txt": ["70010000000001"], "pretty_game_categories_txt": ["Action", "Puzzle"],
                 "players_from": 1, "players_to": 4, "play_mode_tv_mode_b": True, "play_mode_handheld_mode_b": True,
                 "multiplayer_mode": "simultaneous", "paid_subscription_online_play_b": False,
-                "publisher": "Nintendo", "age_rating_type": "pegi", "age_rating_value": 3}]}})
+                "publisher": "Nintendo", "age_rating_type": "pegi", "age_rating_value": 3,
+                "players_from_system_i": 1, "players_to_system_i": 2, "players_to_online_i": 4}]}})
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0)
         self.assertEqual(len(asked), 1)
         self.assertIn("nsuid_txt", asked[0])
         self.assertEqual(a["nin"], {"genre": ["Action", "Puzzle"], "players": [1, 4], "modes": ["tv", "handheld"],
                                     "mm": "simultaneous", "online": False, "publisher": "Nintendo",
-                                    "age": "PEGI 3", "at": t0})
+                                    "age": "PEGI 3", "sys_pl": [1, 2], "on_pl": [1, 4], "at": t0, "v": sync.NIN_V})
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0 + 86400)
         self.assertEqual(len(asked), 1)                    # monatlich
         a["eu"] = "70010000000002"
         a.pop("nin")
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0)
-        self.assertEqual(a["nin"], {"none": True, "at": t0})
+        self.assertEqual(a["nin"], {"none": True, "at": t0, "v": sync.NIN_V})
         # Eine neue Seite ohne Kasten behält die alten Angaben, ebenso die Bestätigung
         a["iv"] = 0
         a["info"] = {"genre": ["Puzzle"]}
@@ -3094,7 +3095,8 @@ class CollectionTest(unittest.TestCase):
                 "genre": ["Role-Playing", "Puzzle"], "players": {"offline": [1, 4], "online": [1, 8]},
                 "modes": ["tv", "handheld"], "mc": 88, "hltb": {"main": 12.5, "coop": 9}, "released": "2020-03-20",
                 "publisher": "Nintendo"},
-                "nin": {"genre": ["RPG", "Action"], "players": [1, 2], "modes": ["tv", "handheld"], "online": True,
+                "nin": {"genre": ["RPG", "Action"], "players": [1, 8], "sys_pl": [1, 2], "on_pl": [1, 8],
+                        "modes": ["tv", "handheld"], "online": True,
                         "released": "2019-12-01", "publisher": "Nintendo Co., Ltd.", "at": 1}},
             "game-b-nintendo-switch-2-edition": {"title": "Game B – Nintendo Switch 2 Edition", "dlc": [], "iv": 1,
                                                   "info": {"genre": ["Party"]}, "nin": {"none": True, "at": 1}},
@@ -4843,7 +4845,7 @@ class UiContractTest(unittest.TestCase):
         "plan.others": {"code", "current", "diff", "estimated", "games_cost", "is_ref", "missing", "name", "tier"},
         "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},
         "collection.games": {"dlc", "have", "missing", "missing_eur", "missing_priced", "slug", "title"},
-        "spiele": {"confirmed", "games", "genres", "read", "with_info"},
+        "spiele": {"dlc_entries", "entries", "games", "genres", "via_packs"},
         "spiele.games": {"bought", "coop", "developer", "genre", "hltb", "hours", "max", "mc", "mcu", "modes", "nin", "oc", "players",
                          "pub_alt", "pub_ok", "publisher", "read", "released", "s2", "score", "size_gb", "slug", "title", "via",
                          "year", "year_alt", "year_ok", "age"},

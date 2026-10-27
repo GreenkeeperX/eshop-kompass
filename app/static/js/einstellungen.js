@@ -111,9 +111,9 @@ function viewSettings(){
     <pre class="log" id="log" style="margin-top:4px"></pre></details>
     </section><section class="setc"><h3 class="sec" id="set-sicherung">Sicherung</h3>
     <p class="hint">Enthält Einstellungen, Guthabenkarten, Zielpreise, Körbe, Kaufprotokoll und die eigene Preisaufzeichnung, keine Schlüssel. Beim Einlesen wird die Aufzeichnung ergänzt, nicht ersetzt. Preise, Sammlung und DekuDeals-Verläufe holt das Tool selbst neu.</p>
-    <p style="margin-top:8px"><a class="btn" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
-      <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label>
-      <a class="btn" style="margin-left:8px" href="/api/abgleich" download="eshop-kompass-abgleich.json" title="Abgleichsdaten (IDs, Sprachen, Preise) und Protokoll zum Nachprüfen, ohne Einstellungen. Zum Einlesen nicht nötig.">Abgleichsdaten herunterladen</a></p></section>`;
+    <p style="margin-top:8px"><a class="btn" href="/api/abgleich" download="eshop-kompass-abgleich.json" title="Abgleichsdaten (IDs, Sprachen, Preise) und Protokoll zum Nachprüfen, ohne Einstellungen. Zum Einlesen nicht nötig.">Abgleichsdaten herunterladen</a>
+      <a class="btn" style="margin-left:8px" href="/api/export" download="eshop-kompass-sicherung.json">Sicherung herunterladen</a>
+      <label style="margin-left:8px"><button type="button" data-act="pickfile">Sicherung einlesen</button><input type="file" id="impFile" accept=".json,application/json" hidden></label></p></section>`;
   return h;
 }
 // Zustand der Quellen (1.5.0): eine Zeile je Quelle aus dem letzten Abgleich, der sie gebraucht hat

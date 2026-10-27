@@ -127,13 +127,13 @@ function viewCollection(){
   // Filter und Reihenfolge direkt über den Spielen, unter Zahlen und Erklärung (0.58)
   const tools = `<div class="tools">${searchBox("Spiel oder DLC filtern")}
     <select class="srt" data-act="tsortsel" data-t="sammlung" title="Reihenfolge der Spiele">${co("", "nach Name")}${co("missing", "nach Zahl fehlender DLC")}${co("eur", "nach Preis fehlender DLC")}${co("sale", "nach DLC im Angebot")}</select>
-    <span class="foldall"><button class="link" data-act="foldall" data-v="1" data-scope="#collopen">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="" data-scope="#collopen">alle zuklappen</button></span>${collSeg()}</div>`;
-  let h = "";
+    <span class="foldall"><button class="link" data-act="foldall" data-v="1" data-scope="#collopen">alle aufklappen</button> · <button class="link" data-act="foldall" data-v="" data-scope="#collopen">alle zuklappen</button></span></div>`;
+  let h = collTop();
   if(!c.owned) return h + `<p class="mut">Noch keine Sammlung gelesen. Trag unter Einstellungen den Link zu deiner DekuDeals-Sammlung ein und klicke auf Aktualisieren.</p>`;
   // Kopf der Sammlung: Zahlen in zwei kurzen Zeilen, die Erklärung eingeklappt (0.55.1)
   const nDone = c.games.filter(g => !g.missing).length;
   const priced = c.missing_eur !== null && c.missing_eur !== undefined;
-  h += `<div class="box cstatb"><div class="cstat"><span><b>${c.owned}</b> Spiele in der Sammlung</span><span><b>${c.games.length}</b> mit DLC <span class="mut">(${c.games.length - nDone} mit offenen, ${nDone} ohne)</span></span><span><b>${(c.plain || []).length}</b> ohne DLC</span></div>
+  h += `<div class="box cstatb"><div class="cstat"><span><b>${c.games.length}</b> mit DLC <span class="mut">(${c.games.length - nDone} mit offenen, ${nDone} ohne)</span></span><span><b>${(c.plain || []).length}</b> ohne DLC</span></div>
     ${missing ? `<div class="cstat"><span><b>${missing}</b> DLC fehlen</span>${priced ? `<span title="Summe im jeweils günstigsten zählenden Land">${c.missing_priced < missing ? `${c.missing_priced} mit Preis: ` : ""}zusammen <b>${eur(c.missing_eur)}</b></span>${c.missing_sale ? `<span><b>${c.missing_sale}</b> im Angebot</span>` : ""}` : ""}</div>` : ""}
     <details class="fold" data-k="collhow" ${S.folds.collhow ? "open" : ""}><summary class="hint">So funktioniert die Sammlung</summary><p class="hint" style="margin:2px 0 8px">Ob du einen DLC hast, steht in deiner Sammlung bei DekuDeals; was sie nicht kennt, hakst du mit „habe ich“ ab.
     „ignorieren“ blendet DLC aus, die dich nicht interessieren. Preise gelten im jeweils günstigsten zählenden Land; ein Urteil gibt es für DLC auf deiner Wishlist.</p></details></div>`;

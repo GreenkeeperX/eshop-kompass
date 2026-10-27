@@ -101,7 +101,10 @@ const gLabel = d => [d.sys === "s2" ? "Switch 2" : d.sys === "s1" ? "nur Switch"
   d.hr > 0 ? `bis ${d.hr} Stunden` : d.hr < 0 ? `ab ${-d.hr} Stunden` : "", d.q && `„${d.q}“`].filter(Boolean).join(", ");
 
 /* Zellen: ≈ heißt nur eine Quelle oder die Quellen sind sich nicht einig; der Tooltip sagt, welche */
-const gApx = (tip, bad) => `<span class="approx gx${bad ? " bad" : ""}" title="${esc(tip)}">≈</span>`;   // grau; violett bei Widerspruch
+/* Herkunft (1.6.2, Entscheidung 27.10.2026): kein Zeichen mehr. DekuDeals gilt; nennt Nintendo etwas anderes,
+   ist der Wert dezent violett, beide Werte stehen im Tooltip */
+const gApx = () => "";
+const gVal = (v, tip, bad) => `<span class="${bad ? "gxc" : ""}" title="${esc(tip)}">${v}</span>`;
 const gHours = h => h === null || h === undefined ? "" : h < 1 ? "unter 1 h" : h < 10 ? `${String(Math.round(h * 2) / 2).replace(".", ",")} h` : `${Math.round(h)} h`;
 const gRange = v => !v ? "ja" : v[0] === v[1] ? String(v[1]) : `${v[0]}–${v[1]}`;
 function gPlayers(g, k){
@@ -110,7 +113,7 @@ function gPlayers(g, k){
   const lab = {offline: "an einer Konsole", local: "lokal drahtlos", online: "online"}[k];
   const tip = p.ok ? `${lab}: DekuDeals und Nintendo einig` : p.alt ? `${lab}: DekuDeals ${gRange(p.v)}, Nintendo ${gRange(p.alt)}`
     : p.src === "Nintendo" ? `${lab}: nur laut Nintendo` : `${lab}: nur laut DekuDeals`;
-  return `<span title="${esc(tip)}">${gRange(p.v)}</span>${p.ok ? "" : gApx(tip, !!p.alt)}`;
+  return gVal(gRange(p.v), tip, !!p.alt);
 }
 function gGenres(g){
   if(!g.genre.length) return g.read ? `<span class="mut">–</span>` : `<span class="mut" title="Die DekuDeals-Seite dieses Spiels ist noch nicht gelesen; je Abgleich höchstens 40 Seiten">folgt</span>`;
@@ -124,7 +127,7 @@ function gScore(g){
 function gYear(g){
   if(!g.year) return "";
   const tip = g.year_ok ? "DekuDeals und Nintendo einig" : g.year_alt ? `DekuDeals ${g.year}, Nintendo ${g.year_alt} (Erscheinen je Region verschieden)` : "Nur eine Quelle";
-  return `<span title="${esc(tip)}">${esc(g.year)}</span>${g.year_ok ? "" : gApx(tip, !!g.year_alt)}`;
+  return gVal(esc(g.year), tip, !!g.year_alt);
 }
 function gBadges(g){
   const b = [];
@@ -149,7 +152,7 @@ function gHltbTip(g){
 function gDetail(g){
   const c = ((S.state.collection || {}).games || []).find(x => x.slug === g.slug);
   const row = (l, v) => v ? `<span class="fl">${l}</span><span class="fv">${v}</span>` : "";
-  const src = (ok, alt, one) => ok ? "" : alt ? gApx(`Nintendo: ${alt}`, true) : gApx(one || "Nur eine Quelle");
+  const src = (ok, alt) => ok || !alt ? "" : ` <span class="gxc">(Nintendo: ${esc(alt)})</span>`;
   const modes = g.modes.map(m => ({tv: "TV", tabletop: "Tisch", handheld: "Handheld"})[m.n] + (m.ok ? "" : gApx("Nur eine Quelle"))).join(", ");
   const h = g.hltb || {}, hn = {main: "Hauptgeschichte", extra: "mit Nebenaufgaben", complete: "alles", solo: "allein", coop: "Koop", vs: "gegeneinander", all: "alle Spielweisen"};
   const dlc = c ? `${c.have} von ${c.dlc.length} vorhanden${c.missing ? `, <span class="warnc">${c.missing}</span> ${c.missing === 1 ? "fehlt" : "fehlen"}` : ""} · <button class="link" data-act="gdlc" data-s="${esc(g.title)}">zu den DLC</button>` : "keine";
@@ -193,16 +196,25 @@ function viewGames(){
       <label>Spielzeit <select data-gset="hr">${opt([[0, "egal"], [5, "bis 5 h"], [10, "bis 10 h"], [20, "bis 20 h"], [-40, "ab 40 h"]], d.hr)}</select></label></div>
     ${label ? `<div class="chips gact">${d.how.map(h => `<button class="fb" data-act="ghowoff" data-v="${h}" title="Filter entfernen">${esc((G_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.g.map(x => `<button class="fb" data-act="ggoff" data-v="${esc(x)}" title="Filter entfernen">${esc(x)} ×</button>`).join("")}<button class="link" data-act="greset">alle Filter zurücksetzen</button></div>` : ""}`;
   const tools = `<div class="tools"><span class="sbox"><input type="search" id="gq" placeholder="Spiel, Genre oder Verlag" aria-label="Spiel, Genre oder Verlag suchen" value="${esc(d.q)}">${d.q ? `<button class="sx" data-act="gqclear" title="Suche leeren (Esc)">×</button>` : ""}</span>
-    <label>Sortieren <select data-gset="sort">${opt(G_SORTS, d.sort)}</select></label>${d.sort === "random" ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}${collSeg()}</div>`;
+    <label>Sortieren <select data-gset="sort">${opt(G_SORTS, d.sort)}</select></label>${d.sort === "random" ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}</div>`;
   const pickCard = d.mix === "surprise" ? `<section class="box gpick"><h3>Vorschlag${label ? ` <span class="mut">${esc(label)}</span>` : ""}</h3>
     ${pick.length ? `<div class="glist">${pick.map(g => gRow(g, true)).join("")}</div>` : `<p class="hint">Nichts passt zu den Filtern.</p>`}
     <p class="gpa"><button data-act="gmixoff" data-v="surprise">Schließen</button> <button class="primary" data-act="gmix" data-v="surprise">Noch mal</button></p></section>` : "";
   const head = `<div class="gr nph"><span>Spiel</span><span>Genre</span><span title="Spieler an einer Konsole (Couch, Splitscreen)">Konsole</span><span title="Spieler mit mehreren Konsolen im selben Raum">Lokal</span><span title="Spieler online">Online</span><span>Koop</span><span class="r" title="Metacritic, sonst OpenCritic">Wertung</span><span class="r" title="HowLongToBeat: Hauptgeschichte, sonst allein">Spielzeit</span><span class="r">Jahr</span></div>`;
-  const note = `<p class="hint">${rows.length} von ${all.length} Spielen. Spielinfos von DekuDeals für ${sp.with_info}${sp.read < all.length ? ` (${all.length - sp.read} folgen bei den nächsten Abgleichen)` : ""}, bestätigt von Nintendo ${sp.confirmed}. ${gApx("Nur eine Quelle oder die Quellen sind sich nicht einig")} heißt: nur eine Quelle oder die Quellen sind sich nicht einig, der Tooltip sagt mehr. Wertung und Spielzeit von Metacritic, OpenCritic und HowLongToBeat über DekuDeals.</p>`;
-  if(!all.length) return tools + `<p class="mut">Noch keine Spiele bekannt.</p>`;
-  return tools + mixes + filters + pickCard + note +
-    `<div class="glist box">${head}${rows.slice(0, d.n).map(g => gRow(g)).join("") || `<p class="mut">Kein Spiel passt zu den Filtern.</p>`}</div>` +
-    (rows.length > d.n ? `<p class="gpa"><button data-act="gmore">weitere ${Math.min(G0.n, rows.length - d.n)} zeigen</button></p>` : "");
+  const note = `<p class="hint">${rows.length === all.length ? `Alle ${all.length} Spiele` : `${rows.length} von ${all.length} Spielen`}. Angaben von DekuDeals, Nintendo prüft gegen: violett heißt, Nintendo nennt etwas anderes (Tooltip).</p>`;
+  if(!all.length) return collTop() + tools + `<p class="mut">Noch keine Spiele bekannt.</p>`;
+  return collTop() + tools + mixes + filters + pickCard + note +
+    `<div class="glist box">${head}${rows.map(g => gRow(g)).join("") || `<p class="mut">Kein Spiel passt zu den Filtern.</p>`}</div>` +
+    "";
+}
+/* Kopfzeile beider Ansichten der Sammlung (1.6.2): was in der Sammlung steht, rechts der Umschalter. Steht
+   in beiden Ansichten an derselben Stelle, damit er beim Wechseln nicht springt */
+function collTop(){
+  const sp = S.state.spiele || {};
+  if(!sp.entries) return `<div class="ctop"><span></span>${collSeg()}</div>`;
+  const parts = [`<b>${sp.games.length}</b> Spiele`];
+  const why = [`${sp.entries} Einträge bei DekuDeals`, sp.dlc_entries ? `davon ${sp.dlc_entries} DLC` : "", sp.via_packs ? `${sp.via_packs} Spiele nur in Paketen` : ""].filter(Boolean).join(", ");
+  return `<div class="ctop"><span>${parts.join("")} <span class="mut">(${why})</span></span>${collSeg()}</div>`;
 }
 /* Umschalter der Sammlung: DLC | Spiele, gemerkt je Browser */
 const collSeg = () => `<span class="seg">${[["dlc", "DLC", "Spiele mit ihren Zusatzinhalten: was du hast, was fehlt"], ["spiele", "Spiele", "Jedes Spiel mit Genre, Spielern, Koop, Wertung und Spielzeit, mit Filtern und Mischungen"]]

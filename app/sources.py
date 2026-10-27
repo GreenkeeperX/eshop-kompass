@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -803,7 +803,8 @@ def fetch_langs_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
 
 INFO_EU_FIELDS = ("nsuid_txt,title,pretty_game_categories_txt,players_from,players_to,play_mode_tv_mode_b,"
                   "play_mode_tabletop_mode_b,play_mode_handheld_mode_b,multiplayer_mode,paid_subscription_online_play_b,"
-                  "publisher,dates_released_dts,age_rating_type,age_rating_value,system_names_txt,playable_on_txt")
+                  "publisher,dates_released_dts,age_rating_type,age_rating_value,system_names_txt,playable_on_txt,"
+                  "players_from_system_i,players_to_system_i,players_from_online_i,players_to_online_i")
 
 
 def parse_info_eu(payload):
@@ -818,6 +819,11 @@ def parse_info_eu(payload):
         a, b = d.get("players_from"), d.get("players_to")
         if isinstance(b, int) and b > 0:
             x["players"] = [a if isinstance(a, int) and a > 0 else 1, b]
+        # Höchstzahl je Spielweise (1.6.2): players_to ist das Höchste über alle, an einer Konsole und online getrennt
+        for k, key in (("system", "sys_pl"), ("online", "on_pl")):
+            a, b = d.get(f"players_from_{k}_i"), d.get(f"players_to_{k}_i")
+            if isinstance(b, int) and b > 0:
+                x[key] = [a if isinstance(a, int) and a > 0 else 1, b]
         modes = [m for m in ("tv", "tabletop", "handheld") if d.get(f"play_mode_{m}_mode_b") is True]
         if modes:
             x["modes"] = modes

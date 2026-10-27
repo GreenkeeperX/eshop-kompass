@@ -667,8 +667,8 @@ details.gmenu .hint{margin:0}
 .gr button.link.g-n:hover{text-decoration:underline}
 .gr .chip{vertical-align:1px}
 .chip.s2c{color:var(--ink)}
-.approx.gx{color:var(--muted);margin:0 0 0 2px}
-.approx.gx.bad{color:var(--warn)}
+.gxc{color:var(--warn)}
+.ctop{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;margin:2px 0 10px;font-size:13px}
 .gd{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 14px;padding:4px 0 10px 14px;font-size:13px}
 .gd .fl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .gd .fv{min-width:0;overflow-wrap:anywhere}

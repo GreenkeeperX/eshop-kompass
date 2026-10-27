@@ -702,10 +702,13 @@ Spielzeit je Art, Erscheinungsdatum, Entwickler, Verlag, Altersfreigabe, Größe
 Link in die DLC-Ansicht und die Quellen. Marken zeigen Switch 2 Edition, Switch-2-Upgrade und Spiele,
 die nicht alle Spielmodi haben.
 
-- **Herkunft:** Was DekuDeals und Nintendo beide nennen, steht ohne Zeichen. Nennt es nur eine
-  Quelle, steht ein graues „≈“ dahinter, widersprechen sie sich, ein violettes; der Tooltip sagt,
-  wer was nennt. Koop gilt bis auf Weiteres nur als Hinweis („ja ≈“, wenn HowLongToBeat eine
-  Koop-Spielzeit kennt); genaue Koop-Angaben kommen mit IGDB.
+- **Herkunft:** Die Angaben kommen von DekuDeals. Nennt die Nintendo-Suche etwas anderes (Spieler an
+  einer Konsole oder online, Jahr, Verlag), ist der Wert violett und der Tooltip nennt beide. Koop gilt
+  bis auf Weiteres nur als Hinweis („ja“, wenn HowLongToBeat eine Koop-Spielzeit kennt); genaue
+  Koop-Angaben kommen mit IGDB.
+- **Zahlen:** Oben steht in beiden Ansichten, wie viele Spiele es sind und woher die Zahl kommt: Die
+  DekuDeals-Sammlung führt auch DLC als Einträge, dazu kommen Spiele, die du nur in einem Paket hast
+  (etwa beide Teile von „Super Mario Galaxy + Super Mario Galaxy 2“).
 - **Filter:** System (Switch 2 oder nur Switch), Genre (eines davon oder alle), Spielweise (an einer
   Konsole, lokal drahtlos, online, Koop, Handheld, TV; mehrere müssen alle passen), Spieler ab n,
   Wertung ab, Spielzeit. Jeder Eintrag in den Menüs nennt, wie viele Spiele dazu passen.

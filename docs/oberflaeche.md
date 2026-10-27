@@ -242,8 +242,11 @@ brechen die Zeilen um wie unter „Wartet“.
 ## Sammlung: Ansicht „Spiele“
 
 Ab 1.6.1 (Entscheidung 26.10.2026: Umschalter statt eigener Reiter, Name „Spiele“, erst einmal alle
-Angaben zeigen). Umschalter `collSeg` „DLC | Spiele“ rechts in der Werkzeugzeile beider Ansichten, wie
-`viewSeg` der Wishlist, gemerkt je Browser (`S.cview`, `ek.view`). Code in `js/spiele.js`
+Angaben zeigen). Umschalter `collSeg` „DLC | Spiele“, gemerkt je Browser (`S.cview`, `ek.view`). Ab 1.6.2
+steht er in beiden Ansichten in derselben Kopfzeile `collTop` (`.ctop`) ganz oben, damit er beim Wechseln
+nicht springt; links daneben „95 Spiele (119 Einträge bei DekuDeals, davon 30 DLC, 6 Spiele nur in
+Paketen)“. Der Kasten der DLC-Ansicht nennt deshalb nicht mehr „119 Spiele in der Sammlung“ (das waren
+Einträge samt DLC). Code in `js/spiele.js`
 (`viewGames`), Daten aus `state.spiele` (`planner.game_infos`).
 
 - **Werkzeugzeile:** eigenes Suchfeld `#gq` (Name, Genre, Verlag, Entwickler; `fold1` wie `hits`),
@@ -263,10 +266,11 @@ Angaben zeigen). Umschalter `collSeg` „DLC | Spiele“ rechts in der Werkzeugz
   „Switch-2-Upgrade“ (Upgrade-Paket in der Sammlung) oder „Switch 2“, grau „nur TV“ (wenn nicht alle drei
   Spielmodi), „über …“ bei Paketen. Wertung ab 85 grün. Am Handy brechen die Zeilen um, jede Angabe
   mit kleinem grauem Namen davor, leere fallen weg. Noch nicht gelesene Spiele: Genre „folgt“.
-- **≈** `.approx.gx` hinter einer Angabe: grau, wenn nur eine Quelle sie nennt, violett (`.bad`), wenn
-  DekuDeals und Nintendo verschiedene Werte nennen; der Tooltip nennt die Quelle oder beide Werte.
-  Wertung und Spielzeit tragen kein ≈ (Metacritic, OpenCritic und HowLongToBeat sind selbst die Quelle),
-  ihr Tooltip nennt alle Werte. „Koop ja ≈“ bis IGDB: nur aus einer Koop-Spielzeit bei HowLongToBeat.
+- **Herkunft:** 1.6.1 setzte „≈“ hinter jede Angabe aus nur einer Quelle; ab 1.6.2 kein Zeichen mehr
+  (Entscheidung 27.10.2026: „≈ ungern dauerhaft“). DekuDeals gilt, nennt Nintendo etwas anderes, ist
+  der Wert dezent violett (`.gxc`, `gVal`), der Tooltip nennt beide. Koop „ja“ bis IGDB nur aus einer
+  Koop-Spielzeit bei HowLongToBeat.
+- **Vollständig:** alle Spiele auf einmal, kein „weitere zeigen“ (Entscheidung 27.10.2026).
 - **Einzelheiten** (`gDetail`, Raster `.gd` wie die Fakten im VR-Navigator): Spieler, Spielmodi,
   Wertung, Spielzeit je Art, Erschienen, Entwickler, Verlag, Alter, Größe, Gekauft, DLC mit „zu den DLC“
   (schaltet um und filtert nach dem Spiel), Quellen mit Link zu DekuDeals.

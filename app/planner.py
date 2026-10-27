@@ -1736,16 +1736,20 @@ def game_infos(data, settings):
         for x in g["genre"]:
             genres[x["n"]] = genres.get(x["n"], 0) + 1
         # Spieler: offline gegen Nintendos Höchstzahl, online gegen Nintendos „Online-Spiel mit Mitgliedschaft“
-        pl, npl = di.get("players") or {}, ni.get("players")
+        # Spieler (1.6.2): an einer Konsole gegen Nintendos players_to_system, online gegen players_to_online;
+        # Nintendos players_to allein ist die Höchstzahl über alle Spielweisen und taugt nicht zum Vergleich
+        pl = di.get("players") or {}
+        npl = {"offline": ni.get("sys_pl"), "online": ni.get("on_pl")}
         players = {}
         for k in ("offline", "local", "online"):
             if pl.get(k):
-                ok = (k == "offline" and npl and npl[1] == pl[k][1]) or (k == "online" and ni.get("online") is True)
-                players[k] = {"v": pl[k], "ok": bool(ok)}
-        if "offline" not in players and npl:
-            players["offline"] = {"v": npl, "ok": False, "src": "Nintendo"}
-        if players.get("offline") and npl and npl[1] != players["offline"]["v"][1]:
-            players["offline"]["alt"] = npl
+                players[k] = {"v": pl[k], "ok": bool(npl.get(k) and npl[k][1] == pl[k][1])}
+                if npl.get(k) and npl[k][1] != pl[k][1]:
+                    players[k]["alt"] = npl[k]
+            elif npl.get(k):
+                players[k] = {"v": npl[k], "ok": False, "src": "Nintendo"}
+        if "offline" not in players and ni.get("players") and not ni.get("on_pl"):
+            players["offline"] = {"v": ni["players"], "ok": False, "src": "Nintendo"}
         if "online" not in players and ni.get("online") is True:
             players["online"] = {"v": None, "ok": False, "src": "Nintendo"}
         g["players"] = players
@@ -1779,6 +1783,8 @@ def game_infos(data, settings):
         out.append(g)
     out.sort(key=lambda g: g["title"].lower())
     return {"games": out, "genres": sorted(genres.items(), key=lambda x: (-x[1], x[0])),
+            "entries": len(owned_list), "dlc_entries": sum(1 for s in owned_list if (rel.get(s) or {}).get("parent")),
+            "via_packs": sum(1 for g in out if g["via"]),
             "read": sum(1 for g in out if g["read"]), "with_info": sum(1 for g in out if g["genre"] or g["players"]),
             "confirmed": sum(1 for g in out if g["nin"])}
 

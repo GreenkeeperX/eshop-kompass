@@ -1819,16 +1819,21 @@ def sync_related(data, settings, fetch, sleep, now=None):
     summary(f"{status['done']} Seiten gelesen")
 
 
-def sync_game_info_eu(data, fetch, sleep, now=None):
+NIN_V = 2        # 1.6.2: Spielerzahl an einer Konsole und online getrennt, ältere Bestätigungen neu holen
+
+
+def sync_game_info_eu(data, fetch, sleep, now=None, settings=None):
     """Bestätigung der Spielinfos durch die Nintendo-Europa-Suche (1.6.0): für Spiele der Sammlung mit
     europäischer ID von ihrer DekuDeals-Seite, 40 je Abruf, monatlich. Ablage unter rel[Spiel].nin;
     ohne Treffer {"none": true}, damit das Spiel nicht jeden Abgleich wiederkommt."""
     now = now or time.time()
     rel = data.get("rel") or {}
-    games = [s for s in dict.fromkeys(data.get("owned") or []) if (rel.get(s) or {}).get("eu")]
+    # Spiele der Sammlung und Spiele, die nur in einem Paket stecken (1.6.2)
+    games = [s for s in planner.owned_games(data, settings) if (rel.get(s) or {}).get("eu")]
     due = {}
     for s in games:
-        if now - ((rel[s].get("nin") or {}).get("at") or 0) >= REL_RECHECK_SECONDS:
+        nin = rel[s].get("nin") or {}
+        if now - (nin.get("at") or 0) >= REL_RECHECK_SECONDS or (nin.get("v", 1) < NIN_V and not nin.get("none")):
             due.setdefault(str(rel[s]["eu"]), []).append(s)
     if not due:
         if games:
@@ -1842,7 +1847,7 @@ def sync_game_info_eu(data, fetch, sleep, now=None):
         _log(f"Spielinfos Nintendo nicht abrufbar ({e})" + (f", {len(done)} IDs vorher gelesen" if done else ""))
     for n in done:
         for s in due[n]:
-            rel[s]["nin"] = dict(found.get(n) or {"none": True}, at=now)
+            rel[s]["nin"] = dict(found.get(n) or {"none": True}, at=now, v=NIN_V)
     if done:
         hit = sum(1 for n in done if n in found)
         _log(f"Spielinfos Nintendo: {hit} von {len(done)} Spielen gefunden, "
@@ -2148,7 +2153,7 @@ def run_sync(fetch=sources.fetch, sleep=time.sleep, by_hand=False):
             _log("Tiefstpreise werden neu geladen (Lesefehler bei Spielen für Switch und Switch 2 behoben)")
         safe(sync_lows, data, settings, fetch, sleep)
         safe(sync_related, data, settings, fetch, sleep)
-        safe(sync_game_info_eu, data, fetch, sleep)    # Spielinfos von Nintendo bestätigen (1.6.0)
+        safe(sync_game_info_eu, data, fetch, sleep, settings=settings)    # Spielinfos von Nintendo bestätigen (1.6.0)
         safe(sync_extra_ids, data, settings, fetch, sleep, report=False)
         safe(sync_titledb, data, settings, fetch)     # nach der ID-Suche, damit neue IDs gleich dabei sind
         safe(sync_eshop_names, data, fetch)           # Kauftitel aus Japan und anderen Ländern zuordnen (0.72)
