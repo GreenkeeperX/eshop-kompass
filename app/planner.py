@@ -1719,6 +1719,7 @@ def game_infos(data, settings):
     slugs = [s for s in owned_games(data, settings) if not (rel.get(s) or {}).get("parent")]
     games = set(slugs)
     packs = {s for s in slugs if any(p in games for p in links.get(s) or {})}
+    marks = settings.get("game_marks") or {}
 
     def pack_of(slug):
         """Das Paket der Sammlung, aus dem ein Spiel kommt (auch über Zwischenstufen), sonst None."""
@@ -1806,6 +1807,9 @@ def game_infos(data, settings):
         h = di.get("hltb") or {}
         g["hours"] = h.get("main") or h.get("solo") or h.get("extra") or h.get("coop")
         g["mm"] = ni.get("mm")
+        if ni.get("langs"):
+            g["langs"] = ni["langs"]                   # Nintendo Europa, englische Namen klein (1.7.1)
+        g["mine"] = marks.get(slug) or {}              # Mein Stand von Hand (1.7.1)
         out.append(g)
     out.sort(key=lambda g: g["title"].lower())
     # Feste Reihenfolge der Genres in jeder Zeile (1.7.0): das seltenere, also genauere zuerst, gleich

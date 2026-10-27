@@ -1819,7 +1819,7 @@ def sync_related(data, settings, fetch, sleep, now=None):
     summary(f"{status['done']} Seiten gelesen")
 
 
-NIN_V = 2        # 1.6.2: Spielerzahl an einer Konsole und online getrennt, ältere Bestätigungen neu holen
+NIN_V = 3        # 1.6.2: Spielerzahl an einer Konsole und online getrennt; 1.7.1: Sprachen. Ältere neu holen
 
 
 def sync_game_info_eu(data, fetch, sleep, now=None, settings=None):

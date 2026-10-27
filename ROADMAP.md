@@ -98,7 +98,6 @@ Neue Wünsche, noch nicht eingeordnet.
   GameShare. Danach prüfen, welche Angaben wie prominent stehen.
   Runde 2 entschieden (27.10.2026): Tabelle bleibt, einzeilig, sortierbare Köpfe, Spalten Spiel ·
   Spieler · Koop · Genre · Metacritic · Spielzeit · Jahr; Pakete als ihre Spiele mit „aus: …“; Genre
-  von Nintendo; Metacritic, sonst OpenCritic grau-kursiv (1.7.0, erledigt). Als Nächstes: „Mein
-  Stand“ (Backlog, angefangen, durchgespielt, Favorit, von Hand, in der Sicherung), Sprachen der
-  Spiele, GameShare (Nintendos Liste), Koop genau über IGDB, Switch-2-Verbesserungen (erst Probe),
-  eine Liste „Widersprüche“ unter „Zustand der Quellen“ mit geklärten Fällen samt Quelle im Repository.
+  von Nintendo; Metacritic, sonst OpenCritic grau-kursiv (1.7.0, erledigt); „Mein Stand“ (Backlog,
+  angefangen, durchgespielt, Favorit) und Sprachen der Spiele (1.7.1, erledigt). Als Nächstes:
+  GameShare (Nintendos Liste), Koop genau über IGDB, Switch-2-Verbesserungen (erst Probe), eine Liste „Widersprüche“ unter „Zustand der Quellen“ mit geklärten Fällen samt Quelle im Repository.

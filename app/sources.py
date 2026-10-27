@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 
 # Das Tool gibt sich immer als es selbst zu erkennen. Antwortet eine Quelle mit
 # einer Sperre (403, 429) oder einer Prüfseite, hört es auf, statt sich zu tarnen.
@@ -804,7 +804,7 @@ def fetch_langs_eu(nsuids, fetch=fetch, pause=None, out=None, done=None):
 INFO_EU_FIELDS = ("nsuid_txt,title,pretty_game_categories_txt,players_from,players_to,play_mode_tv_mode_b,"
                   "play_mode_tabletop_mode_b,play_mode_handheld_mode_b,multiplayer_mode,paid_subscription_online_play_b,"
                   "publisher,dates_released_dts,age_rating_type,age_rating_value,system_names_txt,playable_on_txt,"
-                  "players_from_system_i,players_to_system_i,players_from_online_i,players_to_online_i")
+                  "players_from_system_i,players_to_system_i,players_from_online_i,players_to_online_i,language_availability")
 
 
 def parse_info_eu(payload):
@@ -842,6 +842,11 @@ def parse_info_eu(payload):
             x["sys"] = list(dict.fromkeys(sy))[:4]
         if d.get("age_rating_type") and d.get("age_rating_value") is not None:
             x["age"] = f"{str(d['age_rating_type']).upper()} {d['age_rating_value']}"
+        # Sprachen (1.7.1): wie bei der Sprachprüfung der Wishlist, englische Namen klein, Liste oder Text
+        la = d.get("language_availability")
+        la = ",".join(str(v) for v in la) if isinstance(la, list) else la
+        if isinstance(la, str) and la.strip():
+            x["langs"] = list(dict.fromkeys(v.strip().lower() for v in la.split(",") if v.strip()))[:30]
         for n in d.get("nsuid_txt") or []:
             out[str(n)] = x
     return out

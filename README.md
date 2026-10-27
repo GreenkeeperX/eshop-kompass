@@ -710,6 +710,12 @@ Switch-2-Upgrade und Spiele, die nicht alle Spielmodi haben („ohne Handheld“
   OpenCritic und die Nutzerwertung.
 - **Pakete:** Ein Paket steht nicht als eigene Zeile da, sondern seine Spiele, jedes mit „aus: …“.
   Fehlt eine Angabe auf der Seite des Spiels, kommt sie von der Seite des Pakets.
+- **Mein Stand** (ab 1.7.1): In den Einzelheiten setzt du je Spiel Backlog, angefangen oder
+  durchgespielt und einen Favoriten. Die Zeile zeigt es als ○, ▶, ✓ und ★ hinter dem Namen. Der Filter
+  „Mein Stand“ und die Mischung „Aus dem Backlog“ nutzen es, „Überrasch mich“ wählt dann daraus. Der
+  Stand liegt in den Einstellungen und damit in der Sicherung.
+- **Sprachen und Mitgliedschaft** (ab 1.7.1): Laut Nintendo Europa ohne Deutsch heißt „ohne Deutsch“
+  am Namen. Braucht das Online-Spiel die Mitgliedschaft, sagt es der Tooltip der Spalte Online.
 - **Herkunft:** Die Angaben kommen von DekuDeals. Nennt die Nintendo-Suche etwas anderes (Spieler an
   einer Konsole oder online, Jahr, Verlag), ist der Wert violett und der Tooltip nennt beide. Koop gilt
   bis auf Weiteres nur als Hinweis („ja“, wenn HowLongToBeat eine Koop-Spielzeit kennt); genaue

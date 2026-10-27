@@ -3066,13 +3066,15 @@ class CollectionTest(unittest.TestCase):
                 "players_from": 1, "players_to": 4, "play_mode_tv_mode_b": True, "play_mode_handheld_mode_b": True,
                 "multiplayer_mode": "simultaneous", "paid_subscription_online_play_b": False,
                 "publisher": "Nintendo", "age_rating_type": "pegi", "age_rating_value": 3,
-                "players_from_system_i": 1, "players_to_system_i": 2, "players_to_online_i": 4}]}})
+                "players_from_system_i": 1, "players_to_system_i": 2, "players_to_online_i": 4,
+                "language_availability": ["english,german,French"]}]}})
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0)
         self.assertEqual(len(asked), 1)
         self.assertIn("nsuid_txt", asked[0])
         self.assertEqual(a["nin"], {"genre": ["Action", "Puzzle"], "players": [1, 4], "modes": ["tv", "handheld"],
                                     "mm": "simultaneous", "online": False, "publisher": "Nintendo",
-                                    "age": "PEGI 3", "sys_pl": [1, 2], "on_pl": [1, 4], "at": t0, "v": sync.NIN_V})
+                                    "age": "PEGI 3", "sys_pl": [1, 2], "on_pl": [1, 4],
+                                    "langs": ["english", "german", "french"], "at": t0, "v": sync.NIN_V})
         sync.sync_game_info_eu(data, solr, lambda s: None, now=t0 + 86400)
         self.assertEqual(len(asked), 1)                    # monatlich
         a["eu"] = "70010000000002"
@@ -3355,6 +3357,19 @@ class CollectionTabTest(unittest.TestCase):
             self.assertEqual(store.load_settings()["dlc_marks"], {"rl-a": "have", "rl": "ignore_all"})
             store.save_settings({"dlc_marks": {"rl-a": None}})
             self.assertEqual(store.load_settings()["dlc_marks"], {"rl": "ignore_all"})
+
+    def test_game_marks_are_saved(self):
+        # 1.7.1: Mein Stand je Spiel, Stand und Favorit getrennt setzbar, leer fällt weg
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(store, "DATA_DIR", d):
+            self.assertEqual(store.load_settings()["game_marks"], {})
+            store.save_settings({"game_marks": {"a": {"s": "backlog"}, "b": {"s": "bogus", "fav": True}, "c": "done"}})
+            store.save_settings({"game_marks": {"a": {"fav": True}}})
+            self.assertEqual(store.load_settings()["game_marks"], {"a": {"s": "backlog", "fav": True}, "b": {"fav": True}})
+            store.save_settings({"game_marks": {"a": {"s": None}, "b": {"fav": None}}})
+            self.assertEqual(store.load_settings()["game_marks"], {"a": {"fav": True}})
+            data, settings = sample()
+            data["owned"], data["rel"] = ["a"], {"a": {"title": "A", "dlc": []}}
+            self.assertEqual(planner.game_infos(data, store.load_settings())["games"][0]["mine"], {"fav": True})
 
 
 class Switch2Test(unittest.TestCase):
@@ -4873,7 +4888,7 @@ class UiContractTest(unittest.TestCase):
         "spiele": {"dlc_entries", "entries", "games", "genres", "packs", "via_packs"},
         "spiele.games": {"bought", "coop", "developer", "genre", "hltb", "hours", "max", "mc", "mcu", "modes", "nin", "oc", "players",
                          "pack", "paid_online", "pegi", "pub_alt", "publisher", "read", "released", "s2", "score", "size_gb",
-                         "slug", "title", "usk", "via", "year", "year_alt"},
+                         "slug", "title", "usk", "via", "year", "year_alt", "mine", "langs"},
         "nso": {"days_left", "due", "ids_known", "mine", "rows", "suggest", "until", "variants"},
         "pay": {"card", "currency", "factor", "fee", "rate", "tax", "unit", "via"},
         "eshop": {"amount", "coll", "coll_game", "coll_name", "date", "eng", "game", "group", "how", "item", "key", "name",
@@ -4948,7 +4963,7 @@ class UiContractTest(unittest.TestCase):
             "collection": set(state["collection"]),
             "collection.games": keys(state["collection"]["games"]),
             "spiele": set(state["spiele"]),
-            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu", "pack", "pegi"},
+            "spiele.games": keys(state["spiele"]["games"]) | {"bought", "mcu", "pack", "pegi", "langs"},
             "nso": set(state["nso"]),
             "pay": keys(state["pay"].values()),
             "eshop": keys(planner.eshop_matches(dict(store.load_data(), _eshop={"picks": {}, "entries": [

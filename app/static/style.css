@@ -678,6 +678,14 @@ details.gmenu .hint{margin:0}
 .gtags .chip{flex:none}
 .gtags .chip.more{background:none;padding:0 2px}
 .galt{color:var(--muted);font-style:italic}
+.gme{flex:none;margin-left:6px;display:inline-flex;gap:3px;font-size:12px}
+.gst{color:var(--muted)}
+.gst.started{color:var(--ink)}
+.gst.done{color:var(--go)}
+.gfav{color:var(--ink)}
+.gno{color:var(--stop)}
+.gmark button{font-size:12px;padding:1px 8px}
+.gfavb{font-size:12px;padding:1px 9px;margin-left:4px}
 .gxc{color:var(--warn)}
 .ctop{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;margin:2px 0 10px;font-size:13px}
 /* Einzelheiten: oben das Wichtige nebeneinander, darunter klein der Rest */

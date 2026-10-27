@@ -26,6 +26,8 @@ DEFAULT_SETTINGS = {
     "lang_confirm": {},
     # DLC in der Sammlung von Hand: {DLC: "have" | "ignore", Spiel: "ignore_all"}
     "dlc_marks": {},
+    # Mein Stand je Spiel der Sammlung (1.7.1), von Hand: {Spiel: {"s": "backlog" | "started" | "done", "fav": true}}
+    "game_marks": {},
     # Cashback des Kartenshops in Prozent, wenn es eins gibt. Nur für einen Hinweis,
     # nicht in den Preisen: Es gibt es nicht immer
     "cashback_pct": 0.0,
@@ -155,6 +157,8 @@ def load_settings():
         return s
 
 
+GAME_STATES = ("backlog", "started", "done")   # Mein Stand (1.7.1): Backlog, angefangen, durchgespielt
+
 NSO_KEYS = ("m1", "m3", "m12", "ep", "fam", "epfam")
 
 
@@ -262,6 +266,22 @@ def save_settings(new):
                 s["dlc_marks"][slug] = value
             elif value is None:
                 s["dlc_marks"].pop(slug, None)
+        gm = new.get("game_marks")
+        for slug, value in gm.items() if isinstance(gm, dict) else []:
+            if not isinstance(slug, str) or len(slug) > 200:
+                continue
+            cur = dict(s["game_marks"].get(slug) or {}) if isinstance(value, dict) else {}
+            for k, v in (value.items() if isinstance(value, dict) else []):
+                if k == "s" and v in GAME_STATES:
+                    cur["s"] = v
+                elif k == "fav" and v is True:
+                    cur["fav"] = True
+                elif k in ("s", "fav") and v in (None, False):
+                    cur.pop(k, None)
+            if cur:
+                s["game_marks"][slug] = cur
+            else:
+                s["game_marks"].pop(slug, None)
         for tier, value in (new.get("tier_min_saving") or {}).items():
             if str(tier) in s["tier_min_saving"]:
                 try:

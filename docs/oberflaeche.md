@@ -297,6 +297,16 @@ Einträge samt DLC). Code in `js/spiele.js`
   mit Mitgliedschaft“, wenn Nintendo das sagt. Darunter eine kleine graue Zeile: Größe, Kaufdatum,
   Paket, Link zu DekuDeals und ob Nintendo geprüft hat. Spielmodi stehen nicht mehr da (nur die Marke am
   Namen bei Abweichung).
+- **Mein Stand** (ab 1.7.1): in den Einzelheiten zuerst, `.seg.gmark` „○ Backlog | ▶ angefangen |
+  ✓ durchgespielt“ (Klick auf den gewählten nimmt ihn zurück) und daneben „☆ Favorit“ (`.fb`, an: „★“).
+  In der Zeile hinter dem Namen nur, was gesetzt ist (`.gme`): ○ grau, ▶ Textfarbe, ✓ grün, ★
+  Textfarbe, Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
+  durchgespielt, Favoriten, ohne Stand), Mischung „Aus dem Backlog“. Gespeichert in den Einstellungen
+  (`game_marks`), damit in der Sicherung; die Oberfläche zeigt den Klick sofort und speichert dann.
+- **Sprachen** (ab 1.7.1, Nintendo Europa): markiert wird nur die Ausnahme, „ohne Deutsch“ (`.lgt.no`)
+  hinter dem Namen; in den Einzelheiten klein „Deutsch und n weitere Sprachen“, alle im Tooltip.
+- **Mitgliedschaft:** Sagt Nintendo, das Online-Spiel braucht sie, steht es im Tooltip der Spalte
+  Online und in den Einzelheiten („Online: mit Mitgliedschaft“).
 
 ## Rest füllen (Kaufplan)
 
