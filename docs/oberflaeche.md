@@ -249,7 +249,7 @@ nicht springt; links daneben „95 Spiele (119 Einträge bei DekuDeals, davon 30
 Paketen)“. Der Kasten der DLC-Ansicht nennt deshalb nicht mehr „119 Spiele in der Sammlung“ (das waren
 Einträge samt DLC). Ab 1.7.3 hat die DLC-Ansicht keinen eigenen Kasten mehr: Die Zeile „90 Spiele (…)“ ist
 die Kopfzeile einer Klappe (`details.cfold`, `data-kc="ctop"`, offen als Vorgabe; ab 1.7.5 in beiden
-Ansichten gleich, Pfeil ▾/▸ hinter dem Text statt davor, damit die Zeile nicht springt), darunter die
+Ansichten gleich, damit die Zeile nicht springt; Pfeil ▾/▸ davor als eigenes Zeichen, 1.7.5 kurz dahinter), darunter die
 Zahlen (`collStats`: mit DLC, ohne DLC, fehlen, Preis, im Angebot; ab 1.7.4 farbig: „mit offenen“ und „DLC
 fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot“ blau; Schrift 13 px wie die Kopfzeile).
 „So funktioniert die Sammlung“ nur in der DLC-Ansicht und „So funktioniert die Sammlung“. Code in `js/spiele.js`
@@ -266,7 +266,8 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   „Vorschlag“ mit drei Spielen (gewichtet nach Wertung), „Noch mal“ und „Schließen“.
 - **Filter:** System (alle, Switch 2, nur Switch), Genre und Spielweise als Menüs mit Häkchen
   (`details.gmenu`, eine Zahl je Eintrag: Treffer unter den übrigen Filtern; offen bleibt das Menü beim
-  Anhaken, `S.gMenu`; am Handy über die ganze Breite), Spieler ab n, Wertung ab, Spielzeit. Gesetzte
+  Anhaken, `S.gMenu`; am Handy über die ganze Breite), Spieler ab n, Wertung ab, Spielzeit, USK (ab 1.7.6: bis 0, 6, 12 oder 16; ohne USK zählt PEGI, ohne Angabe
+  fällt das Spiel heraus). Gesetzte
   Genres und Spielweisen stehen darunter als Knöpfe mit ×, dazu klein und grau „alle Filter
   zurücksetzen“ (`.gres`, ab 1.7.3). Alle Filter
   stehen in der Adresse (`#spiele?…`, `gHash`), nur solange die Ansicht offen ist.
@@ -305,12 +306,14 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   der Wert dezent violett (`.gxc`, `gVal`), der Tooltip nennt beide. Koop „ja“ bis IGDB nur aus einer
   Koop-Spielzeit bei HowLongToBeat.
 - **Vollständig:** alle Spiele auf einmal, kein „weitere zeigen“ (Entscheidung 27.10.2026).
+- **Aufklappen** (ab 1.7.6): Reichen die Einzelheiten unter den Fensterrand, rückt die Seite nach; wer ganz
+  unten war, bleibt beim Zuklappen unten.
 - **Einzelheiten** (`gDetail`, ab 1.7.0, ab 1.7.3 wieder untereinander, Entscheidung 27.10.2026): links
   die Fakten als Name und Wert (`.gdf`, Spalte Spiel), Mein Stand (`.gdm`) ab 1.7.4 unter den mittleren
   Spalten ab den Spielern, darunter klein der Rest. Offene Zeile und Einzelheiten liegen ab 1.7.4 auf
-  abgesetztem Grund, ab 1.7.5 dunkler als die Liste (`--open`, im Dunkeln fast Seitengrund; `--best` war
-  im Dunkeln heller). „Mein Stand“ in Textfarbe und fett, die Knöpfe auf Kartengrund, gewählt mit
-  leichtem Grau statt Akzent, damit die farbigen Symbole sichtbar bleiben. USK 16 blau, USK 18 rot (ab
+  abgesetztem Grund, ab 1.7.5 dunkler als die Liste (`--open`, ab 1.7.6 zwischen Liste und Seitengrund;
+  `--best` war im Dunkeln heller). Knöpfe von Mein Stand auf Kartengrund, gewählt mit leichtem Grau statt
+  Akzent und nicht fett (sonst wächst der Knopf), damit die farbigen Symbole sichtbar bleiben. USK 16 blau, USK 18 rot (ab
   1.7.5, `.usk16`, `.usk18`, wie die Farben der USK). Wertungen in denselben Farben wie die Tabelle (`.gsc`, Nutzer mal
   zehn). Mit Upgrade-Paket zuerst „Angaben: Switch-2-Edition“ (Link) und klein, was die Switch-1-Seite
   anders nennt (ab 1.7.4).
@@ -324,7 +327,8 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
 - **Mein Stand** (ab 1.7.1): in den Einzelheiten, `.seg.gmark` „○ Backlog | ▷ angefangen |
   ✓ durchgespielt“ (Klick auf den gewählten nimmt ihn zurück) und daneben als zweite Gruppe gleicher Höhe
   „☆ Favorit“ (an: „★“). Ab 1.7.4 farbig, in Knöpfen und Zeile gleich (`.gst`, `.gfav`): ○ rot (`--stop`),
-  ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold); ○ und ▷ ab 1.7.5 1,5 px höher, sonst hängen sie durch. In der Zeile hinter dem Namen nur, was
+  ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold); ○ und ▷ ab 1.7.5 höher (in Knöpfen 1,5 px, hinter dem Titel ab 1.7.6 2,5 px), sonst hängen sie durch; ab 1.7.6
+  mit feiner Kontur kräftiger (`-webkit-text-stroke`, fett ändert diese Zeichen kaum). In der Zeile hinter dem Namen nur, was
   gesetzt ist (`.gme`), Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
   durchgespielt, Favoriten, ohne Stand), Mischung „Aus dem Backlog“. Gespeichert in den Einstellungen
   (`game_marks`), damit in der Sicherung; die Oberfläche zeigt den Klick sofort und speichert dann.
@@ -430,7 +434,7 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
 | Nein, teurer | `--stop`, `--stop-bg`, `--sale` | `.bad`, `.abv`, `.over`, `.lgt.no`, `.save.neg` | ohne Deutsch, Wechsel lohnt nicht, über dem Bestpreis (+x €), ignorierte Anzahl, Guthabenkarte teurer als Kreditkarte (Faktor und Bewertung) |
 | Neutral | `--muted`, `--chip`, `--line` | `.mut`, `.chip`, `.dlc`, `.lgt.de`, `.pct.np` | Beschriftungen, Normalpreis, "DLC"-Etikett (immer grau), "Deutsch ✓" |
 | Marke | `--brand` | `h1 .brand`, `nav button.on` | „eShop“ im Namen oben links, Nintendo-Rot, und ab 1.7.5 die Unterstreichung des aktiven Reiters (wie im VR-Navigator, Entscheidung 27.10.2026). Sonst nirgends, damit Rot weiter „nein“ heißt |
-| Gewählt, hervorgehoben | `--accent` | `button.primary`, `.seg button.on`, `.fb.on`, `.kb.on` | Hauptknopf und gewählter Knopf, alle gleich hell (ab 1.7.5; `.fb.on` war in Textfarbe und blendete im Dunkeln, etwa „alle 119“) |
+| Gewählt, hervorgehoben | `--accent` | `button.primary`, `.seg button.on`, `.fb.on`, `.kb.on` | Hauptknopf und gewählter Knopf, alle gleich hell (ab 1.7.5; `.fb.on` war in Textfarbe und blendete im Dunkeln, etwa „alle 119“). `.fb.on` nicht fett, sonst springt die Zeile |
 | Betonung ohne Wertung | `--accent` | `.lvl-neg`, `.pct.m-low` | Kurs-/Preisniveau unter 1 bzw. günstiger, ohne Urteil |
 
 ## Marken und Zeichen

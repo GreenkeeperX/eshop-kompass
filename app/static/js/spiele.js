@@ -3,7 +3,7 @@
    Filter, Sortierung, Mischungen und „Überrasch mich“ nach dem Vorbild von „Entdecken“ im VR-Navigator.
    Daten aus S.state.spiele (planner.game_infos). Filter laufen im Browser und stehen in der Adresse
    (#spiele?…), eine Mischung lässt sich so als Lesezeichen merken (Teil der Oberfläche, Reihenfolge in index.html) */
-const G0 = {sys: "", g: [], gop: "", how: [], pl: 0, sc: 0, hr: 0, st: "", q: "", sort: "name", seed: 0, mix: ""};
+const G0 = {sys: "", g: [], gop: "", how: [], pl: 0, sc: 0, hr: 0, st: "", usk: "", q: "", sort: "name", seed: 0, mix: ""};
 S.g = Object.assign({}, G0, {g: [], how: []});
 S.gOpen = null;
 S.gMenu = null;
@@ -34,6 +34,7 @@ const G_STF = [["", "egal"], ["open", "nicht durchgespielt"], ["backlog", "Backl
 const gRand = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const gSeed = () => 1 + Math.floor(Math.random() * 2147483646);
 const gNames = g => g.genre.map(x => x.n);
+const gAge = g => { const a = parseInt(g.usk !== undefined ? g.usk : g.pegi, 10); return isNaN(a) ? null : a; };
 const gPl = (g, k) => (g.players[k] && g.players[k].v) ? g.players[k].v[1] : g.players[k] ? 2 : 0;   // online ohne Zahl: „ja“
 
 /* Adresse: #spiele?… nur, solange die Ansicht offen ist */
@@ -77,6 +78,8 @@ function gFilter(d, games){
     const m = g.mine || {};
     if(d.st && !(d.st === "open" ? m.s !== "done" : d.st === "fav" ? m.fav : d.st === "none" ? !m.s && !m.fav : m.s === d.st)) return false;
     if(d.sc && (g.score || 0) < d.sc) return false;
+    // Alter (1.7.5): USK, ohne USK PEGI; ohne Angabe fällt das Spiel heraus
+    if(d.usk !== "" && !(gAge(g) !== null && gAge(g) <= Number(d.usk))) return false;
     if(d.hr > 0 && !(g.hours && g.hours <= d.hr)) return false;
     if(d.hr < 0 && !(g.hours && g.hours >= -d.hr)) return false;
     if(q && ![g.title, g.publisher, g.developer, ...names].some(t => t && fold1(t).includes(q))) return false;
@@ -122,7 +125,7 @@ function gSetMix(k){
 }
 const gLabel = d => [d.sys === "s2" ? "Switch 2" : d.sys === "s1" ? "nur Switch" : "", d.how.map(h => (G_HOW.find(x => x[0] === h) || [h, h])[1]).join(" + "),
   d.pl && `ab ${d.pl} Spieler`, d.g.join(d.gop === "and" ? " und " : " oder "), d.sc && `Wertung ab ${d.sc}`,
-  d.hr > 0 ? `bis ${d.hr} Stunden` : d.hr < 0 ? `ab ${-d.hr} Stunden` : "", d.st && (G_STF.find(x => x[0] === d.st) || ["", ""])[1], d.q && `„${d.q}“`].filter(Boolean).join(", ");
+  d.hr > 0 ? `bis ${d.hr} Stunden` : d.hr < 0 ? `ab ${-d.hr} Stunden` : "", d.st && (G_STF.find(x => x[0] === d.st) || ["", ""])[1], d.usk !== "" && `bis USK ${d.usk}`, d.q && `„${d.q}“`].filter(Boolean).join(", ");
 
 /* Herkunft (1.6.2, Entscheidung 27.10.2026): kein Zeichen. DekuDeals gilt; nennt Nintendo etwas anderes,
    ist der Wert dezent violett, beide Werte stehen im Tooltip. Leer heißt grauer Strich (1.7.0) */
@@ -292,6 +295,7 @@ function viewGames(){
       <label>Spieler <select data-gset="pl">${opt([[0, "egal"], [2, "ab 2"], [3, "ab 3"], [4, "ab 4"], [8, "ab 8"]], d.pl)}</select></label>
       <label>Wertung <select data-gset="sc">${opt([[0, "egal"], [70, "ab 70"], [80, "ab 80"], [90, "ab 90"]], d.sc)}</select></label>
       <label>Spielzeit <select data-gset="hr">${opt([[0, "egal"], [5, "bis 5 h"], [10, "bis 10 h"], [20, "bis 20 h"], [-40, "ab 40 h"]], d.hr)}</select></label>
+      <label title="Höchstens diese Altersfreigabe: USK, ohne USK PEGI; Spiele ohne Angabe fallen heraus">USK <select data-gset="usk">${opt([["", "egal"], ["0", "bis 0"], ["6", "bis 6"], ["12", "bis 12"], ["16", "bis 16"]], d.usk)}</select></label>
       <label title="Dein Stand je Spiel, setzt du in den Einzelheiten">Mein Stand <select data-gset="st">${opt(G_STF, d.st)}</select></label></div>
     ${label ? `<div class="chips gact">${d.how.map(h => `<button class="fb" data-act="ghowoff" data-v="${h}" title="Filter entfernen">${esc((G_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.g.map(x => `<button class="fb" data-act="ggoff" data-v="${esc(x)}" title="Filter entfernen">${esc(x)} ×</button>`).join("")}<button class="link gres" data-act="greset">alle Filter zurücksetzen</button></div>` : ""}`;
   const tools = `<div class="tools"><span class="sbox"><input type="search" id="gq" placeholder="Spiel, Genre oder Verlag" aria-label="Spiel, Genre oder Verlag suchen" value="${esc(d.q)}">${d.q ? `<button class="sx" data-act="gqclear" title="Suche leeren (Esc)">×</button>` : ""}</span>
@@ -341,7 +345,14 @@ document.addEventListener("click", e => {
   const a = el.dataset.act, v = el.dataset.v, d = S.g;
   const done = () => { gHash(); render(); };
   if(a === "cview"){ S.cview = v; S.gOpen = null; saveView(); window.scrollTo(0, 0); done(); }
-  else if(a === "gopen"){ S.gOpen = S.gOpen === el.dataset.s ? null : el.dataset.s; render(); }
+  else if(a === "gopen"){
+    // 1.7.5: Aufgeklappt rückt das Fenster nach, bis die Einzelheiten ganz zu sehen sind; wer ganz unten war, bleibt unten
+    const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 4;
+    S.gOpen = S.gOpen === el.dataset.s ? null : el.dataset.s; render();
+    const gd = S.gOpen && document.querySelector(".gd");
+    if(gd){ const r = gd.getBoundingClientRect(); if(r.bottom > innerHeight) scrollBy(0, Math.min(r.bottom - innerHeight + 12, r.top - 120)); }
+    else if(atEnd) scrollTo(0, document.documentElement.scrollHeight);
+  }
   else if(a === "gmark"){
     // Sofort zeigen, dann speichern; ein Fehler lädt den Stand des Servers neu
     const g = ((S.state.spiele || {}).games || []).find(x => x.slug === el.dataset.s), k = el.dataset.k;
