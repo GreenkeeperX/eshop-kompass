@@ -217,6 +217,12 @@ class Handler(BaseHTTPRequestHandler):
                                  "data": {k: v for k, v in store.load_data().items() if k != "_eshop"},
                                  "log": [re.sub(r"/(wishlist|collection)/[^/?\s]+", r"/\1/…", line)
                                          for line in sync.status["log"]]})
+            elif path == "/api/sammlung":
+                # Für andere Tools im eigenen Netz (1.7.16): nur Spiele mit ihren Angaben, keine Preise,
+                # Links oder Einstellungen; dieselbe Host-Prüfung wie überall
+                with planner.shared_contexts():
+                    games = planner.games_export(store.load_data(), store.load_settings())
+                self._send(200, {"app": "eshop-kompass", "version": sources.VERSION, "games": games})
             elif path == "/api/export":
                 self._send(200, {"app": "eshop-kompass", "version": sources.VERSION,
                                  "settings": store.load_settings(), "ui": store.load_ui(),

@@ -1042,6 +1042,11 @@ eine fremde Webseite ihre Domain auf deinen Server zeigen lassen und so die Sich
 Rufst du das Tool über eine andere Domain auf, trag sie in `ALLOWED_HOSTS` ein (mit Komma getrennt,
 „.beispiel.de“ gilt für alle Namen darunter); sonst antwortet er mit 421.
 
+Andere Tools im eigenen Netz lesen die Sammlung unter `/api/sammlung` (ab 1.7.16, für den
+VR-Navigator): je Spiel Name, System (Switch oder Switch 2), Genres, Spieler, Koop, Wertung,
+Spielzeit, Erscheinen, Firmen, USK, Sprachen, Kurzbeschreibung, Kaufdatum und Mein Stand. Preise,
+Links und Einstellungen stehen nicht darin; es gilt dieselbe Prüfung der Adresse wie überall.
+
 Eigene Links (Kartenpreise, eigene Angebote) holt der Server nur von öffentlichen Adressen. Zeigt ein Link oder eine Weiterleitung auf eine private, lokale oder Loopback-Adresse, steht im Protokoll „Adresse nicht öffentlich“, und nichts wird abgerufen. Unerwartete Fehler zeigt die Oberfläche nur mit ihrer Art an, die Einzelheiten stehen im Protokoll des Containers (`docker logs`).
 
 ### Tests
