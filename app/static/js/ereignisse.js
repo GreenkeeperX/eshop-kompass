@@ -295,6 +295,7 @@ document.addEventListener("click", async e => {
     }
     else if(a === "unbought"){ await api("/api/bought/undo", {}); toast("Letzter Kauf zurückgenommen"); await refresh(); }
     else if(a === "vlclose"){ $("verlauf").close(); }
+    else if(a === "vlall"){ S.vl.show = new Set(d.v ? S.vl.data.countries.map(c => c.code) : []); drawVerlauf(); }
     else if(a === "vltoggle"){ const sh = S.vl.show; sh.has(d.c) ? sh.delete(d.c) : sh.add(d.c); drawVerlauf(); }
     else if(a === "showlog"){ go("settings", false); const l = $("log"); if(l){ l.closest("details").open = true; l.scrollIntoView({block:"center"}); } }
     else if(a === "sync"){

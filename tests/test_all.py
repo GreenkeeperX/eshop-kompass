@@ -23,7 +23,8 @@ BR_JSON = ('{"personalized":false,"country":"BR","prices":[{"title_id":700100000
            '"raw_value":"279.9"}},{"title_id":70050000042414,"sales_status":"onsale",'
            '"regular_price":{"amount":"R$ 5,00","currency":"BRL","raw_value":"5"},'
            '"discount_price":{"amount":"R$ 4,00","currency":"BRL","raw_value":"4",'
-           '"start_datetime":"2026-10-10T16:00:00Z","end_datetime":"2026-11-01T06:59:59Z"}},'
+           # Ende weit in der Zukunft: Ein abgelaufenes Angebot zählt nicht mehr (Test fiel ab 01.11.2026 aus)
+           '"start_datetime":"2026-10-10T16:00:00Z","end_datetime":"2036-11-01T06:59:59Z"}},'
            '{"title_id":70010000000126,"sales_status":"not_found"}]}')
 
 ITEM_US = '''<html><head><title>Vampire Survivors: Tides of the Foscari | Deku Deals</title></head>
@@ -551,6 +552,23 @@ class PlanTest(unittest.TestCase):
         with mock.patch.object(planner.Context, "_champions", cheap):
             br = self.by(planner.plans(self.data, self.settings, now=NOW))["BR"]
         self.assertNotIn("nidhogg-2", [x for f in br["fillers"] for x in f["slugs"]])
+
+    def test_cheaper_elsewhere_names_country_outside_plan(self):
+        # 1.7.19: „sonst“ zählt nur Länder im Plan; ein günstigeres herausgefallenes Land steht als Hinweis daneben
+        class Ctx:
+            def alt_price(self, slug, tier, shop, allowed):
+                return (3.0, "NO") if allowed is None else (6.0, "PL")
+
+            def oeur(self, c, o):
+                return o["eur"]
+        c = {"tier": 1, "meta": {"shop": "ZA"}}
+        self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 5.0}, 6.0, "PL"),
+                         {"cheaper": 3.0, "cheaper_code": "NO"})
+        # gleich dem „sonst“-Land oder nicht günstiger: kein Hinweis
+        self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 5.0}, 6.0, "NO"), {})
+        self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 5.0}, 2.5, "PL"), {})
+        # ohne „sonst“ zählt der Preis hier
+        self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 2.0}, None, None), {})
 
     def test_override_and_balance(self):
         self.only_sales()
@@ -2261,6 +2279,13 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(src["titledb"]["note"], "titledb: nicht abrufbar")       # nichts gesagt: bleibt
         self.assertNotIn("fx", src)
         self.assertFalse(src["ginfo"]["ok"])
+        # 1.7.19: Einzelheiten stehen nur im Tooltip
+        data = {}
+        sync.remember_sources(data, ["01:00:00 Sprachen Japan: Store im Warteraum, 2 Seiten warten bis 04.11., 02:01"
+                                     + sync.DETAIL + "Offen: 1 Wishlist-Titel."], now=1e9)
+        self.assertEqual(data["sources"]["lang_jp"]["note"], "Sprachen Japan: Store im Warteraum, 2 Seiten warten bis 04.11., 02:01")
+        self.assertEqual(data["sources"]["lang_jp"]["detail"], "Offen: 1 Wishlist-Titel.")
+        self.assertFalse(data["sources"]["lang_jp"]["ok"])
 
     def test_wishlist_env_only_as_start_value(self):
         # 1.5.0: WISHLIST_URL füllt nur eine frische Installation, ein geleertes Feld bleibt leer
@@ -3612,9 +3637,17 @@ class SelfCheckTest(unittest.TestCase):
             "checked": NOW.timestamp(), "price": 0.35, "currency": "EUR"}}
         w = " | ".join(sync.self_check(data, settings, now=NOW)["warnings"])
         self.assertIn("Norwegen: Preis je NOK", w)
-        self.assertIn("Brasilien: nur noch 1 statt 5 Titel kaufbar", w)
+        self.assertIn("Brasilien: nur noch 1 von 5 Titeln kaufbar, zuletzt 5 von 5", w)
         self.assertIn("Kartenpreis 50 BRL für 0,78 € vom Shop unglaubhaft", w)
         self.assertIn("Wechselkurse sind 10 Tage alt", w)
+        # Gekauft (1.7.19): weniger Titel auf der Wishlist, gleicher Anteil kaufbar, keine Warnung
+        for slug in list(data["prices"]["BR"])[1:]:
+            data["prices"]["BR"][slug]["status"] = "onsale"
+        sync.self_check(data, settings, now=NOW)
+        for code in data["prices"]:
+            for slug in list(data["prices"][code])[1:]:
+                del data["prices"][code][slug]
+        self.assertNotIn("nur noch", " | ".join(sync.self_check(data, settings, now=NOW)["warnings"]))
 
 
 class BootSyncTest(unittest.TestCase):
@@ -4222,8 +4255,8 @@ class ExtraDlcTest(unittest.TestCase):
                 mock.patch.object(sources, "fetch_langs_jp", jp):
             sync.sync_langs(data, settings, None, lambda s: None, now=1e9)
             line = next(l for l in sync.status["log"] if "Sprachen Japan" in l)
-            self.assertIn("1 Spiele der Sammlung mit fehlenden DLC, 1 Spiele der Sammlung ohne fehlende DLC, "
-                          "nur zur Bestätigung, 1 davon schon aus titledb", line)
+            self.assertIn("1 Spiel der Sammlung mit fehlenden DLC, 1 Spiel der Sammlung ohne fehlende DLC, "
+                          "nur zur Bestätigung, für 1 davon hat titledb schon eine Angabe", line)
             data["lang_wait"] = {}
             sync.sync_langs(data, settings, None, lambda s: None, now=1e9)
         self.assertEqual(calls, ["11", "22"])                          # erst, woran etwas hängt
@@ -4264,7 +4297,7 @@ class ExtraDlcTest(unittest.TestCase):
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 2, budget=budget)
         # 0.54: Nach dem Warteraum ruht store-jp eine Woche, auch im nächsten Abgleich
         self.assertEqual(len(calls), 1)
-        self.assertTrue(any("der Store zeigte zuletzt den Warteraum; nächster Versuch ab" in l for l in sync.status["log"]))
+        self.assertTrue(any("Store im Warteraum" in l and "fragt es ihn erst ab" in l for l in sync.status["log"]))
         self.assertFalse(any("Sprachen Japan: 0 von" in l for l in sync.status["log"]))
         with mock.patch.object(sources, "fetch_langs_jp", jp):
             sync.sync_langs(data, settings, None, lambda s: None, now=t0 + 8 * 86400)
@@ -5014,7 +5047,7 @@ class UiContractTest(unittest.TestCase):
                  "estimated", "family", "fill", "fill_nso", "fill_pairs", "fill_zero", "fillers", "gain", "games_cost", "games_paid", "grade", "home", "items",
                  "missing", "name", "opt_gap", "opt_pct", "optimum", "pay", "price_at", "price_stale", "rate", "ref_total", "rest", "rest_eur",
                  "saving", "threshold", "tier", "total", "trims", "warnings", "worth"},
-        "plan.items": {"alt", "alt_code", "champ", "dlc_of", "end", "est", "eur", "lang", "local", "needs_parent",
+        "plan.items": {"alt", "alt_code", "champ", "cheaper", "cheaper_code", "dlc_of", "end", "est", "eur", "lang", "local", "needs_parent",
                        "over", "own", "owned", "parent_owned", "pct", "ref", "sale", "short", "slug", "title"},
         "plan.others": {"code", "current", "diff", "estimated", "games_cost", "is_ref", "missing", "name", "tier"},
         "collection": {"free", "games", "missing_eur", "missing_priced", "owned", "pass_hints", "plain", "waiting"},

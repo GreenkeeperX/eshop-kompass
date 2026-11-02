@@ -544,6 +544,8 @@ dialog.vl h2{margin:0;font-size:18px;flex:1}
 .vl .lg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
 .vl .lg button{font-size:12px;padding:2px 8px;border-radius:999px}
 .vl .lg button.off{opacity:.45}
+.vl .lg .foldall{align-self:center;font-size:12px;margin-right:4px}
+.vl .lg .foldall button.link{padding:0;border-radius:0;font-size:12px}
 .vl .lg i{display:inline-block;width:10px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
 .vl table td:first-child,.vl table th:first-child{text-align:left}
 .vl td small{display:block;color:var(--muted);font-size:11px}
@@ -625,7 +627,7 @@ span.plain{cursor:pointer}
 .news details.newsd[open]>summary .lead{display:none}
 .news .np-grid{margin:4px 0 8px;color:var(--ink)}
 .news .ink{color:var(--ink)}
-.news .dealn,.cstat .dealn{color:var(--deal)}
+.news .dealn,.cstat .dealn,.c-alt .dealn{color:var(--deal)}
 .news .npmore{margin:8px 0 2px;padding-top:6px;border-top:1px dashed var(--line)}
 /* „Wartet“ und „Gekauft“ (1.4.0) */
 .np .wf{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}

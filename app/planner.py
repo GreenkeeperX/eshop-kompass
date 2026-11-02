@@ -905,6 +905,7 @@ def plan_country(ctx, code, override=None, must=(), basket=None, allowed=None, f
             # DLC ohne Hauptspiel im selben Korb: braucht es meist aus dieser Region
             "needs_parent": bool(it.get("parent") and it["parent"] not in chosen),
             "alt": _r(alt.get(slug)), "alt_code": alt_code.get(slug),
+            **_cheaper_elsewhere(ctx, c, slug, o, alt.get(slug), alt_code.get(slug)),
             **ctx.owned_flags(slug),
             "over": bool(slug in alt and ctx.oeur(c, o) > alt[slug] + 0.005),
             **ctx.cell(c, slug, o),
@@ -1376,6 +1377,17 @@ def _now_eur(r):
     best = next((b for b in ((r or {}).get("easy"), (r or {}).get("hard"))
                  if b and b.get("code") == shown.get("code")), None)
     return (best.get("eur"), shown.get("name"), bool(best.get("est"))) if best else (None, None, False)
+
+
+def _cheaper_elsewhere(ctx, c, slug, o, alt, alt_code):
+    """Günstiger als „sonst“ (oder ohne „sonst“ als hier) in einem Land gleicher oder leichterer Stufe, das
+    nicht als „sonst“ zählt, weil es nicht im Plan ist (etwa unter der Schwelle herausgefallen, 1.7.19):
+    {"cheaper", "cheaper_code"} oder {}."""
+    best = ctx.alt_price(slug, c["tier"], c["meta"]["shop"], None)
+    bar = alt if alt is not None else ctx.oeur(c, o)
+    if not best or best[1] == alt_code or bar is None or best[0] >= bar - 0.005:
+        return {}
+    return {"cheaper": _r(best[0]), "cheaper_code": best[1]}
 
 
 def switch2_paths(data, rows, settings=None):

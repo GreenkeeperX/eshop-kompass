@@ -817,7 +817,7 @@ def self_check(data, settings, now=None):
     except Exception as e:
         data["checks"] = {"at": now.isoformat(timespec="seconds"), "warnings": [f"Rechnung nicht möglich ({e})"]}
         return data["checks"]
-    units, buyable = {}, {}
+    units, buyable, asked = {}, {}, {}
     for code, c in ctx.countries.items():
         name = c["meta"]["name"]
         for i in c["implausible"]:
@@ -834,10 +834,14 @@ def self_check(data, settings, now=None):
             warnings.append(f"{name}: kein Wechselkurs für {c['currency']}, Land fehlt in allen Vergleichen")
         if n and c.get("nocard"):
             _log(f"Prüfung: {name} hat keine Guthabenkarte mit Preis, Angebote dort zählen nicht")
-        buyable[code] = n
-        old_n = (prev.get("buyable") or {}).get(code)
-        if old_n and old_n >= 5 and n < old_n / 2:
-            warnings.append(f"{name}: nur noch {n} statt {old_n} Titel kaufbar, Preisabruf prüfen")
+        buyable[code], asked[code] = n, len(data["prices"].get(code) or {})
+        # Gemessen am Anteil der abgefragten Titel (1.7.19): Wer viel kauft, hat weniger auf der Wishlist, das ist
+        # kein Fehler des Preisabrufs. Ohne alte Zahl der Abfragen zählt nur ein Rückgang bei gleich vielen Titeln
+        old_n, old_a = (prev.get("buyable") or {}).get(code), (prev.get("asked") or {}).get(code)
+        share = n / asked[code] if asked[code] else 0
+        if old_n and old_n >= 5 and (share < old_n / old_a / 2 if old_a else n < old_n / 2 and asked[code] >= old_n):
+            warnings.append(f"{name}: nur noch {n} von {asked[code]} Titeln kaufbar, zuletzt {old_n}"
+                            + (f" von {old_a}" if old_a else "") + ", Preisabruf prüfen")
     age = _fx_age_days((data.get("fx") or {}).get("updated"), now)
     if age is not None and age > FX_MAX_AGE_DAYS:
         warnings.append(f"Wechselkurse sind {int(age)} Tage alt")
@@ -849,7 +853,7 @@ def self_check(data, settings, now=None):
                  "bis du sie einmal bestätigst oder den Browser-Helfer laufen lässt (Einstellungen, Sprachen prüfen)"
                  + (f"; bei {need} davon wäre Japan gerade günstiger" if need else ""))
     data["checks"] = {"at": now.isoformat(timespec="seconds"), "warnings": warnings,
-                      "units": units, "buyable": buyable}
+                      "units": units, "buyable": buyable, "asked": asked}
     for w in warnings:
         _log("Prüfung: " + w)
     if not warnings:
@@ -1458,12 +1462,15 @@ def sync_langs(data, settings, fetch, sleep, now=None, budget=None, report_idle=
                 wish = sum(1 for r, _ in todo if id(r) in mine)
                 bare = sum(1 for r, _ in todo if id(r) in mine and not (r.get("langs") or {}).get(fam))
                 need = len(todo) - wish - len(confirm)
-                parts = [f"{wish} Wishlist-Titel, {bare} davon ohne Angabe" if wish else "",
-                         f"{need} Spiele der Sammlung mit fehlenden DLC" if need else "",
-                         f"{len(confirm)} Spiele der Sammlung ohne fehlende DLC, nur zur Bestätigung" if confirm else "",
-                         f"{tdb} davon schon aus titledb" if tdb else ""]
-                _log(f"Sprachen {name}: {len(todo)} Seiten offen ({', '.join(x for x in parts if x)}), der Store zeigte zuletzt den Warteraum; nächster Versuch ab "
-                     f"{datetime.fromtimestamp(wait_until).strftime('%d.%m., %H:%M')}, bis dahin titledb und Browser-Helfer")
+                # Kurz vorn, Einzelheiten nach DETAIL (1.7.19): Der Zustand der Quellen zeigt sie im Tooltip
+                parts = [f"{wish} Wishlist-Titel" + (f" ({bare} noch ganz ohne Sprachangabe)" if bare else "") if wish else "",
+                         f"{need} {'Spiel' if need == 1 else 'Spiele'} der Sammlung mit fehlenden DLC" if need else "",
+                         f"{len(confirm)} {'Spiel' if len(confirm) == 1 else 'Spiele'} der Sammlung ohne fehlende DLC, nur zur Bestätigung" if confirm else "",
+                         f"für {tdb} davon hat titledb schon eine Angabe" if tdb else ""]
+                until = datetime.fromtimestamp(wait_until).strftime('%d.%m., %H:%M')
+                _log(f"Sprachen {name}: Store im Warteraum, {len(todo)} {'Seite wartet' if len(todo) == 1 else 'Seiten warten'} bis {until}"
+                     f"{DETAIL}Offen: {', '.join(x for x in parts if x)}. Der Store zeigt dem Tool meist nur einen Warteraum, "
+                     f"deshalb fragt es ihn erst ab {until} wieder. Bis dahin gelten titledb und der Browser-Helfer.")
             continue
         # Schonend: ungeprüfte zuerst, höchstens LANG_PER_SYNC Seiten, der Rest beim nächsten Abgleich
         # Was nur bestätigt, kommt nach dem, woran etwas hängt (1.4.5)
@@ -2437,6 +2444,9 @@ SOURCE_LINES = (
     ("cards", "Kartenshops", r"^Kartenpreise"),
     ("offers", "Eigene Angebote", r"^Eigene Angebote"),
 )
+# Trennt in einer Protokollzeile das Wesentliche von den Einzelheiten (1.7.19): Der Zustand der Quellen zeigt
+# nur den Teil davor, den Rest im Tooltip
+DETAIL = " · Einzelheiten: "
 SOURCE_BAD = re.compile(r"(?i)lehnt|gesperrt|sperre|\b(403|429)\b|warteraum|fehler|nicht abrufbar|nicht erreichbar|"
                         r"keine verbindung|abgebrochen|ruht")
 
@@ -2451,8 +2461,9 @@ def remember_sources(data, log, now=None):
         if not mine:
             continue
         bad = [x for x in mine if SOURCE_BAD.search(x)]
-        note = re.sub(r"/(wishlist|collection)/[^/?\s]+", r"/\1/…", (bad or mine)[-1])[:240]
-        out[key] = {"ok": not bad, "note": note, "at": at}
+        note = re.sub(r"/(wishlist|collection)/[^/?\s]+", r"/\1/…", (bad or mine)[-1])
+        note, _, detail = note.partition(DETAIL)
+        out[key] = {"ok": not bad, "note": note[:240], "at": at, **({"detail": detail[:600]} if detail else {})}
 
 
 def diagnose(sleep=time.sleep):

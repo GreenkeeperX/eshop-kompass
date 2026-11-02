@@ -638,9 +638,15 @@ function fillTip(f, cur, act){
     `${f.champ !== null && f.champ !== undefined ? ` Bestpreis der letzten 24 Monate: ${eur(f.champ)}, hier jetzt ${eur(f.eur)}.` : ""}${act ? " " + act : ""}`;
 }
 function altCell(i){
-  if(i.alt === null || i.alt === undefined) return `<td class="mut c-alt">–</td>`;
-  const tip = `Ohne diesen Wechsel: ${eur(i.alt)} in ${country(i.alt_code).name}` + (i.ref !== null && i.ref !== undefined ? ` · Deutschland ${eur(i.ref)}` : "");
-  return `<td title="${esc(tip)}" class="mut c-alt" data-l="sonst">${num(i.alt)} <small style="display:inline">${esc(i.alt_code)}</small></td>`;
+  // Günstiger anderswo (1.7.19): ein Land gleicher oder leichterer Stufe, das nicht im Plan ist, zweite Zeile blau
+  const why = code => { const d = ((S.kauf || {}).dropped || []).find(x => x.code === code);
+    return d ? (d.blocked_by ? `nicht im Plan, ein anderer Rest blockiert den Wechsel` : `nicht im Plan: der Wechsel lohnt nicht${d.threshold !== null && d.threshold !== undefined ? ` (alle Titel dort sparen ${eur(d.gain)}, lohnt ab ${eur(d.threshold)})` : ""}`) : "nicht im Plan"; };
+  const ch = i.cheaper !== null && i.cheaper !== undefined
+    ? `<small class="dealn" style="display:block">${num(i.cheaper)} ${esc(i.cheaper_code)}</small>` : "";
+  const chTip = ch ? `\nGünstiger: ${eur(i.cheaper)} in ${country(i.cheaper_code).name}, ${why(i.cheaper_code)}` : "";
+  if(i.alt === null || i.alt === undefined) return ch ? `<td class="mut c-alt" title="${esc(chTip.trim())}" data-l="sonst">–${ch}</td>` : `<td class="mut c-alt">–</td>`;
+  const tip = `Ohne diesen Wechsel: ${eur(i.alt)} in ${country(i.alt_code).name}` + (i.ref !== null && i.ref !== undefined ? ` · Deutschland ${eur(i.ref)}` : "") + chTip;
+  return `<td title="${esc(tip)}" class="mut c-alt" data-l="sonst">${num(i.alt)} <small style="display:inline">${esc(i.alt_code)}</small>${ch}</td>`;
 }
 function restHtml(p, bare){
   const pre = bare ? "" : "Rest ";

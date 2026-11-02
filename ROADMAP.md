@@ -105,3 +105,9 @@ Neue Wünsche, noch nicht eingeordnet.
   Angaben der Switch-2-Edition bei vorhandenem Upgrade-Paket (1.7.4, erledigt). Offen: Was die
   Switch-2-Edition verbessert (Auflösung, Bildrate, Maus), sobald eine Quelle es lesbar nennt; der
   Verbindungstest zeigt seit 1.7.2, ob die Europa-Suche zu einem Switch-2-Spiel passende Felder kennt.
+- **Pakete, deren Seite nicht alle Teile nennt:** Eine „Deluxe Edition“ enthält oft das Spiel und
+  ein „Deluxe Upgrade Pack“. DekuDeals nennt auf der Seite der Edition manchmal nur das Spiel, und
+  die Seite des Upgrade-Pakets liest das Tool nur, wenn es auf der Wishlist steht oder das Spiel in
+  der Sammlung ist. Dann gilt das Paket als unvollständig bekannt („DekuDeals nennt nicht alle
+  Teile“). Vorschlag: Heißt die Edition „Spiel: X Edition“ und hat das Spiel einen DLC „X Upgrade
+  Pack“, zählt er als Teil der Edition (mit „stimmt nicht“ korrigierbar). Offen, Entscheidung steht aus.

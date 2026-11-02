@@ -438,6 +438,7 @@ Selbstprüfung, fehlgeschlagener Abgleich. Jeder mit „Protokoll öffnen“.
 | Bestpreis | `--gold`, `--gold-ink` | `.ok`, `.star` (★), `td.champ` (Umrandung), `.pct.m-best` | nur der Bestpreis: ★ am Bestpreis, goldene Umrandung des Bestpreis-Landes, "Bestpreis" in Texten. Nie für anderes Lob |
 | Urteil und positiv | `--go`, `--go-bg`, `--go-fill`, `--on-go`, `--go-mark` | `.vd.buy`/`td.c-buy` (Füllung "kaufen"), `.vd.good`/`td.c-good` (hell "gut"), `.g-buy` (fett), `.g-good` (normal), `.gn` | Urteil "kaufen"/"gut", Ersparnis, vollständig, gute Kartenbewertung (Top, gut, günstiger). „am Bestpreis“ bei Körben: fett, wenn jeder Titel „kaufen“ ist, normal, wenn die Summe am Bestpreis liegt, aber ein Titel nur „gut“ ist |
 | Rabatt | `--deal` | `.pct` | Rabatt im Shop (−x %), immer dezent blau, auch in Tabellen |
+| Günstiger anderswo | `--deal` | `.c-alt .dealn` | ab 1.7.19 zweite Zeile in „sonst“: günstigeres Land gleicher oder leichterer Stufe, das nicht im Plan ist; Tooltip mit dem Grund (`altCell`) |
 | Prüfen, Hinweis (violett; bis 0.57 Bernstein, kaum vom Gold zu unterscheiden) | `--warn`, `--warn-bg` | `.warnc`, `.chip.w`, `.q` (?), `.approx` (≈), `.soon`, `.today`, `.dlc.need` | Sprache ungeprüft, zählt nicht, Schätzung, endet bald, DLC ohne Hauptspiel, Kartenbewertung "teuer" |
 | Nein, teurer | `--stop`, `--stop-bg`, `--sale` | `.bad`, `.abv`, `.over`, `.lgt.no`, `.save.neg` | ohne Deutsch, Wechsel lohnt nicht, über dem Bestpreis (+x €), ignorierte Anzahl, Guthabenkarte teurer als Kreditkarte (Faktor und Bewertung) |
 | Text | `--ink`, `--ink-hi` | alles, `h1`–`h4`, `nav button.on`, `.big`, `.pc .money`, Spielnamen als Überschrift (`details.cg>summary>b`, `.gr.open .g-n`) | ab 1.7.15 im Dunkeln Grundschrift gedeckt (`--ink` #cdd4d0 statt #e7ebe8, Entscheidung 27.10.2026: „blendet mehr als es müsste“); hell (`--ink-hi`) nur Name oben, aktiver Reiter, Überschriften und die großen Summen. Im Hellen sind beide gleich |
@@ -656,7 +657,8 @@ die Felder in „Grenzen anpassen“ und „Gebühren anpassen“. „Quellen un
 (Links; offen, solange keine Wishlist eingetragen ist), „IGDB-Schlüssel für Spielinfos“ (`data-k`
 igdbkey, ab 1.4.3: Kopf „eingetragen“ grün oder „keiner“, Passwortfelder ohne gespeicherten Wert; ab 1.7.13 „dev.twitch.tv“ im Hinweis als Link zu den Apps),
 „Zustand der Quellen“ (`data-k` srcstate, zu von Haus aus; Kopf „n ok, m mit Problem (…)“, Zahl ok
-grün, Problem violett; Tabelle je Quelle mit Zustand, Zeit und Zeile aus dem Protokoll), dann
+grün, Problem violett; Tabelle je Quelle mit Zustand, Zeit und Zeile aus dem Protokoll; ab 1.7.19 bei
+langen Zeilen nur der Teil vor „ · Einzelheiten: “ (`sync.DETAIL`), der Rest als Tooltip an `small.lg` mit grauem ⓘ), dann
 „☑ automatisch alle [6] Stunden“ (ab 1.7.4 wie im VR-Navigator: Häkchen `auto_sync`, schmales Zahlenfeld
 `.numh`; ohne Häkchen zeigt die Kopfzeile „Abgleich nur von Hand“), „Aktualisieren“ (ab 1.5.2, wie der
 Knopf oben, ab 1.7.4 so flach wie „Verbindung testen“, `.slimp`) und „Verbindung testen“, die Klappe „Verbindungstest“ (erst nach einem Test) und
@@ -687,6 +689,8 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Angebotsende und Angebotsbeginn | Hinweise oben im Kaufplan (`saleNews`), Plan-Schritt (`endCell`), Tabelle mit „Details“, Tooltips in Tabelle und Korb, „Wartet“ und „Noch auf der Wishlist“ (`npRow`) |
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen; „Spiele“ eigenes Feld `#gq` mit `fold1` |
 | Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, violett bei Widerspruch, grau-kursiv OpenCritic) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`), Widersprüche in den Einstellungen (`contraBox`); Daten nur aus `planner.game_infos` |
+| Preis ohne diesen Wechsel („sonst“, ab 1.7.19 mit günstigerem Land außerhalb des Plans) | Plan-Schritt und Länderkarte (`altCell` in `planCard`); die Länderkarten zeigen es nicht (`p.is_ref`) |
+| Länder ein- und ausblenden | Preisverlauf (`drawVerlauf`, `.vl .lg`, „alle an · alle aus“ `vlall` ab 1.7.19); der Verlauf ist ein Fenster für alle Stellen, die ihn öffnen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |
 | Ansichten und Reiter | `TABS`, `render()`, `viewSeg()`, `collSeg()` (Sammlung DLC | Spiele), `go()`/`goKorb()`; der Handy-Test `tests/ui_selbsttest.html` zählt jede Ansicht einzeln auf |

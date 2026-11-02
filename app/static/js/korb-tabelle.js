@@ -266,7 +266,9 @@ function drawVerlauf(){
   }
   const days = Math.max(0, (new Date(v.now) - new Date(v.since)) / 864e5);
   h += `<p class="hint">Aufgezeichnet seit ${dmy(v.since)} (${Math.round(days)} ${Math.round(days) === 1 ? "Tag" : "Tage"}). Europreise zum heutigen Kurs und Zahlweg, damit Länder und Zeitpunkte vergleichbar sind. Die Aufzeichnung kennt nur Zeiten, in denen das Tool lief.${days < 30 ? " Noch wenig Daten: Die Kurven werden mit jedem Abgleich aussagekräftiger." : ""}</p>`;
-  h += `<div class="lg">` + v.countries.map(c => `<button class="${S.vl.show.has(c.code) ? "" : "off"}" data-act="vltoggle" data-c="${c.code}" title="ein- oder ausblenden"><i style="background:${color(c.code)}"></i>${esc(c.name)}</button>`).join("") + `</div>`;
+  // Alle an, alle aus (1.7.19): ein Klick statt jedes Land einzeln
+  const allOn = v.countries.every(c => S.vl.show.has(c.code)), allOff = !v.countries.some(c => S.vl.show.has(c.code));
+  h += `<div class="lg"><span class="foldall">${allOn ? `<span class="mut">alle an</span>` : `<button class="link" data-act="vlall" data-v="1">alle an</button>`} · ${allOff ? `<span class="mut">alle aus</span>` : `<button class="link" data-act="vlall" data-v="">alle aus</button>`}</span>` + v.countries.map(c => `<button class="${S.vl.show.has(c.code) ? "" : "off"}" data-act="vltoggle" data-c="${c.code}" title="ein- oder ausblenden"><i style="background:${color(c.code)}"></i>${esc(c.name)}</button>`).join("") + `</div>`;
   h += chartSvg(v, color);
   const V = "verlauf", vrows = sortRows(V, v.countries, {name: c => c.name, now: c => c.now_eur, regular: c => c.regular_eur,
     low: c => c.low_eur, sales: c => c.deku_sales ?? c.sale_count, days: c => c.typical_days, pct: c => c.on_sale_pct,

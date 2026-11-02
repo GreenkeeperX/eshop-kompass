@@ -642,7 +642,9 @@ Guthaben, steht das darunter. Dann drei Zeilen:
 Hürden (Rest blockiert, Karten fehlen, DLC braucht eine andere Region als Europa) stehen
 darunter; die betroffenen DLC sind in der Tabelle wie der Hinweis violett markiert. Die Tabelle
 zeigt je Titel Einkaufspreis, Abstand zum Bestpreis und den Preis ohne diesen Wechsel
-(„sonst“). Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen darunter, die ganze
+(„sonst“). „sonst“ zählt nur Länder im Plan. Ist ein Land gleicher oder leichterer Stufe günstiger,
+das nicht im Plan ist (etwa weil sein Wechsel unter der Schwelle blieb), steht es ab 1.7.19 blau
+darunter, der Tooltip sagt, warum es nicht im Plan ist. Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen darunter, die ganze
 Rechnung unter „Rechnung“.
 
 ### Sammlung
@@ -766,7 +768,9 @@ etwas offen ist: alte Kartenpreise, offene Sprachen, offene Käufe, Quellen mit 
 **Zustand der Quellen** (unter Quellen und Abgleich, eingeklappt): je Quelle (DekuDeals,
 Nintendo-Preise, Sprachen Europa, Japan, Amerika, Spielinfos, titledb, Wechselkurse, Kartenshops, eigene
 Angebote) „ok“ oder „Problem“ mit Zeit und der Zeile aus dem Protokoll des letzten Abgleichs, der sie
-gebraucht hat. Ein Problem ist eine Sperre, ein Warteraum oder ein Fehler.
+gebraucht hat. Ein Problem ist eine Sperre, ein Warteraum oder ein Fehler. Lange Zeilen zeigen ab
+1.7.19 nur das Wesentliche, die Einzelheiten stehen im Tooltip (ⓘ), etwa bei Sprachen Japan
+„Store im Warteraum, 2 Seiten warten bis 04.11., 02:01“.
 
 Der Wishlist-Link kommt unter Quellen und Abgleich, DekuDeals, hinein. `WISHLIST_URL` in der
 Umgebung des Containers gilt nur noch als Startwert, solange es keine Einstellungsdatei gibt.
@@ -996,7 +1000,8 @@ Preis jetzt nicht übersteigt, also der der eigenen Fassung.
 „Verlauf“ in den Einzelheiten zeigt die Aufzeichnung als Kurve je Land und dazu: Preis jetzt,
 Normalpreis, tiefster aufgezeichneter Preis mit Datum, Zahl der Angebote (laut DekuDeals in den
 letzten 24 Monaten, sonst aus der eigenen Aufzeichnung), typische Dauer, Anteil der Zeit im
-Angebot und das letzte Angebot. Europreise rechnen mit dem heutigen Kurs und Zahlweg, damit
+Angebot und das letzte Angebot. Über der Kurve blendet ein Klick auf ein Land seine Linie ein oder
+aus, „alle an · alle aus“ (ab 1.7.19) alle auf einmal. Europreise rechnen mit dem heutigen Kurs und Zahlweg, damit
 Länder und Zeitpunkte vergleichbar bleiben. Ein Angebot ist jede Strecke unter dem heutigen
 Normalpreis. „Fall exportieren“ lädt alle Daten dieses Titels als Datei (Preise, Tiefstwerte,
 Verlauf, Karten, Kurse, Einstellungen ohne Wishlist- und Sammlungslink).
@@ -1018,7 +1023,8 @@ Schätzung gekennzeichnet.
 
 Nach jedem Abgleich prüft das Tool seine Ergebnisse: unglaubhafte Kartenpreise, ein Preis je
 Währungseinheit, der sich seit dem letzten Lauf um mehr als 15 % geändert hat, ein Land, in dem
-plötzlich weniger als die Hälfte der Titel kaufbar ist, und Wechselkurse, die älter als drei
+plötzlich weniger als die Hälfte der Titel kaufbar ist (ab 1.7.19 gemessen am Anteil der
+abgefragten Titel: Wer viel kauft und die Wishlist kürzt, löst keinen Alarm aus), und Wechselkurse, die älter als drei
 Tage sind. Auffälligkeiten stehen im Protokoll und als Hinweis über den Ansichten.
 
 ### Notbetrieb

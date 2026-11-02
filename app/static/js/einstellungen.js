@@ -124,7 +124,7 @@ function srcSummary(){
   return `<b class="gn">${seen.length - bad.length}</b> ok${bad.length ? `, <b class="warnc">${bad.length}</b> mit Problem (${bad.map(x => esc(x.label)).join(", ")})` : ""}`;
 }
 function srcTable(){
-  const rows = (S.state.sources || []).map(x => `<tr><td class="l">${esc(x.label)}</td><td class="l">${!x.at ? `<span class="mut">noch nicht gelaufen</span>` : x.ok ? `<span class="gn">ok</span>` : `<span class="warnc">Problem</span>`}</td><td class="l"><small class="mut">${x.at ? esc(dmy(x.at)) + ", " + esc(new Date(x.at).toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"})) : ""}</small></td><td class="l"><small>${esc(x.note || "")}</small></td></tr>`).join("");
+  const rows = (S.state.sources || []).map(x => `<tr><td class="l">${esc(x.label)}</td><td class="l">${!x.at ? `<span class="mut">noch nicht gelaufen</span>` : x.ok ? `<span class="gn">ok</span>` : `<span class="warnc">Problem</span>`}</td><td class="l"><small class="mut">${x.at ? esc(dmy(x.at)) + ", " + esc(new Date(x.at).toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"})) : ""}</small></td><td class="l">${x.detail ? `<small class="lg" title="${esc(x.detail)}">${esc(x.note || "")} <span class="mut">ⓘ</span></small>` : `<small>${esc(x.note || "")}</small>`}</td></tr>`).join("");
   return `<p class="hint">Aus dem letzten Abgleich, der die Quelle gebraucht hat. Ein Problem (Sperre, Warteraum, Fehler) steht vor jeder guten Zeile; Einzelheiten im Protokoll.</p><div class="scroll"><table class="mini-t"><tbody>${rows}</tbody></table></div>`;
 }
 /* Widersprüche bei den Spielinfos (1.7.2): wo Nintendo etwas anderes nennt als DekuDeals. Jeder Fall wird
