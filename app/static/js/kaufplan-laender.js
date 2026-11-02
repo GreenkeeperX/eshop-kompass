@@ -132,10 +132,10 @@ function npRow(slug, o){
     : `<small class="mut" title="Kein Schritt des Kaufplans bietet den Titel an">in keinem Schritt</small>`;
   return `<div class="npr"><span class="t">${name}${o.note ? `<small class="np-w">${o.note}</small>` : ""}</span>` +
     `<span class="c-vd">${r ? vdBtn(slug, r.verdict) : ""}${r && r.nohist ? ` <span class="nohist" title="DekuDeals hat noch keinen Tiefstpreis geliefert">ohne Verlauf</span>` : ""}</span>` +
-    `<span class="r c-eur">${x ? `${star(x)}${ax(x)}${shopLink(slug, x.code, x, eur(x.eur), x.currency)}` : `<span class="mut">–</span>`}</span>` +
+    `<span class="r c-eur">${x ? `${star(x, ce && ce.eur, ce && ce.name)}${ax(x)}${shopLink(slug, x.code, x, eur(x.eur), x.currency)}` : `<span class="mut">–</span>`}</span>` +
     `<span class="c-pct">${x && x.sale ? `<span class="pct">−${x.pct} %</span>` : ""}</span>` +
     `<span class="c-land">${x ? priceLink(slug, x.code, esc(x.name), x, x.currency) : ""}</span>` +
-    `<span class="r c-best">${x && ce ? overBest(x.eur, ce.eur, r.verdict === "none" ? null : r.verdict) : `<span class="mut">–</span>`}</span>` +
+    `<span class="r c-best">${x && ce ? overBest(x.eur, ce.eur, r.verdict === "none" ? null : r.verdict, ce.name) : `<span class="mut">–</span>`}</span>` +
     `<span class="c-end">${x && x.sale && x.end ? endCell(x.end) : ""}</span><span class="c-act">${x && S.kauf && o.act === undefined ? assumeBtn(x.code, slug) + " " : ""}${act}</span></div>`;
 }
 /* Titel eines Blocks nach Spiel: zwei und mehr Titel eines Spiels unter einer klappbaren Zeile mit seinem Namen,

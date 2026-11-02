@@ -277,11 +277,19 @@ function drawVerlauf(){
   // nur bei einem guten Preis (höchstens 5 % über dem Bestpreis oder am Ziel), Links zu DekuDeals und zum eShop
   const best = v.champ ? v.champ.eur : null;
   const good = l => (best !== null && l.low_eur <= best * 1.05 + 0.005) || (v.target !== null && v.target !== undefined && l.low_eur <= v.target + 0.005);
+  const champName = v.champ ? (v.countries.find(c => c.code === v.champ.code) || {}).name || v.champ.code : "";
+  const atB = c => best !== null && c.now_eur !== null && c.now_eur <= best * 1.02 + 0.005;
+  const tipOf = c => bestTip(c.now_eur, best, champName).replace(/^Bestpreis/, "Bestpreis aller Länder");
   const over = c => {
     if(best === null || c.now_eur === null) return "–";
     const d = Math.round((c.now_eur - best) * 100) / 100;
-    return c.now_eur <= best * 1.02 + 0.005 ? `<span class="g-buy" title="Höchstens 2 % über dem Bestpreis ${eur(best)}">am Bestpreis</span>`
-      : `<span class="over" title="${esc(`${eur(d)} über dem Bestpreis ${eur(best)} (+${Math.round(d / best * 100)} %)`)}">+${eur(d)}</span>`;
+    return atB(c) ? `<span class="g-buy" title="${esc(tipOf(c))}">am Bestpreis</span>` : `<span class="over" title="${esc(tipOf(c))}">+${eur(d)}</span>`;
+  };
+  // 1.7.27 (wie im VR-Navigator): Tooltips nennen den Bestpreis mit Land; „jetzt“ am Bestpreis grün mit ★ wie in den Tabellen
+  const nowCell = c => {
+    if(c.now_eur === null) return "–";
+    const a = c.est ? APPROX : "", ok = atB(c), inner = ok ? `<b class="g-buy">${a}${eur(c.now_eur)}</b>` : a + eur(c.now_eur);
+    return (ok ? `<span class="star" title="${esc(tipOf(c))}">★</span>` : "") + ext(shopUrl(c.code, c.nsuid), inner, "Im eShop öffnen");
   };
   const ext = (url, inner, tip) => url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(tip)}">${inner}</a>` : inner;
   h += `<div class="scroll"><table><thead><tr>${sth(V, "name", "Land")}${sth(V, "now", "jetzt")}${sth(V, "over", "überm Bestpreis", "Abstand zum Bestpreis aller Länder")}${sth(V, "regular", "normal")}${sth(V, "low", "tiefster", "Niedrigster aufgezeichneter Preis")}${sth(V, "sales", "Angebote", "Angebote der letzten 24 Monate laut DekuDeals. Fehlt diese Angabe: wie oft der Titel in der eigenen Aufzeichnung unter dem heutigen Normalpreis lag")}${sth(V, "days", "Dauer", "Mittlere Dauer der abgeschlossenen Angebote")}${sth(V, "pct", "im Angebot", "Anteil der aufgezeichneten Zeit im Angebot")}${sth(V, "last", "zuletzt", "Das letzte Angebot; Preis grün und Rabatt blau, wenn es ein guter Preis war")}</tr></thead><tbody>` +
@@ -289,7 +297,7 @@ function drawVerlauf(){
       const a = c.est ? APPROX : "", last = c.sales[c.sales.length - 1];
       const ok = last && good(last), when = !last ? "" : last.end ? `${dm(last.start)}–${dm(last.end)}` : `läuft seit ${dm(last.start)}`;
       const lastTxt = !last ? "–" : `<span${ok ? ` title="Guter Preis: höchstens 5 % über dem Bestpreis oder am Ziel"` : ""}>${ok ? `<span class="pct">−${last.pct} %</span> <b class="g-buy">${a}${eur(last.low_eur)}</b>` : `−${last.pct} %, ${a}${eur(last.low_eur)}`}</span><small>${when}</small>`;
-      return `<tr><td>${ext(deku(v.slug, c.code), esc(c.name), "Preisverlauf bei DekuDeals")}</td><td>${c.now_eur === null ? "–" : ext(shopUrl(c.code, c.nsuid), a + eur(c.now_eur), "Im eShop öffnen")}</td><td>${over(c)}</td><td>${a}${eur(c.regular_eur)}</td>
+      return `<tr><td>${ext(deku(v.slug, c.code), esc(c.name), "Preisverlauf bei DekuDeals")}</td><td>${nowCell(c)}</td><td>${over(c)}</td><td>${a}${eur(c.regular_eur)}</td>
         <td>${a}${eur(c.low_eur)}<small>${c.currency === "EUR" ? "" : money(c.low, c.currency) + " · "}${dm(c.low_at)}</small></td>
         <td>${c.deku_sales !== null && c.deku_sales !== undefined ? `${c.deku_sales}<small>24 Monate</small>` : `${c.sale_count}<small>aufgezeichnet</small>`}</td><td>${c.typical_days === null ? "–" : String(c.typical_days).replace(".", ",") + " T."}</td><td>${c.on_sale_pct} %</td><td>${lastTxt}</td></tr>`;
     }).join("") + `</tbody></table></div>`;
