@@ -31,8 +31,16 @@ const G_MIXES = [
   ["go", "Für unterwegs", "Handheld, in zufälliger Folge", {how: ["handheld"], sort: "random"}],
   ["backlog", "Aus dem Backlog", "Was du dir zum Spielen vorgenommen hast, die besten zuerst; „Überrasch mich“ wählt dann daraus", {st: "backlog", sort: "score"}]];
 // Mein Stand (1.7.1): von Hand je Spiel, in den Einstellungen gespeichert (game_marks) und damit in der Sicherung
-const G_ST = [["backlog", "Backlog", "○", "Willst du spielen, noch nicht angefangen"], ["started", "angefangen", "▷", "Angefangen"],
-  ["done", "durchgespielt", "✓", "Durchgespielt"]];
+const G_ST = [["backlog", "Backlog", "Willst du spielen, noch nicht angefangen"], ["started", "angefangen", "Angefangen"],
+  ["done", "durchgespielt", "Durchgespielt"]];
+/* Zeichen für Mein Stand (1.7.26): als SVG statt Schriftzeichen, damit nichts von der Schrift abhängt: gleich kräftig,
+   gleich hoch, optisch mittig zum Text (vertical-align in .mi) und ohne Springen beim Umschalten (☆/★ kamen aus
+   verschiedenen Schriften) */
+const MI = {backlog: '<circle cx="8" cy="8" r="5.2"/>', started: '<path d="M5 3.1 12.7 8 5 12.9Z"/>',
+  done: '<path d="M3.1 8.5 6.6 11.9 12.9 4.3"/>', ign: '<path d="M4.3 4.3 11.7 11.7M11.7 4.3 4.3 11.7"/>',
+  fav: '<path d="M8 1.4 9.76 6.17 14.85 6.38 10.85 9.53 12.23 14.42 8 11.6 3.77 14.42 5.15 9.53 1.15 6.38 6.24 6.17Z"/>'};
+const MI_CLS = {backlog: "gst backlog", started: "gst started", done: "gst done", fav: "gfav", ign: "gign"};
+const mIcon = (k, tip, hollow) => `<svg class="mi ${MI_CLS[k]}${hollow ? " off" : ""}" viewBox="0 0 16 16"${tip ? ` role="img" aria-label="${esc(tip)}"><title>${esc(tip)}</title>` : ` aria-hidden="true">`}${MI[k]}</svg>`;
 const G_STF = [["", "egal"], ["open", "nicht durchgespielt"], ["backlog", "Backlog"], ["started", "angefangen"], ["done", "durchgespielt"],
   ["fav", "Favoriten"], ["ign", "ignoriert"], ["none", "ohne Stand"]];
 const gRand = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -186,7 +194,7 @@ function gYear(g){
 const G_MODE = {tv: "TV", tabletop: "Tisch", handheld: "Handheld"};
 function gBadges(g){
   const b = [], m = g.mine || {}, st = G_ST.find(x => x[0] === m.s);
-  if(st || m.fav || m.ign) b.push(`<span class="gme">${st ? `<span class="gst ${m.s}" title="Mein Stand: ${st[1]}">${st[2]}</span>` : ""}${m.fav ? `<span class="gfav" title="Favorit">★</span>` : ""}${m.ign ? `<span class="gign" title="Ignoriert: wird nie vorgeschlagen">✕</span>` : ""}</span>`);
+  if(st || m.fav || m.ign) b.push(`<span class="gme">${st ? mIcon(m.s, `Mein Stand: ${st[1]}`) : ""}${m.fav ? mIcon("fav", "Favorit") : ""}${m.ign ? mIcon("ign", "Ignoriert: wird nie vorgeschlagen") : ""}</span>`);
   // Die Switch 2 Edition steht schon im Namen
   if(g.s2 && g.s2 !== "edition") b.push(`<span class="lgt de" title="${g.s2 === "upgrade" ? "Mit Upgrade-Paket für die Switch 2, das du hast" : "Spiel für die Switch 2"}">${g.s2 === "upgrade" ? "S2-Upgrade" : "Switch 2"}</span>`);
   const ms = g.modes.map(m => m.n), miss = ["tv", "tabletop", "handheld"].filter(m => !ms.includes(m));
@@ -263,7 +271,7 @@ function gDetail(g){
   const odd = ["offline", "local", "online"].filter(k => g.players[k] && g.players[k].alt)
     .map(k => `${({offline: "an einer Konsole", local: "lokal drahtlos", online: "online"})[k]} <span class="gxc">DekuDeals ${gRange(g.players[k].v)}, Nintendo ${gRange(g.players[k].alt)}</span>`).join(" · ");
   const m = g.mine || {};
-  const mine = `<span class="seg gmark">${G_ST.map(([k, l, ic, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}"><span class="gst ${k}">${ic}</span> ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}"><span class="gfav">${m.fav ? "★" : "☆"}</span> Favorit</button><button data-act="gmark" data-s="${esc(g.slug)}" data-k="ign" data-v="${m.ign ? "" : "1"}" class="${m.ign ? "on" : ""}" title="${m.ign ? "Nicht mehr ignorieren" : "Nie wieder vorschlagen"}"><span class="gign">✕</span> ignorieren</button></span>`;
+  const mine = `<span class="seg gmark">${G_ST.map(([k, l, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}">${mIcon(k)} ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}">${mIcon("fav", "", !m.fav)} Favorit</button><button data-act="gmark" data-s="${esc(g.slug)}" data-k="ign" data-v="${m.ign ? "" : "1"}" class="${m.ign ? "on" : ""}" title="${m.ign ? "Nicht mehr ignorieren" : "Nie wieder vorschlagen"}">${mIcon("ign")} ignorieren</button></span>`;
   // Switch-2-Edition (1.7.4): mit Upgrade-Paket gelten ihre Angaben; was die Switch-1-Seite anders nennt, steht dabei
   const ED_L = {players: "Spieler", modes: "Spielmodi", mc: "Metacritic", mcu: "Nutzer", oc: "OpenCritic", hltb: "Spielzeit", size_gb: "Größe"};
   const edv = (k, v) => k === "players" ? ["offline", "local", "online"].filter(x => v[x]).map(x => `${({offline: "Konsole", local: "lokal", online: "online"})[x]} ${gRange(v[x])}`).join(", ")

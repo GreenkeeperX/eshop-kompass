@@ -259,7 +259,7 @@ async function openVerlauf(slug){
 function drawVerlauf(){
   const v = S.vl.data, d = $("verlauf");
   const color = code => code === "DE" ? "var(--ink)" : LINE_COLORS[v.countries.findIndex(c => c.code === code) % LINE_COLORS.length];
-  let h = `<header><h2>${esc(v.title)}</h2><a class="mini" href="/api/fall?slug=${encodeURIComponent(v.slug)}" download="fall-${esc(v.slug)}.json" title="Alle Daten dieses Titels als Datei (Preise, Tiefstwerte, Verlauf, Karten, Kurse, Einstellungen ohne Wishlist-Link). Schickst du sie mir, kann ich deinen Fall genau nachrechnen.">Fall exportieren</a><button data-act="vlclose" autofocus>Schließen</button></header>`;
+  let h = `<header><h2>${esc(v.title)}</h2><a class="mini" href="/api/fall?slug=${encodeURIComponent(v.slug)}" download="fall-${esc(v.slug)}.json" title="Alle Daten dieses Titels als Datei (Preise, Tiefstwerte, Verlauf, Karten, Kurse, Einstellungen ohne Wishlist-Link). Schickst du sie mir, kann ich deinen Fall genau nachrechnen.">Fall exportieren</a><button class="vlx" data-act="vlclose" autofocus title="Schließen (auch Esc oder Klick daneben)" aria-label="Schließen">✕</button></header>`;
   if(!v.countries.length){
     d.innerHTML = h + `<p class="hint">Noch keine Aufzeichnung für diesen Titel. Jeder Abgleich hält fest, wenn sich ein Preis ändert.</p>`;
     return;
@@ -271,13 +271,25 @@ function drawVerlauf(){
   h += `<div class="lg"><span class="foldall">${allOn ? `<span class="mut">alle an</span>` : `<button class="link" data-act="vlall" data-v="1">alle an</button>`} · ${allOff ? `<span class="mut">alle aus</span>` : `<button class="link" data-act="vlall" data-v="">alle aus</button>`}</span>` + v.countries.map(c => `<button class="${S.vl.show.has(c.code) ? "" : "off"}" data-act="vltoggle" data-c="${c.code}" title="ein- oder ausblenden"><i style="background:${color(c.code)}"></i>${esc(c.name)}</button>`).join("") + `</div>`;
   h += chartSvg(v, color);
   const V = "verlauf", vrows = sortRows(V, v.countries, {name: c => c.name, now: c => c.now_eur, regular: c => c.regular_eur,
-    low: c => c.low_eur, sales: c => c.deku_sales ?? c.sale_count, days: c => c.typical_days, pct: c => c.on_sale_pct,
+    low: c => c.low_eur, over: c => best === null || c.now_eur === null ? null : c.now_eur - best, sales: c => c.deku_sales ?? c.sale_count, days: c => c.typical_days, pct: c => c.on_sale_pct,
     last: c => { const l = c.sales[c.sales.length - 1]; return l ? -new Date(l.start) : null; }});
-  h += `<div class="scroll"><table><thead><tr>${sth(V, "name", "Land")}${sth(V, "now", "jetzt")}${sth(V, "regular", "normal")}${sth(V, "low", "tiefster", "Niedrigster aufgezeichneter Preis")}${sth(V, "sales", "Angebote", "Angebote der letzten 24 Monate laut DekuDeals. Fehlt diese Angabe: wie oft der Titel in der eigenen Aufzeichnung unter dem heutigen Normalpreis lag")}${sth(V, "days", "Dauer", "Mittlere Dauer der abgeschlossenen Angebote")}${sth(V, "pct", "im Angebot", "Anteil der aufgezeichneten Zeit im Angebot")}${sth(V, "last", "zuletzt")}</tr></thead><tbody>` +
+  // 1.7.26 (wie im VR-Navigator): Abstand zum Bestpreis als eigene Spalte, „zuletzt“ mit grünem Preis und blauem Rabatt
+  // nur bei einem guten Preis (höchstens 5 % über dem Bestpreis oder am Ziel), Links zu DekuDeals und zum eShop
+  const best = v.champ ? v.champ.eur : null;
+  const good = l => (best !== null && l.low_eur <= best * 1.05 + 0.005) || (v.target !== null && v.target !== undefined && l.low_eur <= v.target + 0.005);
+  const over = c => {
+    if(best === null || c.now_eur === null) return "–";
+    const d = Math.round((c.now_eur - best) * 100) / 100;
+    return c.now_eur <= best * 1.02 + 0.005 ? `<span class="g-buy" title="Höchstens 2 % über dem Bestpreis ${eur(best)}">am Bestpreis</span>`
+      : `<span class="over" title="${esc(`${eur(d)} über dem Bestpreis ${eur(best)} (+${Math.round(d / best * 100)} %)`)}">+${eur(d)}</span>`;
+  };
+  const ext = (url, inner, tip) => url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(tip)}">${inner}</a>` : inner;
+  h += `<div class="scroll"><table><thead><tr>${sth(V, "name", "Land")}${sth(V, "now", "jetzt")}${sth(V, "over", "überm Bestpreis", "Abstand zum Bestpreis aller Länder")}${sth(V, "regular", "normal")}${sth(V, "low", "tiefster", "Niedrigster aufgezeichneter Preis")}${sth(V, "sales", "Angebote", "Angebote der letzten 24 Monate laut DekuDeals. Fehlt diese Angabe: wie oft der Titel in der eigenen Aufzeichnung unter dem heutigen Normalpreis lag")}${sth(V, "days", "Dauer", "Mittlere Dauer der abgeschlossenen Angebote")}${sth(V, "pct", "im Angebot", "Anteil der aufgezeichneten Zeit im Angebot")}${sth(V, "last", "zuletzt", "Das letzte Angebot; Preis grün und Rabatt blau, wenn es ein guter Preis war")}</tr></thead><tbody>` +
     vrows.map(c => {
       const a = c.est ? APPROX : "", last = c.sales[c.sales.length - 1];
-      const lastTxt = !last ? "–" : last.end ? `${dm(last.start)}–${dm(last.end)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>` : `läuft seit ${dm(last.start)}<small>−${last.pct} %, ${a}${eur(last.low_eur)}</small>`;
-      return `<tr><td>${esc(c.name)}</td><td>${c.now_eur === null ? "–" : a + eur(c.now_eur)}</td><td>${a}${eur(c.regular_eur)}</td>
+      const ok = last && good(last), when = !last ? "" : last.end ? `${dm(last.start)}–${dm(last.end)}` : `läuft seit ${dm(last.start)}`;
+      const lastTxt = !last ? "–" : `<span${ok ? ` title="Guter Preis: höchstens 5 % über dem Bestpreis oder am Ziel"` : ""}>${ok ? `<span class="pct">−${last.pct} %</span> <b class="g-buy">${a}${eur(last.low_eur)}</b>` : `−${last.pct} %, ${a}${eur(last.low_eur)}`}</span><small>${when}</small>`;
+      return `<tr><td>${ext(deku(v.slug, c.code), esc(c.name), "Preisverlauf bei DekuDeals")}</td><td>${c.now_eur === null ? "–" : ext(shopUrl(c.code, c.nsuid), a + eur(c.now_eur), "Im eShop öffnen")}</td><td>${over(c)}</td><td>${a}${eur(c.regular_eur)}</td>
         <td>${a}${eur(c.low_eur)}<small>${c.currency === "EUR" ? "" : money(c.low, c.currency) + " · "}${dm(c.low_at)}</small></td>
         <td>${c.deku_sales !== null && c.deku_sales !== undefined ? `${c.deku_sales}<small>24 Monate</small>` : `${c.sale_count}<small>aufgezeichnet</small>`}</td><td>${c.typical_days === null ? "–" : String(c.typical_days).replace(".", ",") + " T."}</td><td>${c.on_sale_pct} %</td><td>${lastTxt}</td></tr>`;
     }).join("") + `</tbody></table></div>`;

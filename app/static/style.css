@@ -532,9 +532,12 @@ dialog#legend{width:min(760px,calc(100vw - 32px))}
   .todo>div{flex-direction:column;gap:0}
   .bar{font-size:12.5px}
 }
-dialog.vl{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:16px 18px;width:min(920px,calc(100vw - 32px));max-height:calc(100vh - 40px)}
+dialog.vl{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:16px 18px;width:min(1000px,calc(100vw - 32px));max-height:calc(100vh - 40px)}
 dialog.vl::backdrop{background:rgba(0,0,0,.35)}
-dialog.vl header{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+dialog.vl header{display:flex;align-items:center;gap:10px;margin:-16px -18px 4px;padding:12px 18px 8px;position:sticky;top:-16px;background:var(--card);z-index:2}     /* 1.7.26: ✕ bleibt beim Scrollen oben rechts */
+dialog.vl .vlx{flex:none;width:32px;height:32px;padding:0;border-radius:50%;font-size:16px;line-height:1}
+dialog.vl td a{color:inherit;text-decoration:none}
+dialog.vl td a:hover{text-decoration:underline}
 dialog.vl h2{margin:0;font-size:18px;flex:1}
 .vl svg{width:100%;height:auto;display:block;margin:8px 0}
 .vl svg text{fill:var(--muted);font-size:11px}
@@ -689,21 +692,22 @@ details.gmenu .hint{margin:0}
 .chip.gg{background:hsl(var(--gh) var(--gg-s) var(--gg-bl));color:hsl(var(--gh) var(--gg-ts) var(--gg-tl))}
 .gsc{color:hsl(var(--sh) var(--sc-s) var(--sc-l));font-weight:600}
 .galt{color:var(--muted);font-style:italic}
-/* Symbole hinter dem Titel (1.7.7): feste Höhe, mittig zur Zeile statt an der Grundlinie, damit nichts springt, auch wenn
-   eine Ersatzschrift die Zeichen größer zeichnet */
-.gme{flex:none;margin-left:6px;display:inline-flex;gap:4px;align-items:center;align-self:center;height:14px;line-height:14px;font-size:13px}
-.gme>span{display:inline-block;height:14px;line-height:14px}
-.gme .gst.done,.gme .gfav,.gme .gign{font-size:15px}
+/* Mein Stand ab 1.7.26 als SVG (mIcon): feste Größe, gleiche Strichstärke, optisch mittig zum Text; ändert beim
+   Umschalten weder Breite noch Höhe. Hinter dem Titel in fester Höhe, mittig zur Zeile, damit nichts springt */
+.mi{width:1em;height:1em;flex:none;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.mi.gfav{fill:currentColor;stroke-width:1.2}
+.mi.gfav.off{fill:none;stroke-width:1.6}
+.mi.gign{stroke-width:2.2}
+.gme{flex:none;margin-left:6px;display:inline-flex;gap:4px;align-items:center;align-self:center;height:14px;font-size:13px}
+.gme .mi{display:block}
+.gmark .mi{margin-right:1px}
 .gst.backlog{color:var(--pink)}     /* pink wie das Quadrat am PlayStation-Controller (1.7.24) */
 .gst.started{color:var(--deal)}
-.gst{-webkit-text-stroke:1px currentColor}     /* kräftiger, fett ändert die Zeichen kaum (1.7.6); ab 1.7.25 so kräftig wie ★ und ✕ */
-.gst.backlog,.gst.started{position:relative;top:-1.5px}
-.gme .gst.backlog,.gme .gst.started{top:-1px}     /* ○ und ▷ sitzen in der Schrift tiefer als ✓ und ★ */
 .usk16{color:var(--deal);font-weight:600}
 .usk18{color:var(--stop);font-weight:600}
 .gst.done{color:var(--go)}
-.gfav{color:var(--gold);-webkit-text-stroke:1.2px currentColor}     /* fett über die Kontur, gleiche Größe (1.7.24) */
-.gign{color:var(--stop);-webkit-text-stroke:.6px currentColor}
+.gfav{color:var(--gold)}
+.gign{color:var(--stop)}
 .lgt.gsh{color:var(--deal);background:color-mix(in srgb,var(--deal) 9%,transparent);font-weight:600}
 .gno{color:var(--stop)}
 .gmark button{font-size:12px;padding:1px 8px}
