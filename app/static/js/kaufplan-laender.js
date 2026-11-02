@@ -458,7 +458,9 @@ function planCard(p, step){
     if(hd.length) h += `<div class="hurd">${hd.join(" · ")}</div>`;
     const wide = !S.dense || step;
     const T = step ? "schritt" : "land";     // eine Sortierung für alle Karten einer Ansicht
-    h += `<div class="scroll"><table class="it"><thead><tr>${sth(T, "title", "Titel")}${wide ? sth(T, "local", `Shop ${esc(cur || "")}`, "Preis im eShop des Landes") : ""}${sth(T, "end", "bis")}${sth(T, "eur", "Einkaufspreis", "Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben")}${sth(T, "over", "über Bestpreis", "Einkaufspreis minus Bestpreis")}${wide && !p.is_ref ? sth(T, "alt", "sonst", "Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land") : ""}</tr></thead><tbody>` +
+    // „sonst“ (1.7.21): auch in Deutschland wie in jedem anderen Land, sobald ein Titel einen Vergleich hat
+    const showAlt = wide && (!p.is_ref || (p.items.some(i => (i.alt ?? i.cheaper) !== null && (i.alt ?? i.cheaper) !== undefined)));
+    h += `<div class="scroll"><table class="it"><thead><tr>${sth(T, "title", "Titel")}${wide ? sth(T, "local", `Shop ${esc(cur || "")}`, "Preis im eShop des Landes") : ""}${sth(T, "end", "bis")}${sth(T, "eur", "Einkaufspreis", "Was du bezahlst: mit Steuer, Kurs und Kosten fürs Guthaben")}${sth(T, "over", "über Bestpreis", "Einkaufspreis minus Bestpreis")}${showAlt ? sth(T, "alt", "sonst", "Was der Titel ohne diesen Wechsel kostet: günstigstes zählendes Land gleicher oder leichterer Stufe oder dein aktuelles Land") : ""}</tr></thead><tbody>` +
       sortRows(T, p.items, {title: i => i.short, local: i => i.local, end: i => i.sale && i.end ? +new Date(i.end) : null, eur: i => i.eur,
         over: i => i.champ === null || i.champ === undefined ? null : i.eur - i.champ, alt: i => i.alt}).map(i => {
         const tip = i.title + (i.dlc_of ? ` (DLC zu ${i.dlc_of}${i.parent_owned ? ", Hauptspiel in deiner Sammlung" : ""})` : "") + (i.owned ? " · schon in deiner Sammlung" : "") + (step && p.reasons ? " · " + (p.reasons[i.slug] || "") : "");
@@ -471,7 +473,7 @@ function planCard(p, step){
         return `<tr>${first}${wide ? `<td class="c-loc" data-l="Shop">${priceLink(i.slug, p.code, num(i.local, cur), i, cur)}</td>` : ""}<td class="c-end"${i.sale ? ` data-l="bis"` : ""}>${endBtn(i.slug, i)}</td>
           <td class="c-eur ${i.over ? "over" : ""}" ${i.over ? `title="hier teurer als ohne den Wechsel"` : ""}>${star(i)}${ax(i)}${i.assumed ? `<span class="asm" title="Angenommener Preis (Was wäre, wenn), kein echtes Angebot">${num(i.eur)}</span> <small class="asm">angenommen</small><button class="x" data-act="unassume" data-c="${p.code}" data-s="${esc(i.slug)}" title="Annahme verwerfen">×</button>` : shopLink(i.slug, p.code, i, num(i.eur), cur)}${i.sale && !i.assumed ? ` <span class="pct">−${i.pct} %</span>` : ""}${step && !i.assumed && !p.ro ? assumeBtn(p.code, i.slug) : ""}</td>
           <td class="c-best">${i.champ === null || i.champ === undefined ? `<span class="mut">–</span>` : atBest(i.eur, i.champ) ? `<span class="g-${i.grade || "buy"}" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}${i.eur - i.champ >= 0.005 ? `, ${eur(i.eur - i.champ)} darüber zählt noch als Bestpreis (bis 2 %)` : ""}">am Bestpreis</span>${(S.state.radar.find(r => r.slug === i.slug) || {}).nohist ? `<br><span class="nohist" title="DekuDeals hat für diesen Titel noch keinen Tiefstpreis geliefert: Der Bestpreis stützt sich nur auf heutige Preise und die eigene Aufzeichnung">ohne Verlauf</span>` : ""}` : `<span class="abv" title="Bestpreis ${eur(i.champ)} in ${esc(country(i.champ_code).name)}">+${num(i.eur - i.champ)}</span>`}</td>
-          ${wide && !p.is_ref ? altCell(i) : ""}</tr>`;
+          ${showAlt ? altCell(i) : ""}</tr>`;
       }).join("") + `</tbody></table></div>`;
   } else {
     h += `<p class="line"><small>Kein Wishlist-Titel im Angebot.</small></p>`;

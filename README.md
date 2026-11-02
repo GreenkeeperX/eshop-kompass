@@ -650,7 +650,8 @@ darunter; die betroffenen DLC sind in der Tabelle wie der Hinweis violett markie
 zeigt je Titel Einkaufspreis, Abstand zum Bestpreis und den Preis ohne diesen Wechsel
 („sonst“). „sonst“ zählt nur Länder im Plan. Ist ein Land gleicher oder leichterer Stufe günstiger,
 das nicht im Plan ist (etwa weil sein Wechsel unter der Schwelle blieb), steht es ab 1.7.19 blau
-darunter, der Tooltip sagt, warum es nicht im Plan ist. Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen darunter, die ganze
+darunter, der Tooltip sagt, warum es nicht im Plan ist. Ab 1.7.21 hat auch Deutschland die Spalte,
+sobald ein Titel dort einen Vergleich hat. Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen darunter, die ganze
 Rechnung unter „Rechnung“.
 
 ### Sammlung
