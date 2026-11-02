@@ -338,7 +338,11 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold, ab 1.7.24 fett über eine dickere Kontur, die Größe bleibt); ○ und ▷ ab 1.7.5 höher (in Knöpfen 1,5 px), sonst hängen sie durch. Hinter dem Titel ab 1.7.7 in einem
   Kasten fester Höhe (14 px), mittig zur Zeile statt an der Grundlinie, damit die Zeile nicht springt, auch
   wenn eine Ersatzschrift die Zeichen größer zeichnet; ✓ und ★ dort etwas größer (15 px); ab 1.7.6
-  mit feiner Kontur kräftiger (`-webkit-text-stroke`, fett ändert diese Zeichen kaum; ab 1.7.25 1 px, so kräftig wie ★ und ✕). In der Zeile hinter dem Namen nur, was
+  mit feiner Kontur kräftiger (`-webkit-text-stroke`, fett ändert diese Zeichen kaum; ab 1.7.25 1 px, so kräftig wie ★ und ✕).
+  Ab 1.7.26 (Entscheidung 02.11.2026) sind alle fünf Zeichen kleine SVG-Grafiken (`mIcon`, `.mi`) statt Schriftzeichen:
+  gleiche Strichstärke, 1 em groß, optisch mittig zum Text (`vertical-align:-.13em`), ☆ als leere und ★ als volle
+  Form; nichts hängt mehr von der Schrift ab, und beim Klicken verschiebt sich nichts. Die Versätze von ○ und ▷ und
+  die Konturen fallen weg. In der Zeile hinter dem Namen nur, was
   gesetzt ist (`.gme`), Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
   durchgespielt, Favoriten, ignoriert, ohne Stand), Mischung „Aus dem Backlog“. Gespeichert in den Einstellungen
   (`game_marks`), damit in der Sicherung; die Oberfläche zeigt den Klick sofort und speichert dann.
@@ -693,6 +697,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, violett bei Widerspruch, grau-kursiv OpenCritic) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`), Widersprüche in den Einstellungen (`contraBox`); Daten nur aus `planner.game_infos` |
 | Preis ohne diesen Wechsel („sonst“, ab 1.7.19 mit günstigerem Land außerhalb des Plans) | Plan-Schritt und Länderkarte (`altCell` in `planCard`); Deutschland (`p.is_ref`) ab 1.7.21 nur, wenn ein Titel `alt` oder `cheaper` hat (`showAlt`) |
 | Teile eines Pakets („Enthält, soweit bekannt“), ab 1.7.20 aus dem Namen erschlossene mit grauem „(vermutlich)“ und Tooltip (`k.guess`) | Wishlist-Einzelheiten (`packLine`); Besitz und Sammlung rechnen still mit (`titles.all_links`), die Sammlung zeigt sie wie andere Teile mit „im Paket …“ |
+| Preisverlauf, Tabelle (ab 1.7.26) | ✕ oben rechts (`.vlx`, Kopf bleibt stehen), Spalte „überm Bestpreis“ (`.g-buy` „am Bestpreis“ bis 2 %, sonst `.over`), „zuletzt“ mit `.pct` blau und `.g-buy` grün nur bei gutem Preis (bis 5 % über dem Bestpreis oder am Ziel), Land als Link zu DekuDeals, Preis jetzt zum eShop (`shopUrl`) |
 | Länder ein- und ausblenden | Preisverlauf (`drawVerlauf`, `.vl .lg`, „alle an · alle aus“ `vlall` ab 1.7.19); der Verlauf ist ein Fenster für alle Stellen, die ihn öffnen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |

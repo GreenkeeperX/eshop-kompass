@@ -2337,6 +2337,7 @@ def price_history(data, settings, history, slug, now=None):
             "regular_eur": eur(regular),
             "points": [[t, _r(v * gross), eur(v)] for t, _, v in points],
             "now_eur": _r(ctx.oeur(c, o)) if o else None,
+            "nsuid": (o or {}).get("nsuid"),     # 1.7.26: für den Link zur eShop-Seite im Preisverlauf
             "low": _r(low_v * gross), "low_eur": eur(low_v), "low_at": low_t,
             "deku_low_eur": (lambda lv: None if lv is None else eur(lv))(
                 (ctx.lows.get(c["meta"]["shop"], {}).get(slug) or {}).get("low")),

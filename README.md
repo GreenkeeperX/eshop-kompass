@@ -418,6 +418,12 @@ Wishlist (wie in der Tabelle), „normal“ oder das Angebotsende öffnet den Pr
 Ende steht im Tooltip), der Einkaufspreis den eShop. DLC haben im eShop keine eigene feste Seite,
 die das Tool kennt; ihr Einkaufspreis öffnet deshalb wie der Landespreis den Verlauf bei DekuDeals.
 
+**Preisverlauf (ab 1.7.26, wie im VR-Navigator):** Das Fenster schließt mit dem ✕ oben rechts, das beim Scrollen
+stehen bleibt, mit Esc oder einem Klick daneben. Die Tabelle hat die Spalte „überm Bestpreis“ (grün „am
+Bestpreis“, sonst rot der Betrag). Unter „zuletzt“ stehen Rabatt und Preis des letzten Angebots; war es ein guter
+Preis (höchstens 5 % über dem Bestpreis oder am Ziel), ist der Preis grün und der Rabatt blau. Das Land führt zum
+Verlauf bei DekuDeals, der Preis jetzt in den eShop.
+
 **Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Wartet“)
 fragt nach einem angenommenen Preis in der Landeswährung, wie im Shop; vorgeschlagen ist der
 Tiefstpreis dort aus den letzten 24 Monaten. Der Plan rechnet dann so, als gäbe es den Titel dort
@@ -729,7 +735,7 @@ Handheld“).
 - **Mein Stand** (ab 1.7.1): In den Einzelheiten setzt du je Spiel Backlog, angefangen oder
   durchgespielt und einen Favoriten oder, als Gegenstück, „ignorieren“ (ab 1.7.24: nie wieder vorschlagen, das Spiel
   kommt in keiner Mischung und nicht in „Überrasch mich“ vor). Die Zeile zeigt es als ○ (pink), ▷ (blau), ✓ (grün),
-  ★ (gelb) und ✕ (rot) hinter dem Namen. USK 16 steht in
+  ★ (gelb) und ✕ (rot) hinter dem Namen; ab 1.7.26 als Grafiken, die nicht von der Schrift abhängen. USK 16 steht in
   den Einzelheiten blau, USK 18 rot; der Filter „USK“ zeigt nur Spiele bis zur gewählten Freigabe (ab 1.7.6). Der Filter
   „Mein Stand“ und die Mischung „Aus dem Backlog“ nutzen es, „Überrasch mich“ wählt dann daraus. Der
   Stand liegt in den Einstellungen und damit in der Sicherung.
