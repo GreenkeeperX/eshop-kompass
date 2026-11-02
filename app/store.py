@@ -26,7 +26,7 @@ DEFAULT_SETTINGS = {
     "lang_confirm": {},
     # DLC in der Sammlung von Hand: {DLC: "have" | "ignore", Spiel: "ignore_all"}
     "dlc_marks": {},
-    # Mein Stand je Spiel der Sammlung (1.7.1), von Hand: {Spiel: {"s": "backlog" | "started" | "done", "fav": true}}
+    # Mein Stand je Spiel der Sammlung (1.7.1), von Hand: {Spiel: {"s": "backlog" | "started" | "done", "fav": true, "ign": true}}
     "game_marks": {},
     # Cashback des Kartenshops in Prozent, wenn es eins gibt. Nur für einen Hinweis,
     # nicht in den Preisen: Es gibt es nicht immer
@@ -277,9 +277,11 @@ def save_settings(new):
             for k, v in (value.items() if isinstance(value, dict) else []):
                 if k == "s" and v in GAME_STATES:
                     cur["s"] = v
-                elif k == "fav" and v is True:
-                    cur["fav"] = True
-                elif k in ("s", "fav") and v in (None, False):
+                elif k in ("fav", "ign") and v is True:
+                    # Favorit und ignorieren (1.7.24, nie wieder vorschlagen) schließen sich aus
+                    cur.pop("ign" if k == "fav" else "fav", None)
+                    cur[k] = True
+                elif k in ("s", "fav", "ign") and v in (None, False):
                     cur.pop(k, None)
             if cur:
                 s["game_marks"][slug] = cur

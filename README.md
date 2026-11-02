@@ -727,7 +727,9 @@ Handheld“).
 - **Kurzbeschreibung** (ab 1.7.11): unter Mein Stand die Beschreibung von Nintendo Europa, auf Deutsch, sonst
   auf Englisch; vier Zeilen, ein Klick zeigt alles. Sie kommt mit der Bestätigung durch Nintendo (monatlich).
 - **Mein Stand** (ab 1.7.1): In den Einzelheiten setzt du je Spiel Backlog, angefangen oder
-  durchgespielt und einen Favoriten. Die Zeile zeigt es als ○ (rot), ▷ (blau), ✓ (grün) und ★ (gelb) hinter dem Namen. USK 16 steht in
+  durchgespielt und einen Favoriten oder, als Gegenstück, „ignorieren“ (ab 1.7.24: nie wieder vorschlagen, das Spiel
+  kommt in keiner Mischung und nicht in „Überrasch mich“ vor). Die Zeile zeigt es als ○ (pink), ▷ (blau), ✓ (grün),
+  ★ (gelb) und ✕ (rot) hinter dem Namen. USK 16 steht in
   den Einzelheiten blau, USK 18 rot; der Filter „USK“ zeigt nur Spiele bis zur gewählten Freigabe (ab 1.7.6). Der Filter
   „Mein Stand“ und die Mischung „Aus dem Backlog“ nutzen es, „Überrasch mich“ wählt dann daraus. Der
   Stand liegt in den Einstellungen und damit in der Sicherung.
