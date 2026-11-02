@@ -5142,6 +5142,15 @@ class UiContractTest(unittest.TestCase):
         self.assertTrue(used)
         self.assertEqual(used - routes, set())
 
+    def test_ui_1727(self):
+        # 1.7.27: Tooltips mit Bestpreis, Mein Stand ohne Neuaufbau, Zeile unter der Maus, „jetzt“ im Preisverlauf
+        base = os.path.join(os.path.dirname(__file__), "..", "app", "static")
+        js = "".join(open(os.path.join(base, "js", f), encoding="utf-8").read() for f in os.listdir(os.path.join(base, "js")))
+        css = open(os.path.join(base, "style.css"), encoding="utf-8").read()
+        for name in ("function bestTip", "function gPatchMarks", "const nowCell", "Bestpreis aller Länder"):
+            self.assertIn(name, js)
+        self.assertIn("@media (hover:hover)", css)
+
     def test_ui_files_served(self):
         # 0.86: Was index.html lädt, liefert der Server mit passendem Typ; andere Pfade nicht
         import http.client

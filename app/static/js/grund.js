@@ -557,7 +557,7 @@ const pill = v => v === "none" || !v ? `<span class="mut">kein Urteil</span>` : 
 // Urteil mit Preisverlauf hinterlegt (1.5.1), wie Angebotsende und „normal“ (endBtn): Klick öffnet den Verlauf
 const vdBtn = (slug, v) => !v || v === "none" || String(slug).startsWith("nso-") ? pill(v)
   : `<button class="vdb" data-act="verlauf" data-s="${esc(slug)}" title="Klick öffnet den Preisverlauf">${pill(v)}</button>`;
-const star = x => x && x.mark === "best" ? `<span class="star" title="Einkaufspreis erreicht den Bestpreis">★</span>` : "";
+const star = (x, champ, where) => x && x.mark === "best" ? `<span class="star" title="${esc(champ ? bestTip(x.eur, champ, where) : "Einkaufspreis erreicht den Bestpreis")}">★</span>` : "";
 /* Bis 2 % über dem Bestpreis gilt ein Preis als Bestpreis, wie im Urteil (BEST_TOLERANCE) */
 const atBest = (eurNow, champ) => eurNow <= champ * 1.02 + 0.005;
 /* Eine Bestpreis-Regel auf allen Ebenen (0.65): Eine Summe heißt nur „am Bestpreis“, wenn auch jeder
@@ -565,11 +565,18 @@ const atBest = (eurNow, champ) => eurNow <= champ * 1.02 + 0.005;
 const itemsAtBest = items => items.every(i => i.champ === null || i.champ === undefined || atBest(i.eur, i.champ));
 const nearTip = d => d >= 0.005 ? ` title="${eur(d)} über dem Bestpreis, das zählt noch als Bestpreis (bis 2 %)"` : "";
 /* Abstand zum Bestpreis als Text: am Bestpreis in der Farbe des Urteils, +x € rot (teurer) */
-function overBest(eurNow, champ, grade){
+/* Tooltip zum Bestpreis (1.7.27, wie im VR-Navigator): der Bestpreis selbst mit Land, der Preis jetzt und der Abstand */
+function bestTip(eurNow, champ, where){
+  const d = Math.round((eurNow - champ) * 100) / 100;
+  return `Bestpreis ${eur(champ)}${where ? ` (${where})` : ""}; jetzt ${eur(eurNow)}` + (d < 0.005 ? ", genau am Bestpreis"
+    : atBest(eurNow, champ) ? `, ${eur(d)} darüber, das zählt noch als Bestpreis (bis 2 %)` : `, ${eur(d)} darüber (+${Math.round(d / champ * 100)} %)`);
+}
+function overBest(eurNow, champ, grade, where){
   if(eurNow === null || eurNow === undefined || !champ) return `<span class="mut">–</span>`;
   const d = eurNow - champ;
   const cls = grade ? "g-" + grade : "";
-  return atBest(eurNow, champ) ? `<span class="${cls}"${nearTip(d)}>am Bestpreis</span>` : `<span class="abv">+${eur(d)}</span>`;
+  const tip = ` title="${esc(bestTip(eurNow, champ, where))}"`;
+  return atBest(eurNow, champ) ? `<span class="${cls}"${tip}>am Bestpreis</span>` : `<span class="abv"${tip}>+${eur(d)}</span>`;
 }
 /* Wo ein Titel im Kaufplan steht: im Plan, Wechsel lohnt nicht, besser warten */
 function planState(slug){

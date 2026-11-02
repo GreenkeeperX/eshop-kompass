@@ -63,7 +63,7 @@ function collDlc(d){
   const name = `${d.in_pack ? `<span class="mut" title="steckt in ${esc(d.in_pack)}">↳ </span>` : ""}<a class="tl" href="${esc(deku(d.slug))}" target="_blank" rel="noopener" title="${d.wish || !open ? "Bei DekuDeals ansehen" : "Bei DekuDeals ansehen; auf die Wishlist gesetzt rechnet das Tool auch Urteil und Bestpreis"}">${esc(d.title)}</a>${tag}${inner}` +
     (undec ? ` <span class="chip und" title="Fehlt, steht nicht auf deiner Wishlist und ist nicht ignoriert. Auf die Wishlist setzen, mit „habe ich“ abhaken oder ignorieren; in den Korb geht er auch über „Titel dazunehmen …“">nicht auf der Wishlist</span>` : "");
   return `<div class="npr cdr${undec ? " undec" : ""}${d.ignored ? " ign" : ""}${d.in_pack ? " part" : ""}"><span class="t">${name}${note ? `<small class="np-w">${note}</small>` : ""}</span>` +
-    `<span class="c-vd">${st}</span><span class="r c-eur">${priced && d.at_best && d.wish ? `<span class="star" title="Am Bestpreis">★</span>` : ""}${price}</span>` +
+    `<span class="c-vd">${st}</span><span class="r c-eur">${priced && d.at_best && d.wish ? `<span class="star" title="${esc(d.champ != null ? bestTip(d.eur, d.champ) : "Am Bestpreis")}">★</span>` : ""}${price}</span>` +
     `<span class="c-pct">${priced && d.sale && d.pct ? `<span class="pct">−${d.pct} %</span>` : ""}</span>` +
     `<span class="c-land">${priced && d.eur >= 0.005 ? `${esc(d.name || "")}${needsRegion(true, d.code, d.slug) ? " " + needMark(d.code, needsRegion(true, d.code, d.slug)) : ""}` : ""}</span>` +
     `<span class="c-end">${priced && d.end ? endCell(d.end) : ""}</span><span class="c-act">${act.join(" · ")}</span></div>`;
@@ -74,7 +74,7 @@ function dlcPrice(d, bare){
   const tip = [d.champ !== null && d.champ !== undefined ? `Bestpreis ${eur(d.champ)} (24 Monate, alle zählenden Länder)` : "Bestpreis noch nicht bekannt",
     d.grade === "buy" ? "am Bestpreis oder knapp darüber" : d.grade === "good" ? "gutes Angebot" : ""].filter(Boolean).join(" · ");
   const cls = d.grade === "buy" ? "g-buy" : d.grade === "good" ? "g-good" : "";
-  return `${d.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : ""}<span class="${cls}" title="${esc(tip)}">${d.est ? "ca. " : ""}${eur(d.eur)}</span>${!bare && d.sale && d.pct ? `<span class="pct">−${d.pct} %</span>` : ""}`;
+  return `${d.at_best ? `<span class="star" title="${esc(d.champ != null ? bestTip(d.eur, d.champ) : "Am Bestpreis")}">★</span>` : ""}<span class="${cls}" title="${esc(tip)}">${d.est ? "ca. " : ""}${eur(d.eur)}</span>${!bare && d.sale && d.pct ? `<span class="pct">−${d.pct} %</span>` : ""}`;
 }
 /* DLC eines Spiels in Blöcken: ein Pass mit seinen Teilen bleibt zusammen. Offen ist ein Block, wenn einer darin fehlt */
 function collBlocks(list){
@@ -221,9 +221,9 @@ function titleRow(r, group, tog){
   const hit = r.target !== null && cheapest && cheapest.eur <= r.target + 0.005;
   const ps = r.verdict === "buy" || r.verdict === "good" ? planState(r.slug) : "";
   const why = r.verdict === "none" ? esc(r.reason) : "";
-  const price = off ? `${star(off)}${ax(off)}<b>${buyLink(off.code, off, eur(off.eur))}</b> ${off.sale ? `<span class="pct" title="${esc(markTip(off, off.currency))}">−${off.pct} %</span>` : `<span class="pct np">Normalpreis</span>`}
+  const price = off ? `${star(off, ce && ce.eur, ce && ce.name)}${ax(off)}<b>${buyLink(off.code, off, eur(off.eur))}</b> ${off.sale ? `<span class="pct" title="${esc(markTip(off, off.currency))}">−${off.pct} %</span>` : `<span class="pct np">Normalpreis</span>`}
       <small>${esc(off.name)} ${ownMark(off)}${needMark(off.code, needsRegion(r.dlc_of, off.code, r.slug))} ${tierTag(off.tier)}${off.currency === "EUR" ? "" : " · " + priceLink(r.slug, off.code, money(off.local, off.currency), off, off.currency)}${off.sale && off.end ? " · " + endCell(off.end, "bis ") : ""}</small>` : `<span class="mut">–</span>`;
-  const over = off && ce ? `${overBest(off.eur, ce.eur, r.verdict === "none" ? null : r.verdict)}<small>${(pl ? pl.gap : r.gap) && !atBest(off.eur, ce.eur) ? (pl ? pl.gap : r.gap) + " % · " : ""}Bestpreis ${ce.est ? APPROX : ""}${eur(ce.eur)} ${esc(ce.code)}</small>` : `<span class="mut">–</span>`;
+  const over = off && ce ? `${overBest(off.eur, ce.eur, r.verdict === "none" ? null : r.verdict, ce.name)}<small>${(pl ? pl.gap : r.gap) && !atBest(off.eur, ce.eur) ? (pl ? pl.gap : r.gap) + " % · " : ""}Bestpreis ${ce.est ? APPROX : ""}${eur(ce.eur)} ${esc(ce.code)}</small>` : `<span class="mut">–</span>`;
   let alt = "";
   if(pl && cheapest && cheapest.code !== pl.code && cheapest.eur < pl.eur - 0.005)
     alt = `<span title="${esc(`Günstigstes Land. Der Plan kauft in ${pl.name}${pl.reason ? ": " + pl.reason : ""}`)}">${eur(cheapest.eur)} ${esc(cheapest.name)}</span><small>${TIER[cheapest.tier]} · ${eur(pl.eur - cheapest.eur)} günstiger</small>`;

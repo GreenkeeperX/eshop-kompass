@@ -192,9 +192,18 @@ function gYear(g){
 }
 /* Marken hinter dem Titel (1.7.0), knapp wie DE✓: Switch 2, abweichende Spielmodi, Paket */
 const G_MODE = {tv: "TV", tabletop: "Tisch", handheld: "Handheld"};
+// Knöpfe von Mein Stand (1.7.27 eigene Funktion: ein Klick tauscht nur sie und die Zeichen am Namen aus)
+function gMarkHtml(g){
+  const m = g.mine || {};
+  return `<span class="seg gmark">${G_ST.map(([k, l, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}">${mIcon(k)} ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}">${mIcon("fav", "", !m.fav)} Favorit</button><button data-act="gmark" data-s="${esc(g.slug)}" data-k="ign" data-v="${m.ign ? "" : "1"}" class="${m.ign ? "on" : ""}" title="${m.ign ? "Nicht mehr ignorieren" : "Nie wieder vorschlagen"}">${mIcon("ign")} ignorieren</button></span>`;
+}
+function gmeHtml(g){
+  const m = g.mine || {}, st = G_ST.find(x => x[0] === m.s);
+  return st || m.fav || m.ign ? `<span class="gme">${st ? mIcon(m.s, `Mein Stand: ${st[1]}`) : ""}${m.fav ? mIcon("fav", "Favorit") : ""}${m.ign ? mIcon("ign", "Ignoriert: wird nie vorgeschlagen") : ""}</span>` : "";
+}
 function gBadges(g){
   const b = [], m = g.mine || {}, st = G_ST.find(x => x[0] === m.s);
-  if(st || m.fav || m.ign) b.push(`<span class="gme">${st ? mIcon(m.s, `Mein Stand: ${st[1]}`) : ""}${m.fav ? mIcon("fav", "Favorit") : ""}${m.ign ? mIcon("ign", "Ignoriert: wird nie vorgeschlagen") : ""}</span>`);
+  b.push(gmeHtml(g));
   // Die Switch 2 Edition steht schon im Namen
   if(g.s2 && g.s2 !== "edition") b.push(`<span class="lgt de" title="${g.s2 === "upgrade" ? "Mit Upgrade-Paket für die Switch 2, das du hast" : "Spiel für die Switch 2"}">${g.s2 === "upgrade" ? "S2-Upgrade" : "Switch 2"}</span>`);
   const ms = g.modes.map(m => m.n), miss = ["tv", "tabletop", "handheld"].filter(m => !ms.includes(m));
@@ -271,7 +280,7 @@ function gDetail(g){
   const odd = ["offline", "local", "online"].filter(k => g.players[k] && g.players[k].alt)
     .map(k => `${({offline: "an einer Konsole", local: "lokal drahtlos", online: "online"})[k]} <span class="gxc">DekuDeals ${gRange(g.players[k].v)}, Nintendo ${gRange(g.players[k].alt)}</span>`).join(" · ");
   const m = g.mine || {};
-  const mine = `<span class="seg gmark">${G_ST.map(([k, l, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}">${mIcon(k)} ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}">${mIcon("fav", "", !m.fav)} Favorit</button><button data-act="gmark" data-s="${esc(g.slug)}" data-k="ign" data-v="${m.ign ? "" : "1"}" class="${m.ign ? "on" : ""}" title="${m.ign ? "Nicht mehr ignorieren" : "Nie wieder vorschlagen"}">${mIcon("ign")} ignorieren</button></span>`;
+  const mine = gMarkHtml(g);
   // Switch-2-Edition (1.7.4): mit Upgrade-Paket gelten ihre Angaben; was die Switch-1-Seite anders nennt, steht dabei
   const ED_L = {players: "Spieler", modes: "Spielmodi", mc: "Metacritic", mcu: "Nutzer", oc: "OpenCritic", hltb: "Spielzeit", size_gb: "Größe"};
   const edv = (k, v) => k === "players" ? ["offline", "local", "online"].filter(x => v[x]).map(x => `${({offline: "Konsole", local: "lokal", online: "online"})[x]} ${gRange(v[x])}`).join(", ")
@@ -358,6 +367,17 @@ function collStats(){
 const collSeg = () => `<span class="seg">${[["dlc", "DLC", "Spiele mit ihren Zusatzinhalten: was du hast, was fehlt"], ["spiele", "Spiele", "Jedes Spiel mit Genre, Spielern, Koop, Wertung und Spielzeit, mit Filtern und Mischungen"]]
   .map(([v, l, tip]) => `<button data-act="cview" data-v="${v}" class="${(S.cview || "dlc") === v ? "on" : ""}" title="${tip}">${l}</button>`).join("")}</span>`;
 
+function gPatchMarks(g){
+  const box = [...document.querySelectorAll(".gmark button[data-s]")].find(b => b.dataset.s === g.slug)?.closest(".gmk");
+  const name = [...document.querySelectorAll(".g-n[data-s]")].find(b => b.dataset.s === g.slug);
+  if(!box || !name) return false;
+  const at = [...box.querySelectorAll("button")].indexOf(document.activeElement);
+  box.innerHTML = gMarkHtml(g);
+  name.parentElement.querySelector(":scope > .gme")?.remove();
+  name.insertAdjacentHTML("afterend", gmeHtml(g));
+  if(at >= 0) box.querySelectorAll("button")[at]?.focus();
+  return true;
+}
 /* Ereignisse der Ansicht */
 document.addEventListener("click", e => {
   // Ein offenes Menü schließt bei einem Klick daneben
@@ -391,7 +411,9 @@ document.addEventListener("click", e => {
     g.mine = Object.assign({}, g.mine); if(val) g.mine[k] = val; else delete g.mine[k];
     if(val && k === "fav") delete g.mine.ign;      // Favorit und ignorieren schließen sich aus
     if(val && k === "ign") delete g.mine.fav;
-    render();
+    // 1.7.27: ohne Filter oder Mischung nach Mein Stand nur Knöpfe und Zeichen am Namen austauschen statt alles neu
+    // zu zeichnen; so zuckt die Liste beim Klicken nicht
+    if(d.st || d.mix || !gPatchMarks(g)) render();
     api("/api/settings", {game_marks: {[g.slug]: {[k]: val}}}).catch(() => refresh());
   }
   else if(a === "gdlc"){ S.cview = "dlc"; S.rq = el.dataset.s; saveView(); window.scrollTo(0, 0); done(); }

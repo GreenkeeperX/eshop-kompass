@@ -694,12 +694,13 @@ details.gmenu .hint{margin:0}
 .galt{color:var(--muted);font-style:italic}
 /* Mein Stand ab 1.7.26 als SVG (mIcon): feste Größe, gleiche Strichstärke, optisch mittig zum Text; ändert beim
    Umschalten weder Breite noch Höhe. Hinter dem Titel in fester Höhe, mittig zur Zeile, damit nichts springt */
-.mi{width:1em;height:1em;flex:none;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
-.mi.gfav{fill:currentColor;stroke-width:1.2}
-.mi.gfav.off{fill:none;stroke-width:1.6}
-.mi.gign{stroke-width:2.2}
-.gme{flex:none;margin-left:6px;display:inline-flex;gap:4px;align-items:center;align-self:center;height:14px;font-size:13px}
-.gme .mi{display:block}
+.mi{width:1em;height:1em;flex:none;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.mi.gfav{fill:currentColor;stroke-width:1.4}
+.mi.gfav.off{fill:none;stroke-width:1.8}
+.mi.gign{stroke-width:2.6}
+/* 1.7.27: am Namen etwas größer und 1,5 px tiefer (mittig wirkte zu hoch), beides ohne Einfluss auf das Layout */
+.gme{flex:none;margin-left:6px;display:inline-flex;gap:4px;align-items:center;align-self:center;height:14px;font-size:14px}
+.gme .mi{display:block;width:15px;height:15px;position:relative;top:1.5px}
 .gmark .mi{margin-right:1px}
 .gst.backlog{color:var(--pink)}     /* pink wie das Quadrat am PlayStation-Controller (1.7.24) */
 .gst.started{color:var(--deal)}
@@ -725,6 +726,12 @@ details.gmenu .hint{margin:0}
 .gd{display:grid;grid-template-columns:var(--gcols);gap:4px 10px;padding:4px 0 10px;font-size:13px}
 /* Offen (1.7.4): Zeile und Einzelheiten leicht abgesetzt, über die ganze Breite der Liste */
 .gr.open,.gd{background:var(--open);box-shadow:-8px 0 0 var(--open),8px 0 0 var(--open)}
+/* 1.7.27 (wie im VR-Navigator, Entscheidung 02.11.2026): die Zeile unter der Maus leicht hinterlegt, damit man sich in
+   langen Listen und Tabellen nicht verliert; nur mit Maus (hover:hover). Felder mit eigener Farbe (Urteil) bleiben */
+@media (hover:hover){
+  .gr:not(.nph):not(.open):hover,.npr:hover{--hov:color-mix(in srgb,var(--ink) 6%,var(--card));background:var(--hov);box-shadow:-8px 0 0 var(--hov),8px 0 0 var(--hov)}
+  .radar tbody tr:not(.det):hover,.cmp tbody tr:hover,.matrix tbody tr:hover,table.it tbody tr:hover,.mini-t tbody tr:hover,dialog.vl tbody tr:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+}
 .gd .gmark{background:var(--card)}
 .gd .gmark button.on{background:color-mix(in srgb,var(--ink) 16%,var(--card));color:var(--ink);font-weight:400}   /* nicht fett: der Knopf wächst sonst (1.7.5) */   /* Symbole bleiben farbig (1.7.5) */
 .gr.open{border-top-style:solid}

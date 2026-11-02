@@ -423,6 +423,12 @@ stehen bleibt, mit Esc oder einem Klick daneben. Die Tabelle hat die Spalte „�
 Bestpreis“, sonst rot der Betrag). Unter „zuletzt“ stehen Rabatt und Preis des letzten Angebots; war es ein guter
 Preis (höchstens 5 % über dem Bestpreis oder am Ziel), ist der Preis grün und der Rabatt blau. Das Land führt zum
 Verlauf bei DekuDeals, der Preis jetzt in den eShop.
+Ab 1.7.27 steht „jetzt“ am Bestpreis (bis 2 % darüber) grün und mit ★ wie in den Tabellen.
+
+**Tooltips und Zeilen (ab 1.7.27, wie im VR-Navigator):** Stern, „überm Bestpreis“ und „am Bestpreis“ nennen im
+Tooltip den Bestpreis selbst mit Land, den Preis jetzt und den Abstand. Die Zeile unter der Maus ist leicht
+hinterlegt (nur mit Maus). Ein Klick in Mein Stand tauscht nur die Knöpfe und die Zeichen am Namen aus, die Tabelle
+zuckt nicht mehr; die Zeichen sind etwas kräftiger und sitzen mittig zum Namen.
 
 **Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Wartet“)
 fragt nach einem angenommenen Preis in der Landeswährung, wie im Shop; vorgeschlagen ist der

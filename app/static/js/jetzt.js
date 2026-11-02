@@ -104,7 +104,7 @@ function nsoBox(){
   const rows = sel.rows || [], best = rows.find(r => r.counts), myBest = ((mineV || sel).rows || []).find(r => r.counts);
   const planned = new Set(((S.kauf || {}).steps || []).map(p => p.code));
   const grade = r => r.grade === "buy" ? "g-buy" : r.grade === "good" ? "g-good" : "";
-  const starOf = r => r.at_best ? `<span class="star" title="Am Bestpreis">★</span>` : "";
+  const starOf = r => r.at_best ? `<span class="star" title="${esc(sel.champ != null && r.eur != null ? bestTip(r.eur, sel.champ, r.champ_name) : "Am Bestpreis")}">★</span>` : "";
   const until = m.until ? `läuft bis ${esc(dmy(m.until))}${m.days_left !== null && m.days_left >= 0 ? ` (noch ${m.days_left} ${m.days_left === 1 ? "Tag" : "Tage"})` : m.days_left < 0 ? " (abgelaufen)" : ""}` : "Ablaufdatum offen";
   const myLabel = mineV ? mineV.label : "12 Monate";
   const head = myBest ? `am günstigsten ${esc(myBest.name)} ${starOf(myBest)}${myBest.est ? "ca. " : ""}<b class="${grade(myBest)}">${eur(myBest.eur)}</b> (${eur(myBest.month)} je Monat)`
