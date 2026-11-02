@@ -92,7 +92,7 @@ vor weniger als 30 Minuten, entfällt der beim Start.
 
 „Aktualisieren“ startet einen Abgleich von Hand. Der wartet nicht auf Ruhezeiten, die nur sagen,
 dass vermutlich nichts Neues da ist (titledb einmal die Woche, Kartenpreise einmal am Tag; von
-Hand liest er Karten neu, die älter als eine Stunde sind). Was die Quellen schont, gilt immer:
+Hand liest er Karten neu, die älter als sechs Stunden sind; nach einer Sperre ruht ein Kartenshop sechs Stunden und bekommt danach nur so viele Seiten je Abgleich, wie zuletzt durchgingen). Was die Quellen schont, gilt immer:
 die Pause nach einer Sperre, der Warteraum von Japan und die Zahl der Seiten je Abgleich. Das
 Protokoll nennt am Ende, was übergangen wurde.
 

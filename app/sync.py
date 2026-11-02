@@ -44,7 +44,9 @@ TITLEDB_FAIL_WAIT = 86400            # titledb nach einem Fehlschlag einen Tag r
 JP_WAIT_SECONDS = 7 * 86400          # nach dem Warteraum von store-jp eine Woche Ruhe
 FX_SOURCE_DAY = 24 * 3600            # die Kursquellen erneuern einmal am Tag
 FX_RECHECK = 20 * 3600               # höchstens so oft selbst nachfragen, auch wenn die Quelle hängt
-CARD_PAUSE = 3.0
+CARD_PAUSE = 6.0                      # ab 1.7.22 doppelt so lang: der Kartenshop sperrte nach etwa zehn Seiten
+CARD_BLOCK_SECONDS = 6 * 3600         # nach einer Sperre (403, 429) ruht der Shop, auch von Hand (1.7.22)
+CARD_BUDGET_MIN = 3                   # Seiten je Shop und Abgleich: lernt aus Sperren, wächst ohne Sperre
 REL_RECHECK_SECONDS = 30 * 24 * 3600  # DLC und Pakete eines Titels monatlich auffrischen
 REL_PER_SYNC = 40                     # höchstens so viele Artikelseiten je Abgleich
 INFO_V = 1                            # Spielinfos der Sammlung (1.6.0): Seiten ohne diese Fassung vorziehen
@@ -74,7 +76,8 @@ def _log(msg):
 # Abgleich von Hand (0.80): Ruhe-Grenzen, die nur sagen „vermutlich nichts Neues“, gelten dann nicht.
 # Schutz-Grenzen der Quellen (Sperren, Warteraum, Seiten je Abgleich, Pausen) gelten immer
 manual = {"on": False, "skipped": []}
-MANUAL_CARD_SECONDS = 3600     # Karten- und Angebotsseiten von Hand: was älter als eine Stunde ist
+MANUAL_CARD_SECONDS = 6 * 3600  # Karten- und Angebotsseiten von Hand: was älter als sechs Stunden ist
+                                # (bis 1.7.21 eine Stunde: jedes Aktualisieren verbrauchte die Seiten des Shops)
 
 
 def _quiet(age, seconds, what):
@@ -607,22 +610,49 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
     fresh = len(urls) - len(todo)
     # Höchstens CARDS_PER_SYNC je Abgleich (0.64): Alle Links stehen oft beim selben Shop und
     # würden zusammen fällig; so verteilen sie sich auf die Abgleiche des Tages
-    later = max(0, len(todo) - CARDS_PER_SYNC)
-    todo = todo[:CARDS_PER_SYNC]
+    # Je Shop (1.7.22): Nach einer Sperre ruht er CARD_BLOCK_SECONDS, und je Abgleich gibt es nur so viele
+    # Seiten, wie zuletzt vor einer Sperre durchgingen, minus eine; ohne Sperre eine mehr, bis CARDS_PER_SYNC
+    shops = data.setdefault("card_shops", {})
+    host = lambda u: urllib.parse.urlsplit(u).hostname or ""
+    resting = sorted({host(u) for u in todo if (shops.get(host(u)) or {}).get("until", 0) > now})
+    budget, picked = {}, []
+    for u in todo:
+        h = host(u)
+        if h in resting:
+            continue
+        left = budget.setdefault(h, (shops.get(h) or {}).get("budget", CARDS_PER_SYNC))
+        if left > 0 and len(picked) < CARDS_PER_SYNC:
+            picked.append(u)
+            budget[h] = left - 1
+    later = len(todo) - len(picked)
+    todo = picked
+    rest_note = (f"; {', '.join(resting)} ruht nach einer Sperre bis "
+                 f"{datetime.fromtimestamp(max(shops[h]['until'] for h in resting)).strftime('%d.%m., %H:%M')}") if resting else ""
+    if not todo and resting:
+        _log(f"Kartenpreise: nichts gelesen, {later} fällig{rest_note}, Werte von Hand gelten weiter")
+        return
     if not todo:
         # Immer eine Zeile, auch ohne Abruf (0.54)
         _log(f"Kartenpreise: alle {len(urls)} aktuell (gelesen in den letzten 20 Stunden)" if urls
              else "Kartenpreise: keine Karte mit Link eingetragen")
         return
     _step("Kartenpreise lesen", len(todo))
-    got, failed = 0, []
+    got, failed, read, blocked = 0, [], {}, set()
     for url in todo:
+        h = host(url)
+        if h in blocked:
+            continue
         try:
             found = sources.fetch_card_price(url, fetch=fetch)
         except sources.FetchError as e:
             if e.status in sources.BLOCKED:
-                _log(f"Kartenpreise: Shop lehnt Abrufe ab ({e}), Werte von Hand gelten weiter")
-                break
+                # Gelernt: so viele Seiten gingen durch, beim nächsten Mal eine weniger
+                blocked.add(h)
+                shops[h] = {"until": now + CARD_BLOCK_SECONDS, "budget": max(CARD_BUDGET_MIN, read.get(h, 0) - 1)}
+                _log(f"Kartenpreise: Shop lehnt Abrufe ab ({e}), ruht bis "
+                     f"{datetime.fromtimestamp(shops[h]['until']).strftime('%d.%m., %H:%M')}, "
+                     f"künftig höchstens {shops[h]['budget']} Seiten je Abgleich; Werte von Hand gelten weiter")
+                continue
             prices[url] = _card_miss(prices.get(url), now, f"HTTP {e.status or 'Fehler'}")
             failed.append(f"{label[url]} (HTTP {e.status or 'Fehler'})")
         else:
@@ -632,13 +662,18 @@ def sync_card_prices(data, settings, fetch, sleep, now=None):
             else:
                 prices[url] = _card_miss(prices.get(url), now, "Seite nennt keinen Preis")
                 failed.append(f"{label[url]} (kein Preis)")
+        read[h] = read.get(h, 0) + 1
         status["done"] += 1
         sleep(CARD_PAUSE)
+    for h, n in read.items():
+        if h not in blocked and h in shops and n >= shops[h].get("budget", CARDS_PER_SYNC):
+            # Ganzes Kontingent ohne Sperre gelesen: beim nächsten Mal eine Seite mehr
+            shops[h]["budget"] = min(CARDS_PER_SYNC, shops[h]["budget"] + 1)
     _log(f"Kartenpreise: {got} von {len(todo)} gelesen"
          + (f", {fresh} weitere aktuell" if fresh else "")
          + (f", {later} folgen beim nächsten Abgleich" if later else "")
          + (f"; ohne Preis: {', '.join(failed)}, dort gilt der letzte Preis bis 14 Tage, sonst der Wert von Hand" if failed else "")
-         + ("; Rest nach Sperre nicht gelesen" if got + len(failed) < len(todo) else ""))
+         + ("; Rest nach Sperre nicht gelesen" if got + len(failed) < len(todo) else "") + rest_note)
 
 
 CARDS_PER_SYNC = 12       # Guthabenkarten mit Link, höchstens so viele Seiten je Abgleich (0.64)

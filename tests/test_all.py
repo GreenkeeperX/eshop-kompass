@@ -1100,6 +1100,28 @@ class PlanTest(unittest.TestCase):
         read = {u for u in urls if self.data["card_prices"].get(u, {}).get("price")}
         self.assertEqual(read, set(urls))
 
+    def test_card_budget_learns_from_blocks(self):
+        # 1.7.22: Der Shop sperrt nach drei Seiten; danach liest der Abgleich nur noch so viele, wie durchgingen,
+        # minus eine, und nach einem Abgleich ohne Sperre wieder eine mehr
+        urls = [f"https://shop.example/c{i}" for i in range(8)]
+        self.settings["countries"]["BR"]["cards"] = "\n".join(f"{10 + i} | {u}" for i, u in enumerate(urls))
+        t0, calls = NOW.timestamp(), []
+        ld = '<script type="application/ld+json">{"offers":{"price":"8.90","priceCurrency":"EUR"}}</script>'
+
+        def shop(url, ua=None):
+            calls.append(url)
+            if len(calls) > 3:
+                raise sources.FetchError(url, 429)
+            return ld
+        sync.sync_card_prices(self.data, self.settings, shop, lambda s: None, now=t0)
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(self.data["card_shops"]["shop.example"]["budget"], 3)   # mindestens 3
+        calls.clear()
+        sync.sync_card_prices(self.data, self.settings, lambda u, ua=None: calls.append(u) or ld,
+                              lambda s: None, now=t0 + sync.CARD_BLOCK_SECONDS + 1)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(self.data["card_shops"]["shop.example"]["budget"], 4)
+
     def test_card_prices_of_the_plan_first(self):
         # Die Karten der Länder im Kaufplan zählen gerade: Sie kommen vor den ältesten dran
         old, plan = "https://shop.example/jp1000", "https://shop.example/br50"
@@ -1116,6 +1138,12 @@ class PlanTest(unittest.TestCase):
             sync.sync_card_prices(self.data, self.settings, once, lambda s: None, now=t0)
         self.assertEqual(calls, [plan])
         calls.clear()
+        # 1.7.22: Nach der Sperre ruht der Shop, auch im nächsten Abgleich
+        with mock.patch.object(sync, "_plan_card_urls", return_value=set()):
+            sync.sync_card_prices(self.data, self.settings, once, lambda s: None, now=t0 + 3600)
+        self.assertEqual(calls, [])
+        self.assertIn("shop.example ruht nach einer Sperre", sync.status["log"][-1])
+        self.data["card_shops"] = {}
         with mock.patch.object(sync, "_plan_card_urls", return_value=set()):
             sync.sync_card_prices(self.data, self.settings, once, lambda s: None, now=t0)
         self.assertEqual(calls, [old])
