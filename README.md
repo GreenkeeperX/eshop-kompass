@@ -648,8 +648,8 @@ Guthaben, steht das darunter. Dann drei Zeilen:
 Hürden (Rest blockiert, Karten fehlen, DLC braucht eine andere Region als Europa) stehen
 darunter; die betroffenen DLC sind in der Tabelle wie der Hinweis violett markiert. Die Tabelle
 zeigt je Titel Einkaufspreis, Abstand zum Bestpreis und den Preis ohne diesen Wechsel
-(„sonst“). „sonst“ zählt nur Länder im Plan. Ist ein Land gleicher oder leichterer Stufe günstiger,
-das nicht im Plan ist (etwa weil sein Wechsel unter der Schwelle blieb), steht es ab 1.7.19 blau
+(„sonst“). „sonst“ zählt nur Länder im Plan. Ist ein Land gleicher oder leichterer Stufe günstiger als „sonst“
+und als hier, das aber nicht im Plan ist (etwa weil sein Wechsel unter der Schwelle blieb), steht es ab 1.7.19 blau
 darunter, der Tooltip sagt, warum es nicht im Plan ist. Ab 1.7.21 hat auch Deutschland die Spalte,
 sobald ein Titel dort einen Vergleich hat. Vorschläge zum Dazunehmen (+) oder Weglassen (−) stehen darunter, die ganze
 Rechnung unter „Rechnung“.

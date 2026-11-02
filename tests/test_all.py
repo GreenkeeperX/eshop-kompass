@@ -567,6 +567,8 @@ class PlanTest(unittest.TestCase):
         # gleich dem „sonst“-Land oder nicht günstiger: kein Hinweis
         self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 5.0}, 6.0, "NO"), {})
         self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 5.0}, 2.5, "PL"), {})
+        # hier schon günstiger als das andere Land: kein Hinweis (1.7.23)
+        self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 2.0}, 6.0, "PL"), {})
         # ohne „sonst“ zählt der Preis hier
         self.assertEqual(planner._cheaper_elsewhere(Ctx(), c, "x", {"eur": 2.0}, None, None), {})
 

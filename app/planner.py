@@ -1384,7 +1384,9 @@ def _cheaper_elsewhere(ctx, c, slug, o, alt, alt_code):
     nicht als „sonst“ zählt, weil es nicht im Plan ist (etwa unter der Schwelle herausgefallen, 1.7.19):
     {"cheaper", "cheaper_code"} oder {}."""
     best = ctx.alt_price(slug, c["tier"], c["meta"]["shop"], None)
-    bar = alt if alt is not None else ctx.oeur(c, o)
+    # Nur, was auch hier unterbietet (1.7.23): Ist der Titel hier schon günstiger, wäre der Hinweis Lärm
+    here = ctx.oeur(c, o)
+    bar = min(x for x in (alt, here) if x is not None) if alt is not None or here is not None else None
     if not best or best[1] == alt_code or bar is None or best[0] >= bar - 0.005:
         return {}
     return {"cheaper": _r(best[0]), "cheaper_code": best[1]}
