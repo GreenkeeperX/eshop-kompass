@@ -258,7 +258,7 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
 - **Werkzeugzeile:** eigenes Suchfeld `#gq` (Name, Genre, Verlag, Entwickler; `fold1` wie `hits`),
   Sortieren (Name, Wertung, Spielzeit kurz zuerst, Erscheinen neu zuerst, Spieler, Zufall mit „Neu
   mischen“; „zuletzt gekauft“ entfiel in 1.7.0, zu wenige Kaufdaten). Sortiert ein Spaltenkopf, zeigt
-  das Menü „nach Spalte“; eine Wahl im Menü, eine Mischung oder „alle Filter zurücksetzen“ hebt die
+  das Menü „nach Spalte“ (ab 1.7.29 die Spalte selbst mit Richtung, etwa „Jahr ▲“, wie im VR-Navigator); eine Wahl im Menü, eine Mischung oder „alle Filter zurücksetzen“ hebt die
   Spaltensortierung auf.
 - **Mischungen** als Zeile von `.fb`-Knöpfen, am Handy seitlich wischbar (`.chips.gmix`): Überrasch mich,
   Couch-Abend, Koop zu zweit, Große Runde, Online mit Freunden, Kurz und gut, Für unterwegs. Ein Klick

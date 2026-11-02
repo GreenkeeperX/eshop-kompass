@@ -117,6 +117,8 @@ function gSort(rows, d){
 // Spaltenköpfe (1.7.0): Klick sortiert wie in der Wishlist; Zahlen, bei denen mehr besser ist, zuerst absteigend
 // Spieler (1.7.3): erst die Höchstzahl, bei gleicher die kleinere Mindestzahl zuerst (1–8 vor 4–8)
 const gPlKey = (g, k) => { const p = g.players[k]; if(!p) return null; const v = p.v || [1, 2]; return v[1] * 100 + (99 - v[0]); };
+// 1.7.29 (wie im VR-Navigator, Entscheidung 02.11.2026): statt „nach Spalte“ steht die sortierte Spalte mit Richtung in der Auswahl
+const G_TH = {title: "Name", offline: "Konsole", local: "Lokal", online: "Online", coop: "Koop", mc: "Metacritic", genre: "Genre", hours: "Spielzeit", year: "Jahr"};
 const G_COLS = {title: g => g.title, offline: g => gPlKey(g, "offline"), local: g => gPlKey(g, "local"),
   online: g => gPlKey(g, "online"), coop: g => !g.coop ? null : Math.max(+g.coop.local || 0, +g.coop.online || 0, 1), genre: g => g.genre.length ? g.genre[0].n : null,
   mc: g => g.score ?? null, hours: g => g.hours ?? null, year: g => g.released || null};
@@ -329,7 +331,7 @@ function viewGames(){
       <label title="Dein Stand je Spiel, setzt du in den Einzelheiten">Mein Stand <select data-gset="st">${opt(G_STF, d.st)}</select></label></div>
     ${label ? `<div class="chips gact">${d.how.map(h => `<button class="fb" data-act="ghowoff" data-v="${h}" title="Filter entfernen">${esc((G_HOW.find(x => x[0] === h) || [h, h])[1])} ×</button>`).join("")}${d.g.map(x => `<button class="fb" data-act="ggoff" data-v="${esc(x)}" title="Filter entfernen">${esc(x)} ×</button>`).join("")}<button class="link gres" data-act="greset">alle Filter zurücksetzen</button></div>` : ""}`;
   const tools = `<div class="tools"><span class="sbox"><input type="search" id="gq" placeholder="Spiel, Genre oder Verlag" aria-label="Spiel, Genre oder Verlag suchen" value="${esc(d.q)}">${d.q ? `<button class="sx" data-act="gqclear" title="Suche leeren (Esc)">×</button>` : ""}</span>
-    <label>Sortieren <select data-gset="sort">${S.sorts.spiele ? `<option value="" selected>nach Spalte</option>` : ""}${opt(G_SORTS, S.sorts.spiele ? "" : d.sort)}</select></label>${d.sort === "random" && !S.sorts.spiele ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}
+    <label>Sortieren <select data-gset="sort">${S.sorts.spiele ? `<option value="" selected>${G_TH[S.sorts.spiele.k] || "Spalte"} ${S.sorts.spiele.dir > 0 ? "▲" : "▼"}</option>` : ""}${opt(G_SORTS, S.sorts.spiele ? "" : d.sort)}</select></label>${d.sort === "random" && !S.sorts.spiele ? `<button class="fb" data-act="gshuffle">Neu mischen</button>` : ""}
     <span class="foldall"><button class="link" data-act="gall" data-v="1">alle aufklappen</button> · <button class="link" data-act="gall" data-v="">alle zuklappen</button></span></div>`;
   const pickCard = d.mix === "surprise" ? `<section class="box gpick"><h3>Vorschlag${label ? ` <span class="mut">${esc(label)}</span>` : ""}</h3>
     ${pick.length ? `<div class="glist">${pick.map(g => gRow(g, true)).join("")}</div>` : `<p class="hint">Nichts passt zu den Filtern.</p>`}

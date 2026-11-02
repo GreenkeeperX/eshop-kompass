@@ -431,6 +431,8 @@ hinterlegt (nur mit Maus). Ein Klick in Mein Stand tauscht nur die Knöpfe und d
 zuckt nicht mehr; die Zeichen sind etwas kräftiger und sitzen mittig zum Namen.
 Ab 1.7.28 bleibt beim Aufklappen die angeklickte Zeile an ihrer Stelle, auch wenn darüber eine andere zuklappt, und
 im Darkmode wird die Zeile unter der Maus dunkler statt heller.
+Ab 1.7.29 steht nach einem Klick auf einen Spaltenkopf in „Sortieren“ die Spalte selbst mit Richtung („Jahr ▲“)
+statt „nach Spalte“.
 
 **Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Wartet“)
 fragt nach einem angenommenen Preis in der Landeswährung, wie im Shop; vorgeschlagen ist der
