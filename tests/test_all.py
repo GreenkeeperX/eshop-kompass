@@ -5152,6 +5152,9 @@ class UiContractTest(unittest.TestCase):
         self.assertIn("@media (hover:hover)", css)
         # 1.7.28: Zeile bleibt beim Aufklappen stehen, Hover je Ansicht
         self.assertIn("function keepRow", js)
+        # 1.7.29: sortierte Spalte mit Richtung statt „nach Spalte“
+        self.assertIn("const G_TH", js)
+        self.assertNotIn(">nach Spalte<", js)
         self.assertEqual(css.count("--hov:"), 3)
 
     def test_ui_files_served(self):
