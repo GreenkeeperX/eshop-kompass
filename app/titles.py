@@ -315,13 +315,73 @@ def _eshop_matches(data):
     return {"rows": rows, "owned": owned}
 
 
+def name_links(data):
+    """Teile einer Edition, die DekuDeals nicht nennt, aus dem Namen erschlossen (1.7.20, Entscheidung
+    02.11.2026): Heißt ein Paket „Spiel: X Edition“, enthält es das Spiel, und hat das Spiel einen DLC
+    „X Upgrade Pack“ (auch „X Upgrade“, „X Edition Upgrade (Pack)“), zählt der als Teil der Edition.
+    Die Seite der Edition nennt oft nur das Spiel, die des Upgrade-Pakets liest der Abgleich nur für
+    Spiele der Sammlung. „stimmt nicht“ (pack_block) hebt es auf wie jeden Teil. {Paket: {DLC: Name}}"""
+    rel, items, links = data.get("rel") or {}, data.get("items") or {}, data.get("links") or {}
+    names, holds = {}, {}
+    for g, e in rel.items():
+        for p, t in e.get("in") or []:
+            names.setdefault(p, t)
+            holds.setdefault(p, set()).add(g)
+    for p, parts in links.items():
+        holds.setdefault(p, set()).update(parts)
+    out = {}
+    for p, games in holds.items():
+        pt = _tnorm((rel.get(p) or {}).get("title") or (items.get(p) or {}).get("title") or names.get(p))
+        if not pt.endswith(" edition"):
+            continue
+        for g in games:
+            ge = rel.get(g) or {}
+            gt = _tnorm(ge.get("title") or (items.get(g) or {}).get("title"))
+            if not gt or not pt.startswith(gt + " "):
+                continue
+            word = pt[len(gt) + 1:-len(" edition")]
+            if not word or len(word.split()) > 2:      # „Nintendo Switch 2 Edition“ hat eigene Wege
+                continue
+            want = {f"{word} upgrade pack", f"{word} upgrade", f"{word} edition upgrade", f"{word} edition upgrade pack"}
+            for d, dt in ge.get("dlc") or []:
+                n = _tnorm(dt)
+                if n.startswith(gt + " "):
+                    n = n[len(gt) + 1:]
+                if n in want and d not in (links.get(p) or {}):
+                    out.setdefault(p, {})[d] = dt
+    return out
+
+
+def all_links(data):
+    """data.links plus name_links; Erschlossenes trägt "guess": True. Innerhalb von shared_contexts()
+    einmal je Datenstand."""
+    cache = getattr(_shared, "cache", None)
+    parts = (data.get("links"), data.get("rel"), data.get("items"))
+    key = ("links",) + tuple(map(id, parts))
+    if cache is not None:
+        hit = cache.get(key)
+        if hit is not None and all(a is b for a, b in zip(hit[0], parts)):
+            return hit[1]
+    extra = name_links(data)
+    out = data.get("links") or {}
+    if extra:
+        out = {p: dict(v) for p, v in out.items()}
+        for p, ds in extra.items():
+            for d, t in ds.items():
+                out.setdefault(p, {})[d] = {"t": t, "src": {}, "guess": True}
+    if cache is not None:
+        cache[key] = (parts, out)
+    return out
+
+
 def pack_parts(data, base, block=()):
     """Alles, was in base steckt, auch über mehrere Stufen (Edition → Pass → DLC):
     {Teil: Paket, über das er kommt}. Die Verbindungen stammen aus den Abschnitten
     „Contains“ und „Included In“ bei DekuDeals (sync.update_links). Nur in eine Richtung:
     Wer das Paket hat, hat die Teile, nicht umgekehrt. Was in block steht („stimmt
-    nicht“), zählt nicht als enthalten, auch nicht, was darin steckt."""
-    links = data.get("links") or {}
+    nicht“), zählt nicht als enthalten, auch nicht, was darin steckt. Ab 1.7.20 mit den aus dem
+    Namen erschlossenen Teilen (all_links)."""
+    links = all_links(data)
     via, stack = {}, [s for s in base if s in links]
     seen = set(base) | set(block)
     while stack:

@@ -3619,6 +3619,30 @@ class BundleTest(unittest.TestCase):
         p = planner.bundles(data, rows)["packs"][pack]
         self.assertEqual((p["partial"], p["saving"]), (True, None))
 
+    def test_edition_parts_from_name(self):
+        # 1.7.20: „Spiel: Deluxe Edition“ nennt bei DekuDeals nur das Spiel; dessen DLC „Deluxe Upgrade Pack“
+        # zählt aus dem Namen als Teil, für Vergleich und Besitz, „stimmt nicht“ hebt es auf
+        row = Switch2Test.row
+        ed, game, up, other = "orb-deluxe-edition", "orb", "orb-deluxe-upgrade-pack", "orb-soundtrack"
+        data = {"owned": [], "items": {}, "links": {ed: {game: {"t": "Orb", "src": {game: 0}}}}, "rel": {
+            game: {"title": "Orb", "in": [[ed, "Orb: Deluxe Edition"]],
+                   "dlc": [[up, "Deluxe Upgrade Pack"], [other, "Soundtrack"]]}}}
+        self.assertEqual(planner.name_links(data), {ed: {up: "Deluxe Upgrade Pack"}})
+        rows = [row(ed, "Orb: Deluxe Edition", 15.0), row(game, "Orb", 10.0), row(up, "Deluxe Upgrade Pack", 7.0)]
+        p = planner.bundles(data, rows)["packs"][ed]
+        self.assertEqual({k["slug"]: k.get("guess", False) for k in p["parts"]}, {game: False, up: True})
+        self.assertEqual((p["partial"], p["alone"], p["saving"]), (False, 17.0, 2.0))
+        data["owned"] = [ed]
+        self.assertIn(up, planner.owned_set(data))
+        self.assertNotIn(other, planner.owned_set(data))
+        self.assertNotIn(up, planner.owned_set(data, {"dlc_marks": {up: "missing"}}))
+        # Switch-2-Editionen und fremde Namen nicht
+        data["rel"][game]["in"] = [[ed, "Orb – Nintendo Switch 2 Edition"]]
+        data["rel"][game]["dlc"] = [[up, "Nintendo Switch 2 Edition Upgrade Pack"]]
+        self.assertEqual(planner.name_links(data), {})
+        data["rel"][game]["in"] = [[ed, "Orb: Gold Edition"]]
+        data["rel"][game]["dlc"] = [[up, "Deluxe Upgrade Pack"]]
+        self.assertEqual(planner.name_links(data), {})
 
 class SelfCheckTest(unittest.TestCase):
     def test_self_check_flags_jumps_drops_and_odd_cards(self):

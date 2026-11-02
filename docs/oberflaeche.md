@@ -690,6 +690,7 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Suchfelder | `hits()` für Wishlist-Liste, Tabelle, Sammlung und „anderer …“ bei den Käufen; „Spiele“ eigenes Feld `#gq` mit `fold1` |
 | Spielinfos (Genre, Spieler, Koop, Wertung, Spielzeit, violett bei Widerspruch, grau-kursiv OpenCritic) | Sammlung „Spiele“ (`gRow`, `gDetail`), Legende (`openLegend`), Widersprüche in den Einstellungen (`contraBox`); Daten nur aus `planner.game_infos` |
 | Preis ohne diesen Wechsel („sonst“, ab 1.7.19 mit günstigerem Land außerhalb des Plans) | Plan-Schritt und Länderkarte (`altCell` in `planCard`); die Länderkarten zeigen es nicht (`p.is_ref`) |
+| Teile eines Pakets („Enthält, soweit bekannt“), ab 1.7.20 aus dem Namen erschlossene mit grauem „(vermutlich)“ und Tooltip (`k.guess`) | Wishlist-Einzelheiten (`packLine`); Besitz und Sammlung rechnen still mit (`titles.all_links`), die Sammlung zeigt sie wie andere Teile mit „im Paket …“ |
 | Länder ein- und ausblenden | Preisverlauf (`drawVerlauf`, `.vl .lg`, „alle an · alle aus“ `vlall` ab 1.7.19); der Verlauf ist ein Fenster für alle Stellen, die ihn öffnen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |

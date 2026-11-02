@@ -19,7 +19,7 @@ from .cards import (MAX_STATES, CARD_HIST_DAYS, CARD_HIST_MIN_DAYS, CARD_STEPS, 
     CARD_PLAUSIBLE, cents, _OUT_RE, plausible_card, parse_card_list, parse_cards, CardSolver)
 from .titles import (_shared, shared_contexts, _tnorm, _ESHOP_VOID, slug_names, known_titles, pretty_slug,
     _MATCH_KEYS, eshop_matches, _S2, _s2base, _PASSES, _pass_kind, _pass_label, _eshop_matches, pack_parts,
-    pack_block, owned_set, owned_games)
+    pack_block, owned_set, owned_games, name_links, all_links)
 
 CARD_PRICE_MAX_AGE = 14 * 24 * 3600  # zuletzt gelesene Kartenpreise gelten so lange, auch wenn ein Abruf scheitert
 OFFER_DEVIATION = 0.4                # ein vom Link gelesener Preis, der so weit vom eingetragenen abweicht, gilt nicht
@@ -1493,11 +1493,19 @@ def bundles(data, rows, settings=None):
             names.setdefault(b_slug, b_title)
         for p_slug, p_title in e.get("has") or []:
             parts.setdefault(slug, {}).setdefault(p_slug, p_title)
+    # Aus dem Namen erschlossen (1.7.20): „Spiel: X Edition“ enthält den DLC „X Upgrade Pack“
+    guess, block = set(), pack_block(settings)
+    for b_slug, ds in name_links(data).items():
+        for p_slug, p_title in ds.items():
+            if p_slug not in block and p_slug not in parts.get(b_slug, {}):
+                parts.setdefault(b_slug, {})[p_slug] = p_title
+                guess.add((b_slug, p_slug))
     title = lambda s: (by.get(s) or {}).get("title") or (rel.get(s) or {}).get("title") or names.get(s) or s
     packs, inside = {}, {}
     for b_slug, ps in parts.items():
         known = [{"slug": p, "title": title(p) if p in by or p in rel else t, "owned": p in owned,
-                  "eur": _now_eur(by.get(p))[0], "wish": p in by} for p, t in ps.items()]
+                  "eur": _now_eur(by.get(p))[0], "wish": p in by,
+                  **({"guess": True} if (b_slug, p) in guess else {})} for p, t in ps.items()]
         for k in known:
             if k["wish"] and b_slug != k["slug"]:
                 inside.setdefault(k["slug"], []).append(
@@ -1772,7 +1780,7 @@ def game_infos(data, settings):
     Pakete (1.7.0, Entscheidung 27.10.2026): Ein Paket, dessen Teile Spiele der Sammlung sind, steht nicht
     als eigene Zeile da; seine Spiele tragen „aus“ und nehmen fehlende Angaben von der Seite des Pakets."""
     rel = data.get("rel") or {}
-    links = data.get("links") or {}
+    links = all_links(data)
     owned_list = list(dict.fromkeys(data.get("owned") or []))
     direct = set(owned_list) | eshop_matches(data)["owned"]
     via = pack_parts(data, direct, pack_block(settings))
@@ -1983,7 +1991,7 @@ def collection(data, settings, targets=None, now=None, rows=None):
     owned = owned_set(data, settings)
     direct = set(owned_list) | eshop_matches(data)["owned"]
     via = pack_parts(data, direct, pack_block(settings))   # nur über ein Paket vorhanden: {Teil: Paket}
-    links = data.get("links") or {}
+    links = all_links(data)
     by = {r["slug"]: r for r in (rows if rows is not None else radar(data, settings, targets, now))}
     items = data.get("items") or {}
     marks = settings.get("dlc_marks") or {}

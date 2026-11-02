@@ -374,7 +374,7 @@ function packLine(slug){
   const b = S.state.bundles || {}, p = (b.packs || {})[slug], ins = (b.in || {})[slug] || [];
   const out = [];
   if(p){
-    const parts = p.parts.map(k => `${esc(k.title)}${k.owned ? ` <span class="mut">✓ hast du</span>` : k.eur !== null && k.eur !== undefined ? ` ${eur(k.eur)}` : ` <span class="mut">ohne Preis</span>`}`).join(", ");
+    const parts = p.parts.map(k => `${k.guess ? `<span class="lg" title="Aus dem Namen erschlossen: DekuDeals nennt diesen DLC beim Spiel, aber nicht bei der Edition. Stimmt das nicht, wähle in der Sammlung beim DLC „stimmt nicht“.">${esc(k.title)} <span class="mut">(vermutlich)</span></span>` : esc(k.title)}${k.owned ? ` <span class="mut">✓ hast du</span>` : k.eur !== null && k.eur !== undefined ? ` ${eur(k.eur)}` : ` <span class="mut">ohne Preis</span>`}`).join(", ");
     let cmp = "";
     if(p.partial) cmp = ` <span class="mut">DekuDeals nennt nicht alle Teile, deshalb kein Vergleich.</span>`;
     else if(p.saving !== null && p.saving !== undefined)

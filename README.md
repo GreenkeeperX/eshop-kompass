@@ -313,6 +313,12 @@ eines Teils) bei DekuDeals und werden gespeichert. Neue Verbindungen gelten sofo
 Verbindung fällt erst weg, wenn sie zweimal hintereinander fehlt; fehlt ein Abschnitt ganz,
 ändert sich nichts. Änderungen nennt das Protokoll.
 
+Ab 1.7.20 erschließt das Tool fehlende Teile einer Edition aus dem Namen (Entscheidung 02.11.2026):
+Heißt ein Paket „Spiel: X Edition“, und hat das Spiel einen DLC „X Upgrade Pack“, zählt der als Teil
+der Edition, auch wenn DekuDeals auf der Seite der Edition nur das Spiel nennt. Das gilt für den
+Vergleich Paket gegen Einzelkauf (dort mit „(vermutlich)“ und Tooltip) und für den Besitz. Stimmt es
+nicht, hebt „stimmt nicht“ beim DLC es auf wie jeden anderen Teil.
+
 ### Farben und Zeichen
 
 Die Farben haben je eine Bedeutung: Grün fürs Urteil und für Positives (Ersparnis,
