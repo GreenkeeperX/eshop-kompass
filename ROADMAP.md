@@ -102,6 +102,6 @@ Neue Wünsche, noch nicht eingeordnet.
   angefangen, durchgespielt, Favorit) und Sprachen der Spiele (1.7.1, erledigt); GameShare, Koop
   über IGDB und die Liste „Widersprüche“ mit Klarstellungen im Repository (1.7.2, erledigt); alle
   Genres farbig, Wertung farbig vor dem Genre, Einzelheiten wieder untereinander (1.7.3, erledigt);
-  Angaben der Switch-2-Edition bei vorhandenem Upgrade-Paket (1.7.4, erledigt). Offen: Was die
+  Angaben der Switch-2-Edition bei vorhandenem Upgrade-Paket (1.7.4, erledigt). Mein Stand „ignorieren“ (nie wieder vorschlagen), Backlog pink, Stern fett, wie im VR-Navigator (1.7.24, erledigt). Offen: Was die
   Switch-2-Edition verbessert (Auflösung, Bildrate, Maus), sobald eine Quelle es lesbar nennt; der
   Verbindungstest zeigt seit 1.7.2, ob die Europa-Suche zu einem Switch-2-Spiel passende Felder kennt.

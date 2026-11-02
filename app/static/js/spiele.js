@@ -34,7 +34,7 @@ const G_MIXES = [
 const G_ST = [["backlog", "Backlog", "○", "Willst du spielen, noch nicht angefangen"], ["started", "angefangen", "▷", "Angefangen"],
   ["done", "durchgespielt", "✓", "Durchgespielt"]];
 const G_STF = [["", "egal"], ["open", "nicht durchgespielt"], ["backlog", "Backlog"], ["started", "angefangen"], ["done", "durchgespielt"],
-  ["fav", "Favoriten"], ["none", "ohne Stand"]];
+  ["fav", "Favoriten"], ["ign", "ignoriert"], ["none", "ohne Stand"]];
 const gRand = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const gSeed = () => 1 + Math.floor(Math.random() * 2147483646);
 const gNames = g => g.genre.map(x => x.n);
@@ -83,7 +83,9 @@ function gFilter(d, games){
     }
     if(d.pl && !d.how.some(h => ["couch", "local", "online"].includes(h)) && (g.max || 0) < d.pl) return false;
     const m = g.mine || {};
-    if(d.st && !(d.st === "open" ? m.s !== "done" : d.st === "fav" ? m.fav : d.st === "none" ? !m.s && !m.fav : m.s === d.st)) return false;
+    if(d.st && !(d.st === "open" ? m.s !== "done" : d.st === "fav" ? m.fav : d.st === "ign" ? m.ign : d.st === "none" ? !m.s && !m.fav && !m.ign : m.s === d.st)) return false;
+    // Ignorieren (1.7.24): Gegenstück zu Favorit, nie in Mischungen und Vorschlägen; in der Liste bleibt das Spiel
+    if(d.mix && d.st !== "ign" && m.ign) return false;
     if(d.sc && (g.score || 0) < d.sc) return false;
     // Alter (1.7.5): USK, ohne USK PEGI; ohne Angabe fällt das Spiel heraus
     if(d.usk !== "" && !(gAge(g) !== null && gAge(g) <= Number(d.usk))) return false;
@@ -184,7 +186,7 @@ function gYear(g){
 const G_MODE = {tv: "TV", tabletop: "Tisch", handheld: "Handheld"};
 function gBadges(g){
   const b = [], m = g.mine || {}, st = G_ST.find(x => x[0] === m.s);
-  if(st || m.fav) b.push(`<span class="gme">${st ? `<span class="gst ${m.s}" title="Mein Stand: ${st[1]}">${st[2]}</span>` : ""}${m.fav ? `<span class="gfav" title="Favorit">★</span>` : ""}</span>`);
+  if(st || m.fav || m.ign) b.push(`<span class="gme">${st ? `<span class="gst ${m.s}" title="Mein Stand: ${st[1]}">${st[2]}</span>` : ""}${m.fav ? `<span class="gfav" title="Favorit">★</span>` : ""}${m.ign ? `<span class="gign" title="Ignoriert: wird nie vorgeschlagen">✕</span>` : ""}</span>`);
   // Die Switch 2 Edition steht schon im Namen
   if(g.s2 && g.s2 !== "edition") b.push(`<span class="lgt de" title="${g.s2 === "upgrade" ? "Mit Upgrade-Paket für die Switch 2, das du hast" : "Spiel für die Switch 2"}">${g.s2 === "upgrade" ? "S2-Upgrade" : "Switch 2"}</span>`);
   const ms = g.modes.map(m => m.n), miss = ["tv", "tabletop", "handheld"].filter(m => !ms.includes(m));
@@ -261,7 +263,7 @@ function gDetail(g){
   const odd = ["offline", "local", "online"].filter(k => g.players[k] && g.players[k].alt)
     .map(k => `${({offline: "an einer Konsole", local: "lokal drahtlos", online: "online"})[k]} <span class="gxc">DekuDeals ${gRange(g.players[k].v)}, Nintendo ${gRange(g.players[k].alt)}</span>`).join(" · ");
   const m = g.mine || {};
-  const mine = `<span class="seg gmark">${G_ST.map(([k, l, ic, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}"><span class="gst ${k}">${ic}</span> ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}"><span class="gfav">${m.fav ? "★" : "☆"}</span> Favorit</button></span>`;
+  const mine = `<span class="seg gmark">${G_ST.map(([k, l, ic, tip]) => `<button data-act="gmark" data-s="${esc(g.slug)}" data-k="s" data-v="${m.s === k ? "" : k}" class="${m.s === k ? "on" : ""}" title="${esc(m.s === k ? "Zurücknehmen" : tip)}"><span class="gst ${k}">${ic}</span> ${l}</button>`).join("")}</span><span class="seg gmark"><button data-act="gmark" data-s="${esc(g.slug)}" data-k="fav" data-v="${m.fav ? "" : "1"}" class="${m.fav ? "on" : ""}" title="${m.fav ? "Kein Favorit mehr" : "Als Favorit merken"}"><span class="gfav">${m.fav ? "★" : "☆"}</span> Favorit</button><button data-act="gmark" data-s="${esc(g.slug)}" data-k="ign" data-v="${m.ign ? "" : "1"}" class="${m.ign ? "on" : ""}" title="${m.ign ? "Nicht mehr ignorieren" : "Nie wieder vorschlagen"}"><span class="gign">✕</span> ignorieren</button></span>`;
   // Switch-2-Edition (1.7.4): mit Upgrade-Paket gelten ihre Angaben; was die Switch-1-Seite anders nennt, steht dabei
   const ED_L = {players: "Spieler", modes: "Spielmodi", mc: "Metacritic", mcu: "Nutzer", oc: "OpenCritic", hltb: "Spielzeit", size_gb: "Größe"};
   const edv = (k, v) => k === "players" ? ["offline", "local", "online"].filter(x => v[x]).map(x => `${({offline: "Konsole", local: "lokal", online: "online"})[x]} ${gRange(v[x])}`).join(", ")
@@ -377,8 +379,10 @@ document.addEventListener("click", e => {
     // Sofort zeigen, dann speichern; ein Fehler lädt den Stand des Servers neu
     const g = ((S.state.spiele || {}).games || []).find(x => x.slug === el.dataset.s), k = el.dataset.k;
     if(!g) return;
-    const val = k === "fav" ? (v ? true : null) : (v || null);
+    const val = k === "fav" || k === "ign" ? (v ? true : null) : (v || null);
     g.mine = Object.assign({}, g.mine); if(val) g.mine[k] = val; else delete g.mine[k];
+    if(val && k === "fav") delete g.mine.ign;      // Favorit und ignorieren schließen sich aus
+    if(val && k === "ign") delete g.mine.fav;
     render();
     api("/api/settings", {game_marks: {[g.slug]: {[k]: val}}}).catch(() => refresh());
   }

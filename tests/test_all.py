@@ -3549,6 +3549,11 @@ class CollectionTabTest(unittest.TestCase):
             store.save_settings({"game_marks": {"a": {"s": "backlog"}, "b": {"s": "bogus", "fav": True}, "c": "done"}})
             store.save_settings({"game_marks": {"a": {"fav": True}}})
             self.assertEqual(store.load_settings()["game_marks"], {"a": {"s": "backlog", "fav": True}, "b": {"fav": True}})
+            # ignorieren (1.7.24) nimmt den Favoriten zurück und umgekehrt
+            store.save_settings({"game_marks": {"b": {"ign": True}}})
+            self.assertEqual(store.load_settings()["game_marks"]["b"], {"ign": True})
+            store.save_settings({"game_marks": {"b": {"fav": True}}})
+            self.assertEqual(store.load_settings()["game_marks"]["b"], {"fav": True})
             store.save_settings({"game_marks": {"a": {"s": None}, "b": {"fav": None}}})
             self.assertEqual(store.load_settings()["game_marks"], {"a": {"fav": True}})
             data, settings = sample()
