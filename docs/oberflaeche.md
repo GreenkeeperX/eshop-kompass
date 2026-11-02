@@ -700,7 +700,8 @@ warum eine Stelle anders bleibt. Funktionen in `app/static/js/*.js`.
 | Teile eines Pakets („Enthält, soweit bekannt“), ab 1.7.20 aus dem Namen erschlossene mit grauem „(vermutlich)“ und Tooltip (`k.guess`) | Wishlist-Einzelheiten (`packLine`); Besitz und Sammlung rechnen still mit (`titles.all_links`), die Sammlung zeigt sie wie andere Teile mit „im Paket …“ |
 | Preisverlauf, Tabelle (ab 1.7.26) | ✕ oben rechts (`.vlx`, Kopf bleibt stehen), Spalte „überm Bestpreis“ (`.g-buy` „am Bestpreis“ bis 2 %, sonst `.over`), „zuletzt“ mit `.pct` blau und `.g-buy` grün nur bei gutem Preis (bis 5 % über dem Bestpreis oder am Ziel), Land als Link zu DekuDeals, Preis jetzt zum eShop (`shopUrl`) |
 | Preisverlauf und Tooltips zum Bestpreis (ab 1.7.27) | „jetzt“ am Bestpreis (bis 2 %) `.g-buy` fett mit ★; Stern, `overBest` und „überm Bestpreis“ mit `bestTip` (Bestpreis, Land, Preis jetzt, Abstand) |
-| Zeile unter der Maus (ab 1.7.27) | nur `@media (hover:hover)`: Hintergrund 6 % Textfarbe in Listen, Tabellen und im Preisverlauf |
+| Zeile unter der Maus (ab 1.7.27) | nur `@media (hover:hover)`: `--hov`, hell 6 % Textfarbe, ab 1.7.28 dunkel 70 % Seitenhintergrund (dunkler statt heller), in Listen, Tabellen und im Preisverlauf |
+| Aufklappen (ab 1.7.28) | `keepRow`: die angeklickte Zeile bleibt an ihrer Stelle, auch wenn darüber eine andere zuklappt (Spiele `gopen`, Titel `topen`) |
 | Länder ein- und ausblenden | Preisverlauf (`drawVerlauf`, `.vl .lg`, „alle an · alle aus“ `vlall` ab 1.7.19); der Verlauf ist ein Fenster für alle Stellen, die ihn öffnen |
 | Sortierbare Tabellen | `sth()` und `sortRows()`; neue Spalten bekommen beides, die README nennt die Tabellen unter „Sortieren“ |
 | Zahlenzeilen in Klappzeilen | „Geprüft: …“ (`langSection`), Käufe (`eshopBox`), Sammlung (`collGame`): Zahl fett, violett, was dich braucht, grün, was erledigt ist |

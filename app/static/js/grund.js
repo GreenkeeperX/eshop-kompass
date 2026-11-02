@@ -566,6 +566,14 @@ const itemsAtBest = items => items.every(i => i.champ === null || i.champ === un
 const nearTip = d => d >= 0.005 ? ` title="${eur(d)} über dem Bestpreis, das zählt noch als Bestpreis (bis 2 %)"` : "";
 /* Abstand zum Bestpreis als Text: am Bestpreis in der Farbe des Urteils, +x € rot (teurer) */
 /* Tooltip zum Bestpreis (1.7.27, wie im VR-Navigator): der Bestpreis selbst mit Land, der Preis jetzt und der Abstand */
+/* Aufklappen (1.7.28, wie im VR-Navigator): die angeklickte Zeile bleibt an ihrer Stelle im Fenster, auch wenn darüber
+   eine andere Zeile zuklappt; sonst sprang die Liste um die Höhe der alten Einzelheiten */
+function keepRow(el, draw){
+  const act = el.dataset.act, key = el.dataset.s, top = el.getBoundingClientRect().top;
+  draw();
+  const n = [...document.querySelectorAll(`[data-act="${act}"]`)].find(x => x.dataset.s === key);
+  if(n) scrollBy(0, n.getBoundingClientRect().top - top);
+}
 function bestTip(eurNow, champ, where){
   const d = Math.round((eurNow - champ) * 100) / 100;
   return `Bestpreis ${eur(champ)}${where ? ` (${where})` : ""}; jetzt ${eur(eurNow)}` + (d < 0.005 ? ", genau am Bestpreis"
