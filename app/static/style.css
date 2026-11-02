@@ -696,7 +696,7 @@ details.gmenu .hint{margin:0}
 .gme .gst.done,.gme .gfav,.gme .gign{font-size:15px}
 .gst.backlog{color:var(--pink)}     /* pink wie das Quadrat am PlayStation-Controller (1.7.24) */
 .gst.started{color:var(--deal)}
-.gst{-webkit-text-stroke:.5px currentColor}     /* kräftiger, fett ändert die Zeichen kaum (1.7.6) */
+.gst{-webkit-text-stroke:1px currentColor}     /* kräftiger, fett ändert die Zeichen kaum (1.7.6); ab 1.7.25 so kräftig wie ★ und ✕ */
 .gst.backlog,.gst.started{position:relative;top:-1.5px}
 .gme .gst.backlog,.gme .gst.started{top:-1px}     /* ○ und ▷ sitzen in der Schrift tiefer als ✓ und ★ */
 .usk16{color:var(--deal);font-weight:600}

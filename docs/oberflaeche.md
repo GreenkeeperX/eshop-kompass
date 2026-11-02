@@ -338,7 +338,7 @@ fehlen“ violett, „ohne“ und ab 1.7.5 „ohne DLC“ grün, „im Angebot�
   ▷ blau und nicht gefüllt (`--deal`), ✓ grün, ★ gelb (Gold, ab 1.7.24 fett über eine dickere Kontur, die Größe bleibt); ○ und ▷ ab 1.7.5 höher (in Knöpfen 1,5 px), sonst hängen sie durch. Hinter dem Titel ab 1.7.7 in einem
   Kasten fester Höhe (14 px), mittig zur Zeile statt an der Grundlinie, damit die Zeile nicht springt, auch
   wenn eine Ersatzschrift die Zeichen größer zeichnet; ✓ und ★ dort etwas größer (15 px); ab 1.7.6
-  mit feiner Kontur kräftiger (`-webkit-text-stroke`, fett ändert diese Zeichen kaum). In der Zeile hinter dem Namen nur, was
+  mit feiner Kontur kräftiger (`-webkit-text-stroke`, fett ändert diese Zeichen kaum; ab 1.7.25 1 px, so kräftig wie ★ und ✕). In der Zeile hinter dem Namen nur, was
   gesetzt ist (`.gme`), Tooltip sagt es. Filter „Mein Stand“ (egal, nicht durchgespielt, Backlog, angefangen,
   durchgespielt, Favoriten, ignoriert, ohne Stand), Mischung „Aus dem Backlog“. Gespeichert in den Einstellungen
   (`game_marks`), damit in der Sicherung; die Oberfläche zeigt den Klick sofort und speichert dann.
