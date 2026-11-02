@@ -5150,6 +5150,9 @@ class UiContractTest(unittest.TestCase):
         for name in ("function bestTip", "function gPatchMarks", "const nowCell", "Bestpreis aller Länder"):
             self.assertIn(name, js)
         self.assertIn("@media (hover:hover)", css)
+        # 1.7.28: Zeile bleibt beim Aufklappen stehen, Hover je Ansicht
+        self.assertIn("function keepRow", js)
+        self.assertEqual(css.count("--hov:"), 3)
 
     def test_ui_files_served(self):
         # 0.86: Was index.html lädt, liefert der Server mit passendem Typ; andere Pfade nicht

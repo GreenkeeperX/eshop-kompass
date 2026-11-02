@@ -88,7 +88,7 @@ document.addEventListener("click", async e => {
       // Mit der Tastatur sortiert (0.89): Fokus bleibt auf dem Spaltenkopf
       if(kb){ const t = document.querySelector(`[data-act="tsort"][data-t="${CSS.escape(d.t)}"][data-k="${CSS.escape(d.k)}"]`); if(t) t.focus(); }
     }
-    else if(a === "topen"){ S.openTitle = S.openTitle === d.s ? null : d.s; render(); }
+    else if(a === "topen"){ S.openTitle = S.openTitle === d.s ? null : d.s; keepRow(el, render); }
     else if(a === "gotitle"){
       S.openTitle = d.s; S.tview = "list"; S.vf = "all"; S.rq = ""; go("titel", false);
       const r = document.querySelector(`tr[data-s="${CSS.escape(d.s)}"]`); if(r) r.scrollIntoView({block:"center"});

@@ -396,11 +396,10 @@ document.addEventListener("click", e => {
     const s = el.dataset.s;
     if(S.gAll){ if(S.gShut.has(s)) S.gShut.delete(s); else S.gShut.add(s); }
     else S.gOpen = S.gOpen === s ? null : s;
-    render();
+    keepRow(el, render);
     const row = document.querySelector(`.gr.open .g-n[data-s="${CSS.escape(s)}"]`);
     const gd = row && row.closest(".gr").nextElementSibling;
     if(gd && gd.classList.contains("gd")){ const r = gd.getBoundingClientRect(); if(r.bottom > innerHeight) scrollBy(0, Math.min(r.bottom - innerHeight + 12, r.top - 120)); }
-    if(gd){ const r = gd.getBoundingClientRect(); if(r.bottom > innerHeight) scrollBy(0, Math.min(r.bottom - innerHeight + 12, r.top - 120)); }
     else if(atEnd) scrollTo(0, document.documentElement.scrollHeight);
   }
   else if(a === "gmark"){

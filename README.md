@@ -429,6 +429,8 @@ Ab 1.7.27 steht „jetzt“ am Bestpreis (bis 2 % darüber) grün und mit ★ wi
 Tooltip den Bestpreis selbst mit Land, den Preis jetzt und den Abstand. Die Zeile unter der Maus ist leicht
 hinterlegt (nur mit Maus). Ein Klick in Mein Stand tauscht nur die Knöpfe und die Zeichen am Namen aus, die Tabelle
 zuckt nicht mehr; die Zeichen sind etwas kräftiger und sitzen mittig zum Namen.
+Ab 1.7.28 bleibt beim Aufklappen die angeklickte Zeile an ihrer Stelle, auch wenn darüber eine andere zuklappt, und
+im Darkmode wird die Zeile unter der Maus dunkler statt heller.
 
 **Was wäre, wenn:** Das ✎ hinter einem Einkaufspreis (im Schritt und unter „Wartet“)
 fragt nach einem angenommenen Preis in der Landeswährung, wie im Shop; vorgeschlagen ist der
