@@ -62,7 +62,9 @@ function todos(){
       out.push([`<b>${esc(country(code).name)}: Kartenpreise prüfen</b> <small>älter als 30 Tage</small>`, `<button class="link" data-act="gocards" data-c="${code}">prüfen</button>`]);
   }
   if(!out.length) return "";
-  return `<div class="todo"><b>Zu erledigen</b>` + out.map(([t, a]) => `<div><span>${t}</span>${a}</div>`).join("") + `</div>`;
+  // Klappbar (1.7.30): von Haus aus offen, gemerkt wird das Zuklappen; zu nennt der Kopf die Zahl
+  return `<details class="todo" data-kc="todo" ${S.folds.todo ? "" : "open"}><summary><b>Zu erledigen</b> <span class="todo-n">${out.length}</span></summary>` +
+    out.map(([t, a]) => `<div><span>${t}</span>${a}</div>`).join("") + `</details>`;
 }
 function viewJetzt(){
   return accountLine() + todos() + viewKauf() + nsoBox();

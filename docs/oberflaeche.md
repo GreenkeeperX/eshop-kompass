@@ -578,7 +578,8 @@ mit den anderen Zeilen bündig bleibt. „gekauft“ nennt in der Rückfrage die
 vorrätig“ oder „kein Kartenpreis“ (`no_cards_warning`).
 
 „Zu erledigen“ (Jetzt): je Eintrag ein fetter Kern („7 fehlende DLC kostenlos holen“), Einzelheiten
-klein dahinter, lange Listen eingeklappt („welche“). Die Legende erklärt jedes Zeichen, das die
+klein dahinter, lange Listen eingeklappt („welche“). Ab 1.7.30 klappbar (`details.todo`, `data-kc` todo:
+von Haus aus offen, gemerkt wird das Zuklappen; zu steht hinter dem Kopf die Zahl der Einträge in Violett). Die Legende erklärt jedes Zeichen, das die
 Oberfläche zeigt, auch Chips, „ca.“, die DLC-Marken, „Rest“, Sammlung „fehlt“, „nicht auf der Wishlist“
 und „↳“ (ab 0.91 geprüft: Sprachmarken „DE✓“ und „andere Fassung“ wie in den Tabellen, beide „Wechsel“-Zeilen
 zusammengelegt, alle Chips der Wishlist und des Korbs). Neue Chips oder Marken kommen im selben Commit in die Legende.

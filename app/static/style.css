@@ -447,7 +447,10 @@ form.set > .setc{margin-top:0}
 .warnc a{color:inherit;text-decoration:underline}
 .big{font-size:20px;font-variant-numeric:tabular-nums}
 .todo{background:var(--warn-bg);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px}
-.todo>b{color:var(--warn)}
+.todo>b,.todo>summary>b{color:var(--warn)}
+.todo>summary{cursor:pointer}
+.todo>summary .todo-n{color:var(--warn);font-size:12px}
+.todo[open]>summary .todo-n{display:none}
 .todo>div{display:flex;gap:10px;justify-content:space-between;align-items:baseline;padding-top:3px}
 .todo>div small{color:var(--muted);font-size:12px}
 .todo details.inl{display:inline}

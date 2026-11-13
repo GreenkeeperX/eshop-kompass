@@ -371,7 +371,8 @@ lädt die Startseite neu.
 Zur Wahl stehen Länder mit eigenem Shop; „Deutschland (Guthaben)“ ist dasselbe deutsche Konto
 und steht deshalb nicht zur Wahl.
 
-**Zu erledigen**, je Aufgabe eine kurze Zeile mit Sprung an die richtige Stelle:
+**Zu erledigen**, je Aufgabe eine kurze Zeile mit Sprung an die richtige Stelle (ab 1.7.30 klappbar,
+zugeklappt nennt der Kopf die Zahl):
 
 - ungeprüfte Sprachen, die etwas ändern würden (die Fassung wäre günstiger; alle offenen
   stehen unter Einstellungen, „Sprachen prüfen“),
