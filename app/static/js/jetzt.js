@@ -58,8 +58,8 @@ function todos(){
     out.push([`<b><button class="link" data-act="gonso" title="Zum Kasten Online-Mitgliedschaft">Online-Mitgliedschaft</button> ${nso.days_left < 0 ? "ist abgelaufen" : `läuft ${nso.days_left === 0 ? "heute" : `in ${nso.days_left} ${nso.days_left === 1 ? "Tag" : "Tagen"}`} ab`}</b>${b ? ` <small>am günstigsten in ${esc(b.name)} für ${eur(b.eur)}</small>` : ""}`, `<button class="link" data-act="gonso">ansehen</button>`]);
   }
   for(const [code, c] of Object.entries(s.countries)){
-    if(c.enabled && c.cards && c.cards_checked && Date.now() - new Date(c.cards_checked) > 30 * 86400000)
-      out.push([`<b>${esc(country(code).name)}: Kartenpreise prüfen</b> <small>älter als 30 Tage</small>`, `<button class="link" data-act="gocards" data-c="${code}">prüfen</button>`]);
+    if(c.enabled && cardsOld(code))
+      out.push([`<b>${esc(country(code).name)}: Kartenpreise prüfen</b> <small>von Hand eingetragen, älter als 30 Tage</small>`, `<button class="link" data-act="gocards" data-c="${code}">prüfen</button>`]);
   }
   if(!out.length) return "";
   // Klappbar (1.7.30): von Haus aus offen, gemerkt wird das Zuklappen; zu nennt der Kopf die Zahl

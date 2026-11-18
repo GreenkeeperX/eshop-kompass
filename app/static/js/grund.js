@@ -217,6 +217,14 @@ const rateCls = r => r && r.level ? RATE_CLS[r.level] ?? "" : "";
 const rateHtml = r => r ? `<span class="${r.level ? RATE_CLS[r.level] ?? "" : "mut"}"${r.best ? ` title="Maßstab: ${r.level === "cheaper" || r.level === "dearer" || r.level === "same" ? "Faktor deiner Kreditkarte" : "bester Faktor dieser Karte in 90 Tagen"} ${fac(r.best)}"` : ""}>${esc(r.text)}</span>` : "";
 /* Guthabenkarten eines Landes für die Einstellungen: Wert, Preis, Faktor, Bewertung */
 function cardRows(code){ return (S.state.card_status || {})[code] || []; }
+// Kartenpreise prüfen (1.7.31): Erinnert nur, wenn eine lieferbare Karte von Hand eingetragene Werte nutzt, also
+// in den letzten 14 Tagen keinen Preis aus ihrem Shop-Link bekam. Gelesene Links halten sich selbst aktuell
+function cardsOld(code){
+  const x = S.state.settings.countries[code] || {};
+  if(!x.cards || !x.cards_checked || Date.now() - new Date(x.cards_checked) <= 30 * 86400000) return false;
+  const rows = cardRows(code).filter(r => r.stock);
+  return !rows.length || rows.some(r => !(r.live && Date.now() / 1000 - r.live < 14 * 86400));
+}
 function cardSummary(code){
   const rows = cardRows(code).filter(r => r.stock && r.factor !== null), pi = S.state.pay[code] || {};
   if(!rows.length) return "";

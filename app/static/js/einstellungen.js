@@ -45,7 +45,7 @@ function viewSettings(){
   const cardRow = c => {
     const x = s.countries[c.code];
     if(c.code === "DE" || (x.pay === "card" && !x.cards)) return "";
-    const old = x.cards_checked && (Date.now() - new Date(x.cards_checked)) > 30 * 86400000, k = "cards:" + c.code;
+    const old = cardsOld(c.code), k = "cards:" + c.code;
     const cs = cardTable(c.code, (S.state.pay[c.code] || {}).currency);
     return `<tr class="cardrow"><td colspan="10"><details data-k="${k}" ${S.folds[k] ? "open" : ""}><summary>Guthabenkarten: <span data-info="${c.code}">${cardInfo(x.cards)}</span>${cardSummary(c.code)}${x.cards_checked ? ` · <span class="${old ? "warnc" : ""}">Stand ${new Date(x.cards_checked).toLocaleDateString("de-DE")}${old ? ", bitte prüfen" : ""}</span>` : ""}</summary>
       ${c.code === "DG" ? `<small class="hint">Deutsches Konto: nur Karten unter Nennwert lohnen, ein Rest bleibt auf dem Konto und wird ab 5 € gewarnt; Deutschland zum Shop-Preis bleibt die Vergleichsbasis.</small>` : ""}
@@ -58,8 +58,7 @@ function viewSettings(){
   const t = s.tier_min_saving, de = s.deal_eur;
   // Offenes als Zahl an der Sprungleiste (1.5.0): ein Hinweis, die Werkzeuge bleiben in ihren Karten
   const er = S.state.eshop || [], oldCards = act.filter(c => {
-    const x = s.countries[c.code];
-    return x.cards && x.cards_checked && Date.now() - new Date(x.cards_checked) > 30 * 86400000;
+    return cardsOld(c.code);
   }).length;
   const badSrc = (S.state.sources || []).filter(x => x.ok === false).length;
   const jump = [["set-laender", "Länder", oldCards, "Kartenpreise älter als 30 Tage"], ["set-regeln", "Regeln und Gebühren"],

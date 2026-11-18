@@ -658,7 +658,7 @@ Länder-Karten: Die Knöpfe „als Korb vergleichen“ und „Titel dazunehmen �
 Einstellungen (Aufbau ab 1.5.0, nach dem VR-Navigator): wenige Karten (`.setc`) Länder, Regeln und
 Gebühren, Sprachen prüfen, Käufe aus dem eShop, Quellen und Abgleich, Sicherung. Klappbar sind die Teile
 darin, nicht die Karten; jede Klappzeile nennt zugeklappt das Nötigste. Die Sprungleiste trägt hinter
-Länder (Kartenpreise älter als 30 Tage), Sprachen (offen), Käufe (nicht in der Sammlung, zuordnen,
+Länder (Kartenpreise älter als 30 Tage, ab 1.7.31 nur ohne frisch gelesene Shop-Preise, `cardsOld`, auch in „Zu erledigen“ und am Stand der Karten), Sprachen (offen), Käufe (nicht in der Sammlung, zuordnen,
 nachtragen) und Quellen (mit Problem) eine violette Zahl (`.warnc`), wenn dort etwas offen ist; die
 Werkzeuge bleiben in ihren Karten (Entscheidung 26.10.2026). Regeln und Gebühren stehen je als Satz,
 die Felder in „Grenzen anpassen“ und „Gebühren anpassen“. „Quellen und Abgleich“: Klappen „DekuDeals“

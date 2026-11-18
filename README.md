@@ -377,7 +377,8 @@ zugeklappt nennt der Kopf die Zahl):
 - ungeprüfte Sprachen, die etwas ändern würden (die Fassung wäre günstiger; alle offenen
   stehen unter Einstellungen, „Sprachen prüfen“),
 - Länder ohne Guthabenkarte mit Preis, nach Ursache (keine eingetragen, keine vorrätig, keine
-  mit Preis), und Kartenpreise, die älter als 30 Tage sind,
+  mit Preis), und Kartenpreise, die älter als 30 Tage sind (ab 1.7.31 nur, wenn eine Karte von Hand eingetragene
+  Werte nutzt, weil ihr Shop-Link seit 14 Tagen keinen Preis lieferte),
 - fehlende DLC deiner Spiele, die gerade kostenlos sind (eingeklappt unter „welche“),
 - ein Pass, der günstiger ist als seine fehlenden Teile, wenn Teile davon auf der Wishlist
   stehen, er selbst aber nicht (auf die Wishlist gesetzt, plant der Kaufplan ihn statt der
