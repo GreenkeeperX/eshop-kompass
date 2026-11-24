@@ -2903,13 +2903,13 @@ def scheduler():
     while True:
         try:
             settings = store.load_settings()
-            data = store.load_data()
+            last = store.last_sync()           # ohne data.json jedes Mal zu lesen (1.7.32)
             now = datetime.now(timezone.utc)
-            if boot_at and data.get("last_sync") and \
-                    (now - datetime.fromisoformat(data["last_sync"])).total_seconds() < BOOT_MIN_AGE:
+            if boot_at and last and \
+                    (now - datetime.fromisoformat(last)).total_seconds() < BOOT_MIN_AGE:
                 boot_at = None                 # gerade erst abgeglichen
             failed = status["finished"] if status["ok"] is False else None
-            if settings.get("auto_sync", True) and sync_due(data.get("last_sync"), settings["refresh_hours"], now, boot_at, failed) \
+            if settings.get("auto_sync", True) and sync_due(last, settings["refresh_hours"], now, boot_at, failed) \
                     and settings["wishlist_url"] and not status["running"]:
                 run_sync()
                 boot_at = None

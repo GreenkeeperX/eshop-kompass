@@ -1,0 +1,25 @@
+name: Tests
+
+# Vor dem Merge (1.7.32): Tests und Repository-Prüfung für jeden Pull Request und jeden Zweig außer
+# main (main prüft image.yml vor dem Bau des Image). Damit ein Merge nur mit grünen Tests geht, in
+# den Einstellungen des Repositorys unter Branches für main „Require status checks“ mit „tests“ setzen
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Repository-Prüfung
+        run: python3 -m tools.repo_check
+
+      - name: Tests
+        run: python3 -m unittest tests.test_all

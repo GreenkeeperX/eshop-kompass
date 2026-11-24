@@ -70,6 +70,10 @@ Benutzer mit schreibgeschütztem Dateisystem.
 Danach `http://<server>:8787` öffnen. Ohne Docker: `python3 -m app.server` (Python 3.10+,
 keine Zusatzpakete, Daten in `./data/`).
 
+Ob der Dienst läuft, sagt `/healthz` (ab 1.7.32): 200 mit `"ok": true`, sonst 503 mit dem Grund
+(Datenordner nicht beschreibbar, Zeitplan steht). Das Image prüft es jede Minute selbst
+(`HEALTHCHECK`), Docker und Portainer zeigen den Container dann als „healthy“ oder „unhealthy“.
+
 ### Einrichten in fünf Schritten
 
 1. **Wishlist:** Unter Einstellungen, Quellen und Abgleich, DekuDeals, den Link deiner öffentlichen
@@ -1089,6 +1093,17 @@ Eigene Links (Kartenpreise, eigene Angebote) holt der Server nur von öffentlich
 ### Tests
 
     python3 -m unittest tests.test_all
+    python3 -m tools.repo_check
+
+Beides läuft in GitHub Actions für jeden Pull Request und jeden Zweig (`tests.yml`) und vor dem
+Bau des Image auf `main` (`image.yml`). Die Repository-Prüfung (ab 1.7.32) meldet unbekannte
+Dateien im Wurzelverzeichnis, Bilder außerhalb von `docs/bilder/`, Momentaufnahmen, Sicherungen,
+Dateien aus dem Datenordner, Protokolle und Wishlist-Kennungen; was absichtlich dazukommt, wird in
+`tools/repo_check.py` eingetragen.
+
+Zahlen in Eingaben und gespeicherten Dateien sind immer endlich (ab 1.7.32): NaN und unendlich
+weist der Server ab (400 bei JSON-Literalen, sonst bleibt der bisherige Wert), und keine Datei und
+keine Antwort enthält sie.
 
 Dazu gehören Tests der Oberfläche ohne Zusatzpakete: Ein Vertragstest prüft, dass der Server jedes
 Feld liefert, das die Oberfläche liest (die Liste steht in `UiContractTest.CONTRACT`), und dass jede

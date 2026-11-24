@@ -15,6 +15,12 @@ Prüfung vor dem Push, zum Beispiel:
 
     git diff origin/main --stat
     git grep -n -i -E "wishlist/[A-Za-z0-9]{6,}|collection/[A-Za-z0-9]{6,}|192\.168\.|@[a-z0-9-]+\.(de|com)"
+    python3 -m tools.repo_check --staged
+
+`tools.repo_check` kennt die erlaubten Dateien im Wurzelverzeichnis (darunter die drei alten
+Bildschirmfotos `b-d.png`, `b-m.png`, `w-m.png`, die bleiben) und meldet alles andere sowie Bilder
+außerhalb von `docs/bilder/`, Momentaufnahmen, Sicherungen und Protokolle. Neue erlaubte Dateien
+dort eintragen, nicht PNG pauschal ignorieren.
 
 Ein Treffer bei Namen fällt mit grep nicht sicher auf. Deshalb den eigenen Diff vor dem
 Push lesen.
