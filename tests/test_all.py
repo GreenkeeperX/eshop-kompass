@@ -5388,5 +5388,154 @@ class RestPairsTest(unittest.TestCase):
         pairs = planner._rest_pairs(fill, 10.0)
         self.assertEqual([(f["slugs"], f["left"]) for f in pairs], [(["a", "c"], 0.0), (["a", "b"], 0.5), (["b", "c"], 2.5)])
 
+class StabilityTest(unittest.TestCase):
+    """E-1 nach dem Review (1.7.32): endliche Zahlen, Status ohne data.json, /healthz, Repository-Prüfung."""
+
+    def _server(self):
+        import threading
+        from http.server import ThreadingHTTPServer
+        from app import server
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        return srv
+
+    def _req(self, srv, method, path, body=None):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", srv.server_port, timeout=5)
+        c.request(method, path, body=body, headers={"Content-Type": "application/json"} if body is not None else {})
+        r = c.getresponse()
+        raw = r.read()
+        c.close()
+        return r.status, raw
+
+    def test_settings_reject_nan_and_infinity(self):
+        before = store.save_settings({"card_fee_pct": 1.5, "countries": {"US": {"balance": 12.5, "tax_pct": 7}},
+                                      "deal_eur": {"good": 2.0}})
+        for bad in ("nan", "NaN", "inf", "-inf", "Infinity", float("nan"), float("inf")):
+            s = store.save_settings({"card_fee_pct": bad, "refresh_hours": bad, "deal_eur": {"good": bad},
+                                     "zero": {"near": bad}, "tier_min_saving": {"1": bad},
+                                     "countries": {"US": {"balance": bad, "tax_pct": bad}},
+                                     "nso_extra": [{"key": "m12", "code": "JP", "price": bad}]})
+            # Ungültig heißt: Der bisherige Wert bleibt, gerade beim Guthaben
+            self.assertEqual(s["card_fee_pct"], 1.5, bad)
+            self.assertEqual(s["countries"]["US"]["balance"], 12.5, bad)
+            self.assertEqual(s["countries"]["US"]["tax_pct"], 7.0, bad)
+            self.assertEqual(s["deal_eur"]["good"], 2.0, bad)
+            self.assertEqual(s["refresh_hours"], before["refresh_hours"], bad)
+            self.assertEqual(s["nso_extra"], [], bad)
+        with open(os.path.join(store.DATA_DIR, "settings.json"), encoding="utf-8") as f:
+            json.loads(f.read(), parse_constant=lambda c: self.fail(c))     # gültiges JSON
+        store.save_settings({"countries": {"US": {"balance": 0, "tax_pct": before["countries"]["US"]["tax_pct"]}}})
+
+    def test_ui_rejects_nan_and_infinity(self):
+        ui = store.save_ui({"targets": {"a": "inf", "b": float("nan"), "c": "12.5", "d": float("inf")},
+                            "plan_assume": {"US": {"a": float("inf"), "b": "nan", "c": 3}}})
+        self.assertEqual(ui["targets"], {"c": 12.5})
+        self.assertEqual(ui["plan_assume"], {"US": {"c": 3.0}})
+        store.save_ui({"targets": {}, "plan_assume": {}})
+
+    def test_save_never_writes_nan(self):
+        path = os.path.join(store.DATA_DIR, "ui.json")
+        store.save_ui({"sort": "optimum"})
+        with open(path, encoding="utf-8") as f:
+            old = f.read()
+        with self.assertRaises(ValueError):
+            store._save("ui.json", {"x": float("nan")})
+        with open(path, encoding="utf-8") as f:
+            self.assertEqual(f.read(), old)                         # alte Datei unberührt
+        self.assertFalse(os.path.exists(path + ".tmp"))
+        # data.json schreibt der Abgleich: NaN aus einer Quelle wird unbekannt, statt ihn abzubrechen
+        data = store.load_data()
+        with mock.patch("sys.stderr"):
+            store.save_data(dict(data, nan_probe={"a": float("nan"), "b": [1.0, float("-inf")]}))
+        self.assertEqual(store.load_data()["nan_probe"], {"a": None, "b": [1.0, None]})
+        store.save_data({k: v for k, v in data.items() if k != "_eshop"})
+
+    def test_api_rejects_nan_literals_and_answers_valid_json(self):
+        from app import server
+        srv = self._server()
+        before = store.load_settings()["card_fee_pct"]
+        for lit in ("NaN", "Infinity", "-Infinity"):
+            status, _ = self._req(srv, "POST", "/api/settings", '{"card_fee_pct": %s}' % lit)
+            self.assertEqual(status, 400, lit)
+        self.assertEqual(store.load_settings()["card_fee_pct"], before)
+        status, _ = self._req(srv, "POST", "/api/bought", json.dumps({"code": "US", "cost": "inf", "rest": "nan"}))
+        self.assertEqual(status, 200)
+        entry = store.load_purchases()[-1]
+        self.assertEqual((entry["cost"], entry["rest"]), (None, None))
+        self.assertEqual(store.load_settings()["countries"]["US"]["balance"], 0.0)
+        self._req(srv, "POST", "/api/bought/undo", "{}")
+        self.assertEqual(server._num("Infinity"), None)
+        # Eine Antwort mit NaN bleibt gültiges JSON für den Browser
+        with mock.patch.object(server, "health", lambda: (True, float("nan"))), mock.patch("sys.stderr"):
+            status, raw = self._req(srv, "GET", "/healthz")
+        self.assertEqual(json.loads(raw, parse_constant=lambda c: self.fail(c))["why"], None)
+
+    def test_status_does_not_read_data_json(self):
+        srv = self._server()
+        data = store.load_data()
+        store.save_data(dict({k: v for k, v in data.items() if k != "_eshop"}, last_sync="2026-11-01T06:00:00+00:00"))
+        real = store._load
+        seen = []
+        with mock.patch.object(store, "_load", lambda name, d: seen.append(name) or real(name, d)):
+            for _ in range(3):
+                status, raw = self._req(srv, "GET", "/api/status")
+                self.assertEqual(json.loads(raw)["last_sync"], "2026-11-01T06:00:00+00:00")
+        self.assertNotIn("data.json", seen)
+        # Schreibt jemand data.json an save_data vorbei, merkt es der Status an Größe und Zeit
+        path = os.path.join(store.DATA_DIR, "data.json")
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+        d["last_sync"] = "2026-11-02T06:00:00+00:00"
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+        os.utime(path, ns=(1, 1))
+        self.assertEqual(store.last_sync(), "2026-11-02T06:00:00+00:00")
+        store.save_data({k: v for k, v in data.items() if k != "_eshop"})
+
+    def test_healthz(self):
+        import threading
+        from app import server
+        srv = self._server()
+        status, raw = self._req(srv, "GET", "/healthz")
+        body = json.loads(raw)
+        self.assertEqual((status, body["ok"], body["version"]), (200, True, sources.VERSION))
+        dead = threading.Thread(target=lambda: None)
+        dead.start()
+        dead.join()
+        with mock.patch.object(server, "_scheduler", dead):
+            status, raw = self._req(srv, "GET", "/healthz")
+        self.assertEqual((status, json.loads(raw)["ok"]), (503, False))
+        with mock.patch.object(server.os, "access", lambda *a: False):
+            self.assertEqual(server.health(), (False, "Datenordner nicht beschreibbar"))
+        root = os.path.join(os.path.dirname(__file__), "..")
+        with open(os.path.join(root, "Dockerfile"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"HEALTHCHECK[^\n]*\\\n\s*CMD wget [^\n]*/healthz")
+
+    def test_repo_check(self):
+        from tools import repo_check
+        self.assertEqual(repo_check.check_paths(["README.md", "b-d.png", "b-m.png", "w-m.png", "app/server.py",
+                                                 "docs/bilder/jetzt.jpg", "tests/test_all.py"]), [])
+        bad = ["screenshot.png", "notiz.md", "docs/neu.png", "app/static/x.jpg", "tests/2026-abgleich.json",
+               "tools/sicherung.json", "app/purchases.json", "data/settings.json", "sync.log", "tests/x.har",
+               "app/settings.json.kaputt-20261101", "privat/x.py"]
+        found = repo_check.check_paths(bad)
+        for p in bad:
+            self.assertTrue(any(f.startswith(p + ":") for f in found), p)
+        # zusammengesetzt, sonst meldete die Prüfung diese Zeilen selbst
+        self.assertTrue(repo_check.check_text("x.md", "siehe dekudeals.com/wishlist/" + "q7w8e9r0t1"))
+        self.assertTrue(repo_check.check_text("x.md", "Server 192." + "168.178.20"))
+        self.assertEqual(repo_check.check_text("x.py", "dekudeals.com/wishlist/abc123xyz und 10.0.0.1"), [])
+        root = os.path.join(os.path.dirname(__file__), "..")
+        if os.path.isdir(os.path.join(root, ".git")):
+            self.assertEqual(repo_check.run(), [])
+        with open(os.path.join(root, ".github", "workflows", "tests.yml"), encoding="utf-8") as f:
+            wf = f.read()
+        self.assertIn("pull_request", wf)
+        self.assertIn("tools.repo_check", wf)
+
+
 if __name__ == "__main__":
     unittest.main()

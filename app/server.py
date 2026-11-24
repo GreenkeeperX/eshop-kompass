@@ -2,6 +2,7 @@
 import gzip
 import ipaddress
 import json
+import math
 import re
 import os
 import sys
@@ -18,9 +19,14 @@ STATIC = os.path.join(os.path.dirname(__file__), "static")
 
 def _num(x):
     try:
-        return round(float(x), 2)
+        f = float(x)
     except (TypeError, ValueError):
         return None
+    return round(f, 2) if math.isfinite(f) else None    # NaN und unendlich: unbekannt (1.7.32)
+
+
+def _no_constant(name):
+    raise ValueError(f"{name} ist keine gültige Zahl")
 
 
 def state():
@@ -70,6 +76,19 @@ def _state():
         "eshop_at": (data.get("_eshop") or {}).get("at") or 0,
         "eshop_owned_n": (data.get("_eshop") or {}).get("owned_n"),
     }
+
+
+_scheduler = None      # Faden des Zeitplans, wenn er läuft (main)
+
+
+def health():
+    """Für /healthz und den HEALTHCHECK des Containers (1.7.32): billig, ohne data.json zu lesen.
+    Ungesund, wenn der Datenordner nicht beschreibbar ist oder der Zeitplan nicht mehr läuft."""
+    if not os.path.isdir(store.DATA_DIR) or not os.access(store.DATA_DIR, os.W_OK):
+        return False, "Datenordner nicht beschreibbar"
+    if _scheduler is not None and not _scheduler.is_alive():
+        return False, "Zeitplan läuft nicht mehr"
+    return True, ""
 
 
 # Namen, die nur im eigenen Netz aufgelöst werden (RFC 8375 und üblich): Eine fremde Domain kann
@@ -132,7 +151,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send(self, code, body, ctype="application/json; charset=utf-8"):
         if not isinstance(body, bytes):
-            body = json.dumps(body, ensure_ascii=False).encode("utf-8")
+            try:
+                body = json.dumps(body, ensure_ascii=False, allow_nan=False)
+            except ValueError:
+                # NaN oder unendlich (1.7.32): JSON.parse im Browser scheiterte an der ganzen Antwort.
+                # Sie werden null (unbekannt), das Protokoll des Containers nennt die Stelle
+                body, n = store.finite_only(body)
+                print(f"Antwort auf {self.path.split('?')[0]}: {n} Zahlen NaN oder unendlich, als null gesendet",
+                      file=sys.stderr)
+                body = json.dumps(body, ensure_ascii=False, allow_nan=False)
+            body = body.encode("utf-8")
         # Gepackt, wenn der Browser es kann (0.99): Zustand und Pläne sind über 1 MB, gepackt ein Zehntel
         packed = len(body) > 20_000 and "gzip" in (self.headers.get("Accept-Encoding") or "")
         if packed:
@@ -160,7 +188,8 @@ class Handler(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         if n < 0 or n > limit:          # negativ hieße: lesen bis zum Ende (0.99.1)
             raise ValueError("zu groß")
-        body = json.loads(self.rfile.read(n) or b"{}")
+        # NaN, Infinity und -Infinity sind kein JSON; Python nähme sie sonst an (1.7.32)
+        body = json.loads(self.rfile.read(n) or b"{}", parse_constant=_no_constant)
         if not isinstance(body, dict):
             raise ValueError("JSON-Objekt erwartet")
         return body
@@ -187,7 +216,11 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/state":
                 self._send(200, state())
             elif path == "/api/status":
-                self._send(200, dict(sync.status, last_sync=store.load_data().get("last_sync")))
+                # ohne data.json zu lesen (1.7.32), siehe store.last_sync
+                self._send(200, dict(sync.status, last_sync=store.last_sync()))
+            elif path == "/healthz":
+                ok, why = health()
+                self._send(200 if ok else 503, {"ok": ok, "why": why, "version": sources.VERSION})
             elif path == "/api/kaufplan":
                 ui = store.load_ui()
                 with planner.shared_contexts():
@@ -327,8 +360,10 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     port = int(os.environ.get("PORT", "8787"))
+    global _scheduler
     if os.environ.get("NO_SCHEDULER") != "1":
-        threading.Thread(target=sync.scheduler, daemon=True).start()
+        _scheduler = threading.Thread(target=sync.scheduler, daemon=True)
+        _scheduler.start()
     srv = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     print(f"eShop-Kompass läuft auf Port {port}", flush=True)
     srv.serve_forever()

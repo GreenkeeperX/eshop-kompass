@@ -5,3 +5,22 @@ __pycache__/
 *.pyc
 graphify-out/
 .claude/settings.local.json
+# Arbeitsdateien und Protokolle (1.7.32). Bilder werden absichtlich nicht pauschal ausgeschlossen:
+# tools/repo_check.py meldet neue Bilder außerhalb von docs/bilder/ und unbekannte Dateien im Wurzelverzeichnis
+*.log
+*.har
+*.tmp
+*.bak
+*.orig
+*.rej
+*.swp
+*~
+*.kaputt-*
+.DS_Store
+/settings.json
+/ui.json
+/history.json
+/purchases.json
+/keys.json
+/eshop_history.json
+/data.json

@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Repository-Prüfung
+        run: python3 -m tools.repo_check
+
       - name: Tests
         run: python3 -m unittest tests.test_all
 

@@ -1,5 +1,6 @@
 """Zwischenspeicher (data.json) und Einstellungen (settings.json)."""
 import json
+import math
 import re
 import os
 import sys
@@ -67,6 +68,15 @@ EMPTY_DATA = {"items": {}, "prices": {}, "lows": {}, "card_prices": {},
 lock = threading.RLock()
 
 
+def _fin(x):
+    """Zahl aus einer Eingabe (1.7.32): wie float(), aber NaN und unendlich gelten als ungültig
+    (ValueError). Sonst landeten sie in den Dateien, und JSON.parse im Browser scheiterte daran."""
+    f = float(x)
+    if not math.isfinite(f):
+        raise ValueError("keine endliche Zahl")
+    return f
+
+
 def _path(name):
     return os.path.join(DATA_DIR, name)
 
@@ -93,11 +103,32 @@ def _load(name, default):
     return json.loads(json.dumps(default))
 
 
+def finite_only(obj):
+    """Kopie ohne NaN und unendlich (1.7.32): solche Zahlen werden None. Gibt (Kopie, Anzahl)."""
+    n = 0
+
+    def walk(x):
+        nonlocal n
+        if isinstance(x, float) and not math.isfinite(x):
+            n += 1
+            return None
+        if isinstance(x, dict):
+            return {k: walk(v) for k, v in x.items()}
+        if isinstance(x, (list, tuple)):
+            return [walk(v) for v in x]
+        return x
+    return walk(obj), n
+
+
 def _save(name, obj):
+    # Erst ganz in Text wandeln, dann schreiben (1.7.32): Ein Fehler lässt die alte Datei unberührt.
+    # NaN und unendlich sind kein JSON; in Eingaben weist _fin sie ab, kommen sie trotzdem an, bricht
+    # das Speichern mit ValueError ab, statt eine Datei zu schreiben, die der Browser nicht lesen kann
+    text = json.dumps(obj, ensure_ascii=False, indent=1, allow_nan=False)
     os.makedirs(DATA_DIR, exist_ok=True)
     tmp = _path(name) + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=1)
+        f.write(text)
         f.flush()
         os.fsync(f.fileno())      # erst auf der Platte, dann umbenennen: kein leeres File nach Stromausfall
     os.replace(tmp, _path(name))
@@ -168,7 +199,7 @@ def _nso_extra(e, known):
     if not isinstance(e, dict) or e.get("key") not in NSO_KEYS or e.get("code") not in known:
         return None
     try:
-        price = float(e.get("price"))
+        price = _fin(e.get("price"))
     except (TypeError, ValueError):
         return None
     url = str(e.get("url") or "").strip()
@@ -226,7 +257,7 @@ def save_settings(new):
                   "cashback_pct"):
             if k in new:
                 try:
-                    s[k] = max(0.0, float(new[k]))
+                    s[k] = max(0.0, _fin(new[k]))
                 except (TypeError, ValueError):
                     pass
         s["cashback_pct"] = min(50.0, s["cashback_pct"])
@@ -290,25 +321,25 @@ def save_settings(new):
         for tier, value in (new.get("tier_min_saving") or {}).items():
             if str(tier) in s["tier_min_saving"]:
                 try:
-                    s["tier_min_saving"][str(tier)] = max(0.0, float(value))
+                    s["tier_min_saving"][str(tier)] = max(0.0, _fin(value))
                 except (TypeError, ValueError):
                     pass
         for k, value in (new.get("deal_eur") or {}).items():
             if k in s["deal_eur"]:
                 try:
-                    s["deal_eur"][k] = min(100.0, max(0.0, float(value)))
+                    s["deal_eur"][k] = min(100.0, max(0.0, _fin(value)))
                 except (TypeError, ValueError):
                     pass
         for k, value in (new.get("zero") or {}).items():
             if k in s["zero"]:
                 try:
-                    s["zero"][k] = min(1000.0, max(0.0, float(value)))
+                    s["zero"][k] = min(1000.0, max(0.0, _fin(value)))
                 except (TypeError, ValueError):
                     pass
         for k, value in (new.get("eur_card_steps") or {}).items():
             if k in s["eur_card_steps"]:
                 try:
-                    s["eur_card_steps"][k] = min(1.0, max(0.5, float(value)))
+                    s["eur_card_steps"][k] = min(1.0, max(0.5, _fin(value)))
                 except (TypeError, ValueError):
                     pass
         incoming = dict(new.get("countries") or {})
@@ -336,14 +367,14 @@ def save_settings(new):
                 cur["tier"] = int(c["tier"])
             if "tax_pct" in c:
                 try:
-                    cur["tax_pct"] = min(50.0, max(0.0, float(c["tax_pct"] or 0)))
+                    cur["tax_pct"] = min(50.0, max(0.0, _fin(c["tax_pct"] or 0)))
                 except (TypeError, ValueError):
                     pass
             if "rest_blocks" in c:
                 cur["rest_blocks"] = bool(c["rest_blocks"])
             if "balance" in c:
                 try:
-                    cur["balance"] = max(0.0, float(c["balance"] or 0))
+                    cur["balance"] = max(0.0, _fin(c["balance"] or 0))
                 except (TypeError, ValueError):
                     pass
             if isinstance(c.get("cards_add"), str):     # aus einer Datei: ergänzen statt ersetzen
@@ -390,10 +421,44 @@ def load_data():
         return d
 
 
+# Zeitpunkt des letzten Abgleichs ohne data.json zu lesen (1.7.32): Die Oberfläche fragt den Status
+# während eines Abgleichs alle 2 s ab, sonst jede Minute; data.json hat über 3 MB.
+# Gültig, solange Größe und Änderungszeit der Datei passen
+_meta = {"key": None, "last_sync": None}
+
+
+def _data_key():
+    try:
+        st = os.stat(_path("data.json"))
+        return (st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+
+
+def last_sync():
+    with lock:
+        key = _data_key()
+        if key is None:
+            return None
+        if key != _meta["key"]:
+            _meta["last_sync"] = _load("data.json", EMPTY_DATA).get("last_sync")
+            _meta["key"] = key
+        return _meta["last_sync"]
+
+
 def save_data(d):
     with lock:
         # Mit "_" beginnende Felder kommen aus anderen Dateien und werden dort gespeichert
-        _save("data.json", {k: v for k, v in d.items() if not k.startswith("_")})
+        out = {k: v for k, v in d.items() if not k.startswith("_")}
+        try:
+            _save("data.json", out)
+        except ValueError:
+            # Eine Quelle lieferte NaN oder unendlich (1.7.32): Der Abgleich soll daran nicht scheitern,
+            # die Werte gelten als unbekannt, das Protokoll des Containers nennt die Zahl
+            out, n = finite_only(out)
+            print(f"data.json: {n} Zahlen waren NaN oder unendlich, als unbekannt gespeichert", file=sys.stderr)
+            _save("data.json", out)
+        _meta["key"], _meta["last_sync"] = _data_key(), out.get("last_sync")
 
 
 def load_eshop_history():
@@ -501,8 +566,8 @@ def save_ui(new):
             targets = {}
             for slug, value in new["targets"].items():
                 try:
-                    if value not in (None, "") and float(value) > 0:
-                        targets[str(slug)] = round(float(value), 2)
+                    if value not in (None, "") and _fin(value) > 0:
+                        targets[str(slug)] = round(_fin(value), 2)
                 except (TypeError, ValueError):
                     pass
             ui["targets"] = targets
@@ -533,7 +598,7 @@ def save_ui(new):
                 keep = {}
                 for slug, v in list(m.items())[:50]:
                     try:
-                        v = float(v)
+                        v = _fin(v)
                     except (TypeError, ValueError):
                         continue
                     if 0 <= v < 1e9:
@@ -603,7 +668,7 @@ def record_purchase(entry):
             v["balance"] = 0.0
         rest = entry.get("rest")
         try:
-            s["countries"][code]["balance"] = max(0.0, round(float(rest or 0), 2))
+            s["countries"][code]["balance"] = max(0.0, round(_fin(rest or 0), 2))
         except (TypeError, ValueError):
             pass
         s["current_country"] = countries.BY_CODE[code]["shop"]   # DG ist das deutsche Konto
